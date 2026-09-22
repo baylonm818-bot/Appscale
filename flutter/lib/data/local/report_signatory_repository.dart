@@ -13,6 +13,8 @@ class ReportSignatoryRepository {
 
   ReportSignatory? get(String barangay) {
     final raw = _box.get(barangay);
-    return raw == null ? null : ReportSignatory.fromMap(Map<String, dynamic>.from(raw as Map));
+    return raw == null
+        ? null
+        : ReportSignatory.fromMap(Map<String, dynamic>.from(raw as Map));
   }
 }

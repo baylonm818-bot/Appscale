@@ -12,7 +12,9 @@ class ProgramScheduleRepository {
 
   List<ProgramSchedule> getAllForBarangay(String barangay) {
     final list = _box.values
-        .map((e) => ProgramSchedule.fromMap(Map<String, dynamic>.from(e as Map)))
+        .map(
+          (e) => ProgramSchedule.fromMap(Map<String, dynamic>.from(e as Map)),
+        )
         .where((s) => s.barangay == barangay)
         .toList();
     list.sort((a, b) => a.date.compareTo(b.date));
@@ -53,14 +55,16 @@ class ProgramScheduleRepository {
     final dateStr =
         '${schedule.date.year}-${schedule.date.month.toString().padLeft(2, '0')}-${schedule.date.day.toString().padLeft(2, '0')}';
 
-    await NotificationRepository().add(AppNotification(
-      id: NotificationRepository.generateId(),
-      title: 'New Program Schedule Set by RHU',
-      message:
-          '${schedule.title} (${schedule.programType}) has been scheduled for $dateStr at ${schedule.location} by RHU staff.',
-      type: 'general',
-      timestamp: DateTime.now(),
-    ));
+    await NotificationRepository().add(
+      AppNotification(
+        id: NotificationRepository.generateId(),
+        title: 'New Program Schedule Set by RHU',
+        message:
+            '${schedule.title} (${schedule.programType}) has been scheduled for $dateStr at ${schedule.location} by RHU staff.',
+        type: 'general',
+        timestamp: DateTime.now(),
+      ),
+    );
 
     await ActivityLogRepository().logActivity(
       type: 'report_generated',
@@ -98,7 +102,8 @@ class ProgramScheduleRepository {
         endTime: '12:00 PM',
         location: 'Barangay Health Center',
         targetGroup: 'All infants and children 6–59 months',
-        notes: 'Administer Blue (100k IU) for 6-11m and Red (200k IU) for 12-59m.',
+        notes:
+            'Administer Blue (100k IU) for 6-11m and Red (200k IU) for 12-59m.',
         barangay: barangay,
         createdBy: 'RHU Web Admin',
         createdAt: now.subtract(const Duration(days: 2)),
@@ -112,7 +117,8 @@ class ProgramScheduleRepository {
         endTime: '11:30 AM',
         location: 'Barangay Day Care Center',
         targetGroup: 'Children 1–4 years old (12–59 months)',
-        notes: 'Albendazole 400mg chewable tablets. Ensure child has eaten breakfast.',
+        notes:
+            'Albendazole 400mg chewable tablets. Ensure child has eaten breakfast.',
         barangay: barangay,
         createdBy: 'RHU Web Admin',
         createdAt: now.subtract(const Duration(days: 3)),

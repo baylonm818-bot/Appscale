@@ -20,7 +20,8 @@ class VitaminAScreen extends StatefulWidget {
   State<VitaminAScreen> createState() => _VitaminAScreenState();
 }
 
-class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProviderStateMixin {
+class _VitaminAScreenState extends State<VitaminAScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _vitARepo = VitaminARepository();
   final _childRepo = ChildRepository();
@@ -45,8 +46,13 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
       valueListenable: AppDataBus.version,
       builder: (context, version, childWidget) {
         final records = _vitARepo.getAllForBarangay(widget.barangay);
-        final allChildren = _childRepo.getByBarangay(widget.barangay).where((c) => c.isActive).toList();
-        final eligibleChildren = allChildren.where((c) => c.ageInMonths >= 6 && c.ageInMonths <= 59).toList();
+        final allChildren = _childRepo
+            .getByBarangay(widget.barangay)
+            .where((c) => c.isActive)
+            .toList();
+        final eligibleChildren = allChildren
+            .where((c) => c.ageInMonths >= 6 && c.ageInMonths <= 59)
+            .toList();
 
         // Children who received Vit A in last 6 months
         final sixMonthsAgo = DateTime.now().subtract(const Duration(days: 180));
@@ -57,7 +63,8 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
 
         final coveragePct = eligibleChildren.isEmpty
             ? 0
-            : ((recentRecipients.length / eligibleChildren.length) * 100).round();
+            : ((recentRecipients.length / eligibleChildren.length) * 100)
+                  .round();
 
         return Scaffold(
           appBar: AppBar(
@@ -71,10 +78,12 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
                 onPressed: () {
                   Navigator.push(
                     context,
-                    appPageRoute(AddProgramScheduleScreen(
-                      prefillProgramType: 'Vitamin A',
-                      initialTitle: 'Barangay Vitamin A Supplementation',
-                    )),
+                    appPageRoute(
+                      AddProgramScheduleScreen(
+                        prefillProgramType: 'Vitamin A',
+                        initialTitle: 'Barangay Vitamin A Supplementation',
+                      ),
+                    ),
                   );
                 },
               ),
@@ -95,7 +104,10 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
               // Summary Banner
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
+                ),
                 color: AppColors.surface,
                 child: Row(
                   children: [
@@ -122,7 +134,9 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
                         'Coverage',
                         '$coveragePct%',
                         coveragePct >= 90 ? 'Optimal' : 'Needs Follow-up',
-                        coveragePct >= 90 ? AppColors.primaryGreen : AppColors.statOrange,
+                        coveragePct >= 90
+                            ? AppColors.primaryGreen
+                            : AppColors.statOrange,
                       ),
                     ),
                   ],
@@ -131,7 +145,12 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
 
               // Search Bar
               Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.sm),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: 'Search child name...',
@@ -144,7 +163,8 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+                  onChanged: (val) =>
+                      setState(() => _searchQuery = val.trim().toLowerCase()),
                 ),
               ),
 
@@ -176,7 +196,12 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildMetricTile(String title, String val, String subtitle, Color color) {
+  Widget _buildMetricTile(
+    String title,
+    String val,
+    String subtitle,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
@@ -187,9 +212,18 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.caption.copyWith(fontSize: 10, color: AppColors.textMuted)),
+          Text(
+            title,
+            style: AppTextStyles.caption.copyWith(
+              fontSize: 10,
+              color: AppColors.textMuted,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(val, style: AppTextStyles.h2.copyWith(fontSize: 18, color: color)),
+          Text(
+            val,
+            style: AppTextStyles.h2.copyWith(fontSize: 18, color: color),
+          ),
           const SizedBox(height: 2),
           Text(subtitle, style: AppTextStyles.caption.copyWith(fontSize: 9)),
         ],
@@ -200,7 +234,9 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
   Widget _buildRecordsList(List<VitaminARecord> records) {
     final filtered = _searchQuery.isEmpty
         ? records
-        : records.where((r) => r.childName.toLowerCase().contains(_searchQuery)).toList();
+        : records
+              .where((r) => r.childName.toLowerCase().contains(_searchQuery))
+              .toList();
 
     if (filtered.isEmpty) {
       return Center(
@@ -209,9 +245,16 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.medication_outlined, size: 48, color: AppColors.textMuted),
+              const Icon(
+                Icons.medication_outlined,
+                size: 48,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(height: 12),
-              Text('No Vitamin A records found', style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
+              Text(
+                'No Vitamin A records found',
+                style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+              ),
             ],
           ),
         ),
@@ -224,8 +267,10 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
       separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
         final r = filtered[i];
-        final isBlue = r.dosage.contains('Blue') || r.dosage.contains('100,000');
-        final dateStr = '${r.dateGiven.month}/${r.dateGiven.day}/${r.dateGiven.year}';
+        final isBlue =
+            r.dosage.contains('Blue') || r.dosage.contains('100,000');
+        final dateStr =
+            '${r.dateGiven.month}/${r.dateGiven.day}/${r.dateGiven.year}';
         final nextDueStr = r.nextDueDate != null
             ? '${r.nextDueDate!.month}/${r.nextDueDate!.day}/${r.nextDueDate!.year}'
             : '—';
@@ -244,7 +289,9 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
                 children: [
                   CircleAvatar(
                     radius: 16,
-                    backgroundColor: isBlue ? Colors.blue[100] : Colors.red[100],
+                    backgroundColor: isBlue
+                        ? Colors.blue[100]
+                        : Colors.red[100],
                     child: Icon(
                       Icons.medication,
                       size: 18,
@@ -256,17 +303,28 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(r.childName, style: AppTextStyles.h3.copyWith(fontSize: 14)),
-                        Text('${r.doseType} • Age: ${r.ageInMonths} mos', style: AppTextStyles.caption),
+                        Text(
+                          r.childName,
+                          style: AppTextStyles.h3.copyWith(fontSize: 14),
+                        ),
+                        Text(
+                          '${r.doseType} • Age: ${r.ageInMonths} mos',
+                          style: AppTextStyles.caption,
+                        ),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: isBlue ? Colors.blue[50] : Colors.red[50],
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: isBlue ? Colors.blue : Colors.red),
+                      border: Border.all(
+                        color: isBlue ? Colors.blue : Colors.red,
+                      ),
                     ),
                     child: Text(
                       r.dosage,
@@ -285,13 +343,29 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Given: $dateStr by ${r.administeredBy}', style: AppTextStyles.caption.copyWith(fontSize: 11)),
-                  Text('Next Due: $nextDueStr', style: AppTextStyles.caption.copyWith(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.darkGreen)),
+                  Text(
+                    'Given: $dateStr by ${r.administeredBy}',
+                    style: AppTextStyles.caption.copyWith(fontSize: 11),
+                  ),
+                  Text(
+                    'Next Due: $nextDueStr',
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkGreen,
+                    ),
+                  ),
                 ],
               ),
               if (r.remarks.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Text('Note: ${r.remarks}', style: AppTextStyles.caption.copyWith(fontStyle: FontStyle.italic, color: AppColors.textMuted)),
+                Text(
+                  'Note: ${r.remarks}',
+                  style: AppTextStyles.caption.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: AppColors.textMuted,
+                  ),
+                ),
               ],
             ],
           ),
@@ -300,10 +374,15 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildEligibleList(List<Child> eligible, Set<String> recentRecipients) {
+  Widget _buildEligibleList(
+    List<Child> eligible,
+    Set<String> recentRecipients,
+  ) {
     final filtered = _searchQuery.isEmpty
         ? eligible
-        : eligible.where((c) => c.fullName.toLowerCase().contains(_searchQuery)).toList();
+        : eligible
+              .where((c) => c.fullName.toLowerCase().contains(_searchQuery))
+              .toList();
 
     if (filtered.isEmpty) {
       return Center(
@@ -312,9 +391,16 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.people_outline, size: 48, color: AppColors.textMuted),
+              const Icon(
+                Icons.people_outline,
+                size: 48,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(height: 12),
-              Text('No eligible children found', style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
+              Text(
+                'No eligible children found',
+                style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+              ),
             ],
           ),
         ),
@@ -329,7 +415,9 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
         final child = filtered[i];
         final hasReceived = recentRecipients.contains(child.id);
         final isBlue = child.ageInMonths <= 11;
-        final recommendedDose = isBlue ? '100,000 IU (Blue)' : '200,000 IU (Red)';
+        final recommendedDose = isBlue
+            ? '100,000 IU (Blue)'
+            : '200,000 IU (Red)';
 
         return Container(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -345,7 +433,11 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
                 backgroundColor: AppColors.darkGreen.withValues(alpha: 0.1),
                 child: Text(
                   child.initials,
-                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.darkGreen, fontSize: 12),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.darkGreen,
+                    fontSize: 12,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -353,25 +445,45 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(child.fullName, style: AppTextStyles.h3.copyWith(fontSize: 14)),
+                    Text(
+                      child.fullName,
+                      style: AppTextStyles.h3.copyWith(fontSize: 14),
+                    ),
                     const SizedBox(height: 2),
-                    Text('${child.ageLabel} (${child.ageInMonths} mos) • Rec: $recommendedDose', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                    Text(
+                      '${child.ageLabel} (${child.ageInMonths} mos) • Rec: $recommendedDose',
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
               if (hasReceived)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryGreen.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.check_circle, size: 14, color: AppColors.primaryGreen),
+                      Icon(
+                        Icons.check_circle,
+                        size: 14,
+                        color: AppColors.primaryGreen,
+                      ),
                       SizedBox(width: 4),
-                      Text('Done', style: TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.w700, fontSize: 11)),
+                      Text(
+                        'Done',
+                        style: TextStyle(
+                          color: AppColors.primaryGreen,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
                     ],
                   ),
                 )
@@ -380,9 +492,17 @@ class _VitaminAScreenState extends State<VitaminAScreen> with SingleTickerProvid
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.darkGreen,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                   onPressed: () {
                     Navigator.push(

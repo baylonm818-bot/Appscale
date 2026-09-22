@@ -49,16 +49,31 @@ class _AddChildScreenState extends State<AddChildScreen> {
   final _linkService = BeneficiaryLinkService();
   final _settings = SettingsRepository();
 
-  late final String _currentBarangay = _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+  late final String _currentBarangay =
+      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
   late final String _currentBarangayCode = _currentBarangay.isNotEmpty
       ? _currentBarangay.substring(0, 3).toUpperCase()
       : 'TIG';
 
-  late final _fullNameController = TextEditingController(text: widget.existingChild?.fullName ?? '');
-  late final _addressController = TextEditingController(text: widget.existingChild?.address ?? widget.prefillAddress);
-  late final _guardianNameController = TextEditingController(text: widget.existingChild?.guardian.fullName ?? widget.prefillGuardianName);
-  late final _guardianContactController = TextEditingController(text: widget.existingChild?.guardian.contactNo ?? widget.prefillGuardianContact);
-  late final _disabilityController = TextEditingController(text: widget.existingChild?.disability == 'None specified' ? '' : widget.existingChild?.disability ?? '');
+  late final _fullNameController = TextEditingController(
+    text: widget.existingChild?.fullName ?? '',
+  );
+  late final _addressController = TextEditingController(
+    text: widget.existingChild?.address ?? widget.prefillAddress,
+  );
+  late final _guardianNameController = TextEditingController(
+    text: widget.existingChild?.guardian.fullName ?? widget.prefillGuardianName,
+  );
+  late final _guardianContactController = TextEditingController(
+    text:
+        widget.existingChild?.guardian.contactNo ??
+        widget.prefillGuardianContact,
+  );
+  late final _disabilityController = TextEditingController(
+    text: widget.existingChild?.disability == 'None specified'
+        ? ''
+        : widget.existingChild?.disability ?? '',
+  );
 
   DateTime? _birthDate;
   String _gender = 'Female';
@@ -68,7 +83,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
   Mother? _linkedMother;
   bool _isSaving = false;
 
-  late final String _sequenceNo = widget.existingChild?.sequenceNo ?? _childRepo.generateSequenceNo(barangayCode: _currentBarangayCode);
+  late final String _sequenceNo =
+      widget.existingChild?.sequenceNo ??
+      _childRepo.generateSequenceNo(barangayCode: _currentBarangayCode);
 
   @override
   void initState() {
@@ -111,7 +128,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
       address: _addressController.text.trim(),
       barangay: _currentBarangay,
       belongsToIpGroup: _belongsToIpGroup,
-      disability: _disabilityController.text.trim().isEmpty ? 'None specified' : _disabilityController.text.trim(),
+      disability: _disabilityController.text.trim().isEmpty
+          ? 'None specified'
+          : _disabilityController.text.trim(),
       guardian: Guardian(
         fullName: _guardianNameController.text.trim(),
         relationship: _relationship,
@@ -138,20 +157,31 @@ class _AddChildScreenState extends State<AddChildScreen> {
       if (oldMotherId != null && oldMotherId != _linkedMother!.id) {
         final oldMother = _motherRepo.getById(oldMotherId);
         if (oldMother != null) {
-          await _linkService.unlinkChildFromMother(child: child, mother: oldMother);
+          await _linkService.unlinkChildFromMother(
+            child: child,
+            mother: oldMother,
+          );
         }
       }
-      await _linkService.linkChildToMother(child: child, mother: _linkedMother!);
+      await _linkService.linkChildToMother(
+        child: child,
+        mother: _linkedMother!,
+      );
     } else if (oldMotherId != null) {
       final oldMother = _motherRepo.getById(oldMotherId);
       if (oldMother != null) {
-        await _linkService.unlinkChildFromMother(child: child, mother: oldMother);
+        await _linkService.unlinkChildFromMother(
+          child: child,
+          mother: oldMother,
+        );
       }
     }
 
     await _activityRepo.logActivity(
       type: 'child_added',
-      title: widget.isEditMode ? 'Updated ${child.fullName}\'s profile' : 'Registered ${child.fullName}',
+      title: widget.isEditMode
+          ? 'Updated ${child.fullName}\'s profile'
+          : 'Registered ${child.fullName}',
     );
 
     if (!mounted) return;
@@ -166,7 +196,11 @@ class _AddChildScreenState extends State<AddChildScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _ScreenHeader(title: widget.isEditMode ? 'Edit Child Profile' : 'Add Child Profile'),
+            _ScreenHeader(
+              title: widget.isEditMode
+                  ? 'Edit Child Profile'
+                  : 'Add Child Profile',
+            ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
@@ -178,52 +212,143 @@ class _AddChildScreenState extends State<AddChildScreen> {
                       highlighted: true,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                          decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                           child: RichText(
                             text: TextSpan(
                               style: AppTextStyles.body.copyWith(fontSize: 12),
                               children: [
                                 const TextSpan(text: 'Sequence no. '),
-                                TextSpan(text: _sequenceNo, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                                TextSpan(text: widget.isEditMode ? '' : ' · auto-assigned'),
+                                TextSpan(
+                                  text: _sequenceNo,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: widget.isEditMode
+                                      ? ''
+                                      : ' · auto-assigned',
+                                ),
                               ],
                             ),
                           ),
                         ),
-                        AppTextField(label: 'Full Name *', hint: "Enter child's full name", icon: Icons.badge_outlined, controller: _fullNameController),
+                        AppTextField(
+                          label: 'Full Name *',
+                          hint: "Enter child's full name",
+                          icon: Icons.badge_outlined,
+                          controller: _fullNameController,
+                        ),
                         Row(
                           children: [
-                            Expanded(child: AppDateField(label: 'Birth date *', value: _birthDate, onChanged: (d) => setState(() => _birthDate = d))),
+                            Expanded(
+                              child: AppDateField(
+                                label: 'Birth date *',
+                                value: _birthDate,
+                                onChanged: (d) =>
+                                    setState(() => _birthDate = d),
+                              ),
+                            ),
                             const SizedBox(width: AppSpacing.md),
-                            Expanded(child: AppDropdownField(label: 'Gender *', value: _gender, options: const ['Female', 'Male'], onChanged: (v) => setState(() => _gender = v!))),
+                            Expanded(
+                              child: AppDropdownField(
+                                label: 'Gender *',
+                                value: _gender,
+                                options: const ['Female', 'Male'],
+                                onChanged: (v) => setState(() => _gender = v!),
+                              ),
+                            ),
                           ],
                         ),
-                        AppTextField(label: 'Address *', hint: 'Purok, Tiguion', icon: Icons.location_on_outlined, controller: _addressController),
-                        AppYesNoToggle(label: 'Belongs to IP group', value: _belongsToIpGroup, onChanged: (v) => setState(() => _belongsToIpGroup = v)),
-                        AppTextField(label: 'Disability, if any', hint: 'None specified', icon: Icons.accessibility_new_outlined, controller: _disabilityController),
+                        AppTextField(
+                          label: 'Address *',
+                          hint: 'Purok, Tiguion',
+                          icon: Icons.location_on_outlined,
+                          controller: _addressController,
+                        ),
+                        AppYesNoToggle(
+                          label: 'Belongs to IP group',
+                          value: _belongsToIpGroup,
+                          onChanged: (v) =>
+                              setState(() => _belongsToIpGroup = v),
+                        ),
+                        AppTextField(
+                          label: 'Disability, if any',
+                          hint: 'None specified',
+                          icon: Icons.accessibility_new_outlined,
+                          controller: _disabilityController,
+                        ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     FormSectionCard(
                       title: 'Guardian',
-                      subtitle: 'Required for every child, even if not a monitored mother',
+                      subtitle:
+                          'Required for every child, even if not a monitored mother',
                       children: [
-                        AppTextField(label: 'Full Name *', hint: "Enter guardian's name", icon: Icons.person_outline, controller: _guardianNameController),
+                        AppTextField(
+                          label: 'Full Name *',
+                          hint: "Enter guardian's name",
+                          icon: Icons.person_outline,
+                          controller: _guardianNameController,
+                        ),
                         Row(
                           children: [
-                            Expanded(child: AppDropdownField(label: 'Relationship', value: _relationship, options: const ['Mother', 'Father', 'Grandparent', 'Other'], onChanged: (v) => setState(() => _relationship = v!))),
+                            Expanded(
+                              child: AppDropdownField(
+                                label: 'Relationship',
+                                value: _relationship,
+                                options: const [
+                                  'Mother',
+                                  'Father',
+                                  'Grandparent',
+                                  'Other',
+                                ],
+                                onChanged: (v) =>
+                                    setState(() => _relationship = v!),
+                              ),
+                            ),
                             const SizedBox(width: AppSpacing.md),
-                            Expanded(child: AppTextField(label: 'Contact no.', hint: '09XXXXXXXXX', icon: Icons.call_outlined, controller: _guardianContactController)),
+                            Expanded(
+                              child: AppTextField(
+                                label: 'Contact no.',
+                                hint: '09XXXXXXXXX',
+                                icon: Icons.call_outlined,
+                                controller: _guardianContactController,
+                              ),
+                            ),
                           ],
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(color: AppColors.lightGreenBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.primaryGreen)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.lightGreenBg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.primaryGreen),
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(child: Text('Guardian is also a monitored mother?', style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.darkGreen))),
+                              Expanded(
+                                child: Text(
+                                  'Guardian is also a monitored mother?',
+                                  style: AppTextStyles.body.copyWith(
+                                    fontSize: 12,
+                                    color: AppColors.darkGreen,
+                                  ),
+                                ),
+                              ),
                               Switch(
                                 value: _guardianIsMonitoredMother,
                                 activeThumbColor: AppColors.primaryGreen,
@@ -246,7 +371,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
                               _linkedMother = mother;
                               if (mother != null) {
                                 _guardianNameController.text = mother.fullName;
-                                _guardianContactController.text = mother.contactNo;
+                                _guardianContactController.text =
+                                    mother.contactNo;
                               }
                             }),
                           ),
@@ -254,7 +380,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     FormActionButtons(
-                      saveLabel: widget.isEditMode ? 'Save Changes' : 'Save Child Profile',
+                      saveLabel: widget.isEditMode
+                          ? 'Save Changes'
+                          : 'Save Child Profile',
                       onSave: _handleSave,
                       onCancel: () => Navigator.pop(context),
                       isSaving: _isSaving,
@@ -290,13 +418,19 @@ class _ScreenHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       color: AppColors.darkGreen,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.lg,
+      ),
       child: Row(
         children: [
           InkWell(
             borderRadius: BorderRadius.circular(20),
             onTap: () => Navigator.pop(context),
-            child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.arrow_back, color: Colors.white)),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.arrow_back, color: Colors.white),
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Text(title, style: AppTextStyles.h2.copyWith(color: Colors.white)),

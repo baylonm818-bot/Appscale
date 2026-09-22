@@ -37,7 +37,9 @@ class ChildRepository {
     }
   }
 
-  int get pendingCount => _box.values.where((raw) => (raw as Map)['_syncStatus'] != 'synced').length;
+  int get pendingCount => _box.values
+      .where((raw) => (raw as Map)['_syncStatus'] != 'synced')
+      .length;
 
   Future<void> _trySync(Child child) async {
     try {
@@ -52,15 +54,17 @@ class ChildRepository {
   List<Child> search(String query, {required String barangay, int limit = 6}) {
     final lower = query.trim().toLowerCase();
     return getByBarangay(barangay)
-        .where((c) => c.isActive && (lower.isEmpty || c.fullName.toLowerCase().contains(lower)))
+        .where(
+          (c) =>
+              c.isActive &&
+              (lower.isEmpty || c.fullName.toLowerCase().contains(lower)),
+        )
         .take(limit)
         .toList();
   }
 
   List<Child> getByIds(List<String> ids) =>
       getAll().where((c) => ids.contains(c.id)).toList();
-
-      
 
   /// Matches the OPT Plus sequence format seen in your wireframe:
   /// {barangay code}-{year}-{running count, zero-padded}
@@ -75,7 +79,7 @@ class ChildRepository {
 
   static String generateId() => const Uuid().v4();
 
-    /// Single query point for the Masterlist — handles active/inactive,
+  /// Single query point for the Masterlist — handles active/inactive,
   /// search text, and nutrition status filtering all in one place, so
   /// the screen never touches raw Hive data directly.
   List<Child> getFiltered({
@@ -87,21 +91,29 @@ class ChildRepository {
     final lower = query.trim().toLowerCase();
     return getByBarangay(barangay).where((c) {
       final matchesActive = c.isActive == activeOnly;
-      final matchesQuery = lower.isEmpty || c.fullName.toLowerCase().contains(lower);
+      final matchesQuery =
+          lower.isEmpty || c.fullName.toLowerCase().contains(lower);
       bool matchesFilter = true;
       if (filter != null) {
         if (filter.onlyNotWeighed) {
           matchesFilter = c.nutritionStatus == 'Not weighed';
         } else {
-          if (filter.weightForAge != 'All' && c.nutritionStatus != filter.weightForAge) matchesFilter = false;
-          if (filter.heightForAge != 'All' && c.stuntingStatus != filter.heightForAge) matchesFilter = false;
-          if (filter.wasting != 'All' && c.wastingStatus != filter.wasting) matchesFilter = false;
+          if (filter.weightForAge != 'All' &&
+              c.nutritionStatus != filter.weightForAge)
+            matchesFilter = false;
+          if (filter.heightForAge != 'All' &&
+              c.stuntingStatus != filter.heightForAge)
+            matchesFilter = false;
+          if (filter.wasting != 'All' && c.wastingStatus != filter.wasting)
+            matchesFilter = false;
         }
       }
       return matchesActive && matchesQuery && matchesFilter;
     }).toList();
   }
 
-  int countActive(String barangay) => getByBarangay(barangay).where((c) => c.isActive).length;
-  int countInactive(String barangay) => getByBarangay(barangay).where((c) => !c.isActive).length;
+  int countActive(String barangay) =>
+      getByBarangay(barangay).where((c) => c.isActive).length;
+  int countInactive(String barangay) =>
+      getByBarangay(barangay).where((c) => !c.isActive).length;
 }

@@ -12,7 +12,8 @@ class ReportSignatoriesScreen extends StatefulWidget {
   const ReportSignatoriesScreen({super.key});
 
   @override
-  State<ReportSignatoriesScreen> createState() => _ReportSignatoriesScreenState();
+  State<ReportSignatoriesScreen> createState() =>
+      _ReportSignatoriesScreenState();
 }
 
 class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
@@ -30,7 +31,8 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
     final user = _settings.authUser;
     if (user != null) {
       _currentBarangay = user['barangay']?.toString() ?? '';
-      _currentBnsName = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
+      _currentBnsName = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'
+          .trim();
     }
     final existing = ReportSignatoryRepository().get(_currentBarangay);
     if (existing != null) {
@@ -42,13 +44,15 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
 
   Future<void> _save() async {
     setState(() => _isSaving = true);
-    await ReportSignatoryRepository().save(ReportSignatory(
-      barangay: _currentBarangay,
-      bnsName: _currentBnsName,
-      punongBarangayName: _punongBarangayController.text.trim(),
-      mnaoAdminAideName: _mnaoController.text.trim(),
-      dnpcName: _dnpcController.text.trim(),
-    ));
+    await ReportSignatoryRepository().save(
+      ReportSignatory(
+        barangay: _currentBarangay,
+        bnsName: _currentBnsName,
+        punongBarangayName: _punongBarangayController.text.trim(),
+        mnaoAdminAideName: _mnaoController.text.trim(),
+        dnpcName: _dnpcController.text.trim(),
+      ),
+    );
     if (!mounted) return;
     Navigator.pop(context);
   }
@@ -58,41 +62,90 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(children: [
-          Container(
-            width: double.infinity, color: AppColors.darkGreen,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
-            child: Row(children: [
-              InkWell(onTap: () => Navigator.pop(context), child: const Icon(Icons.arrow_back, color: Colors.white)),
-              const SizedBox(width: AppSpacing.sm),
-              Text('Report Signatories', style: AppTextStyles.h2.copyWith(color: Colors.white)),
-            ]),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('These names print automatically on every report. Update only when an official changes.', style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted)),
-                const SizedBox(height: AppSpacing.lg),
-                Text('Submitted by (BNS)', style: AppTextStyles.label),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
-                  child: Text('$_currentBnsName · auto-filled from account', style: AppTextStyles.body.copyWith(fontSize: 13)),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppTextField(label: 'Noted by · Punong Barangay', hint: 'Full name', icon: Icons.person_outline, controller: _punongBarangayController),
-                const SizedBox(height: AppSpacing.md),
-                AppTextField(label: 'Approved by · Admin Aide, MNAO', hint: 'Full name', icon: Icons.person_outline, controller: _mnaoController),
-                const SizedBox(height: AppSpacing.md),
-                AppTextField(label: 'Approved by · DNPC', hint: 'Full name', icon: Icons.person_outline, controller: _dnpcController),
-                const SizedBox(height: AppSpacing.xl),
-                FormActionButtons(saveLabel: 'Save Signatories', onSave: _save, onCancel: () => Navigator.pop(context), isSaving: _isSaving),
-              ]),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              color: AppColors.darkGreen,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.lg,
+              ),
+              child: Row(
+                children: [
+                  InkWell(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.arrow_back, color: Colors.white),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Report Signatories',
+                    style: AppTextStyles.h2.copyWith(color: Colors.white),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ]),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'These names print automatically on every report. Update only when an official changes.',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text('Submitted by (BNS)', style: AppTextStyles.label),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$_currentBnsName · auto-filled from account',
+                        style: AppTextStyles.body.copyWith(fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      label: 'Noted by · Punong Barangay',
+                      hint: 'Full name',
+                      icon: Icons.person_outline,
+                      controller: _punongBarangayController,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      label: 'Approved by · Admin Aide, MNAO',
+                      hint: 'Full name',
+                      icon: Icons.person_outline,
+                      controller: _mnaoController,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      label: 'Approved by · DNPC',
+                      hint: 'Full name',
+                      icon: Icons.person_outline,
+                      controller: _dnpcController,
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    FormActionButtons(
+                      saveLabel: 'Save Signatories',
+                      onSave: _save,
+                      onCancel: () => Navigator.pop(context),
+                      isSaving: _isSaving,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -11,7 +11,8 @@ class Mother {
   final DateTime createdAt;
   final String riskStatus; // 'Normal' or 'At-risk'
   final bool isActive;
-  final String? inactiveReason; // 'Stopped breastfeeding', 'Transferred', 'Deceased'
+  final String?
+  inactiveReason; // 'Stopped breastfeeding', 'Transferred', 'Deceased'
   final List<String> linkedChildIds;
 
   const Mother({
@@ -34,38 +35,40 @@ class Mother {
   int get age => (DateTime.now().difference(birthDate).inDays / 365).floor();
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'fullName': fullName,
-        'birthDate': birthDate.toIso8601String(),
-        'contactNo': contactNo,
-        'address': address,
-        'barangay': barangay,
-        'breastfeedingPractice': breastfeedingPractice,
-        'belongsToIpGroup': belongsToIpGroup,
-        'disability': disability,
-        'createdAt': createdAt.toIso8601String(),
-        'riskStatus': riskStatus,
-        'isActive': isActive,
-        'inactiveReason': inactiveReason,
-        'linkedChildIds': linkedChildIds,
-      };
+    'id': id,
+    'fullName': fullName,
+    'birthDate': birthDate.toIso8601String(),
+    'contactNo': contactNo,
+    'address': address,
+    'barangay': barangay,
+    'breastfeedingPractice': breastfeedingPractice,
+    'belongsToIpGroup': belongsToIpGroup,
+    'disability': disability,
+    'createdAt': createdAt.toIso8601String(),
+    'riskStatus': riskStatus,
+    'isActive': isActive,
+    'inactiveReason': inactiveReason,
+    'linkedChildIds': linkedChildIds,
+  };
 
   factory Mother.fromMap(Map map) => Mother(
-        id: map['id'] as String,
-        fullName: map['fullName'] as String,
-        birthDate: DateTime.parse(map['birthDate'] as String),
-        contactNo: map['contactNo'] as String,
-        address: map['address'] as String,
-        barangay: map['barangay'] as String,
-        breastfeedingPractice: map['breastfeedingPractice'] as String,
-        belongsToIpGroup: map['belongsToIpGroup'] as bool,
-        disability: map['disability'] as String,
-        createdAt: DateTime.parse(map['createdAt'] as String),
-        riskStatus: map['riskStatus'] as String? ?? 'Normal',
-        isActive: map['isActive'] as bool? ?? true,
-        inactiveReason: map['inactiveReason'] as String?,
-        linkedChildIds: (map['linkedChildIds'] as List?)?.map((e) => e.toString()).toList() ?? [],
-      );
+    id: map['id'] as String,
+    fullName: map['fullName'] as String,
+    birthDate: DateTime.parse(map['birthDate'] as String),
+    contactNo: map['contactNo'] as String,
+    address: map['address'] as String,
+    barangay: map['barangay'] as String,
+    breastfeedingPractice: map['breastfeedingPractice'] as String,
+    belongsToIpGroup: map['belongsToIpGroup'] as bool,
+    disability: map['disability'] as String,
+    createdAt: DateTime.parse(map['createdAt'] as String),
+    riskStatus: map['riskStatus'] as String? ?? 'Normal',
+    isActive: map['isActive'] as bool? ?? true,
+    inactiveReason: map['inactiveReason'] as String?,
+    linkedChildIds:
+        (map['linkedChildIds'] as List?)?.map((e) => e.toString()).toList() ??
+        [],
+  );
 
   Mother copyWith({
     List<String>? linkedChildIds,
@@ -73,23 +76,22 @@ class Mother {
     String? breastfeedingPractice,
     bool? isActive,
     String? inactiveReason,
-  }) =>
-      Mother(
-        id: id,
-        fullName: fullName,
-        birthDate: birthDate,
-        contactNo: contactNo,
-        address: address,
-        barangay: barangay,
-        breastfeedingPractice: breastfeedingPractice ?? this.breastfeedingPractice,
-        belongsToIpGroup: belongsToIpGroup,
-        disability: disability,
-        createdAt: createdAt,
-        riskStatus: riskStatus ?? this.riskStatus,
-        isActive: isActive ?? this.isActive,
-        inactiveReason: inactiveReason ?? this.inactiveReason,
-        linkedChildIds: linkedChildIds ?? this.linkedChildIds,
-      );
+  }) => Mother(
+    id: id,
+    fullName: fullName,
+    birthDate: birthDate,
+    contactNo: contactNo,
+    address: address,
+    barangay: barangay,
+    breastfeedingPractice: breastfeedingPractice ?? this.breastfeedingPractice,
+    belongsToIpGroup: belongsToIpGroup,
+    disability: disability,
+    createdAt: createdAt,
+    riskStatus: riskStatus ?? this.riskStatus,
+    isActive: isActive ?? this.isActive,
+    inactiveReason: inactiveReason ?? this.inactiveReason,
+    linkedChildIds: linkedChildIds ?? this.linkedChildIds,
+  );
 
   String get ageLabel => '$age yrs. old';
 

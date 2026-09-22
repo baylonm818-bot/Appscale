@@ -22,7 +22,10 @@ import 'widgets/status_filter_sheet.dart';
 
 class MasterlistScreen extends StatefulWidget {
   final MasterlistCategory initialCategory;
-  const MasterlistScreen({super.key, this.initialCategory = MasterlistCategory.children});
+  const MasterlistScreen({
+    super.key,
+    this.initialCategory = MasterlistCategory.children,
+  });
 
   @override
   State<MasterlistScreen> createState() => MasterlistScreenState();
@@ -33,7 +36,8 @@ class MasterlistScreenState extends State<MasterlistScreen> {
   final _motherRepo = MotherRepository();
   final _settings = SettingsRepository();
 
-  String get _currentBarangay => _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+  String get _currentBarangay =>
+      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   late MasterlistCategory _category = widget.initialCategory;
   bool _showingActive = true;
@@ -59,7 +63,10 @@ class MasterlistScreenState extends State<MasterlistScreen> {
       valueListenable: AppDataBus.version,
       builder: (context, value, childWidget) {
         final childrenCount = _childRepo.getByBarangay(_currentBarangay).length;
-        final mothersCount = _motherRepo.getAll().where((m) => m.barangay == _currentBarangay).length;
+        final mothersCount = _motherRepo
+            .getAll()
+            .where((m) => m.barangay == _currentBarangay)
+            .length;
 
         return Column(
           children: [
@@ -88,21 +95,32 @@ class MasterlistScreenState extends State<MasterlistScreen> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 100),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                  100,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     MasterlistSearchBar(
-                      hint: _category == MasterlistCategory.children ? 'Search children...' : 'Search mothers...',
+                      hint: _category == MasterlistCategory.children
+                          ? 'Search children...'
+                          : 'Search mothers...',
                       onChanged: (v) => setState(() => _query = v),
-                      onFilterTap: _category == MasterlistCategory.children ? _openFilter : null,
+                      onFilterTap: _category == MasterlistCategory.children
+                          ? _openFilter
+                          : null,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     if (!_showingActive) ...[
                       Row(
                         children: [
                           Icon(
-                            _category == MasterlistCategory.children ? Icons.school_outlined : Icons.no_food_outlined,
+                            _category == MasterlistCategory.children
+                                ? Icons.school_outlined
+                                : Icons.no_food_outlined,
                             size: 14,
                             color: AppColors.textMuted,
                           ),
@@ -111,13 +129,19 @@ class MasterlistScreenState extends State<MasterlistScreen> {
                             _category == MasterlistCategory.children
                                 ? 'Children who completed monitoring'
                                 : 'Mothers who stopped breastfeeding',
-                            style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+                            style: AppTextStyles.body.copyWith(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
                     ],
-                    if (_category == MasterlistCategory.children) _buildChildrenList() else _buildMothersList(),
+                    if (_category == MasterlistCategory.children)
+                      _buildChildrenList()
+                    else
+                      _buildMothersList(),
                   ],
                 ),
               ),
@@ -139,24 +163,45 @@ class MasterlistScreenState extends State<MasterlistScreen> {
     if (results.isEmpty) {
       return EmptyState(
         icon: Icons.child_care_outlined,
-        message: _showingActive ? 'No children match this search or filter yet.' : 'No graduated children yet.',
+        message: _showingActive
+            ? 'No children match this search or filter yet.'
+            : 'No graduated children yet.',
       );
     }
 
-    return Column(children: results.map((c) => ChildListTile(child: c, onTap: () => _openChildProfile(c))).toList());
+    return Column(
+      children: results
+          .map(
+            (c) => ChildListTile(child: c, onTap: () => _openChildProfile(c)),
+          )
+          .toList(),
+    );
   }
 
   Widget _buildMothersList() {
-    final results = _motherRepo.getFiltered(barangay: _currentBarangay, activeOnly: _showingActive, query: _query);
+    final results = _motherRepo.getFiltered(
+      barangay: _currentBarangay,
+      activeOnly: _showingActive,
+      query: _query,
+    );
 
     if (results.isEmpty) {
       return EmptyState(
         icon: Icons.pregnant_woman_outlined,
-        message: _showingActive ? 'No mothers match this search yet.' : 'No inactive mothers yet.',
+        message: _showingActive
+            ? 'No mothers match this search yet.'
+            : 'No inactive mothers yet.',
       );
     }
 
-    return Column(children: results.map((m) => MotherListTile(mother: m, onTap: () => _openMotherProfile(m))).toList());
+    return Column(
+      children: results
+          .map(
+            (m) =>
+                MotherListTile(mother: m, onTap: () => _openMotherProfile(m)),
+          )
+          .toList(),
+    );
   }
 
   void _openChildProfile(Child child) {

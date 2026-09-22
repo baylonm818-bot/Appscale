@@ -5,7 +5,11 @@ class ProfileTabBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onChanged;
 
-  const ProfileTabBar({super.key, required this.currentIndex, required this.onChanged});
+  const ProfileTabBar({
+    super.key,
+    required this.currentIndex,
+    required this.onChanged,
+  });
 
   static const _labels = ['Info', 'History', 'Charts', 'Programs'];
 
@@ -22,13 +26,22 @@ class ProfileTabBar extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: isActive ? AppColors.primaryGreen : Colors.transparent, width: 2.5)),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isActive
+                          ? AppColors.primaryGreen
+                          : Colors.transparent,
+                      width: 2.5,
+                    ),
+                  ),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   _labels[index],
                   style: TextStyle(
-                    color: isActive ? AppColors.primaryGreen : AppColors.textMuted,
+                    color: isActive
+                        ? AppColors.primaryGreen
+                        : AppColors.textMuted,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),

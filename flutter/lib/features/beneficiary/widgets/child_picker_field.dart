@@ -58,10 +58,17 @@ class _ChildPickerFieldState extends State<ChildPickerField> {
 
   @override
   Widget build(BuildContext context) {
-    final allChildren = _repo.getByBarangay(widget.barangay).where((c) => c.isActive).toList();
+    final allChildren = _repo
+        .getByBarangay(widget.barangay)
+        .where((c) => c.isActive)
+        .toList();
     final matches = _query.isEmpty
         ? allChildren
-        : allChildren.where((c) => c.fullName.toLowerCase().contains(_query.toLowerCase())).toList();
+        : allChildren
+              .where(
+                (c) => c.fullName.toLowerCase().contains(_query.toLowerCase()),
+              )
+              .toList();
     final selectedIds = widget.selected.map((c) => c.id).toSet();
     final filtered = [
       ...matches.where((c) => selectedIds.contains(c.id)),
@@ -79,9 +86,20 @@ class _ChildPickerFieldState extends State<ChildPickerField> {
               onTap: _registerNewChild,
               child: Row(
                 children: [
-                  const Icon(Icons.add_circle_outline, size: 14, color: AppColors.primaryGreen),
+                  const Icon(
+                    Icons.add_circle_outline,
+                    size: 14,
+                    color: AppColors.primaryGreen,
+                  ),
                   const SizedBox(width: 4),
-                  Text('Register new child', style: AppTextStyles.body.copyWith(color: AppColors.primaryGreen, fontWeight: FontWeight.w600, fontSize: 12)),
+                  Text(
+                    'Register new child',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.primaryGreen,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -95,18 +113,43 @@ class _ChildPickerFieldState extends State<ChildPickerField> {
           decoration: InputDecoration(
             hintText: 'Search children by name',
             hintStyle: AppTextStyles.body.copyWith(color: AppColors.textMuted),
-            prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textMuted),
+            prefixIcon: const Icon(
+              Icons.search,
+              size: 18,
+              color: AppColors.textMuted,
+            ),
             filled: true,
             fillColor: AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.4)),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 10,
+              horizontal: 10,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(
+                color: AppColors.primaryGreen,
+                width: 1.4,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 8),
         if (filtered.isEmpty)
-          Text('No children found in ${widget.barangay}.', style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted))
+          Text(
+            'No children found in ${widget.barangay}.',
+            style: AppTextStyles.body.copyWith(
+              fontSize: 12,
+              color: AppColors.textMuted,
+            ),
+          )
         else
           ...filtered.map((child) {
             final isSelected = widget.selected.any((c) => c.id == child.id);
@@ -116,24 +159,48 @@ class _ChildPickerFieldState extends State<ChildPickerField> {
                 margin: const EdgeInsets.only(bottom: 6),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.lightGreenBg : AppColors.surface,
+                  color: isSelected
+                      ? AppColors.lightGreenBg
+                      : AppColors.surface,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: isSelected ? AppColors.primaryGreen : AppColors.border),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primaryGreen
+                        : AppColors.border,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(radius: 16, backgroundColor: AppColors.lightGreenBg, child: Text(child.initials, style: const TextStyle(color: AppColors.darkGreen, fontWeight: FontWeight.w600))),
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: AppColors.lightGreenBg,
+                      child: Text(
+                        child.initials,
+                        style: const TextStyle(
+                          color: AppColors.darkGreen,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(child.fullName, style: AppTextStyles.label),
-                          Text('${child.ageInMonths} mos · ${child.address}', style: AppTextStyles.body.copyWith(fontSize: 11)),
+                          Text(
+                            '${child.ageInMonths} mos · ${child.address}',
+                            style: AppTextStyles.body.copyWith(fontSize: 11),
+                          ),
                         ],
                       ),
                     ),
-                    if (isSelected) const Icon(Icons.check_circle, color: AppColors.primaryGreen, size: 20),
+                    if (isSelected)
+                      const Icon(
+                        Icons.check_circle,
+                        color: AppColors.primaryGreen,
+                        size: 20,
+                      ),
                   ],
                 ),
               ),

@@ -48,19 +48,34 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
   final _linkService = BeneficiaryLinkService();
   final _settings = SettingsRepository();
 
-  String get _currentBarangay => _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+  String get _currentBarangay =>
+      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
-  late final _fullNameController = TextEditingController(text: widget.existingMother?.fullName ?? widget.prefillFullName);
-  late final _contactController = TextEditingController(text: widget.existingMother?.contactNo ?? widget.prefillContact);
-  late final _addressController = TextEditingController(text: widget.existingMother?.address ?? widget.prefillAddress);
-  late final _disabilityController = TextEditingController(text: widget.existingMother?.disability == 'None specified' ? '' : widget.existingMother?.disability ?? '');
+  late final _fullNameController = TextEditingController(
+    text: widget.existingMother?.fullName ?? widget.prefillFullName,
+  );
+  late final _contactController = TextEditingController(
+    text: widget.existingMother?.contactNo ?? widget.prefillContact,
+  );
+  late final _addressController = TextEditingController(
+    text: widget.existingMother?.address ?? widget.prefillAddress,
+  );
+  late final _disabilityController = TextEditingController(
+    text: widget.existingMother?.disability == 'None specified'
+        ? ''
+        : widget.existingMother?.disability ?? '',
+  );
 
   DateTime? _birthDate;
   String _breastfeedingPractice = 'Exclusive breastfeeding';
   bool _belongsToIpGroup = false;
   List<Child> _linkedChildren = [];
   bool _isSaving = false;
-  bool get _hasLoggedVisits => widget.isEditMode && MotherVisitRepository().getForMother(widget.existingMother!.id).isNotEmpty;
+  bool get _hasLoggedVisits =>
+      widget.isEditMode &&
+      MotherVisitRepository()
+          .getForMother(widget.existingMother!.id)
+          .isNotEmpty;
 
   @override
   void initState() {
@@ -98,7 +113,9 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
       barangay: _currentBarangay,
       breastfeedingPractice: _breastfeedingPractice,
       belongsToIpGroup: _belongsToIpGroup,
-      disability: _disabilityController.text.trim().isEmpty ? 'None specified' : _disabilityController.text.trim(),
+      disability: _disabilityController.text.trim().isEmpty
+          ? 'None specified'
+          : _disabilityController.text.trim(),
       createdAt: widget.existingMother?.createdAt ?? DateTime.now(),
       riskStatus: widget.existingMother?.riskStatus ?? 'Normal',
       isActive: widget.existingMother?.isActive ?? true,
@@ -121,7 +138,10 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
         if (!currentLinkedIds.contains(oldChildId)) {
           final oldChildren = _childRepo.getByIds([oldChildId]);
           if (oldChildren.isNotEmpty) {
-            await _linkService.unlinkChildFromMother(child: oldChildren.first, mother: mother);
+            await _linkService.unlinkChildFromMother(
+              child: oldChildren.first,
+              mother: mother,
+            );
           }
         }
       }
@@ -133,7 +153,9 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
 
     await _activityRepo.logActivity(
       type: 'mother_added',
-      title: widget.isEditMode ? 'Updated ${mother.fullName}\'s profile' : 'Registered ${mother.fullName}',
+      title: widget.isEditMode
+          ? 'Updated ${mother.fullName}\'s profile'
+          : 'Registered ${mother.fullName}',
     );
 
     if (!mounted) return;
@@ -151,16 +173,27 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
             Container(
               width: double.infinity,
               color: AppColors.darkGreen,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.lg,
+              ),
               child: Row(
                 children: [
                   InkWell(
                     borderRadius: BorderRadius.circular(20),
                     onTap: () => Navigator.pop(context),
-                    child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.arrow_back, color: Colors.white)),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.arrow_back, color: Colors.white),
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  Text(widget.isEditMode ? 'Edit Mother Profile' : 'Add Mother Profile', style: AppTextStyles.h2.copyWith(color: Colors.white)),
+                  Text(
+                    widget.isEditMode
+                        ? 'Edit Mother Profile'
+                        : 'Add Mother Profile',
+                    style: AppTextStyles.h2.copyWith(color: Colors.white),
+                  ),
                 ],
               ),
             ),
@@ -174,23 +207,61 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
                       title: 'Personal Information',
                       highlighted: true,
                       children: [
-                        AppTextField(label: 'Full Name *', hint: "Enter mother's full name", icon: Icons.badge_outlined, controller: _fullNameController),
+                        AppTextField(
+                          label: 'Full Name *',
+                          hint: "Enter mother's full name",
+                          icon: Icons.badge_outlined,
+                          controller: _fullNameController,
+                        ),
                         Row(
                           children: [
-                            Expanded(child: AppDateField(label: 'Birth Date *', value: _birthDate, onChanged: (d) => setState(() => _birthDate = d))),
+                            Expanded(
+                              child: AppDateField(
+                                label: 'Birth Date *',
+                                value: _birthDate,
+                                onChanged: (d) =>
+                                    setState(() => _birthDate = d),
+                              ),
+                            ),
                             const SizedBox(width: AppSpacing.md),
-                            Expanded(child: AppTextField(label: 'Contact no.', hint: '09XXXXXXXXX', icon: Icons.call_outlined, controller: _contactController)),
+                            Expanded(
+                              child: AppTextField(
+                                label: 'Contact no.',
+                                hint: '09XXXXXXXXX',
+                                icon: Icons.call_outlined,
+                                controller: _contactController,
+                              ),
+                            ),
                           ],
                         ),
-                        AppTextField(label: 'Address *', hint: 'Purok, Tiguion', icon: Icons.location_on_outlined, controller: _addressController),
+                        AppTextField(
+                          label: 'Address *',
+                          hint: 'Purok, Tiguion',
+                          icon: Icons.location_on_outlined,
+                          controller: _addressController,
+                        ),
                         if (_hasLoggedVisits)
                           Container(
                             padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                             child: Row(
                               children: [
-                                Expanded(child: Text('Breastfeeding practice: $_breastfeedingPractice', style: AppTextStyles.body.copyWith(fontSize: 12))),
-                                const Icon(Icons.lock_outline, size: 14, color: AppColors.textMuted),
+                                Expanded(
+                                  child: Text(
+                                    'Breastfeeding practice: $_breastfeedingPractice',
+                                    style: AppTextStyles.body.copyWith(
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.lock_outline,
+                                  size: 14,
+                                  color: AppColors.textMuted,
+                                ),
                               ],
                             ),
                           )
@@ -198,17 +269,34 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
                           AppDropdownField(
                             label: 'Current breastfeeding practice',
                             value: _breastfeedingPractice,
-                            options: const ['Exclusive breastfeeding', 'Mixed feeding', 'Complementary feeding', 'Bottle feeding'],
-                            onChanged: (v) => setState(() => _breastfeedingPractice = v!),
+                            options: const [
+                              'Exclusive breastfeeding',
+                              'Mixed feeding',
+                              'Complementary feeding',
+                              'Bottle feeding',
+                            ],
+                            onChanged: (v) =>
+                                setState(() => _breastfeedingPractice = v!),
                           ),
-                        AppYesNoToggle(label: 'Belongs to IP group', value: _belongsToIpGroup, onChanged: (v) => setState(() => _belongsToIpGroup = v)),
-                        AppTextField(label: 'Disability, if any', hint: 'None specified', icon: Icons.accessibility_new_outlined, controller: _disabilityController),
+                        AppYesNoToggle(
+                          label: 'Belongs to IP group',
+                          value: _belongsToIpGroup,
+                          onChanged: (v) =>
+                              setState(() => _belongsToIpGroup = v),
+                        ),
+                        AppTextField(
+                          label: 'Disability, if any',
+                          hint: 'None specified',
+                          icon: Icons.accessibility_new_outlined,
+                          controller: _disabilityController,
+                        ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     FormSectionCard(
                       title: 'Linked Children',
-                      subtitle: 'Children this mother is a guardian or caregiver for',
+                      subtitle:
+                          'Children this mother is a guardian or caregiver for',
                       children: [
                         ChildPickerField(
                           barangay: _currentBarangay,
@@ -216,13 +304,16 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
                           prefillGuardianName: _fullNameController.text,
                           prefillGuardianContact: _contactController.text,
                           prefillAddress: _addressController.text,
-                          onChanged: (children) => setState(() => _linkedChildren = children),
+                          onChanged: (children) =>
+                              setState(() => _linkedChildren = children),
                         ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     FormActionButtons(
-                      saveLabel: widget.isEditMode ? 'Save Changes' : 'Save Mother Profile',
+                      saveLabel: widget.isEditMode
+                          ? 'Save Changes'
+                          : 'Save Mother Profile',
                       onSave: _handleSave,
                       onCancel: () => Navigator.pop(context),
                       isSaving: _isSaving,

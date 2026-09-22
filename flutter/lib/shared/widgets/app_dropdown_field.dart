@@ -34,9 +34,22 @@ class AppDropdownField extends StatelessWidget {
             child: DropdownButton<String>(
               value: value,
               isExpanded: true,
-              icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textMuted),
+              icon: const Icon(
+                Icons.keyboard_arrow_down,
+                color: AppColors.textMuted,
+              ),
               items: options
-                  .map((o) => DropdownMenuItem(value: o, child: Text(o, style: AppTextStyles.body.copyWith(color: AppColors.textPrimary))))
+                  .map(
+                    (o) => DropdownMenuItem(
+                      value: o,
+                      child: Text(
+                        o,
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: onChanged,
             ),

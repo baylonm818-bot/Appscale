@@ -10,22 +10,40 @@ class StatusBadge extends StatelessWidget {
   final Color color;
   final bool onDark;
 
-  const StatusBadge({super.key, required this.label, required this.color, this.onDark = false});
+  const StatusBadge({
+    super.key,
+    required this.label,
+    required this.color,
+    this.onDark = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: onDark ? Colors.white.withValues(alpha: 0.95) : color.withValues(alpha: 0.14),
+        color: onDark
+            ? Colors.white.withValues(alpha: 0.95)
+            : color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );

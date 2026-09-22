@@ -21,23 +21,29 @@ void main() {
       expect(status, equals('Overweight'));
     });
 
-    test('Classifies Normal when weightKg is between negTwoSD and posTwoSD', () {
-      final status = GrowthClassifier.classifyWeightForAge(
-        ageMonths: 24,
-        gender: 'Boy',
-        weightKg: 12.0,
-      );
-      expect(status, equals('Normal'));
-    });
+    test(
+      'Classifies Normal when weightKg is between negTwoSD and posTwoSD',
+      () {
+        final status = GrowthClassifier.classifyWeightForAge(
+          ageMonths: 24,
+          gender: 'Boy',
+          weightKg: 12.0,
+        );
+        expect(status, equals('Normal'));
+      },
+    );
 
-    test('Classifies Underweight when weightKg < negTwoSD and >= negThreeSD', () {
-      final status = GrowthClassifier.classifyWeightForAge(
-        ageMonths: 24,
-        gender: 'Boy',
-        weightKg: 9.2,
-      );
-      expect(status, equals('Underweight'));
-    });
+    test(
+      'Classifies Underweight when weightKg < negTwoSD and >= negThreeSD',
+      () {
+        final status = GrowthClassifier.classifyWeightForAge(
+          ageMonths: 24,
+          gender: 'Boy',
+          weightKg: 9.2,
+        );
+        expect(status, equals('Underweight'));
+      },
+    );
 
     test('Classifies Severely Underweight when weightKg < negThreeSD', () {
       final status = GrowthClassifier.classifyWeightForAge(
@@ -70,41 +76,47 @@ void main() {
       );
 
       expect(updated.status, equals('In Progress'));
-      expect(updated.notes, equals('Referred to RHU nutritionist for RUTF therapy.'));
+      expect(
+        updated.notes,
+        equals('Referred to RHU nutritionist for RUTF therapy.'),
+      );
       expect(updated.id, equals('ref-1'));
       expect(updated.facility, equals('RHU Main'));
     });
   });
 
   group('Child Model Integrity Tests', () {
-    test('Child copyWith preserves wastingStatus and other fields when updated', () {
-      final child = Child(
-        id: 'c-test',
-        sequenceNo: '001',
-        fullName: 'Baby Smith',
-        birthDate: DateTime(2025, 1, 1),
-        gender: 'Girl',
-        address: 'Purok 1',
-        barangay: 'San Antonio',
-        belongsToIpGroup: false,
-        disability: 'None',
-        guardian: const Guardian(
-          fullName: 'Mary Smith',
-          relationship: 'Mother',
-          contactNo: '09999999999',
-        ),
-        createdAt: DateTime(2025, 1, 1),
-        nutritionStatus: 'Normal',
-        wastingStatus: 'MAM',
-        stuntingStatus: 'Normal',
-      );
+    test(
+      'Child copyWith preserves wastingStatus and other fields when updated',
+      () {
+        final child = Child(
+          id: 'c-test',
+          sequenceNo: '001',
+          fullName: 'Baby Smith',
+          birthDate: DateTime(2025, 1, 1),
+          gender: 'Girl',
+          address: 'Purok 1',
+          barangay: 'San Antonio',
+          belongsToIpGroup: false,
+          disability: 'None',
+          guardian: const Guardian(
+            fullName: 'Mary Smith',
+            relationship: 'Mother',
+            contactNo: '09999999999',
+          ),
+          createdAt: DateTime(2025, 1, 1),
+          nutritionStatus: 'Normal',
+          wastingStatus: 'MAM',
+          stuntingStatus: 'Normal',
+        );
 
-      final updated = child.copyWith(nutritionStatus: 'Underweight');
-      expect(updated.wastingStatus, equals('MAM'));
-      expect(updated.nutritionStatus, equals('Underweight'));
-      expect(updated.fullName, equals('Baby Smith'));
-      expect(updated.guardian.fullName, equals('Mary Smith'));
-    });
+        final updated = child.copyWith(nutritionStatus: 'Underweight');
+        expect(updated.wastingStatus, equals('MAM'));
+        expect(updated.nutritionStatus, equals('Underweight'));
+        expect(updated.fullName, equals('Baby Smith'));
+        expect(updated.guardian.fullName, equals('Mary Smith'));
+      },
+    );
   });
 
   group('Referral & Notification Web Architecture Tests', () {
@@ -112,7 +124,8 @@ void main() {
       final notif = AppNotification(
         id: 'notif-123',
         title: 'Referral Resolved by RHU',
-        message: 'RHU completed referral for Baby Juan. Outcome: RUTF supply provided.',
+        message:
+            'RHU completed referral for Baby Juan. Outcome: RUTF supply provided.',
         type: 'referral_completed',
         referralId: 'ref-001',
         timestamp: DateTime(2026, 3, 18, 14, 0),
@@ -135,12 +148,30 @@ void main() {
 
   group('Vitamin A Program DOH Guidelines Tests', () {
     test('DOH Vitamin A dosage recommendation by age', () {
-      expect(VitaminARepository.determineRecommendedDosage(4), equals('Not Eligible (<6 mos)'));
-      expect(VitaminARepository.determineRecommendedDosage(6), equals('100,000 IU (Blue)'));
-      expect(VitaminARepository.determineRecommendedDosage(11), equals('100,000 IU (Blue)'));
-      expect(VitaminARepository.determineRecommendedDosage(12), equals('200,000 IU (Red)'));
-      expect(VitaminARepository.determineRecommendedDosage(59), equals('200,000 IU (Red)'));
-      expect(VitaminARepository.determineRecommendedDosage(60), equals('Exceeds Target Age (>59 mos)'));
+      expect(
+        VitaminARepository.determineRecommendedDosage(4),
+        equals('Not Eligible (<6 mos)'),
+      );
+      expect(
+        VitaminARepository.determineRecommendedDosage(6),
+        equals('100,000 IU (Blue)'),
+      );
+      expect(
+        VitaminARepository.determineRecommendedDosage(11),
+        equals('100,000 IU (Blue)'),
+      );
+      expect(
+        VitaminARepository.determineRecommendedDosage(12),
+        equals('200,000 IU (Red)'),
+      );
+      expect(
+        VitaminARepository.determineRecommendedDosage(59),
+        equals('200,000 IU (Red)'),
+      );
+      expect(
+        VitaminARepository.determineRecommendedDosage(60),
+        equals('Exceeds Target Age (>59 mos)'),
+      );
     });
 
     test('VitaminARecord serialization and deserialization', () {
@@ -173,7 +204,10 @@ void main() {
 
   group('Deworming Program DOH Guidelines Tests', () {
     test('DOH Deworming eligibility by age', () {
-      expect(DewormingRepository.isEligible(6), isFalse); // under 12 mos contraindicated
+      expect(
+        DewormingRepository.isEligible(6),
+        isFalse,
+      ); // under 12 mos contraindicated
       expect(DewormingRepository.isEligible(11), isFalse);
       expect(DewormingRepository.isEligible(12), isTrue); // 12-59 mos target
       expect(DewormingRepository.isEligible(36), isTrue);

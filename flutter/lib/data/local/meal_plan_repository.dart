@@ -21,8 +21,11 @@ class MealPlanRepository {
   /// a time, so this keeps that true without the BNS managing it by hand.
   Future<void> addAndCloseOthers(MealPlan plan) async {
     for (final existing in getAllForBarangay(plan.barangay)) {
-      if (existing.effectiveTo == null && existing.effectiveFrom.isBefore(plan.effectiveFrom)) {
-        final closed = existing.copyWith(effectiveTo: plan.effectiveFrom.subtract(const Duration(days: 1)));
+      if (existing.effectiveTo == null &&
+          existing.effectiveFrom.isBefore(plan.effectiveFrom)) {
+        final closed = existing.copyWith(
+          effectiveTo: plan.effectiveFrom.subtract(const Duration(days: 1)),
+        );
         await _box.put(existing.id, closed.toMap());
       }
     }
@@ -33,8 +36,18 @@ class MealPlanRepository {
   MealPlan? getActiveForDate(String barangay, DateTime date) {
     final d = DateTime(date.year, date.month, date.day);
     final matches = getAllForBarangay(barangay).where((p) {
-      final from = DateTime(p.effectiveFrom.year, p.effectiveFrom.month, p.effectiveFrom.day);
-      final to = p.effectiveTo == null ? null : DateTime(p.effectiveTo!.year, p.effectiveTo!.month, p.effectiveTo!.day);
+      final from = DateTime(
+        p.effectiveFrom.year,
+        p.effectiveFrom.month,
+        p.effectiveFrom.day,
+      );
+      final to = p.effectiveTo == null
+          ? null
+          : DateTime(
+              p.effectiveTo!.year,
+              p.effectiveTo!.month,
+              p.effectiveTo!.day,
+            );
       return !d.isBefore(from) && (to == null || !d.isAfter(to));
     }).toList();
     if (matches.isNotEmpty) return matches.first;

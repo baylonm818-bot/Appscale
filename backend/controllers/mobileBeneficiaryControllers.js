@@ -25,10 +25,14 @@ exports.upsertChild = async (req, res) => {
     if (existing.length > 0) {
       await pool.query(
         `UPDATE children SET first_name = ?, middle_initial = ?, last_name = ?, birth_date = ?, sex = ?,
-         age_in_months = TIMESTAMPDIFF(MONTH, ?, CURDATE()), age_group = CASE WHEN TIMESTAMPDIFF(MONTH, ?, CURDATE()) < 24 THEN '0-23' ELSE '24-59' END,
+         age_in_months = TIMESTAMPDIFF(MONTH, ?, CURDATE()), age_group = CASE
+           WHEN TIMESTAMPDIFF(MONTH, ?, CURDATE()) <= 11 THEN '0-11'
+           WHEN TIMESTAMPDIFF(MONTH, ?, CURDATE()) <= 23 THEN '12-23'
+           ELSE '24-59'
+         END,
          barangay = ?, guardian_name = ?, guardian_contact = ?, mother_id = ?, encoded_by = ?, updated_at = CURRENT_TIMESTAMP
          WHERE external_id = ?`,
-        [name.firstName, name.middleInitial, name.lastName, birth_date, gender, birth_date, birth_date, barangay, guardian_name, guardian_contact || null, motherId, encoded_by || null, external_id]
+        [name.firstName, name.middleInitial, name.lastName, birth_date, gender, birth_date, birth_date, birth_date, barangay, guardian_name, guardian_contact || null, motherId, encoded_by || null, external_id]
       );
       return res.status(200).json({ message: 'Child synced.', child_id: existing[0].child_id });
     }
@@ -36,9 +40,13 @@ exports.upsertChild = async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO children (external_id, first_name, middle_initial, last_name, birth_date, sex, age_in_months, age_group,
        municipality, barangay, purok, guardian_name, guardian_contact, mother_id, status, encoded_by)
-       VALUES (?, ?, ?, ?, ?, ?, TIMESTAMPDIFF(MONTH, ?, CURDATE()), CASE WHEN TIMESTAMPDIFF(MONTH, ?, CURDATE()) < 24 THEN '0-23' ELSE '24-59' END,
+       VALUES (?, ?, ?, ?, ?, ?, TIMESTAMPDIFF(MONTH, ?, CURDATE()), CASE
+         WHEN TIMESTAMPDIFF(MONTH, ?, CURDATE()) <= 11 THEN '0-11'
+         WHEN TIMESTAMPDIFF(MONTH, ?, CURDATE()) <= 23 THEN '12-23'
+         ELSE '24-59'
+       END,
        NULL, ?, NULL, ?, ?, ?, 'active', ?)`,
-      [external_id, name.firstName, name.middleInitial, name.lastName, birth_date, gender, birth_date, birth_date, barangay, guardian_name, guardian_contact || null, motherId, encoded_by || null]
+      [external_id, name.firstName, name.middleInitial, name.lastName, birth_date, gender, birth_date, birth_date, birth_date, barangay, guardian_name, guardian_contact || null, motherId, encoded_by || null]
     );
     return res.status(201).json({ message: 'Child synced.', child_id: result.insertId });
   } catch (error) {

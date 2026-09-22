@@ -13,9 +13,15 @@ class NutritionStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SectionCard(
       title: 'Nutritional Status - Children',
-        child: items.isEmpty
-          ? const EmptyState(icon: Icons.bar_chart_outlined, message: 'No measurements recorded yet. This updates as children get weighed.')
-          : Column(children: items.map((item) => _StatusRow(item: item)).toList()),
+      child: items.isEmpty
+          ? const EmptyState(
+              icon: Icons.bar_chart_outlined,
+              message:
+                  'No measurements recorded yet. This updates as children get weighed.',
+            )
+          : Column(
+              children: items.map((item) => _StatusRow(item: item)).toList(),
+            ),
     );
   }
 }
@@ -35,7 +41,10 @@ class _StatusRow extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(item.label, style: AppTextStyles.label),
-              Text('${item.count} (${item.percent.toStringAsFixed(1)}%)', style: AppTextStyles.body.copyWith(fontSize: 12)),
+              Text(
+                '${item.count} (${item.percent.toStringAsFixed(1)}%)',
+                style: AppTextStyles.body.copyWith(fontSize: 12),
+              ),
             ],
           ),
           const SizedBox(height: 6),

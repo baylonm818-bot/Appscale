@@ -23,7 +23,7 @@ exports.getAdminStats = async (req, res) => {
 
     const [[{ totalBarangays }]] = await pool.query(`SELECT COUNT(DISTINCT barangay) AS totalBarangays FROM children where status = 'active' `);
 
-    const [[{ totalUsers }]] = await pool.query(`SELECT COUNT(*) AS totalUsers FROM users WHERE role IN ('admin', 'bhw') AND status = 'active' `);
+    const [[{ totalUsers }]] = await pool.query(`SELECT COUNT(*) AS totalUsers FROM users WHERE role IN ('bhw', 'bns') AND status = 'active' `);
 
     const [trendRows] = await pool.query(
       `SELECT nr.overall_status, COUNT(*) AS count

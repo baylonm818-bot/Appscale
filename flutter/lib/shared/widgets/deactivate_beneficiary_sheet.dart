@@ -31,16 +31,24 @@ class DeactivateBeneficiarySheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => DeactivateBeneficiarySheet(beneficiaryName: beneficiaryName, reasons: reasons, accentColor: accentColor),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => DeactivateBeneficiarySheet(
+        beneficiaryName: beneficiaryName,
+        reasons: reasons,
+        accentColor: accentColor,
+      ),
     );
   }
 
   @override
-  State<DeactivateBeneficiarySheet> createState() => _DeactivateBeneficiarySheetState();
+  State<DeactivateBeneficiarySheet> createState() =>
+      _DeactivateBeneficiarySheetState();
 }
 
-class _DeactivateBeneficiarySheetState extends State<DeactivateBeneficiarySheet> {
+class _DeactivateBeneficiarySheetState
+    extends State<DeactivateBeneficiarySheet> {
   final _otherController = TextEditingController();
   late String _reason = widget.reasons.first;
 
@@ -53,15 +61,39 @@ class _DeactivateBeneficiarySheetState extends State<DeactivateBeneficiarySheet>
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(left: AppSpacing.lg, right: AppSpacing.lg, top: AppSpacing.sm, bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg),
+      padding: EdgeInsets.only(
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+        top: AppSpacing.sm,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: AppSpacing.lg), decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(4)))),
-          Text('Move ${widget.beneficiaryName} to Inactive', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          Text(
+            'Move ${widget.beneficiaryName} to Inactive',
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
           const SizedBox(height: 4),
-          Text('This requires a reason so the record stays traceable.', style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted)),
+          Text(
+            'This requires a reason so the record stays traceable.',
+            style: AppTextStyles.body.copyWith(
+              fontSize: 12,
+              color: AppColors.textMuted,
+            ),
+          ),
           const SizedBox(height: AppSpacing.md),
           RadioGroup<String>(
             groupValue: _reason,
@@ -70,22 +102,41 @@ class _DeactivateBeneficiarySheetState extends State<DeactivateBeneficiarySheet>
             },
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: widget.reasons.map((r) => RadioListTile<String>(
-                    contentPadding: EdgeInsets.zero,
-                    value: r,
-                    title: Text(r, style: AppTextStyles.body.copyWith(fontSize: 13)),
-                    activeColor: widget.accentColor,
-                  )).toList(),
+              children: widget.reasons
+                  .map(
+                    (r) => RadioListTile<String>(
+                      contentPadding: EdgeInsets.zero,
+                      value: r,
+                      title: Text(
+                        r,
+                        style: AppTextStyles.body.copyWith(fontSize: 13),
+                      ),
+                      activeColor: widget.accentColor,
+                    ),
+                  )
+                  .toList(),
             ),
           ),
           if (_reason == 'Other') ...[
             const SizedBox(height: 6),
-            AppTextField(label: 'Please specify', hint: 'Reason', icon: Icons.edit_note_outlined, controller: _otherController),
+            AppTextField(
+              label: 'Please specify',
+              hint: 'Reason',
+              icon: Icons.edit_note_outlined,
+              controller: _otherController,
+            ),
           ],
           const SizedBox(height: AppSpacing.xl),
           AppButton(
             label: 'Confirm',
-            onPressed: () => Navigator.pop(context, _reason == 'Other' ? (_otherController.text.trim().isEmpty ? 'Other' : _otherController.text.trim()) : _reason),
+            onPressed: () => Navigator.pop(
+              context,
+              _reason == 'Other'
+                  ? (_otherController.text.trim().isEmpty
+                        ? 'Other'
+                        : _otherController.text.trim())
+                  : _reason,
+            ),
           ),
         ],
       ),

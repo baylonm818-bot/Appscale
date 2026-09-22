@@ -16,12 +16,22 @@ class WeighingTab extends StatelessWidget {
   const WeighingTab({super.key});
 
   static final _settings = SettingsRepository();
-  String get _currentBarangay => _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+  String get _currentBarangay =>
+      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   @override
   Widget build(BuildContext context) {
-    final enrolled = FeedingEnrollmentRepository().getEnrolledChildren(_currentBarangay);
-    final priorityCount = enrolled.where((c) => c.nutritionStatus == 'Severely Underweight' || c.wastingStatus == 'SAM' || c.wastingStatus == 'MAM').length;
+    final enrolled = FeedingEnrollmentRepository().getEnrolledChildren(
+      _currentBarangay,
+    );
+    final priorityCount = enrolled
+        .where(
+          (c) =>
+              c.nutritionStatus == 'Severely Underweight' ||
+              c.wastingStatus == 'SAM' ||
+              c.wastingStatus == 'MAM',
+        )
+        .length;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -33,19 +43,51 @@ class WeighingTab extends StatelessWidget {
               width: double.infinity,
               margin: const EdgeInsets.only(bottom: AppSpacing.md),
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: AppColors.statRed.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.statRed.withValues(alpha: 0.3))),
-              child: Row(children: [
-                const Icon(Icons.warning_amber_rounded, color: AppColors.statRed, size: 18),
-                const SizedBox(width: 8),
-                Expanded(child: Text('$priorityCount enrolled child${priorityCount == 1 ? '' : 'ren'} flagged SAM/MAM/Underweight — prioritize at the next weighing.', style: AppTextStyles.body.copyWith(fontSize: 12, color: const Color(0xFF7A1F1F)))),
-              ]),
+              decoration: BoxDecoration(
+                color: AppColors.statRed.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.statRed.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.statRed,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '$priorityCount enrolled child${priorityCount == 1 ? '' : 'ren'} flagged SAM/MAM/Underweight — prioritize at the next weighing.',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 12,
+                        color: const Color(0xFF7A1F1F),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          Text('${enrolled.length} enrolled children', style: AppTextStyles.h2.copyWith(fontSize: 15)),
+          Text(
+            '${enrolled.length} enrolled children',
+            style: AppTextStyles.h2.copyWith(fontSize: 15),
+          ),
           const SizedBox(height: 4),
-          Text('Latest weight is read from the Child Profile — tap "Weigh" to record a new measurement there directly.', style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted)),
+          Text(
+            'Latest weight is read from the Child Profile — tap "Weigh" to record a new measurement there directly.',
+            style: AppTextStyles.body.copyWith(
+              fontSize: 11,
+              color: AppColors.textMuted,
+            ),
+          ),
           const SizedBox(height: AppSpacing.md),
           if (enrolled.isEmpty)
-            const EmptyState(icon: Icons.monitor_weight_outlined, message: 'No children enrolled yet.')
+            const EmptyState(
+              icon: Icons.monitor_weight_outlined,
+              message: 'No children enrolled yet.',
+            )
           else
             ...enrolled.map((c) => _ChildWeighRow(child: c)),
         ],
@@ -62,41 +104,111 @@ class _ChildWeighRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final measurements = MeasurementRepository().getForChild(child.id);
     final latest = measurements.isNotEmpty ? measurements.first : null;
-    final isPriority = child.nutritionStatus == 'Severely Underweight' || child.wastingStatus == 'SAM' || child.wastingStatus == 'MAM';
+    final isPriority =
+        child.nutritionStatus == 'Severely Underweight' ||
+        child.wastingStatus == 'SAM' ||
+        child.wastingStatus == 'MAM';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isPriority ? AppColors.statRed.withValues(alpha: 0.04) : AppColors.surface,
+        color: isPriority
+            ? AppColors.statRed.withValues(alpha: 0.04)
+            : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isPriority ? AppColors.statRed.withValues(alpha: 0.3) : AppColors.border),
+        border: Border.all(
+          color: isPriority
+              ? AppColors.statRed.withValues(alpha: 0.3)
+              : AppColors.border,
+        ),
       ),
       child: Row(
         children: [
-          CircleAvatar(radius: 18, backgroundColor: AppColors.lightGreenBg, child: Text(child.initials, style: const TextStyle(color: AppColors.darkGreen, fontWeight: FontWeight.w600, fontSize: 12))),
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: AppColors.lightGreenBg,
+            child: Text(
+              child.initials,
+              style: const TextStyle(
+                color: AppColors.darkGreen,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Text(child.fullName, style: AppTextStyles.label.copyWith(fontSize: 13)),
-                if (isPriority) ...[
-                  const SizedBox(width: 6),
-                  Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: AppColors.statRed.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)), child: Text('Priority', style: TextStyle(color: AppColors.statRed, fontSize: 9, fontWeight: FontWeight.w700))),
-                ],
-              ]),
-              Text(latest == null ? 'Not yet weighed · Last: —' : '${latest.weightKg} kg · Last: ${latest.date.month}/${latest.date.day}', style: AppTextStyles.body.copyWith(fontSize: 11)),
-              const SizedBox(height: 4),
-              StatusBadge(label: child.nutritionStatus, color: ChildStatusMeta.colorFor(child.nutritionStatus)),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      child.fullName,
+                      style: AppTextStyles.label.copyWith(fontSize: 13),
+                    ),
+                    if (isPriority) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.statRed.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'Priority',
+                          style: TextStyle(
+                            color: AppColors.statRed,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                Text(
+                  latest == null
+                      ? 'Not yet weighed · Last: —'
+                      : '${latest.weightKg} kg · Last: ${latest.date.month}/${latest.date.day}',
+                  style: AppTextStyles.body.copyWith(fontSize: 11),
+                ),
+                const SizedBox(height: 4),
+                StatusBadge(
+                  label: child.nutritionStatus,
+                  color: ChildStatusMeta.colorFor(child.nutritionStatus),
+                ),
+              ],
+            ),
           ),
           OutlinedButton(
             // showReferralPrompt: false — this is a quick weigh-in inside an
             // already-enrolled feeding session, not the first time this
             // child's severe status is being discovered.
-            onPressed: () => Navigator.push(context, appPageRoute(AddMeasurementScreen(child: child, showReferralPrompt: false))),
-            style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.primaryGreen), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-            child: const Text('Weigh', style: TextStyle(color: AppColors.primaryGreen, fontSize: 12, fontWeight: FontWeight.w600)),
+            onPressed: () => Navigator.push(
+              context,
+              appPageRoute(
+                AddMeasurementScreen(child: child, showReferralPrompt: false),
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.primaryGreen),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Weigh',
+              style: TextStyle(
+                color: AppColors.primaryGreen,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

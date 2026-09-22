@@ -9,7 +9,14 @@ class ProgramTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
 
-  const ProgramTile({super.key, required this.icon, required this.iconColor, required this.title, required this.subtitle, required this.onTap});
+  const ProgramTile({
+    super.key,
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21,8 +28,12 @@ class ProgramTile extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 46, height: 46,
-              decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12)),
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Icon(icon, color: iconColor, size: 22),
             ),
             const SizedBox(width: 12),
@@ -30,9 +41,15 @@ class ProgramTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTextStyles.label.copyWith(fontSize: 15)),
+                  Text(
+                    title,
+                    style: AppTextStyles.label.copyWith(fontSize: 15),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: AppTextStyles.body.copyWith(fontSize: 12)),
+                  Text(
+                    subtitle,
+                    style: AppTextStyles.body.copyWith(fontSize: 12),
+                  ),
                 ],
               ),
             ),

@@ -33,19 +33,39 @@ class _FeedingProgramScreenState extends State<FeedingProgramScreen> {
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Row(children: [
-                    InkWell(onTap: () => Navigator.pop(context), child: const Icon(Icons.arrow_back)),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text('Feeding Program', style: AppTextStyles.h2.copyWith(fontSize: 18)),
-                  ]),
+                  child: Row(
+                    children: [
+                      InkWell(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(Icons.arrow_back),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'Feeding Program',
+                        style: AppTextStyles.h2.copyWith(fontSize: 18),
+                      ),
+                    ],
+                  ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  child: Column(children: const [FeedingHeader(), SizedBox(height: AppSpacing.md)]),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
+                  child: Column(
+                    children: const [
+                      FeedingHeader(),
+                      SizedBox(height: AppSpacing.md),
+                    ],
+                  ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  child: FeedingTabBar(currentIndex: _tabIndex, onChanged: (i) => setState(() => _tabIndex = i)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
+                  child: FeedingTabBar(
+                    currentIndex: _tabIndex,
+                    onChanged: (i) => setState(() => _tabIndex = i),
+                  ),
                 ),
                 const Divider(height: 1, color: AppColors.border),
                 Expanded(

@@ -22,9 +22,16 @@ class VisitsTab extends StatelessWidget {
           Text('Visit history', style: AppTextStyles.h1.copyWith(fontSize: 18)),
           const SizedBox(height: AppSpacing.md),
           if (visits.isEmpty)
-            const EmptyState(icon: Icons.event_note_outlined, message: 'No counseling visits logged yet. Tap "+ Visit" above to log the first one.')
+            const EmptyState(
+              icon: Icons.event_note_outlined,
+              message:
+                  'No counseling visits logged yet. Tap "+ Visit" above to log the first one.',
+            )
           else
-            ...List.generate(visits.length, (i) => VisitTile(visit: visits[i], isLatest: i == 0)),
+            ...List.generate(
+              visits.length,
+              (i) => VisitTile(visit: visits[i], isLatest: i == 0),
+            ),
         ],
       ),
     );

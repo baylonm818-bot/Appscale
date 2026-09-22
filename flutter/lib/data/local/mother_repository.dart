@@ -38,7 +38,9 @@ class MotherRepository {
     }
   }
 
-  int get pendingCount => _box.values.where((raw) => (raw as Map)['_syncStatus'] != 'synced').length;
+  int get pendingCount => _box.values
+      .where((raw) => (raw as Map)['_syncStatus'] != 'synced')
+      .length;
 
   Future<void> _trySync(Mother mother) async {
     try {
@@ -55,8 +57,10 @@ class MotherRepository {
   List<Mother> search(String query, {required String barangay, int limit = 6}) {
     final lower = query.trim().toLowerCase();
     final results = getAll().where((m) {
-      final matchesBarangay = m.barangay.toLowerCase() == barangay.toLowerCase();
-      final matchesName = lower.isEmpty || m.fullName.toLowerCase().contains(lower);
+      final matchesBarangay =
+          m.barangay.toLowerCase() == barangay.toLowerCase();
+      final matchesName =
+          lower.isEmpty || m.fullName.toLowerCase().contains(lower);
       return matchesBarangay && matchesName;
     }).toList();
     return results.take(limit).toList();
@@ -64,20 +68,24 @@ class MotherRepository {
 
   static String generateId() => const Uuid().v4();
 
-    List<Mother> getFiltered({
+  List<Mother> getFiltered({
     required String barangay,
     required bool activeOnly,
     String query = '',
   }) {
     final lower = query.trim().toLowerCase();
     return getAll().where((m) {
-      final matchesBarangay = m.barangay.toLowerCase() == barangay.toLowerCase();
+      final matchesBarangay =
+          m.barangay.toLowerCase() == barangay.toLowerCase();
       final matchesActive = m.isActive == activeOnly;
-      final matchesQuery = lower.isEmpty || m.fullName.toLowerCase().contains(lower);
+      final matchesQuery =
+          lower.isEmpty || m.fullName.toLowerCase().contains(lower);
       return matchesBarangay && matchesActive && matchesQuery;
     }).toList();
   }
 
-  int countActive(String barangay) => getAll().where((m) => m.barangay == barangay && m.isActive).length;
-  int countInactive(String barangay) => getAll().where((m) => m.barangay == barangay && !m.isActive).length;
+  int countActive(String barangay) =>
+      getAll().where((m) => m.barangay == barangay && m.isActive).length;
+  int countInactive(String barangay) =>
+      getAll().where((m) => m.barangay == barangay && !m.isActive).length;
 }

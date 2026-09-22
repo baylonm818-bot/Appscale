@@ -31,13 +31,19 @@ class ChildStatusMeta {
         return AppColors.statOrange;
       default:
         return AppColors.textMuted;
-      
     }
   }
 
   static bool needsAttention(String status) => status == 'Not weighed';
 
   static const allStatuses = [
-    'All', 'Normal', 'Underweight', 'Severely Underweight', 'Overweight', 'Obese', 'Stunted', 'Not weighed',
+    'All',
+    'Normal',
+    'Underweight',
+    'Severely Underweight',
+    'Overweight',
+    'Obese',
+    'Stunted',
+    'Not weighed',
   ];
 }

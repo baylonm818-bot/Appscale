@@ -21,7 +21,8 @@ class MealPlanTab extends StatefulWidget {
 class _MealPlanTabState extends State<MealPlanTab> {
   final _settings = SettingsRepository();
 
-  String get _currentBarangay => _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+  String get _currentBarangay =>
+      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   @override
   void initState() {
@@ -34,9 +35,16 @@ class _MealPlanTabState extends State<MealPlanTab> {
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, value, child) {
-        final active = MealPlanRepository().getActiveForDate(_currentBarangay, DateTime.now());
-        final history = MealPlanRepository().getAllForBarangay(_currentBarangay);
-        final feedback = FeedingFeedbackRepository().getForBarangay(_currentBarangay);
+        final active = MealPlanRepository().getActiveForDate(
+          _currentBarangay,
+          DateTime.now(),
+        );
+        final history = MealPlanRepository().getAllForBarangay(
+          _currentBarangay,
+        );
+        final feedback = FeedingFeedbackRepository().getForBarangay(
+          _currentBarangay,
+        );
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -46,12 +54,22 @@ class _MealPlanTabState extends State<MealPlanTab> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Weekly Cycle Menu', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                  Text(
+                    'Weekly Cycle Menu',
+                    style: AppTextStyles.h2.copyWith(fontSize: 16),
+                  ),
                   InkWell(
-                    onTap: () => Navigator.push(context, appPageRoute(const UpdateMealPlanScreen())),
+                    onTap: () => Navigator.push(
+                      context,
+                      appPageRoute(const UpdateMealPlanScreen()),
+                    ),
                     child: Row(
                       children: [
-                        const Icon(Icons.edit_outlined, size: 14, color: AppColors.primaryGreen),
+                        const Icon(
+                          Icons.edit_outlined,
+                          size: 14,
+                          color: AppColors.primaryGreen,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Update Meal Plan',
@@ -68,7 +86,10 @@ class _MealPlanTabState extends State<MealPlanTab> {
               ),
               const SizedBox(height: AppSpacing.sm),
               if (active == null)
-                const EmptyState(icon: Icons.restaurant_menu_outlined, message: 'No meal plan set yet.')
+                const EmptyState(
+                  icon: Icons.restaurant_menu_outlined,
+                  message: 'No meal plan set yet.',
+                )
               else
                 Container(
                   width: double.infinity,
@@ -76,7 +97,9 @@ class _MealPlanTabState extends State<MealPlanTab> {
                   decoration: BoxDecoration(
                     color: AppColors.lightGreenBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,11 +109,17 @@ class _MealPlanTabState extends State<MealPlanTab> {
                         children: [
                           Text(
                             'Active Menu',
-                            style: AppTextStyles.label.copyWith(fontSize: 13, color: AppColors.darkGreen),
+                            style: AppTextStyles.label.copyWith(
+                              fontSize: 13,
+                              color: AppColors.darkGreen,
+                            ),
                           ),
                           Text(
                             'Since ${_formatDate(active.effectiveFrom)}',
-                            style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.darkGreen),
+                            style: AppTextStyles.body.copyWith(
+                              fontSize: 11,
+                              color: AppColors.darkGreen,
+                            ),
                           ),
                         ],
                       ),
@@ -103,7 +132,11 @@ class _MealPlanTabState extends State<MealPlanTab> {
                             children: [
                               const Padding(
                                 padding: EdgeInsets.only(top: 5),
-                                child: Icon(Icons.restaurant, size: 12, color: AppColors.darkGreen),
+                                child: Icon(
+                                  Icons.restaurant,
+                                  size: 12,
+                                  color: AppColors.darkGreen,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -125,14 +158,23 @@ class _MealPlanTabState extends State<MealPlanTab> {
                 ),
               if (history.length > 1) ...[
                 const SizedBox(height: AppSpacing.lg),
-                Text('Meal Plan History', style: AppTextStyles.h2.copyWith(fontSize: 14)),
+                Text(
+                  'Meal Plan History',
+                  style: AppTextStyles.h2.copyWith(fontSize: 14),
+                ),
                 const SizedBox(height: AppSpacing.sm),
-                ...history.skip(1).take(3).map(
+                ...history
+                    .skip(1)
+                    .take(3)
+                    .map(
                       (p) => Padding(
                         padding: const EdgeInsets.only(bottom: 6),
                         child: Text(
                           '${_formatDate(p.effectiveFrom)} – ${p.effectiveTo == null ? 'present' : _formatDate(p.effectiveTo!)}: ${p.itemsSummary}',
-                          style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+                          style: AppTextStyles.body.copyWith(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ),
                     ),
@@ -143,12 +185,22 @@ class _MealPlanTabState extends State<MealPlanTab> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Session Feedback', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                  Text(
+                    'Session Feedback',
+                    style: AppTextStyles.h2.copyWith(fontSize: 16),
+                  ),
                   InkWell(
-                    onTap: () => Navigator.push(context, appPageRoute(const AddFeedingFeedbackScreen())),
+                    onTap: () => Navigator.push(
+                      context,
+                      appPageRoute(const AddFeedingFeedbackScreen()),
+                    ),
                     child: Row(
                       children: [
-                        const Icon(Icons.add_circle_outline, size: 14, color: AppColors.primaryGreen),
+                        const Icon(
+                          Icons.add_circle_outline,
+                          size: 14,
+                          color: AppColors.primaryGreen,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '+ Add Feedback',
@@ -166,11 +218,17 @@ class _MealPlanTabState extends State<MealPlanTab> {
               const SizedBox(height: 4),
               Text(
                 'Observations on meal consumption, child appetite, and leftovers.',
-                style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               if (feedback.isEmpty)
-                const EmptyState(icon: Icons.rate_review_outlined, message: 'No feedback logged yet.')
+                const EmptyState(
+                  icon: Icons.rate_review_outlined,
+                  message: 'No feedback logged yet.',
+                )
               else
                 ...feedback.map(
                   (f) => Container(
@@ -188,20 +246,30 @@ class _MealPlanTabState extends State<MealPlanTab> {
                           children: [
                             Text(
                               _formatDate(f.date),
-                              style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+                              style: AppTextStyles.body.copyWith(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                              ),
                             ),
                             if (f.tag != null) ...[
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: f.tag == 'Went well' ? AppColors.lightGreenBg : const Color(0xFFFAEEDA),
+                                  color: f.tag == 'Went well'
+                                      ? AppColors.lightGreenBg
+                                      : const Color(0xFFFAEEDA),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
                                   f.tag!,
                                   style: TextStyle(
-                                    color: f.tag == 'Went well' ? AppColors.darkGreen : const Color(0xFF633806),
+                                    color: f.tag == 'Went well'
+                                        ? AppColors.darkGreen
+                                        : const Color(0xFF633806),
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -211,7 +279,10 @@ class _MealPlanTabState extends State<MealPlanTab> {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        Text(f.note, style: AppTextStyles.body.copyWith(fontSize: 12)),
+                        Text(
+                          f.note,
+                          style: AppTextStyles.body.copyWith(fontSize: 12),
+                        ),
                       ],
                     ),
                   ),

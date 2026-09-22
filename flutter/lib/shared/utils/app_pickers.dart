@@ -27,9 +27,9 @@ Future<DateTime?> showAppDatePicker({
     builder: (context, child) {
       final safeScale = MediaQuery.textScalerOf(context).scale(14) / 14;
       return MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(safeScale.clamp(0.9, 1.25)),
-        ),
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(safeScale.clamp(0.9, 1.25))),
         child: child!,
       );
     },

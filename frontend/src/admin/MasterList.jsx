@@ -36,6 +36,7 @@ const statusColors = {
 
 function Masterlist() {
   const [stats, setStats] = useState(null);
+  const [userStats, setUserStats] = useState(null);
   const [children, setChildren] = useState([]);
   const [mothers, setMothers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,14 +52,16 @@ function Masterlist() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, childrenRes, mothersRes] = await Promise.all([
+        const [statsRes, childrenRes, mothersRes, userStatsRes] = await Promise.all([
           axiosClient.get('/masterlist/stats'),
           axiosClient.get('/masterlist/children'),
           axiosClient.get('/masterlist/mothers'),
+          axiosClient.get('/users/stats'),
         ]);
         setStats(statsRes.data);
         setChildren(childrenRes.data);
         setMothers(mothersRes.data);
+        setUserStats(userStatsRes.data);
       } catch (err) {
         setError('Failed to load masterlist data.');
       } finally {
@@ -77,10 +80,27 @@ function Masterlist() {
   if (loading) return <p className="text-center text-gray-400 py-10">Loading masterlist...</p>;
   if (error) return <p className="text-center text-red-500 py-10">{error}</p>;
 
+  const hasBnsUsers = Number(userStats?.totalBNS || 0) > 0;
+
+  if (!hasBnsUsers) {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
+        <h3 className="text-xl font-semibold text-gray-800 mb-2">Masterlist is not available yet</h3>
+        <p className="text-gray-500">Add at least one BNS account before the masterlist data can be populated.</p>
+      </div>
+    );
+  }
+
   const barangayCount = new Set(children.map((c) => c.barangay)).size;
 
   const filteredChildren = children
-    .filter((c) => ageGroupFilter === 'all' || c.age_group === ageGroupFilter)
+    .filter((c) => {
+      if (ageGroupFilter === 'all') return true;
+      const ageInMonths = Number(c.age_in_months ?? 0);
+      if (ageGroupFilter === '0-23') return ageInMonths >= 0 && ageInMonths <= 23;
+      if (ageGroupFilter === '24-59') return ageInMonths >= 24 && ageInMonths <= 59;
+      return true;
+    })
     .filter((c) => statusFilter === 'all' || c.overall_status === statusFilter || (statusFilter === 'graduate' && c.is_graduate))
     .filter((c) =>
       search === '' ||
@@ -167,7 +187,7 @@ function Masterlist() {
                         : 'text-gray-500 hover:bg-gray-100'
                     }`}
                   >
-                    {group === 'all' ? 'All Ages' : group === '0-23' ? '0–23 mos' : '2–5 yrs'}
+                    {group === 'all' ? 'All Ages' : group === '0-23' ? '0–23 months' : '24–59 months'}
                   </button>
                 ))}
               </div>
@@ -204,7 +224,7 @@ function Masterlist() {
               <thead>
                 <tr className="text-left text-gray-400 border-b border-gray-100">
                   <th className="p-3 font-medium">Name</th>
-                  <th className="p-3 font-medium">Age Group</th>
+                  <th className="p-3 font-medium">Age</th>
                   <th className="p-3 font-medium">Barangay</th>
                   <th className="p-3 font-medium">Status</th>
                   <th className="p-3 font-medium">Action</th>
@@ -219,7 +239,7 @@ function Masterlist() {
                       </div>
                       <p className="text-gray-800 font-medium">{c.first_name} {c.last_name}</p>
                     </td>
-                    <td className="p-3 text-gray-500">{c.age_group}</td>
+                    <td className="p-3 text-gray-500">{c.age_in_months} mos</td>
                     <td className="p-3 text-gray-500">{c.barangay}</td>
                     <td className="p-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${statusColors[c.overall_status] || 'bg-gray-100 text-gray-600'}`}>
@@ -306,8 +326,8 @@ function Masterlist() {
               {activeTab === 'children' ? (
                 <>
                   <div>
-                    <p className="text-xs text-gray-400 mb-1">Age Group</p>
-                    <p className="text-sm font-medium text-gray-800">{selectedPerson.age_group}</p>
+                    <p className="text-xs text-gray-400 mb-1">Age</p>
+                    <p className="text-sm font-medium text-gray-800">{selectedPerson.age_in_months} months</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Nutrition Status</p>
@@ -352,7 +372,7 @@ function Masterlist() {
                               {child.first_name} {child.last_name}
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                              {child.age_group} months · {child.barangay || 'No barangay'} · {child.status}
+                              {child.age_in_months} months · {child.barangay || 'No barangay'} · {child.status}
                             </p>
                           </div>
                         ))}

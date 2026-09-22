@@ -27,11 +27,17 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   late final String _childId = widget.child.id;
 
   Future<void> _handleEdit(Child current) async {
-    await Navigator.push<Child>(context, appPageRoute(AddChildScreen(existingChild: current)));
+    await Navigator.push<Child>(
+      context,
+      appPageRoute(AddChildScreen(existingChild: current)),
+    );
   }
 
   Future<void> _handleMeasure(Child current) async {
-    await Navigator.push<Child>(context, appPageRoute(AddMeasurementScreen(child: current)));
+    await Navigator.push<Child>(
+      context,
+      appPageRoute(AddMeasurementScreen(child: current)),
+    );
   }
 
   Future<void> _handleStatusAction(Child current) async {
@@ -42,10 +48,14 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
         reasons: const ['Transferred', 'Deceased', 'Other'],
       );
       if (reason != null) {
-        await ChildRepository().update(current.copyWith(isActive: false, inactiveReason: reason));
+        await ChildRepository().update(
+          current.copyWith(isActive: false, inactiveReason: reason),
+        );
       }
     } else {
-      await ChildRepository().update(current.copyWith(isActive: true, inactiveReason: null));
+      await ChildRepository().update(
+        current.copyWith(isActive: true, inactiveReason: null),
+      );
     }
   }
 
@@ -54,7 +64,10 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, value, childWidget) {
-        final child = ChildRepository().getAll().firstWhere((c) => c.id == _childId, orElse: () => widget.child);
+        final child = ChildRepository().getAll().firstWhere(
+          (c) => c.id == _childId,
+          orElse: () => widget.child,
+        );
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -68,7 +81,10 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                   onStatusActionPressed: () => _handleStatusAction(child),
                   onMeasurePressed: () => _handleMeasure(child),
                 ),
-                ProfileTabBar(currentIndex: _tabIndex, onChanged: (i) => setState(() => _tabIndex = i)),
+                ProfileTabBar(
+                  currentIndex: _tabIndex,
+                  onChanged: (i) => setState(() => _tabIndex = i),
+                ),
                 Expanded(
                   child: IndexedStack(
                     index: _tabIndex,

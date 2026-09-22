@@ -7,7 +7,12 @@ class AppYesNoToggle extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
 
-  const AppYesNoToggle({super.key, required this.label, required this.value, required this.onChanged});
+  const AppYesNoToggle({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -37,11 +42,15 @@ class AppYesNoToggle extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppColors.primaryGreen : AppColors.surface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: selected ? AppColors.primaryGreen : AppColors.border),
+          border: Border.all(
+            color: selected ? AppColors.primaryGreen : AppColors.border,
+          ),
         ),
         child: Text(
           text,
-          style: AppTextStyles.label.copyWith(color: selected ? Colors.white : AppColors.textSecondary),
+          style: AppTextStyles.label.copyWith(
+            color: selected ? Colors.white : AppColors.textSecondary,
+          ),
         ),
       ),
     );

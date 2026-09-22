@@ -13,7 +13,9 @@ class MotherListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = mother.isActive ? MotherStatusMeta.colorFor(mother.riskStatus) : AppColors.textMuted;
+    final color = mother.isActive
+        ? MotherStatusMeta.colorFor(mother.riskStatus)
+        : AppColors.textMuted;
     final label = mother.isActive ? mother.riskStatus : 'Inactive';
 
     return Padding(
@@ -26,16 +28,25 @@ class MotherListTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           child: Container(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.border)),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(mother.fullName, style: AppTextStyles.label.copyWith(fontSize: 14)),
+                      Text(
+                        mother.fullName,
+                        style: AppTextStyles.label.copyWith(fontSize: 14),
+                      ),
                       const SizedBox(height: 2),
-                      Text(mother.address, style: AppTextStyles.body.copyWith(fontSize: 12)),
+                      Text(
+                        mother.address,
+                        style: AppTextStyles.body.copyWith(fontSize: 12),
+                      ),
                     ],
                   ),
                 ),

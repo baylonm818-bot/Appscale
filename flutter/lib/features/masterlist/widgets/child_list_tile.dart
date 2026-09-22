@@ -13,19 +13,35 @@ class ChildListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final needsAttention = ChildStatusMeta.needsAttention(child.nutritionStatus);
+    final needsAttention = ChildStatusMeta.needsAttention(
+      child.nutritionStatus,
+    );
     final extraBadges = <Widget>[];
-    if (child.wastingStatus != 'Normal' && child.wastingStatus != 'Not weighed') {
-      extraBadges.add(StatusBadge(label: child.wastingStatus, color: ChildStatusMeta.colorFor(child.wastingStatus)));
+    if (child.wastingStatus != 'Normal' &&
+        child.wastingStatus != 'Not weighed') {
+      extraBadges.add(
+        StatusBadge(
+          label: child.wastingStatus,
+          color: ChildStatusMeta.colorFor(child.wastingStatus),
+        ),
+      );
     }
-    if (child.stuntingStatus == 'Stunted' || child.stuntingStatus == 'Severely Stunted') {
-      extraBadges.add(StatusBadge(label: child.stuntingStatus, color: ChildStatusMeta.colorFor(child.stuntingStatus)));
+    if (child.stuntingStatus == 'Stunted' ||
+        child.stuntingStatus == 'Severely Stunted') {
+      extraBadges.add(
+        StatusBadge(
+          label: child.stuntingStatus,
+          color: ChildStatusMeta.colorFor(child.stuntingStatus),
+        ),
+      );
     }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: needsAttention ? AppColors.statRed.withValues(alpha: 0.06) : AppColors.surface,
+        color: needsAttention
+            ? AppColors.statRed.withValues(alpha: 0.06)
+            : AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -34,30 +50,55 @@ class ChildListTile extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: needsAttention ? AppColors.statRed.withValues(alpha: 0.3) : AppColors.border),
+              border: Border.all(
+                color: needsAttention
+                    ? AppColors.statRed.withValues(alpha: 0.3)
+                    : AppColors.border,
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (needsAttention)
-                  const Padding(padding: EdgeInsets.only(right: 8, top: 2), child: Icon(Icons.error_outline, size: 18, color: AppColors.statRed)),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8, top: 2),
+                    child: Icon(
+                      Icons.error_outline,
+                      size: 18,
+                      color: AppColors.statRed,
+                    ),
+                  ),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(child.fullName, style: AppTextStyles.label.copyWith(fontSize: 14)),
+                      Text(
+                        child.fullName,
+                        style: AppTextStyles.label.copyWith(fontSize: 14),
+                      ),
                       const SizedBox(height: 2),
-                      Text('${child.ageInMonths} mos · ${child.address}', style: AppTextStyles.body.copyWith(fontSize: 12)),
+                      Text(
+                        '${child.ageInMonths} mos · ${child.address}',
+                        style: AppTextStyles.body.copyWith(fontSize: 12),
+                      ),
                     ],
                   ),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    StatusBadge(label: child.nutritionStatus, color: ChildStatusMeta.colorFor(child.nutritionStatus)),
+                    StatusBadge(
+                      label: child.nutritionStatus,
+                      color: ChildStatusMeta.colorFor(child.nutritionStatus),
+                    ),
                     if (extraBadges.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Wrap(spacing: 4, runSpacing: 4, alignment: WrapAlignment.end, children: extraBadges),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        alignment: WrapAlignment.end,
+                        children: extraBadges,
+                      ),
                     ],
                   ],
                 ),

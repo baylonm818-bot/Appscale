@@ -11,10 +11,18 @@ class AutoGraduationService {
   final _activityRepo = ActivityLogRepository();
 
   Future<int> runForBarangay(String barangay) async {
-    final candidates = _childRepo.getByBarangay(barangay).where((c) => c.isActive && c.ageInMonths >= 60).toList();
+    final candidates = _childRepo
+        .getByBarangay(barangay)
+        .where((c) => c.isActive && c.ageInMonths >= 60)
+        .toList();
     for (final child in candidates) {
-      await _childRepo.update(child.copyWith(isActive: false, inactiveReason: 'Graduated'));
-      await _activityRepo.logActivity(type: 'child_graduated', title: '${child.fullName} completed monitoring at 60 months');
+      await _childRepo.update(
+        child.copyWith(isActive: false, inactiveReason: 'Graduated'),
+      );
+      await _activityRepo.logActivity(
+        type: 'child_graduated',
+        title: '${child.fullName} completed monitoring at 60 months',
+      );
     }
     return candidates.length;
   }

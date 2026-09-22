@@ -24,41 +24,41 @@ class Referral {
   });
 
   Referral copyWith({String? status, String? notes}) => Referral(
-        id: id,
-        beneficiaryType: beneficiaryType,
-        beneficiaryId: beneficiaryId,
-        beneficiaryName: beneficiaryName,
-        barangay: barangay,
-        reason: reason,
-        facility: facility,
-        notes: notes ?? this.notes,
-        status: status ?? this.status,
-        createdAt: createdAt,
-      );
+    id: id,
+    beneficiaryType: beneficiaryType,
+    beneficiaryId: beneficiaryId,
+    beneficiaryName: beneficiaryName,
+    barangay: barangay,
+    reason: reason,
+    facility: facility,
+    notes: notes ?? this.notes,
+    status: status ?? this.status,
+    createdAt: createdAt,
+  );
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'beneficiaryType': beneficiaryType,
-        'beneficiaryId': beneficiaryId,
-        'beneficiaryName': beneficiaryName,
-        'barangay': barangay,
-        'reason': reason,
-        'facility': facility,
-        'notes': notes,
-        'status': status,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'beneficiaryType': beneficiaryType,
+    'beneficiaryId': beneficiaryId,
+    'beneficiaryName': beneficiaryName,
+    'barangay': barangay,
+    'reason': reason,
+    'facility': facility,
+    'notes': notes,
+    'status': status,
+    'createdAt': createdAt.toIso8601String(),
+  };
 
   factory Referral.fromMap(Map<String, dynamic> map) => Referral(
-        id: map['id'] as String,
-        beneficiaryType: map['beneficiaryType'] as String,
-        beneficiaryId: map['beneficiaryId'] as String,
-        beneficiaryName: map['beneficiaryName'] as String,
-        barangay: map['barangay'] as String,
-        reason: map['reason'] as String,
-        facility: map['facility'] as String,
-        notes: map['notes'] as String,
-        status: map['status'] as String,
-        createdAt: DateTime.parse(map['createdAt'] as String),
-      );
+    id: map['id'] as String,
+    beneficiaryType: map['beneficiaryType'] as String,
+    beneficiaryId: map['beneficiaryId'] as String,
+    beneficiaryName: map['beneficiaryName'] as String,
+    barangay: map['barangay'] as String,
+    reason: map['reason'] as String,
+    facility: map['facility'] as String,
+    notes: map['notes'] as String,
+    status: map['status'] as String,
+    createdAt: DateTime.parse(map['createdAt'] as String),
+  );
 }

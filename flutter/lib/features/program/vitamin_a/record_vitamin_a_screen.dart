@@ -71,9 +71,9 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
 
   Future<void> _save() async {
     if (_selectedChild == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a child')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a child')));
       return;
     }
     if (!_formKey.currentState!.validate()) return;
@@ -90,7 +90,9 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
         dateGiven: _dateGiven,
         dosage: _dosage,
         doseType: _doseType,
-        administeredBy: _adminByCtrl.text.trim().isEmpty ? 'BNS Maria' : _adminByCtrl.text.trim(),
+        administeredBy: _adminByCtrl.text.trim().isEmpty
+            ? 'BNS Maria'
+            : _adminByCtrl.text.trim(),
         remarks: _remarksCtrl.text.trim(),
         nextDueDate: _dateGiven.add(const Duration(days: 180)),
         createdAt: DateTime.now(),
@@ -109,9 +111,9 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -135,7 +137,10 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Beneficiary Details', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+              Text(
+                'Beneficiary Details',
+                style: AppTextStyles.h2.copyWith(fontSize: 16),
+              ),
               const SizedBox(height: AppSpacing.sm),
 
               // Child selector
@@ -151,7 +156,10 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.initialChild!.fullName, style: AppTextStyles.h3),
+                      Text(
+                        widget.initialChild!.fullName,
+                        style: AppTextStyles.h3,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         'Age: ${widget.initialChild!.ageLabel} (${widget.initialChild!.ageInMonths} months) • ${widget.initialChild!.gender}',
@@ -167,7 +175,9 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
                     labelText: 'Select Child',
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   items: _allChildren.map((child) {
                     return DropdownMenuItem(
@@ -195,7 +205,9 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
                 decoration: BoxDecoration(
                   color: age < 6
                       ? AppColors.statRed.withValues(alpha: 0.1)
-                      : (age <= 11 ? Colors.blue.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1)),
+                      : (age <= 11
+                            ? Colors.blue.withValues(alpha: 0.1)
+                            : Colors.orange.withValues(alpha: 0.1)),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: age < 6
@@ -207,7 +219,9 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      age < 6 ? Icons.warning_amber_rounded : Icons.info_outline,
+                      age < 6
+                          ? Icons.warning_amber_rounded
+                          : Icons.info_outline,
                       color: age < 6
                           ? AppColors.statRed
                           : (age <= 11 ? Colors.blue : Colors.orange),
@@ -222,13 +236,15 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
                             age < 6
                                 ? 'Under Age Warning'
                                 : (age <= 11
-                                    ? 'DOH Standard: 6–11 Months'
-                                    : 'DOH Standard: 12–59 Months'),
+                                      ? 'DOH Standard: 6–11 Months'
+                                      : 'DOH Standard: 12–59 Months'),
                             style: AppTextStyles.h3.copyWith(
                               fontSize: 13,
                               color: age < 6
                                   ? AppColors.statRed
-                                  : (age <= 11 ? Colors.blue[800] : Colors.orange[900]),
+                                  : (age <= 11
+                                        ? Colors.blue[800]
+                                        : Colors.orange[900]),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -236,8 +252,8 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
                             age < 6
                                 ? 'Routine Vitamin A capsule is contraindicated for infants under 6 months. Exclusive breastfeeding provides sufficient Vitamin A.'
                                 : (age <= 11
-                                    ? 'Recommended dosage: 100,000 IU (Blue Capsule) given once.'
-                                    : 'Recommended dosage: 200,000 IU (Red Capsule) given every 6 months.'),
+                                      ? 'Recommended dosage: 100,000 IU (Blue Capsule) given once.'
+                                      : 'Recommended dosage: 200,000 IU (Red Capsule) given every 6 months.'),
                             style: AppTextStyles.caption.copyWith(fontSize: 12),
                           ),
                         ],
@@ -248,7 +264,10 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
               ),
 
               const SizedBox(height: AppSpacing.lg),
-              Text('Administration Details', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+              Text(
+                'Administration Details',
+                style: AppTextStyles.h2.copyWith(fontSize: 16),
+              ),
               const SizedBox(height: AppSpacing.sm),
 
               AppDateField(
@@ -267,7 +286,9 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
                   labelText: 'Dosage',
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 items: const [
                   DropdownMenuItem(
@@ -296,7 +317,9 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
                   labelText: 'Dose Category',
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 items: const [
                   DropdownMenuItem(
@@ -326,9 +349,12 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
                   hintText: 'e.g. BNS Maria',
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
 
               const SizedBox(height: AppSpacing.md),
@@ -341,7 +367,9 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
                   hintText: 'e.g. Well-tolerated, no vomiting',
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
 

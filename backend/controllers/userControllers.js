@@ -188,3 +188,37 @@ exports.getUsers = async (req, res) => {
             return res.status(500).json({ message: 'Server Error. Please try again later.' });
         }
     };
+
+    /**
+     * Admin helper: unlock/reset a user by email or username.
+     * Body: { identifier: '<email-or-username>' }
+     */
+    exports.unlockUserByIdentifier = async (req, res) => {
+        const { identifier } = req.body;
+        if (!identifier || !String(identifier).trim()) {
+            return res.status(400).json({ message: 'Identifier (email or username) is required.' });
+        }
+
+        try {
+            const id = String(identifier).trim();
+            const [rows] = await pool.query(
+                'SELECT user_id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) OR LOWER(TRIM(username)) = LOWER(TRIM(?)) LIMIT 1',
+                [id, id]
+            );
+
+            if (!rows || rows.length === 0) {
+                return res.status(404).json({ message: 'User not found for provided identifier.' });
+            }
+
+            const user = rows[0];
+            await pool.query(
+                'UPDATE users SET failed_attempts = 0, status = ?, deleted_at = NULL WHERE user_id = ?',
+                ['active', user.user_id]
+            );
+
+            return res.status(200).json({ message: 'User unlocked and reset successfully.' });
+        } catch (error) {
+            console.error('Unlock user error:', error);
+            return res.status(500).json({ message: 'Server Error. Please try again later.' });
+        }
+    };

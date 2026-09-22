@@ -20,7 +20,10 @@ class AppScaleApp extends StatelessWidget {
       theme: AppTheme.light,
       builder: (context, child) {
         final mediaQuery = MediaQuery.of(context);
-        final clampedScale = mediaQuery.textScaler.clamp(minScaleFactor: 0.9, maxScaleFactor: 1.25);
+        final clampedScale = mediaQuery.textScaler.clamp(
+          minScaleFactor: 0.9,
+          maxScaleFactor: 1.25,
+        );
         return MediaQuery(
           data: mediaQuery.copyWith(textScaler: clampedScale),
           child: child!,

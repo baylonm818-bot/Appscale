@@ -4,7 +4,11 @@ import '../../../core/theme/app_colors.dart';
 class PageIndicator extends StatelessWidget {
   final int count;
   final int activeIndex;
-  const PageIndicator({super.key, required this.count, required this.activeIndex});
+  const PageIndicator({
+    super.key,
+    required this.count,
+    required this.activeIndex,
+  });
 
   @override
   Widget build(BuildContext context) {

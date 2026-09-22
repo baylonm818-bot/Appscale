@@ -52,16 +52,21 @@ class _AppTextFieldState extends State<AppTextField> {
             suffixIcon: widget.isPassword
                 ? IconButton(
                     icon: Icon(
-                      _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      _obscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
                       color: AppColors.textMuted,
                       size: 20,
                     ),
                     onPressed: () => setState(() => _obscure = !_obscure),
-                  ) 
+                  )
                 : null,
             filled: true,
             fillColor: AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 14,
+              horizontal: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: AppColors.border),
@@ -72,7 +77,10 @@ class _AppTextFieldState extends State<AppTextField> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.borderFocused, width: 1.4),
+              borderSide: const BorderSide(
+                color: AppColors.borderFocused,
+                width: 1.4,
+              ),
             ),
           ),
         ),

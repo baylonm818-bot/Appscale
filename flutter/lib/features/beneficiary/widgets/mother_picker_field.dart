@@ -5,7 +5,6 @@ import '../../../data/local/mother_repository.dart';
 import '../../../data/models/mother.dart';
 import '../add_mother_screen.dart';
 
-
 /// Single-select searchable field for linking a guardian to an existing
 /// monitored mother record — or creating one on the spot if she isn't
 /// registered yet, pre-filled with what's already typed into the form.
@@ -49,7 +48,9 @@ class _MotherPickerFieldState extends State<MotherPickerField> {
       context,
       MaterialPageRoute(
         builder: (_) => AddMotherScreen(
-          prefillFullName: _searchController.text.isNotEmpty ? _searchController.text : widget.prefillFullName,
+          prefillFullName: _searchController.text.isNotEmpty
+              ? _searchController.text
+              : widget.prefillFullName,
           prefillContact: widget.prefillContact,
           prefillAddress: widget.prefillAddress,
         ),
@@ -83,13 +84,32 @@ class _MotherPickerFieldState extends State<MotherPickerField> {
           decoration: InputDecoration(
             hintText: 'Search mother by name',
             hintStyle: AppTextStyles.body.copyWith(color: AppColors.textMuted),
-            prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textMuted),
+            prefixIcon: const Icon(
+              Icons.search,
+              size: 20,
+              color: AppColors.textMuted,
+            ),
             filled: true,
             fillColor: AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.4)),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 12,
+              horizontal: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(
+                color: AppColors.primaryGreen,
+                width: 1.4,
+              ),
+            ),
           ),
         ),
         if (_isSearching) ...[
@@ -97,27 +117,51 @@ class _MotherPickerFieldState extends State<MotherPickerField> {
           if (_results.isEmpty)
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'No mother found in ${widget.barangay}.',
-                    style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted),
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   InkWell(
                     onTap: _createMotherProfile,
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                      decoration: BoxDecoration(color: AppColors.lightGreenBg, borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.lightGreenBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.add_circle_outline, size: 16, color: AppColors.darkGreen),
+                          const Icon(
+                            Icons.add_circle_outline,
+                            size: 16,
+                            color: AppColors.darkGreen,
+                          ),
                           const SizedBox(width: 6),
-                          Text('Create mother profile', style: TextStyle(color: AppColors.darkGreen, fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Create mother profile',
+                            style: TextStyle(
+                              color: AppColors.darkGreen,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -126,13 +170,15 @@ class _MotherPickerFieldState extends State<MotherPickerField> {
               ),
             )
           else
-            ..._results.map((m) => _ResultTile(
-                  mother: m,
-                  onTap: () {
-                    widget.onSelected(m);
-                    setState(() => _isSearching = false);
-                  },
-                )),
+            ..._results.map(
+              (m) => _ResultTile(
+                mother: m,
+                onTap: () {
+                  widget.onSelected(m);
+                  setState(() => _isSearching = false);
+                },
+              ),
+            ),
         ],
       ],
     );
@@ -157,17 +203,34 @@ class _ResultTile extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
+        ),
         child: Row(
           children: [
-            CircleAvatar(radius: 16, backgroundColor: AppColors.lightGreenBg, child: Text(mother.fullName[0], style: const TextStyle(color: AppColors.darkGreen, fontWeight: FontWeight.w600))),
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: AppColors.lightGreenBg,
+              child: Text(
+                mother.fullName[0],
+                style: const TextStyle(
+                  color: AppColors.darkGreen,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(mother.fullName, style: AppTextStyles.label),
-                  Text(mother.address, style: AppTextStyles.body.copyWith(fontSize: 11)),
+                  Text(
+                    mother.address,
+                    style: AppTextStyles.body.copyWith(fontSize: 11),
+                  ),
                 ],
               ),
             ),
@@ -192,21 +255,44 @@ class _SelectedMotherCard extends StatelessWidget {
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: AppColors.lightGreenBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.primaryGreen)),
+          decoration: BoxDecoration(
+            color: AppColors.lightGreenBg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.primaryGreen),
+          ),
           child: Row(
             children: [
-              CircleAvatar(radius: 16, backgroundColor: Colors.white, child: Text(mother.fullName[0], style: const TextStyle(color: AppColors.darkGreen, fontWeight: FontWeight.w600))),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.white,
+                child: Text(
+                  mother.fullName[0],
+                  style: const TextStyle(
+                    color: AppColors.darkGreen,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(mother.fullName, style: AppTextStyles.label),
-                    Text(mother.address, style: AppTextStyles.body.copyWith(fontSize: 11)),
+                    Text(
+                      mother.address,
+                      style: AppTextStyles.body.copyWith(fontSize: 11),
+                    ),
                   ],
                 ),
               ),
-              InkWell(onTap: onChange, child: const Icon(Icons.check_circle, color: AppColors.primaryGreen)),
+              InkWell(
+                onTap: onChange,
+                child: const Icon(
+                  Icons.check_circle,
+                  color: AppColors.primaryGreen,
+                ),
+              ),
             ],
           ),
         ),

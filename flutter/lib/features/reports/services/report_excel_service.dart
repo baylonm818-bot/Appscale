@@ -9,7 +9,11 @@ import 'excel_table_data.dart';
 /// file, then hands the file to the OS share sheet so the BNS can save
 /// or send it. No server, no conversion service involved.
 class ReportExcelService {
-  Future<void> exportAndShare({required String fileTitle, required ExcelTableData data, required String metadataLine}) async {
+  Future<void> exportAndShare({
+    required String fileTitle,
+    required ExcelTableData data,
+    required String metadataLine,
+  }) async {
     final workbook = xls.Excel.createExcel();
     final sheet = workbook['Report'];
     workbook.delete('Sheet1');

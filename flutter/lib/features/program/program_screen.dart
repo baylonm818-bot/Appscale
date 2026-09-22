@@ -55,7 +55,10 @@ class _ProgramScreenState extends State<ProgramScreen> {
                 children: [
                   Text(
                     'Programs & Schedule',
-                    style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 20),
+                    style: AppTextStyles.h1.copyWith(
+                      color: Colors.white,
+                      fontSize: 20,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Container(
@@ -128,12 +131,18 @@ class _ProgramScreenState extends State<ProgramScreen> {
             children: [
               Text(
                 'Manage and Monitor nutrition programs in your barangay.',
-                style: AppTextStyles.h2.copyWith(color: Colors.white, fontSize: 16),
+                style: AppTextStyles.h2.copyWith(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
                 'Track participation, schedule activities, and view coverage.',
-                style: AppTextStyles.body.copyWith(color: Colors.white70, fontSize: 12),
+                style: AppTextStyles.body.copyWith(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -143,16 +152,24 @@ class _ProgramScreenState extends State<ProgramScreen> {
           icon: Icons.soup_kitchen_outlined,
           iconColor: AppColors.primaryGreen,
           title: 'Feeding Program Management',
-          subtitle: 'Manage feeding activities and monitor child participation.',
-          onTap: () => Navigator.push(context, appPageRoute(const FeedingProgramScreen())),
+          subtitle:
+              'Manage feeding activities and monitor child participation.',
+          onTap: () => Navigator.push(
+            context,
+            appPageRoute(const FeedingProgramScreen()),
+          ),
         ),
         const Divider(color: AppColors.border),
         ProgramTile(
           icon: Icons.local_hospital_outlined,
           iconColor: const Color(0xFFD23369),
           title: 'Referral Monitoring',
-          subtitle: 'Monitor referred children and mothers and their follow-up status.',
-          onTap: () => Navigator.push(context, appPageRoute(const ReferralsOverviewScreen())),
+          subtitle:
+              'Monitor referred children and mothers and their follow-up status.',
+          onTap: () => Navigator.push(
+            context,
+            appPageRoute(const ReferralsOverviewScreen()),
+          ),
         ),
         const Divider(color: AppColors.border),
         ProgramTile(
@@ -160,7 +177,10 @@ class _ProgramScreenState extends State<ProgramScreen> {
           iconColor: AppColors.statAmber,
           title: 'Vitamin A Program',
           subtitle: 'Manage Vitamin A supplementation and schedules.',
-          onTap: () => Navigator.push(context, appPageRoute(VitaminAScreen(barangay: widget.barangay))),
+          onTap: () => Navigator.push(
+            context,
+            appPageRoute(VitaminAScreen(barangay: widget.barangay)),
+          ),
         ),
         const Divider(color: AppColors.border),
         ProgramTile(
@@ -168,7 +188,10 @@ class _ProgramScreenState extends State<ProgramScreen> {
           iconColor: AppColors.statOrange,
           title: 'Deworming Program',
           subtitle: 'Schedule deworming activities and track coverage.',
-          onTap: () => Navigator.push(context, appPageRoute(DewormingScreen(barangay: widget.barangay))),
+          onTap: () => Navigator.push(
+            context,
+            appPageRoute(DewormingScreen(barangay: widget.barangay)),
+          ),
         ),
       ],
     );
@@ -184,29 +207,52 @@ class _ProgramScreenState extends State<ProgramScreen> {
       children: [
         // Action Bar & Filters
         Container(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.sm),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.sm,
+          ),
           color: AppColors.surface,
           child: Column(
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Program Schedules', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                  Text(
+                    'Program Schedules',
+                    style: AppTextStyles.h2.copyWith(fontSize: 16),
+                  ),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.darkGreen,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Set Schedule', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    label: const Text(
+                      'Set Schedule',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     onPressed: () {
                       Navigator.push(
                         context,
-                        appPageRoute(AddProgramScheduleScreen(
-                          prefillProgramType: _selectedFilter == 'All' ? 'Feeding' : _selectedFilter,
-                        )),
+                        appPageRoute(
+                          AddProgramScheduleScreen(
+                            prefillProgramType: _selectedFilter == 'All'
+                                ? 'Feeding'
+                                : _selectedFilter,
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -216,29 +262,45 @@ class _ProgramScreenState extends State<ProgramScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: ['All', 'Feeding', 'Vitamin A', 'Deworming', 'OPT Plus'].map((filter) {
-                    final isSel = _selectedFilter == filter;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        selected: isSel,
-                        label: Text(filter),
-                        labelStyle: TextStyle(
-                          fontSize: 12,
-                          color: isSel ? Colors.white : AppColors.textPrimary,
-                          fontWeight: isSel ? FontWeight.w600 : FontWeight.normal,
-                        ),
-                        backgroundColor: Colors.white,
-                        selectedColor: AppColors.darkGreen,
-                        checkmarkColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(color: isSel ? AppColors.darkGreen : AppColors.border),
-                        ),
-                        onSelected: (_) => setState(() => _selectedFilter = filter),
-                      ),
-                    );
-                  }).toList(),
+                  children:
+                      [
+                        'All',
+                        'Feeding',
+                        'Vitamin A',
+                        'Deworming',
+                        'OPT Plus',
+                      ].map((filter) {
+                        final isSel = _selectedFilter == filter;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            selected: isSel,
+                            label: Text(filter),
+                            labelStyle: TextStyle(
+                              fontSize: 12,
+                              color: isSel
+                                  ? Colors.white
+                                  : AppColors.textPrimary,
+                              fontWeight: isSel
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                            backgroundColor: Colors.white,
+                            selectedColor: AppColors.darkGreen,
+                            checkmarkColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: BorderSide(
+                                color: isSel
+                                    ? AppColors.darkGreen
+                                    : AppColors.border,
+                              ),
+                            ),
+                            onSelected: (_) =>
+                                setState(() => _selectedFilter = filter),
+                          ),
+                        );
+                      }).toList(),
                 ),
               ),
             ],
@@ -254,11 +316,17 @@ class _ProgramScreenState extends State<ProgramScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.event_available_outlined, size: 48, color: AppColors.textMuted),
+                        const Icon(
+                          Icons.event_available_outlined,
+                          size: 48,
+                          color: AppColors.textMuted,
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           'No scheduled activities found',
-                          style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+                          style: AppTextStyles.body.copyWith(
+                            color: AppColors.textMuted,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
@@ -278,7 +346,8 @@ class _ProgramScreenState extends State<ProgramScreen> {
               : ListView.separated(
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   itemCount: filtered.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final s = filtered[index];
                     return _buildScheduleCard(s);
@@ -311,11 +380,22 @@ class _ProgramScreenState extends State<ProgramScreen> {
     }
 
     final monthStr = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ][s.date.month - 1];
 
-    final isWebAdmin = s.createdBy.contains('Web') || s.createdBy.contains('RHU');
+    final isWebAdmin =
+        s.createdBy.contains('Web') || s.createdBy.contains('RHU');
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -367,7 +447,10 @@ class _ProgramScreenState extends State<ProgramScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: typeColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
@@ -391,7 +474,10 @@ class _ProgramScreenState extends State<ProgramScreen> {
                     const Spacer(),
                     if (isWebAdmin)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.indigo.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -408,18 +494,26 @@ class _ProgramScreenState extends State<ProgramScreen> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  s.title,
-                  style: AppTextStyles.h3.copyWith(fontSize: 15),
-                ),
+                Text(s.title, style: AppTextStyles.h3.copyWith(fontSize: 15)),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.access_time, size: 12, color: AppColors.textMuted),
+                    const Icon(
+                      Icons.access_time,
+                      size: 12,
+                      color: AppColors.textMuted,
+                    ),
                     const SizedBox(width: 4),
-                    Text('${s.startTime} - ${s.endTime}', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                    Text(
+                      '${s.startTime} - ${s.endTime}',
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
+                    ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.location_on_outlined, size: 12, color: AppColors.textMuted),
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 12,
+                      color: AppColors.textMuted,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -434,14 +528,21 @@ class _ProgramScreenState extends State<ProgramScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Target: ${s.targetGroup}',
-                    style: AppTextStyles.caption.copyWith(fontSize: 11, color: AppColors.darkGreen, fontWeight: FontWeight.w500),
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 11,
+                      color: AppColors.darkGreen,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
                 if (s.notes.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     s.notes,
-                    style: AppTextStyles.caption.copyWith(fontSize: 11, fontStyle: FontStyle.italic),
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ],
               ],

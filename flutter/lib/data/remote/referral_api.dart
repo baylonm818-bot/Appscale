@@ -24,7 +24,8 @@ class ReferralApi {
       'severity': 'medium',
     };
 
-    if (trimmedBeneficiaryId.isNotEmpty && RegExp(r'^\d+$').hasMatch(trimmedBeneficiaryId)) {
+    if (trimmedBeneficiaryId.isNotEmpty &&
+        RegExp(r'^\d+$').hasMatch(trimmedBeneficiaryId)) {
       payload['child_id'] = trimmedBeneficiaryId;
     }
 
@@ -41,7 +42,9 @@ class ReferralApi {
       } catch (_) {
         body = null;
       }
-      throw Exception(body?['message'] ?? 'Referral could not be sent to the web portal.');
+      throw Exception(
+        body?['message'] ?? 'Referral could not be sent to the web portal.',
+      );
     }
   }
 }

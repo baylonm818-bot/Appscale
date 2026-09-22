@@ -22,7 +22,8 @@ class AddProgramScheduleScreen extends StatefulWidget {
   });
 
   @override
-  State<AddProgramScheduleScreen> createState() => _AddProgramScheduleScreenState();
+  State<AddProgramScheduleScreen> createState() =>
+      _AddProgramScheduleScreenState();
 }
 
 class _AddProgramScheduleScreenState extends State<AddProgramScheduleScreen> {
@@ -34,7 +35,8 @@ class _AddProgramScheduleScreenState extends State<AddProgramScheduleScreen> {
   final _targetGroupController = TextEditingController();
   final _notesController = TextEditingController();
 
-  String get _currentBarangay => _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+  String get _currentBarangay =>
+      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   late String _programType = widget.prefillProgramType ?? 'Feeding';
   DateTime? _date = DateTime.now().add(const Duration(days: 1));
@@ -50,7 +52,8 @@ class _AddProgramScheduleScreenState extends State<AddProgramScheduleScreen> {
   }
 
   void _applyDefaultsForType(String type) {
-    if (_titleController.text.isEmpty || _isDefaultTitle(_titleController.text)) {
+    if (_titleController.text.isEmpty ||
+        _isDefaultTitle(_titleController.text)) {
       switch (type) {
         case 'Feeding':
           _titleController.text = 'Supplementary Feeding Session';
@@ -91,7 +94,9 @@ class _AddProgramScheduleScreenState extends State<AddProgramScheduleScreen> {
   Future<void> _save() async {
     if (!_isFormValid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please provide a title, date, and venue')),
+        const SnackBar(
+          content: Text('Please provide a title, date, and venue'),
+        ),
       );
       return;
     }
@@ -170,7 +175,12 @@ class _AddProgramScheduleScreenState extends State<AddProgramScheduleScreen> {
                         AppDropdownField(
                           label: 'Program *',
                           value: _programType,
-                          options: const ['Feeding', 'Vitamin A', 'Deworming', 'OPT Plus'],
+                          options: const [
+                            'Feeding',
+                            'Vitamin A',
+                            'Deworming',
+                            'OPT Plus',
+                          ],
                           onChanged: (v) {
                             if (v != null) {
                               setState(() {
@@ -232,7 +242,8 @@ class _AddProgramScheduleScreenState extends State<AddProgramScheduleScreen> {
                         ),
                         AppTextField(
                           label: 'Notes / Reminders',
-                          hint: 'e.g. Remind parents to bring immunization cards',
+                          hint:
+                              'e.g. Remind parents to bring immunization cards',
                           icon: Icons.notes_outlined,
                           controller: _notesController,
                         ),

@@ -23,7 +23,9 @@ class AuthUser {
 
   factory AuthUser.fromMap(Map<String, dynamic> map) {
     return AuthUser(
-      userId: map['user_id'] is int ? map['user_id'] as int : int.tryParse('${map['user_id']}') ?? 0,
+      userId: map['user_id'] is int
+          ? map['user_id'] as int
+          : int.tryParse('${map['user_id']}') ?? 0,
       username: (map['username'] ?? '').toString(),
       fullName: (map['full_name'] ?? '').toString(),
       role: (map['role'] ?? '').toString(),
@@ -38,23 +40,20 @@ class AuthSession {
   final String token;
   final AuthUser user;
 
-  const AuthSession({
-    required this.token,
-    required this.user,
-  });
+  const AuthSession({required this.token, required this.user});
 
   Map<String, dynamic> toMap() => {
-        'token': token,
-        'user': {
-          'user_id': user.userId,
-          'username': user.username,
-          'full_name': user.fullName,
-          'role': user.role,
-          'barangay': user.barangay,
-          'municipality': user.municipality,
-          'profile_picture': user.profilePicture,
-        },
-      };
+    'token': token,
+    'user': {
+      'user_id': user.userId,
+      'username': user.username,
+      'full_name': user.fullName,
+      'role': user.role,
+      'barangay': user.barangay,
+      'municipality': user.municipality,
+      'profile_picture': user.profilePicture,
+    },
+  };
 
   factory AuthSession.fromMap(Map<String, dynamic> map) {
     return AuthSession(
@@ -100,10 +99,7 @@ class AuthApi {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email.trim(),
-        'password': password,
-      }),
+      body: jsonEncode({'email': email.trim(), 'password': password}),
     );
 
     final body = _decodeJson(response);
@@ -131,7 +127,10 @@ class AuthApi {
     return (body['message'] ?? 'OTP sent successfully.').toString();
   }
 
-  static Future<String> verifyOtp({required String email, required String otp}) async {
+  static Future<String> verifyOtp({
+    required String email,
+    required String otp,
+  }) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/verify-otp'),
       headers: {'Content-Type': 'application/json'},
@@ -147,7 +146,10 @@ class AuthApi {
     return (body['message'] ?? 'OTP verified.').toString();
   }
 
-  static Future<String> resetPassword({required String email, required String newPassword}) async {
+  static Future<String> resetPassword({
+    required String email,
+    required String newPassword,
+  }) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/reset-password'),
       headers: {'Content-Type': 'application/json'},

@@ -22,9 +22,25 @@ class ResponsiveStatGrid extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: StatCard(data: items[i], onTap: onTaps != null && i < onTaps!.length ? onTaps![i] : null)),
+              Expanded(
+                child: StatCard(
+                  data: items[i],
+                  onTap: onTaps != null && i < onTaps!.length
+                      ? onTaps![i]
+                      : null,
+                ),
+              ),
               const SizedBox(width: AppSpacing.md),
-              Expanded(child: hasSecond ? StatCard(data: items[i + 1], onTap: onTaps != null && (i + 1) < onTaps!.length ? onTaps![i + 1] : null) : const SizedBox()),
+              Expanded(
+                child: hasSecond
+                    ? StatCard(
+                        data: items[i + 1],
+                        onTap: onTaps != null && (i + 1) < onTaps!.length
+                            ? onTaps![i + 1]
+                            : null,
+                      )
+                    : const SizedBox(),
+              ),
             ],
           ),
         ),

@@ -11,12 +11,17 @@ class StatusFilterSheet extends StatefulWidget {
 
   const StatusFilterSheet({super.key, required this.current});
 
-  static Future<ChildStatusFilter?> show(BuildContext context, ChildStatusFilter current) {
+  static Future<ChildStatusFilter?> show(
+    BuildContext context,
+    ChildStatusFilter current,
+  ) {
     return showModalBottomSheet<ChildStatusFilter>(
       context: context,
       backgroundColor: Colors.white,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (_) => StatusFilterSheet(current: current),
     );
   }
@@ -47,32 +52,64 @@ class _StatusFilterSheetState extends State<StatusFilterSheet> {
                 width: 40,
                 height: 4,
                 margin: const EdgeInsets.only(bottom: AppSpacing.lg),
-                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(4)),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
-            Text('Filter by nutritional status', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+            Text(
+              'Filter by nutritional status',
+              style: AppTextStyles.h2.copyWith(fontSize: 16),
+            ),
             const SizedBox(height: AppSpacing.md),
             InkWell(
-              onTap: () => setState(() => _filter = _filter.copyWith(onlyNotWeighed: !_filter.onlyNotWeighed)),
+              onTap: () => setState(
+                () => _filter = _filter.copyWith(
+                  onlyNotWeighed: !_filter.onlyNotWeighed,
+                ),
+              ),
               borderRadius: BorderRadius.circular(10),
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: _filter.onlyNotWeighed ? AppColors.statRed.withValues(alpha: 0.1) : AppColors.background,
+                  color: _filter.onlyNotWeighed
+                      ? AppColors.statRed.withValues(alpha: 0.1)
+                      : AppColors.background,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _filter.onlyNotWeighed ? AppColors.statRed : AppColors.border),
+                  border: Border.all(
+                    color: _filter.onlyNotWeighed
+                        ? AppColors.statRed
+                        : AppColors.border,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, size: 18, color: _filter.onlyNotWeighed ? AppColors.statRed : AppColors.textMuted),
+                    Icon(
+                      Icons.error_outline,
+                      size: 18,
+                      color: _filter.onlyNotWeighed
+                          ? AppColors.statRed
+                          : AppColors.textMuted,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Show only children not yet weighed',
-                        style: AppTextStyles.body.copyWith(fontSize: 13, color: _filter.onlyNotWeighed ? AppColors.statRed : AppColors.textPrimary),
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 13,
+                          color: _filter.onlyNotWeighed
+                              ? AppColors.statRed
+                              : AppColors.textPrimary,
+                        ),
                       ),
                     ),
-                    if (_filter.onlyNotWeighed) const Icon(Icons.check_circle, size: 18, color: AppColors.statRed),
+                    if (_filter.onlyNotWeighed)
+                      const Icon(
+                        Icons.check_circle,
+                        size: 18,
+                        color: AppColors.statRed,
+                      ),
                   ],
                 ),
               ),
@@ -86,28 +123,70 @@ class _StatusFilterSheetState extends State<StatusFilterSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: AppSpacing.lg),
-                    Text('Weight-for-Age', style: AppTextStyles.label.copyWith(fontSize: 13, color: AppColors.textMuted)),
+                    Text(
+                      'Weight-for-Age',
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     _chipGroup(
-                      options: const ['All', 'Normal', 'Underweight', 'Severely Underweight'],
+                      options: const [
+                        'All',
+                        'Normal',
+                        'Underweight',
+                        'Severely Underweight',
+                      ],
                       selected: _filter.weightForAge,
-                      onSelected: (v) => setState(() => _filter = _filter.copyWith(weightForAge: v)),
+                      onSelected: (v) => setState(
+                        () => _filter = _filter.copyWith(weightForAge: v),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    Text('Height-for-Age (Stunting)', style: AppTextStyles.label.copyWith(fontSize: 13, color: AppColors.textMuted)),
+                    Text(
+                      'Height-for-Age (Stunting)',
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     _chipGroup(
-                      options: const ['All', 'Normal', 'Stunted', 'Severely Stunted', 'Tall'],
+                      options: const [
+                        'All',
+                        'Normal',
+                        'Stunted',
+                        'Severely Stunted',
+                        'Tall',
+                      ],
                       selected: _filter.heightForAge,
-                      onSelected: (v) => setState(() => _filter = _filter.copyWith(heightForAge: v)),
+                      onSelected: (v) => setState(
+                        () => _filter = _filter.copyWith(heightForAge: v),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    Text('Wasting (Weight-for-Length)', style: AppTextStyles.label.copyWith(fontSize: 13, color: AppColors.textMuted)),
+                    Text(
+                      'Wasting (Weight-for-Length)',
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     _chipGroup(
-                      options: const ['All', 'Normal', 'MAM', 'SAM', 'Overweight', 'Obese'],
+                      options: const [
+                        'All',
+                        'Normal',
+                        'MAM',
+                        'SAM',
+                        'Overweight',
+                        'Obese',
+                      ],
                       selected: _filter.wasting,
-                      onSelected: (v) => setState(() => _filter = _filter.copyWith(wasting: v)),
+                      onSelected: (v) => setState(
+                        () => _filter = _filter.copyWith(wasting: v),
+                      ),
                     ),
                   ],
                 ),
@@ -116,9 +195,21 @@ class _StatusFilterSheetState extends State<StatusFilterSheet> {
             const SizedBox(height: AppSpacing.xl),
             Row(
               children: [
-                Expanded(child: TextButton(onPressed: () => setState(() => _filter = const ChildStatusFilter()), child: const Text('Reset'))),
+                Expanded(
+                  child: TextButton(
+                    onPressed: () =>
+                        setState(() => _filter = const ChildStatusFilter()),
+                    child: const Text('Reset'),
+                  ),
+                ),
                 const SizedBox(width: 10),
-                Expanded(flex: 2, child: AppButton(label: 'Apply filter', onPressed: () => Navigator.pop(context, _filter))),
+                Expanded(
+                  flex: 2,
+                  child: AppButton(
+                    label: 'Apply filter',
+                    onPressed: () => Navigator.pop(context, _filter),
+                  ),
+                ),
               ],
             ),
           ],
@@ -127,19 +218,29 @@ class _StatusFilterSheetState extends State<StatusFilterSheet> {
     );
   }
 
-  Widget _chipGroup({required List<String> options, required String selected, required ValueChanged<String> onSelected}) {
+  Widget _chipGroup({
+    required List<String> options,
+    required String selected,
+    required ValueChanged<String> onSelected,
+  }) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: options.map((status) {
         final isSelected = selected == status;
-        final color = status == 'All' ? AppColors.primaryGreen : ChildStatusMeta.colorFor(status);
+        final color = status == 'All'
+            ? AppColors.primaryGreen
+            : ChildStatusMeta.colorFor(status);
         return ChoiceChip(
           label: Text(status),
           selected: isSelected,
           onSelected: (_) => onSelected(status),
           selectedColor: color.withValues(alpha: 0.16),
-          labelStyle: TextStyle(color: isSelected ? color : AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 12),
+          labelStyle: TextStyle(
+            color: isSelected ? color : AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
           side: BorderSide(color: isSelected ? color : AppColors.border),
           backgroundColor: AppColors.surface,
         );

@@ -13,15 +13,9 @@ import '../../masterlist/widgets/status_badge.dart';
 class ReferralDetailSheet extends StatelessWidget {
   final Referral referral;
 
-  const ReferralDetailSheet({
-    super.key,
-    required this.referral,
-  });
+  const ReferralDetailSheet({super.key, required this.referral});
 
-  static Future<void> show(
-    BuildContext context, {
-    required Referral referral,
-  }) {
+  static Future<void> show(BuildContext context, {required Referral referral}) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -108,12 +102,18 @@ class ReferralDetailSheet extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.lightGreenBg,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.primaryGreen.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline, size: 16, color: AppColors.darkGreen),
+                const Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: AppColors.darkGreen,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -132,13 +132,24 @@ class ReferralDetailSheet extends StatelessWidget {
 
           _buildDetailRow('Date Filed', dateStr, Icons.calendar_today_outlined),
           const SizedBox(height: 10),
-          _buildDetailRow('Referred Facility', referral.facility, Icons.local_hospital_outlined),
+          _buildDetailRow(
+            'Referred Facility',
+            referral.facility,
+            Icons.local_hospital_outlined,
+          ),
           const SizedBox(height: 10),
-          _buildDetailRow('Reason for Referral', referral.reason, Icons.report_problem_outlined),
+          _buildDetailRow(
+            'Reason for Referral',
+            referral.reason,
+            Icons.report_problem_outlined,
+          ),
           const SizedBox(height: AppSpacing.lg),
 
           // Status & Outcome Section
-          Text('Resolution & RHU Feedback', style: AppTextStyles.label.copyWith(fontSize: 13)),
+          Text(
+            'Resolution & RHU Feedback',
+            style: AppTextStyles.label.copyWith(fontSize: 13),
+          ),
           const SizedBox(height: 8),
           Container(
             width: double.infinity,
@@ -156,7 +167,9 @@ class ReferralDetailSheet extends StatelessWidget {
                     Icon(
                       referral.status == 'Completed'
                           ? Icons.check_circle
-                          : (referral.status == 'In Progress' ? Icons.timelapse : Icons.hourglass_top),
+                          : (referral.status == 'In Progress'
+                                ? Icons.timelapse
+                                : Icons.hourglass_top),
                       size: 16,
                       color: _statusColor,
                     ),
@@ -164,7 +177,9 @@ class ReferralDetailSheet extends StatelessWidget {
                     Text(
                       referral.status == 'Completed'
                           ? 'Resolved by RHU / BHW'
-                          : (referral.status == 'In Progress' ? 'Under Review by RHU Staff' : 'Awaiting RHU Evaluation'),
+                          : (referral.status == 'In Progress'
+                                ? 'Under Review by RHU Staff'
+                                : 'Awaiting RHU Evaluation'),
                       style: AppTextStyles.body.copyWith(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -204,9 +219,14 @@ class ReferralDetailSheet extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.darkGreen,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: const Text('Close', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              child: const Text(
+                'Close',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
             ),
           ),
         ],
@@ -224,9 +244,21 @@ class ReferralDetailSheet extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted)),
+              Text(
+                label,
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(value, style: AppTextStyles.body.copyWith(fontSize: 13, fontWeight: FontWeight.w500)),
+              Text(
+                value,
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),

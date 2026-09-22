@@ -33,9 +33,27 @@ class DashboardHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Welcome!', style: AppTextStyles.body.copyWith(color: Colors.white70, fontSize: 15)),
-                Text(bnsName, style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 25)),
-                Text(barangayName, style: AppTextStyles.body.copyWith(color: Colors.white70, fontSize: 14)),
+                Text(
+                  'Welcome!',
+                  style: AppTextStyles.body.copyWith(
+                    color: Colors.white70,
+                    fontSize: 15,
+                  ),
+                ),
+                Text(
+                  bnsName,
+                  style: AppTextStyles.h1.copyWith(
+                    color: Colors.white,
+                    fontSize: 25,
+                  ),
+                ),
+                Text(
+                  barangayName,
+                  style: AppTextStyles.body.copyWith(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
               ],
             ),
           ),
@@ -51,7 +69,14 @@ class DashboardHeader extends StatelessWidget {
                 children: [
                   const Icon(Icons.sync, color: Colors.white, size: 14),
                   const SizedBox(width: 4),
-                  Text('$pendingSyncCount', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(
+                    '$pendingSyncCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -68,7 +93,11 @@ class DashboardHeader extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 18),
+                  child: const Icon(
+                    Icons.notifications_outlined,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                 ),
                 if (unreadNotificationCount > 0)
                   Positioned(
@@ -80,10 +109,15 @@ class DashboardHeader extends StatelessWidget {
                         color: AppColors.statRed,
                         shape: BoxShape.circle,
                       ),
-                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
                       alignment: Alignment.center,
                       child: Text(
-                        unreadNotificationCount > 9 ? '9+' : '$unreadNotificationCount',
+                        unreadNotificationCount > 9
+                            ? '9+'
+                            : '$unreadNotificationCount',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 9,
@@ -104,7 +138,10 @@ class DashboardHeader extends StatelessWidget {
               backgroundColor: Colors.white,
               child: Text(
                 bnsName.isNotEmpty ? bnsName[0] : 'B',
-                style: const TextStyle(color: AppColors.darkGreen, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  color: AppColors.darkGreen,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),

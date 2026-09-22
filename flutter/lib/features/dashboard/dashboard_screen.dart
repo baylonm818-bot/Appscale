@@ -36,8 +36,14 @@ class _DashboardBodyState extends State<DashboardBody> {
   final _notificationRepo = NotificationRepository();
   final _settings = SettingsRepository();
 
-  String get _currentBarangay => _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
-  String get _bnsName => (_settings.authUser?['full_name'] ?? _settings.authUser?['name'] ?? _settings.authUser?['username'] ?? 'BNS User').toString();
+  String get _currentBarangay =>
+      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+  String get _bnsName =>
+      (_settings.authUser?['full_name'] ??
+              _settings.authUser?['name'] ??
+              _settings.authUser?['username'] ??
+              'BNS User')
+          .toString();
 
   @override
   void initState() {
@@ -69,8 +75,14 @@ class _DashboardBodyState extends State<DashboardBody> {
                 pendingSyncCount: 12,
                 unreadNotificationCount: unreadNotifs,
                 onSyncTap: () {},
-                onNotificationTap: () => Navigator.push(context, appPageRoute(const NotificationsScreen())),
-                onProfileTap: () => Navigator.push(context, appPageRoute(const UserProfileScreen())),
+                onNotificationTap: () => Navigator.push(
+                  context,
+                  appPageRoute(const NotificationsScreen()),
+                ),
+                onProfileTap: () => Navigator.push(
+                  context,
+                  appPageRoute(const UserProfileScreen()),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.lg),
@@ -80,9 +92,16 @@ class _DashboardBodyState extends State<DashboardBody> {
                     ResponsiveStatGrid(
                       items: stats,
                       onTaps: [
-                        () => widget.onNavigateToMasterlist?.call(MasterlistCategory.children),
-                        () => widget.onNavigateToMasterlist?.call(MasterlistCategory.mothers),
-                        () => Navigator.push(context, appPageRoute(const ReferralsOverviewScreen())),
+                        () => widget.onNavigateToMasterlist?.call(
+                          MasterlistCategory.children,
+                        ),
+                        () => widget.onNavigateToMasterlist?.call(
+                          MasterlistCategory.mothers,
+                        ),
+                        () => Navigator.push(
+                          context,
+                          appPageRoute(const ReferralsOverviewScreen()),
+                        ),
                         null,
                       ],
                     ),

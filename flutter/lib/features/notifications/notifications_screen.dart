@@ -46,12 +46,18 @@ class NotificationsScreen extends StatelessWidget {
                       const SizedBox(width: AppSpacing.sm),
                       Text(
                         'Notifications',
-                        style: AppTextStyles.h2.copyWith(color: Colors.white, fontSize: 18),
+                        style: AppTextStyles.h2.copyWith(
+                          color: Colors.white,
+                          fontSize: 18,
+                        ),
                       ),
                       if (unread > 0) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.statRed,
                             borderRadius: BorderRadius.circular(12),
@@ -102,7 +108,8 @@ class NotificationsScreen extends StatelessWidget {
                   return ListView.separated(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     itemCount: notifications.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 8),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final item = notifications[index];
                       return _NotificationTile(
@@ -110,9 +117,14 @@ class NotificationsScreen extends StatelessWidget {
                         onTap: () async {
                           await notificationRepo.markAsRead(item.id);
                           if (item.referralId != null && context.mounted) {
-                            final referral = ReferralRepository().getById(item.referralId!);
+                            final referral = ReferralRepository().getById(
+                              item.referralId!,
+                            );
                             if (referral != null) {
-                              ReferralDetailSheet.show(context, referral: referral);
+                              ReferralDetailSheet.show(
+                                context,
+                                referral: referral,
+                              );
                             }
                           }
                         },
@@ -133,10 +145,7 @@ class _NotificationTile extends StatelessWidget {
   final AppNotification notification;
   final VoidCallback onTap;
 
-  const _NotificationTile({
-    required this.notification,
-    required this.onTap,
-  });
+  const _NotificationTile({required this.notification, required this.onTap});
 
   IconData get _icon {
     switch (notification.type) {
@@ -164,10 +173,14 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: notification.isRead ? Colors.white : AppColors.lightGreenBg.withValues(alpha: 0.5),
+        color: notification.isRead
+            ? Colors.white
+            : AppColors.lightGreenBg.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: notification.isRead ? AppColors.border : AppColors.primaryGreen.withValues(alpha: 0.4),
+          color: notification.isRead
+              ? AppColors.border
+              : AppColors.primaryGreen.withValues(alpha: 0.4),
         ),
       ),
       child: Material(
@@ -202,7 +215,9 @@ class _NotificationTile extends StatelessWidget {
                               notification.title,
                               style: AppTextStyles.label.copyWith(
                                 fontSize: 13,
-                                fontWeight: notification.isRead ? FontWeight.w600 : FontWeight.w700,
+                                fontWeight: notification.isRead
+                                    ? FontWeight.w600
+                                    : FontWeight.w700,
                               ),
                             ),
                           ),
@@ -237,7 +252,11 @@ class _NotificationTile extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 2),
-                            const Icon(Icons.chevron_right, size: 13, color: AppColors.darkGreen),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: 13,
+                              color: AppColors.darkGreen,
+                            ),
                           ],
                         ),
                       ],

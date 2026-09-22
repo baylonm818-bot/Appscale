@@ -42,11 +42,16 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
   final _notesController = TextEditingController();
   final _settings = SettingsRepository();
 
-  String get _currentBarangay => _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+  String get _currentBarangay =>
+      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   late String _type = widget.prefillBeneficiaryType ?? 'child';
   late ReferralBeneficiaryResult? _selected = widget.isPrefilled
-      ? ReferralBeneficiaryResult(id: widget.prefillBeneficiaryId!, name: widget.prefillBeneficiaryName!, subtitle: widget.prefillBeneficiarySubtitle ?? '')
+      ? ReferralBeneficiaryResult(
+          id: widget.prefillBeneficiaryId!,
+          name: widget.prefillBeneficiaryName!,
+          subtitle: widget.prefillBeneficiarySubtitle ?? '',
+        )
       : null;
   String _facility = ReferralConstants.facilities.first;
   bool _isSaving = false;
@@ -54,14 +59,20 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.prefillReason != null) _reasonController.text = widget.prefillReason!;
+    if (widget.prefillReason != null)
+      _reasonController.text = widget.prefillReason!;
   }
 
-  bool get _isFormValid => _selected != null && _reasonController.text.trim().isNotEmpty;
+  bool get _isFormValid =>
+      _selected != null && _reasonController.text.trim().isNotEmpty;
 
   Future<void> _handleSubmit() async {
     if (!_isFormValid) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a beneficiary and describe the reason')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a beneficiary and describe the reason'),
+        ),
+      );
       return;
     }
 
@@ -87,11 +98,16 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
       if (!mounted) return;
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Saved on this device, but not sent to BHW: $error')),
+        SnackBar(
+          content: Text('Saved on this device, but not sent to BHW: $error'),
+        ),
       );
       return;
     }
-    await _activityRepo.logActivity(type: 'referral_created', title: 'Referral created for ${referral.beneficiaryName}');
+    await _activityRepo.logActivity(
+      type: 'referral_created',
+      title: 'Referral created for ${referral.beneficiaryName}',
+    );
 
     if (!mounted) return;
     setState(() => _isSaving = false);
@@ -108,12 +124,21 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
             Container(
               width: double.infinity,
               color: AppColors.darkGreen,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.lg,
+              ),
               child: Row(
                 children: [
-                  InkWell(onTap: () => Navigator.pop(context), child: const Icon(Icons.arrow_back, color: Colors.white)),
+                  InkWell(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.arrow_back, color: Colors.white),
+                  ),
                   const SizedBox(width: AppSpacing.sm),
-                  Text('Referrals', style: AppTextStyles.h2.copyWith(color: Colors.white)),
+                  Text(
+                    'Referrals',
+                    style: AppTextStyles.h2.copyWith(color: Colors.white),
+                  ),
                 ],
               ),
             ),
@@ -130,12 +155,27 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
                         if (widget.isPrefilled)
                           Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                             child: Row(
                               children: [
-                                const Icon(Icons.info_outline, size: 14, color: AppColors.textMuted),
+                                const Icon(
+                                  Icons.info_outline,
+                                  size: 14,
+                                  color: AppColors.textMuted,
+                                ),
                                 const SizedBox(width: 6),
-                                Expanded(child: Text('Referral for ${_selected!.name}, based on their recent record.', style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted))),
+                                Expanded(
+                                  child: Text(
+                                    'Referral for ${_selected!.name}, based on their recent record.',
+                                    style: AppTextStyles.body.copyWith(
+                                      fontSize: 11,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           )
@@ -147,9 +187,26 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
                             selected: _selected,
                             onSelected: (r) => setState(() => _selected = r),
                           ),
-                        AppTextField(label: 'Referral Reason *', hint: 'Describe the reason for referral...', icon: Icons.notes_outlined, controller: _reasonController, maxLines: 3),
-                        AppDropdownField(label: 'Assigned Facility *', value: _facility, options: ReferralConstants.facilities, onChanged: (v) => setState(() => _facility = v!)),
-                        AppTextField(label: 'Notes (Optional)', hint: 'Additional notes...', icon: Icons.edit_note_outlined, controller: _notesController, maxLines: 2),
+                        AppTextField(
+                          label: 'Referral Reason *',
+                          hint: 'Describe the reason for referral...',
+                          icon: Icons.notes_outlined,
+                          controller: _reasonController,
+                          maxLines: 3,
+                        ),
+                        AppDropdownField(
+                          label: 'Assigned Facility *',
+                          value: _facility,
+                          options: ReferralConstants.facilities,
+                          onChanged: (v) => setState(() => _facility = v!),
+                        ),
+                        AppTextField(
+                          label: 'Notes (Optional)',
+                          hint: 'Additional notes...',
+                          icon: Icons.edit_note_outlined,
+                          controller: _notesController,
+                          maxLines: 2,
+                        ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.xl),

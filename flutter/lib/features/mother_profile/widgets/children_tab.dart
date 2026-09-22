@@ -22,15 +22,26 @@ class ChildrenTab extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Unlink child?'),
-        content: Text('${child.fullName} will no longer be linked to ${mother.fullName}\'s profile. Their own record is not affected.'),
+        content: Text(
+          '${child.fullName} will no longer be linked to ${mother.fullName}\'s profile. Their own record is not affected.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Unlink')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Unlink'),
+          ),
         ],
       ),
     );
     if (confirmed == true) {
-      await BeneficiaryLinkService().unlinkChildFromMother(child: child, mother: mother);
+      await BeneficiaryLinkService().unlinkChildFromMother(
+        child: child,
+        mother: mother,
+      );
       onChanged();
     }
   }
@@ -44,38 +55,66 @@ class ChildrenTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Linked children', style: AppTextStyles.h2.copyWith(fontSize: 15)),
+          Text(
+            'Linked children',
+            style: AppTextStyles.h2.copyWith(fontSize: 15),
+          ),
           const SizedBox(height: AppSpacing.sm),
           if (children.isEmpty)
-            const EmptyState(icon: Icons.child_care_outlined, message: 'No children linked to this mother yet.')
+            const EmptyState(
+              icon: Icons.child_care_outlined,
+              message: 'No children linked to this mother yet.',
+            )
           else
-            ...children.map((child) => InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => Navigator.push(context, appPageRoute(ChildProfileScreen(child: child))),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(child.fullName, style: AppTextStyles.label.copyWith(fontSize: 14)),
-                              Text('${child.ageInMonths} mos · ${child.address}', style: AppTextStyles.body.copyWith(fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        StatusBadge(label: child.nutritionStatus, color: ChildStatusMeta.colorFor(child.nutritionStatus)),
-                        IconButton(
-                          icon: const Icon(Icons.link_off, size: 18, color: AppColors.textMuted),
-                          onPressed: () => _confirmUnlink(context, child),
-                        ),
-                      ],
-                    ),
+            ...children.map(
+              (child) => InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => Navigator.push(
+                  context,
+                  appPageRoute(ChildProfileScreen(child: child)),
+                ),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
                   ),
-                )),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              child.fullName,
+                              style: AppTextStyles.label.copyWith(fontSize: 14),
+                            ),
+                            Text(
+                              '${child.ageInMonths} mos · ${child.address}',
+                              style: AppTextStyles.body.copyWith(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      StatusBadge(
+                        label: child.nutritionStatus,
+                        color: ChildStatusMeta.colorFor(child.nutritionStatus),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.link_off,
+                          size: 18,
+                          color: AppColors.textMuted,
+                        ),
+                        onPressed: () => _confirmUnlink(context, child),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

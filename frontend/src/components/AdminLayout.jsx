@@ -214,7 +214,7 @@ const currentTitle = pageTitles[location.pathname] || '';
               <div className="absolute right-0 top-14 z-100 w-56 rounded-2xl border border-white/10 bg-[#111827] p-2 shadow-2xl shadow-black/30">
                 <div className="border-b border-white/10 px-3 py-2">
                   <p className="truncate text-sm font-bold text-white">{user?.full_name || user?.username || "Admin"}</p>
-                  <p className="truncate text-xs text-slate-300">{user?.email || "Administrator account"}</p>
+                  <p className="truncate text-xs text-slate-300">{user?.email || user?.username || "Administrator account"}</p>
                 </div>
                 <button
                   type="button"

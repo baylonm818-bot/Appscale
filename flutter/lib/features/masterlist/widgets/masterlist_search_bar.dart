@@ -24,12 +24,21 @@ class MasterlistSearchBar extends StatelessWidget {
             style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: AppTextStyles.body.copyWith(color: AppColors.textMuted),
-              prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textMuted),
+              hintStyle: AppTextStyles.body.copyWith(
+                color: AppColors.textMuted,
+              ),
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 20,
+                color: AppColors.textMuted,
+              ),
               filled: true,
               fillColor: AppColors.background,
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
             ),
           ),
         ),
@@ -40,8 +49,15 @@ class MasterlistSearchBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.tune, size: 20, color: AppColors.textSecondary),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.tune,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
         ],

@@ -17,8 +17,14 @@ class UserProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalChildren = ChildRepository().getAll().where((c) => c.isActive).length;
-    final totalMothers = MotherRepository().getAll().where((m) => m.isActive).length;
+    final totalChildren = ChildRepository()
+        .getAll()
+        .where((c) => c.isActive)
+        .length;
+    final totalMothers = MotherRepository()
+        .getAll()
+        .where((m) => m.isActive)
+        .length;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -66,24 +72,37 @@ class UserProfileScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   bnsName,
-                  style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 22),
+                  style: AppTextStyles.h1.copyWith(
+                    color: Colors.white,
+                    fontSize: 22,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
                     'Barangay Nutrition Scholar (BNS)',
-                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '$barangay • Rural Health Unit',
-                  style: AppTextStyles.body.copyWith(color: Colors.white70, fontSize: 13),
+                  style: AppTextStyles.body.copyWith(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -95,11 +114,21 @@ class UserProfileScreen extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildStatTile('Active Children', '$totalChildren', Icons.child_care, AppColors.primaryGreen),
+                child: _buildStatTile(
+                  'Active Children',
+                  '$totalChildren',
+                  Icons.child_care,
+                  AppColors.primaryGreen,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildStatTile('Active Mothers', '$totalMothers', Icons.pregnant_woman, const Color(0xFFD23369)),
+                child: _buildStatTile(
+                  'Active Mothers',
+                  '$totalMothers',
+                  Icons.pregnant_woman,
+                  const Color(0xFFD23369),
+                ),
               ),
             ],
           ),
@@ -107,7 +136,10 @@ class UserProfileScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
 
           // Official Information
-          Text('Assignment & Station', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+          Text(
+            'Assignment & Station',
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
           const SizedBox(height: AppSpacing.sm),
           Container(
             decoration: BoxDecoration(
@@ -117,13 +149,29 @@ class UserProfileScreen extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _buildInfoRow(Icons.place_outlined, 'Assigned Barangay', barangay),
+                _buildInfoRow(
+                  Icons.place_outlined,
+                  'Assigned Barangay',
+                  barangay,
+                ),
                 const Divider(height: 1, color: AppColors.border),
-                _buildInfoRow(Icons.local_hospital_outlined, 'Health Station', 'Tiguion Barangay Health Station'),
+                _buildInfoRow(
+                  Icons.local_hospital_outlined,
+                  'Health Station',
+                  'Tiguion Barangay Health Station',
+                ),
                 const Divider(height: 1, color: AppColors.border),
-                _buildInfoRow(Icons.phone_outlined, 'Contact Number', '+63 912 345 6789'),
+                _buildInfoRow(
+                  Icons.phone_outlined,
+                  'Contact Number',
+                  '+63 912 345 6789',
+                ),
                 const Divider(height: 1, color: AppColors.border),
-                _buildInfoRow(Icons.badge_outlined, 'Accreditation', 'DOH / NNC Certified BNS'),
+                _buildInfoRow(
+                  Icons.badge_outlined,
+                  'Accreditation',
+                  'DOH / NNC Certified BNS',
+                ),
               ],
             ),
           ),
@@ -131,7 +179,10 @@ class UserProfileScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
 
           // System Info
-          Text('System Information', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+          Text(
+            'System Information',
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
           const SizedBox(height: AppSpacing.sm),
           Container(
             decoration: BoxDecoration(
@@ -141,11 +192,23 @@ class UserProfileScreen extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _buildInfoRow(Icons.offline_bolt_outlined, 'Storage Mode', 'Offline-First (Encrypted Hive)'),
+                _buildInfoRow(
+                  Icons.offline_bolt_outlined,
+                  'Storage Mode',
+                  'Offline-First (Encrypted Hive)',
+                ),
                 const Divider(height: 1, color: AppColors.border),
-                _buildInfoRow(Icons.info_outline, 'App Version', 'AppScale v3.2.0 (OPT Plus Standards)'),
+                _buildInfoRow(
+                  Icons.info_outline,
+                  'App Version',
+                  'AppScale v3.2.0 (OPT Plus Standards)',
+                ),
                 const Divider(height: 1, color: AppColors.border),
-                _buildInfoRow(Icons.cloud_sync_outlined, 'Sync Protocol', 'Web Portal / RHU Connected'),
+                _buildInfoRow(
+                  Icons.cloud_sync_outlined,
+                  'Sync Protocol',
+                  'Web Portal / RHU Connected',
+                ),
               ],
             ),
           ),
@@ -157,13 +220,20 @@ class UserProfileScreen extends StatelessWidget {
               foregroundColor: AppColors.statRed,
               side: const BorderSide(color: AppColors.statRed),
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             icon: const Icon(Icons.logout, size: 18),
-            label: const Text('Log Out / Switch Account', style: TextStyle(fontWeight: FontWeight.w600)),
+            label: const Text(
+              'Log Out / Switch Account',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Offline session preserved for BNS Maria')),
+                const SnackBar(
+                  content: Text('Offline session preserved for BNS Maria'),
+                ),
               );
             },
           ),
@@ -192,7 +262,10 @@ class UserProfileScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(val, style: AppTextStyles.h1.copyWith(fontSize: 20, color: color)),
+              Text(
+                val,
+                style: AppTextStyles.h1.copyWith(fontSize: 20, color: color),
+              ),
               Text(title, style: AppTextStyles.caption.copyWith(fontSize: 11)),
             ],
           ),
@@ -203,18 +276,30 @@ class UserProfileScreen extends StatelessWidget {
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 12,
+      ),
       child: Row(
         children: [
           Icon(icon, size: 18, color: AppColors.darkGreen),
           const SizedBox(width: 12),
-          Text(label, style: AppTextStyles.caption.copyWith(fontSize: 12, color: AppColors.textMuted)),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              fontSize: 12,
+              color: AppColors.textMuted,
+            ),
+          ),
           const Spacer(),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: AppTextStyles.body.copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+              style: AppTextStyles.body.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

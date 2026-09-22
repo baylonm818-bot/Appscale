@@ -18,14 +18,24 @@ class HistoryTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Measurement History', style: AppTextStyles.h1.copyWith(fontSize: 18)),
+          Text(
+            'Measurement History',
+            style: AppTextStyles.h1.copyWith(fontSize: 18),
+          ),
           const SizedBox(height: AppSpacing.md),
           if (measurements.isEmpty)
-            const EmptyState(icon: Icons.timeline_outlined, message: 'No measurements recorded yet. Tap "+ Measure" to log the first one.')
+            const EmptyState(
+              icon: Icons.timeline_outlined,
+              message:
+                  'No measurements recorded yet. Tap "+ Measure" to log the first one.',
+            )
           else
             ...List.generate(
               measurements.length,
-              (i) => MeasurementTile(measurement: measurements[i], isLatest: i == 0),
+              (i) => MeasurementTile(
+                measurement: measurements[i],
+                isLatest: i == 0,
+              ),
             ),
         ],
       ),

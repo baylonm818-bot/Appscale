@@ -14,18 +14,18 @@ class ReportSignatory {
   });
 
   Map<String, dynamic> toMap() => {
-        'barangay': barangay,
-        'bnsName': bnsName,
-        'punongBarangayName': punongBarangayName,
-        'mnaoAdminAideName': mnaoAdminAideName,
-        'dnpcName': dnpcName,
-      };
+    'barangay': barangay,
+    'bnsName': bnsName,
+    'punongBarangayName': punongBarangayName,
+    'mnaoAdminAideName': mnaoAdminAideName,
+    'dnpcName': dnpcName,
+  };
 
   factory ReportSignatory.fromMap(Map<String, dynamic> map) => ReportSignatory(
-        barangay: map['barangay'] as String,
-        bnsName: map['bnsName'] as String,
-        punongBarangayName: map['punongBarangayName'] as String,
-        mnaoAdminAideName: map['mnaoAdminAideName'] as String,
-        dnpcName: map['dnpcName'] as String,
-      );
+    barangay: map['barangay'] as String,
+    bnsName: map['bnsName'] as String,
+    punongBarangayName: map['punongBarangayName'] as String,
+    mnaoAdminAideName: map['mnaoAdminAideName'] as String,
+    dnpcName: map['dnpcName'] as String,
+  );
 }

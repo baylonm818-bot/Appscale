@@ -11,13 +11,21 @@ class ChildStatusFilter {
     this.onlyNotWeighed = false,
   });
 
-  bool get isActive => weightForAge != 'All' || heightForAge != 'All' || wasting != 'All' || onlyNotWeighed;
+  bool get isActive =>
+      weightForAge != 'All' ||
+      heightForAge != 'All' ||
+      wasting != 'All' ||
+      onlyNotWeighed;
 
-  ChildStatusFilter copyWith({String? weightForAge, String? heightForAge, String? wasting, bool? onlyNotWeighed}) =>
-      ChildStatusFilter(
-        weightForAge: weightForAge ?? this.weightForAge,
-        heightForAge: heightForAge ?? this.heightForAge,
-        wasting: wasting ?? this.wasting,
-        onlyNotWeighed: onlyNotWeighed ?? this.onlyNotWeighed,
-      );
+  ChildStatusFilter copyWith({
+    String? weightForAge,
+    String? heightForAge,
+    String? wasting,
+    bool? onlyNotWeighed,
+  }) => ChildStatusFilter(
+    weightForAge: weightForAge ?? this.weightForAge,
+    heightForAge: heightForAge ?? this.heightForAge,
+    wasting: wasting ?? this.wasting,
+    onlyNotWeighed: onlyNotWeighed ?? this.onlyNotWeighed,
+  );
 }

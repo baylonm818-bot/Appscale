@@ -23,7 +23,9 @@ class ChildProgramsTab extends StatelessWidget {
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, version, childWidget) {
-        final isEnrolledInFeeding = FeedingEnrollmentRepository().isEnrolled(child.id);
+        final isEnrolledInFeeding = FeedingEnrollmentRepository().isEnrolled(
+          child.id,
+        );
         final enrolledDate = FeedingEnrollmentRepository().enrolledAt(child.id);
         final vitARecords = VitaminARepository().getByChildId(child.id);
         final dewormingRecords = DewormingRepository().getByChildId(child.id);
@@ -42,7 +44,12 @@ class ChildProgramsTab extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.all(AppSpacing.lg),
           children: [
-            _buildFeedingSection(context, isEnrolledInFeeding, enrolledDate, daysPresent),
+            _buildFeedingSection(
+              context,
+              isEnrolledInFeeding,
+              enrolledDate,
+              daysPresent,
+            ),
             const SizedBox(height: AppSpacing.lg),
             _buildVitaminASection(context, vitARecords),
             const SizedBox(height: AppSpacing.lg),
@@ -60,7 +67,8 @@ class ChildProgramsTab extends StatelessWidget {
     DateTime? enrolledDate,
     int daysPresent,
   ) {
-    final isSamOrMam = child.wastingStatus == 'SAM' ||
+    final isSamOrMam =
+        child.wastingStatus == 'SAM' ||
         child.wastingStatus == 'MAM' ||
         child.nutritionStatus.contains('Underweight');
 
@@ -82,18 +90,29 @@ class ChildProgramsTab extends StatelessWidget {
                   color: AppColors.primaryGreen.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.soup_kitchen_outlined, color: AppColors.primaryGreen, size: 20),
+                child: const Icon(
+                  Icons.soup_kitchen_outlined,
+                  color: AppColors.primaryGreen,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('120-Day Feeding Program', style: AppTextStyles.h3.copyWith(fontSize: 15)),
                     Text(
-                      isEnrolled ? 'Active Beneficiary' : 'Not Currently Enrolled',
+                      '120-Day Feeding Program',
+                      style: AppTextStyles.h3.copyWith(fontSize: 15),
+                    ),
+                    Text(
+                      isEnrolled
+                          ? 'Active Beneficiary'
+                          : 'Not Currently Enrolled',
                       style: AppTextStyles.caption.copyWith(
-                        color: isEnrolled ? AppColors.primaryGreen : AppColors.textMuted,
+                        color: isEnrolled
+                            ? AppColors.primaryGreen
+                            : AppColors.textMuted,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -113,7 +132,9 @@ class ChildProgramsTab extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: isEnrolled ? AppColors.primaryGreen : AppColors.textMuted,
+                    color: isEnrolled
+                        ? AppColors.primaryGreen
+                        : AppColors.textMuted,
                   ),
                 ),
               ),
@@ -129,30 +150,52 @@ class ChildProgramsTab extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Days Attended', style: AppTextStyles.caption.copyWith(fontSize: 11)),
-                    const SizedBox(height: 2),
-                    Text('$daysPresent / 120 days', style: AppTextStyles.h3.copyWith(fontSize: 14)),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Enrolled Since', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                    Text(
+                      'Days Attended',
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
+                    ),
                     const SizedBox(height: 2),
                     Text(
-                      enrolledDate != null
-                          ? '${enrolledDate.month}/${enrolledDate.day}/${enrolledDate.year}'
-                          : '—',
-                      style: AppTextStyles.body.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+                      '$daysPresent / 120 days',
+                      style: AppTextStyles.h3.copyWith(fontSize: 14),
                     ),
                   ],
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Status', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                    Text(
+                      'Enrolled Since',
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
+                    ),
                     const SizedBox(height: 2),
-                    Text(child.wastingStatus, style: AppTextStyles.body.copyWith(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.darkGreen)),
+                    Text(
+                      enrolledDate != null
+                          ? '${enrolledDate.month}/${enrolledDate.day}/${enrolledDate.year}'
+                          : '—',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Status',
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      child.wastingStatus,
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.darkGreen,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -163,7 +206,9 @@ class ChildProgramsTab extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: (daysPresent / 120).clamp(0.0, 1.0),
                 backgroundColor: AppColors.surface,
-                valueColor: const AlwaysStoppedAnimation(AppColors.primaryGreen),
+                valueColor: const AlwaysStoppedAnimation(
+                  AppColors.primaryGreen,
+                ),
                 minHeight: 6,
               ),
             ),
@@ -173,10 +218,20 @@ class ChildProgramsTab extends StatelessWidget {
                 minimumSize: const Size(double.infinity, 36),
                 side: const BorderSide(color: AppColors.primaryGreen),
               ),
-              icon: const Icon(Icons.arrow_forward, size: 14, color: AppColors.primaryGreen),
-              label: const Text('View Feeding Program', style: TextStyle(color: AppColors.primaryGreen, fontSize: 12)),
+              icon: const Icon(
+                Icons.arrow_forward,
+                size: 14,
+                color: AppColors.primaryGreen,
+              ),
+              label: const Text(
+                'View Feeding Program',
+                style: TextStyle(color: AppColors.primaryGreen, fontSize: 12),
+              ),
               onPressed: () {
-                Navigator.push(context, appPageRoute(const FeedingProgramScreen()));
+                Navigator.push(
+                  context,
+                  appPageRoute(const FeedingProgramScreen()),
+                );
               },
             ),
           ] else ...[
@@ -192,19 +247,28 @@ class ChildProgramsTab extends StatelessWidget {
             const SizedBox(height: 10),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: isSamOrMam ? AppColors.darkGreen : AppColors.surface,
-                foregroundColor: isSamOrMam ? Colors.white : AppColors.darkGreen,
+                backgroundColor: isSamOrMam
+                    ? AppColors.darkGreen
+                    : AppColors.surface,
+                foregroundColor: isSamOrMam
+                    ? Colors.white
+                    : AppColors.darkGreen,
                 minimumSize: const Size(double.infinity, 36),
                 elevation: 0,
               ),
               icon: const Icon(Icons.add, size: 16),
-              label: const Text('Enroll in Feeding Program', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              label: const Text(
+                'Enroll in Feeding Program',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
               onPressed: () async {
                 final messenger = ScaffoldMessenger.of(context);
                 await FeedingEnrollmentRepository().enroll(child.id);
                 messenger.showSnackBar(
                   SnackBar(
-                    content: Text('${child.fullName} enrolled in Feeding Program'),
+                    content: Text(
+                      '${child.fullName} enrolled in Feeding Program',
+                    ),
                     backgroundColor: AppColors.primaryGreen,
                   ),
                 );
@@ -216,7 +280,10 @@ class ChildProgramsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildVitaminASection(BuildContext context, List<dynamic> vitARecords) {
+  Widget _buildVitaminASection(
+    BuildContext context,
+    List<dynamic> vitARecords,
+  ) {
     final age = child.ageInMonths;
     final recommendedDose = VitaminARepository.determineRecommendedDosage(age);
 
@@ -238,15 +305,25 @@ class ChildProgramsTab extends StatelessWidget {
                   color: AppColors.statAmber.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.medication_outlined, color: AppColors.statAmber, size: 20),
+                child: const Icon(
+                  Icons.medication_outlined,
+                  color: AppColors.statAmber,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Vitamin A Supplementation', style: AppTextStyles.h3.copyWith(fontSize: 15)),
-                    Text('Recommended: $recommendedDose', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                    Text(
+                      'Vitamin A Supplementation',
+                      style: AppTextStyles.h3.copyWith(fontSize: 15),
+                    ),
+                    Text(
+                      'Recommended: $recommendedDose',
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
+                    ),
                   ],
                 ),
               ),
@@ -269,18 +346,28 @@ class ChildProgramsTab extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Center(
-                child: Text('No Vitamin A records yet', style: AppTextStyles.caption.copyWith(color: AppColors.textMuted)),
+                child: Text(
+                  'No Vitamin A records yet',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textMuted,
+                  ),
+                ),
               ),
             )
           else
             ...vitARecords.map((r) {
-              final dateStr = '${r.dateGiven.month}/${r.dateGiven.day}/${r.dateGiven.year}';
+              final dateStr =
+                  '${r.dateGiven.month}/${r.dateGiven.day}/${r.dateGiven.year}';
               final isBlue = r.dosage.contains('Blue');
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle, size: 16, color: isBlue ? Colors.blue : Colors.red),
+                    Icon(
+                      Icons.check_circle,
+                      size: 16,
+                      color: isBlue ? Colors.blue : Colors.red,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -288,7 +375,10 @@ class ChildProgramsTab extends StatelessWidget {
                         style: AppTextStyles.body.copyWith(fontSize: 12),
                       ),
                     ),
-                    Text('By ${r.administeredBy}', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                    Text(
+                      'By ${r.administeredBy}',
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
+                    ),
                   ],
                 ),
               );
@@ -298,7 +388,10 @@ class ChildProgramsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildDewormingSection(BuildContext context, List<dynamic> dewormingRecords) {
+  Widget _buildDewormingSection(
+    BuildContext context,
+    List<dynamic> dewormingRecords,
+  ) {
     final isEligible = DewormingRepository.isEligible(child.ageInMonths);
 
     return Container(
@@ -319,19 +412,30 @@ class ChildProgramsTab extends StatelessWidget {
                   color: AppColors.statOrange.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.healing_outlined, color: AppColors.statOrange, size: 20),
+                child: const Icon(
+                  Icons.healing_outlined,
+                  color: AppColors.statOrange,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Deworming Program', style: AppTextStyles.h3.copyWith(fontSize: 15)),
                     Text(
-                      isEligible ? 'Eligible for mass deworming (12-59 mos)' : 'Under 12 months (Not eligible)',
+                      'Deworming Program',
+                      style: AppTextStyles.h3.copyWith(fontSize: 15),
+                    ),
+                    Text(
+                      isEligible
+                          ? 'Eligible for mass deworming (12-59 mos)'
+                          : 'Under 12 months (Not eligible)',
                       style: AppTextStyles.caption.copyWith(
                         fontSize: 11,
-                        color: isEligible ? AppColors.darkGreen : AppColors.statRed,
+                        color: isEligible
+                            ? AppColors.darkGreen
+                            : AppColors.statRed,
                       ),
                     ),
                   ],
@@ -339,7 +443,10 @@ class ChildProgramsTab extends StatelessWidget {
               ),
               if (isEligible)
                 IconButton(
-                  icon: const Icon(Icons.add_circle, color: AppColors.darkGreen),
+                  icon: const Icon(
+                    Icons.add_circle,
+                    color: AppColors.darkGreen,
+                  ),
                   tooltip: 'Record Deworming',
                   onPressed: () {
                     Navigator.push(
@@ -357,17 +464,27 @@ class ChildProgramsTab extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Center(
-                child: Text('No Deworming records yet', style: AppTextStyles.caption.copyWith(color: AppColors.textMuted)),
+                child: Text(
+                  'No Deworming records yet',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textMuted,
+                  ),
+                ),
               ),
             )
           else
             ...dewormingRecords.map((r) {
-              final dateStr = '${r.dateGiven.month}/${r.dateGiven.day}/${r.dateGiven.year}';
+              final dateStr =
+                  '${r.dateGiven.month}/${r.dateGiven.day}/${r.dateGiven.year}';
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    const Icon(Icons.check_circle, size: 16, color: AppColors.statOrange),
+                    const Icon(
+                      Icons.check_circle,
+                      size: 16,
+                      color: AppColors.statOrange,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -375,7 +492,10 @@ class ChildProgramsTab extends StatelessWidget {
                         style: AppTextStyles.body.copyWith(fontSize: 12),
                       ),
                     ),
-                    Text('By ${r.administeredBy}', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                    Text(
+                      'By ${r.administeredBy}',
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
+                    ),
                   ],
                 ),
               );

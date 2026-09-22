@@ -26,10 +26,23 @@ class ReportPdfService {
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Center(child: pw.Text('CONSOLIDATION', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold))),
-            pw.Center(child: pw.Text(title, style: const pw.TextStyle(fontSize: 11))),
+            pw.Center(
+              child: pw.Text(
+                'CONSOLIDATION',
+                style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+            pw.Center(
+              child: pw.Text(title, style: const pw.TextStyle(fontSize: 11)),
+            ),
             pw.SizedBox(height: 6),
-            pw.Text('Barangay: $barangay', style: const pw.TextStyle(fontSize: 10)),
+            pw.Text(
+              'Barangay: $barangay',
+              style: const pw.TextStyle(fontSize: 10),
+            ),
             pw.Text('Period: $period', style: const pw.TextStyle(fontSize: 10)),
             pw.SizedBox(height: 16),
             _buildTable(newCounts, oldCounts),
@@ -40,13 +53,25 @@ class ReportPdfService {
       ),
     );
 
-    await Printing.sharePdf(bytes: await doc.save(), filename: '$fileTitle.pdf');
+    await Printing.sharePdf(
+      bytes: await doc.save(),
+      filename: '$fileTitle.pdf',
+    );
   }
 
-  pw.Widget _buildTable(Map<String, int> newCounts, Map<String, int>? oldCounts) {
+  pw.Widget _buildTable(
+    Map<String, int> newCounts,
+    Map<String, int>? oldCounts,
+  ) {
     final headers = ['', 'Old', 'New'];
     final rows = newCounts.entries
-        .map((e) => [e.key, (oldCounts?[e.key]?.toString() ?? '—'), e.value.toString()])
+        .map(
+          (e) => [
+            e.key,
+            (oldCounts?[e.key]?.toString() ?? '—'),
+            e.value.toString(),
+          ],
+        )
         .toList();
     return pw.TableHelper.fromTextArray(
       headers: headers,
@@ -54,7 +79,11 @@ class ReportPdfService {
       headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
       cellStyle: const pw.TextStyle(fontSize: 10),
       cellAlignment: pw.Alignment.centerLeft,
-      columnWidths: {0: const pw.FlexColumnWidth(3), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1)},
+      columnWidths: {
+        0: const pw.FlexColumnWidth(3),
+        1: const pw.FlexColumnWidth(1),
+        2: const pw.FlexColumnWidth(1),
+      },
     );
   }
 
@@ -77,8 +106,18 @@ class ReportPdfService {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(name, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-        pw.Container(width: 200, decoration: const pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(width: 0.5))), padding: const pw.EdgeInsets.only(top: 2), child: pw.Text(label, style: const pw.TextStyle(fontSize: 8))),
+        pw.Text(
+          name,
+          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.Container(
+          width: 200,
+          decoration: const pw.BoxDecoration(
+            border: pw.Border(top: pw.BorderSide(width: 0.5)),
+          ),
+          padding: const pw.EdgeInsets.only(top: 2),
+          child: pw.Text(label, style: const pw.TextStyle(fontSize: 8)),
+        ),
       ],
     );
   }

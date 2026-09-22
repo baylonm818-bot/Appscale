@@ -23,7 +23,13 @@ class SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.h2.copyWith(fontSize: 15, color: AppColors.textPrimary)),
+          Text(
+            title,
+            style: AppTextStyles.h2.copyWith(
+              fontSize: 15,
+              color: AppColors.textPrimary,
+            ),
+          ),
           const SizedBox(height: 14),
           child,
         ],

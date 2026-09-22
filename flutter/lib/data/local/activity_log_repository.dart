@@ -12,18 +12,24 @@ import 'app_data_bus.dart';
 class ActivityLogRepository {
   Box get _box => Hive.box(HiveBoxes.activityLog);
 
-  Future<void> logActivity({required String type, required String title}) async {
+  Future<void> logActivity({
+    required String type,
+    required String title,
+  }) async {
     await _box.add(
-      ActivityLogEntry(type: type, title: title, timestamp: DateTime.now()).toMap(),
+      ActivityLogEntry(
+        type: type,
+        title: title,
+        timestamp: DateTime.now(),
+      ).toMap(),
     );
     AppDataBus.notifyChanged();
   }
 
   List<ActivityLogEntry> getRecent({int limit = 5}) {
-    final entries = _box.values
-        .map((e) => ActivityLogEntry.fromMap(e as Map))
-        .toList()
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    final entries =
+        _box.values.map((e) => ActivityLogEntry.fromMap(e as Map)).toList()
+          ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return entries.take(limit).toList();
   }
 }

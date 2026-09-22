@@ -15,9 +15,16 @@ class ComingSoonPlaceholder extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.hourglass_empty, size: 32, color: AppColors.textMuted),
+          const Icon(
+            Icons.hourglass_empty,
+            size: 32,
+            color: AppColors.textMuted,
+          ),
           const SizedBox(height: 8),
-          Text('$label — coming next', style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
+          Text(
+            '$label — coming next',
+            style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+          ),
         ],
       ),
     );

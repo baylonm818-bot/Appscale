@@ -107,9 +107,11 @@ function NeedAttention() {
     }
 
     if (ageFilter !== 'all') {
-      list = list.filter((c) =>
-        ageFilter === '0-23' ? c.age_in_months <= 23 : c.age_in_months >= 24
-      );
+      list = list.filter((c) => {
+        if (ageFilter === '0-11') return c.age_in_months <= 11;
+        if (ageFilter === '12-23') return c.age_in_months >= 12 && c.age_in_months <= 23;
+        return c.age_in_months >= 24;
+      });
     }
 
     if (sortBy === 'priority') {
@@ -248,7 +250,8 @@ function NeedAttention() {
           className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <option value="all">All Ages</option>
-          <option value="0-23">0–23 mos</option>
+          <option value="0-11">0–11 mos</option>
+          <option value="12-23">12–23 mos</option>
           <option value="24-59">24–59 mos</option>
         </select>
 

@@ -23,9 +23,17 @@ class MotherRiskService {
     // or breastfeeding practice, it just sits in the log as a missed entry.
     if (!latest.present) return;
 
-    final newRisk = latest.observation == 'Signs of concern' ? 'At-risk' : 'Normal';
-    final newBreastfeeding = latest.breastfeedingPractice ?? mother.breastfeedingPractice;
+    final newRisk = latest.observation == 'Signs of concern'
+        ? 'At-risk'
+        : 'Normal';
+    final newBreastfeeding =
+        latest.breastfeedingPractice ?? mother.breastfeedingPractice;
 
-    await _motherRepo.update(mother.copyWith(riskStatus: newRisk, breastfeedingPractice: newBreastfeeding));
+    await _motherRepo.update(
+      mother.copyWith(
+        riskStatus: newRisk,
+        breastfeedingPractice: newBreastfeeding,
+      ),
+    );
   }
 }

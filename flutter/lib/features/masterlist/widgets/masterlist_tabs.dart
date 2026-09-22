@@ -34,7 +34,10 @@ class MasterlistTabs extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: isSelected ? AppColors.primaryGreen : Colors.transparent, width: 2.5),
+              bottom: BorderSide(
+                color: isSelected ? AppColors.primaryGreen : Colors.transparent,
+                width: 2.5,
+              ),
             ),
           ),
           alignment: Alignment.center,

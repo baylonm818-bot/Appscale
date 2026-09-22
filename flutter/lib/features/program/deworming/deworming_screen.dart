@@ -20,7 +20,8 @@ class DewormingScreen extends StatefulWidget {
   State<DewormingScreen> createState() => _DewormingScreenState();
 }
 
-class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProviderStateMixin {
+class _DewormingScreenState extends State<DewormingScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _dewormingRepo = DewormingRepository();
   final _childRepo = ChildRepository();
@@ -45,8 +46,13 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
       valueListenable: AppDataBus.version,
       builder: (context, version, childWidget) {
         final records = _dewormingRepo.getAllForBarangay(widget.barangay);
-        final allChildren = _childRepo.getByBarangay(widget.barangay).where((c) => c.isActive).toList();
-        final eligibleChildren = allChildren.where((c) => c.ageInMonths >= 12 && c.ageInMonths <= 59).toList();
+        final allChildren = _childRepo
+            .getByBarangay(widget.barangay)
+            .where((c) => c.isActive)
+            .toList();
+        final eligibleChildren = allChildren
+            .where((c) => c.ageInMonths >= 12 && c.ageInMonths <= 59)
+            .toList();
 
         // Children who were dewormed in the current 6-month round
         final sixMonthsAgo = DateTime.now().subtract(const Duration(days: 180));
@@ -57,7 +63,8 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
 
         final coveragePct = eligibleChildren.isEmpty
             ? 0
-            : ((recentRecipients.length / eligibleChildren.length) * 100).round();
+            : ((recentRecipients.length / eligibleChildren.length) * 100)
+                  .round();
 
         return Scaffold(
           appBar: AppBar(
@@ -71,10 +78,12 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
                 onPressed: () {
                   Navigator.push(
                     context,
-                    appPageRoute(AddProgramScheduleScreen(
-                      prefillProgramType: 'Deworming',
-                      initialTitle: 'Barangay Deworming Day',
-                    )),
+                    appPageRoute(
+                      AddProgramScheduleScreen(
+                        prefillProgramType: 'Deworming',
+                        initialTitle: 'Barangay Deworming Day',
+                      ),
+                    ),
                   );
                 },
               ),
@@ -95,7 +104,10 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
               // Summary Banner
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
+                ),
                 color: AppColors.surface,
                 child: Row(
                   children: [
@@ -122,7 +134,9 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
                         'Coverage',
                         '$coveragePct%',
                         coveragePct >= 85 ? 'Target Met' : 'Ongoing Campaign',
-                        coveragePct >= 85 ? AppColors.primaryGreen : AppColors.statOrange,
+                        coveragePct >= 85
+                            ? AppColors.primaryGreen
+                            : AppColors.statOrange,
                       ),
                     ),
                   ],
@@ -131,7 +145,12 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
 
               // Search Bar
               Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.sm),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: 'Search child name...',
@@ -144,7 +163,8 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+                  onChanged: (val) =>
+                      setState(() => _searchQuery = val.trim().toLowerCase()),
                 ),
               ),
 
@@ -176,7 +196,12 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildMetricTile(String title, String val, String subtitle, Color color) {
+  Widget _buildMetricTile(
+    String title,
+    String val,
+    String subtitle,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
@@ -187,11 +212,24 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.caption.copyWith(fontSize: 10, color: AppColors.textMuted)),
+          Text(
+            title,
+            style: AppTextStyles.caption.copyWith(
+              fontSize: 10,
+              color: AppColors.textMuted,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(val, style: AppTextStyles.h2.copyWith(fontSize: 18, color: color)),
+          Text(
+            val,
+            style: AppTextStyles.h2.copyWith(fontSize: 18, color: color),
+          ),
           const SizedBox(height: 2),
-          Text(subtitle, style: AppTextStyles.caption.copyWith(fontSize: 9), overflow: TextOverflow.ellipsis),
+          Text(
+            subtitle,
+            style: AppTextStyles.caption.copyWith(fontSize: 9),
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );
@@ -200,7 +238,9 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
   Widget _buildRecordsList(List<DewormingRecord> records) {
     final filtered = _searchQuery.isEmpty
         ? records
-        : records.where((r) => r.childName.toLowerCase().contains(_searchQuery)).toList();
+        : records
+              .where((r) => r.childName.toLowerCase().contains(_searchQuery))
+              .toList();
 
     if (filtered.isEmpty) {
       return Center(
@@ -209,9 +249,16 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.healing_outlined, size: 48, color: AppColors.textMuted),
+              const Icon(
+                Icons.healing_outlined,
+                size: 48,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(height: 12),
-              Text('No Deworming records found', style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
+              Text(
+                'No Deworming records found',
+                style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+              ),
             ],
           ),
         ),
@@ -224,11 +271,13 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
       separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
         final r = filtered[i];
-        final dateStr = '${r.dateGiven.month}/${r.dateGiven.day}/${r.dateGiven.year}';
+        final dateStr =
+            '${r.dateGiven.month}/${r.dateGiven.day}/${r.dateGiven.year}';
         final nextDueStr = r.nextDueDate != null
             ? '${r.nextDueDate!.month}/${r.nextDueDate!.day}/${r.nextDueDate!.year}'
             : '—';
-        final hasAdverse = r.adverseEvents.isNotEmpty && r.adverseEvents != 'None';
+        final hasAdverse =
+            r.adverseEvents.isNotEmpty && r.adverseEvents != 'None';
 
         return Container(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -244,7 +293,9 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
                 children: [
                   CircleAvatar(
                     radius: 16,
-                    backgroundColor: AppColors.statOrange.withValues(alpha: 0.15),
+                    backgroundColor: AppColors.statOrange.withValues(
+                      alpha: 0.15,
+                    ),
                     child: const Icon(
                       Icons.healing,
                       size: 18,
@@ -256,17 +307,28 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(r.childName, style: AppTextStyles.h3.copyWith(fontSize: 14)),
-                        Text('${r.round} • Age: ${r.ageInMonths} mos', style: AppTextStyles.caption),
+                        Text(
+                          r.childName,
+                          style: AppTextStyles.h3.copyWith(fontSize: 14),
+                        ),
+                        Text(
+                          '${r.round} • Age: ${r.ageInMonths} mos',
+                          style: AppTextStyles.caption,
+                        ),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.darkGreen.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.darkGreen.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: AppColors.darkGreen.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Text(
                       r.drugName,
@@ -285,27 +347,50 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Given: $dateStr by ${r.administeredBy}', style: AppTextStyles.caption.copyWith(fontSize: 11)),
-                  Text('Next Round: $nextDueStr', style: AppTextStyles.caption.copyWith(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.darkGreen)),
+                  Text(
+                    'Given: $dateStr by ${r.administeredBy}',
+                    style: AppTextStyles.caption.copyWith(fontSize: 11),
+                  ),
+                  Text(
+                    'Next Round: $nextDueStr',
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkGreen,
+                    ),
+                  ),
                 ],
               ),
               if (hasAdverse) ...[
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.statRed.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     'Adverse event: ${r.adverseEvents}',
-                    style: const TextStyle(color: AppColors.statRed, fontSize: 10, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: AppColors.statRed,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
               if (r.remarks.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Text('Note: ${r.remarks}', style: AppTextStyles.caption.copyWith(fontStyle: FontStyle.italic, color: AppColors.textMuted)),
+                Text(
+                  'Note: ${r.remarks}',
+                  style: AppTextStyles.caption.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: AppColors.textMuted,
+                  ),
+                ),
               ],
             ],
           ),
@@ -314,10 +399,15 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildEligibleList(List<Child> eligible, Set<String> recentRecipients) {
+  Widget _buildEligibleList(
+    List<Child> eligible,
+    Set<String> recentRecipients,
+  ) {
     final filtered = _searchQuery.isEmpty
         ? eligible
-        : eligible.where((c) => c.fullName.toLowerCase().contains(_searchQuery)).toList();
+        : eligible
+              .where((c) => c.fullName.toLowerCase().contains(_searchQuery))
+              .toList();
 
     if (filtered.isEmpty) {
       return Center(
@@ -326,9 +416,16 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.people_outline, size: 48, color: AppColors.textMuted),
+              const Icon(
+                Icons.people_outline,
+                size: 48,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(height: 12),
-              Text('No target preschool children found', style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
+              Text(
+                'No target preschool children found',
+                style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+              ),
             ],
           ),
         ),
@@ -357,7 +454,11 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
                 backgroundColor: AppColors.statOrange.withValues(alpha: 0.12),
                 child: Text(
                   child.initials,
-                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.statOrange, fontSize: 12),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.statOrange,
+                    fontSize: 12,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -365,25 +466,45 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(child.fullName, style: AppTextStyles.h3.copyWith(fontSize: 14)),
+                    Text(
+                      child.fullName,
+                      style: AppTextStyles.h3.copyWith(fontSize: 14),
+                    ),
                     const SizedBox(height: 2),
-                    Text('${child.ageLabel} (${child.ageInMonths} mos) • Standard: Albendazole 400mg', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                    Text(
+                      '${child.ageLabel} (${child.ageInMonths} mos) • Standard: Albendazole 400mg',
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
               if (hasReceived)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryGreen.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.check_circle, size: 14, color: AppColors.primaryGreen),
+                      Icon(
+                        Icons.check_circle,
+                        size: 14,
+                        color: AppColors.primaryGreen,
+                      ),
                       SizedBox(width: 4),
-                      Text('Dewormed', style: TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.w700, fontSize: 11)),
+                      Text(
+                        'Dewormed',
+                        style: TextStyle(
+                          color: AppColors.primaryGreen,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
                     ],
                   ),
                 )
@@ -392,9 +513,17 @@ class _DewormingScreenState extends State<DewormingScreen> with SingleTickerProv
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.darkGreen,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                   onPressed: () {
                     Navigator.push(

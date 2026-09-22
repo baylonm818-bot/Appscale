@@ -49,12 +49,18 @@ class AddProfileSheet extends StatelessWidget {
           ),
           Text(
             'What would you like to add?',
-            style: AppTextStyles.h1.copyWith(fontSize: 18, color: AppColors.textPrimary),
+            style: AppTextStyles.h1.copyWith(
+              fontSize: 18,
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             'Choose a profile to register',
-            style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted),
+            style: AppTextStyles.body.copyWith(
+              fontSize: 12,
+              color: AppColors.textMuted,
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           _AddOptionTile(
@@ -142,9 +148,18 @@ class _AddOptionTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: AppTextStyles.label.copyWith(color: accentColor, fontSize: 15)),
+                    Text(
+                      title,
+                      style: AppTextStyles.label.copyWith(
+                        color: accentColor,
+                        fontSize: 15,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(subtitle, style: AppTextStyles.body.copyWith(fontSize: 12)),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.body.copyWith(fontSize: 12),
+                    ),
                   ],
                 ),
               ),

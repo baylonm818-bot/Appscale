@@ -14,7 +14,9 @@ class RecentActivityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SectionCard(
       title: 'Recent Activity',
-      child: entries.isEmpty ? const _EmptyState() : _EntryList(entries: entries),
+      child: entries.isEmpty
+          ? const _EmptyState()
+          : _EntryList(entries: entries),
     );
   }
 }
@@ -33,7 +35,10 @@ class _EmptyState extends StatelessWidget {
           Text(
             'Nothing recorded yet. Actions you take — adding a child,\nlogging a measurement, creating a referral — will show up here.',
             textAlign: TextAlign.center,
-            style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+            style: AppTextStyles.body.copyWith(
+              fontSize: 11,
+              color: AppColors.textMuted,
+            ),
           ),
         ],
       ),
@@ -51,7 +56,8 @@ class _EntryList extends StatelessWidget {
       children: [
         for (int i = 0; i < entries.length; i++) ...[
           _EntryTile(entry: entries[i]),
-          if (i != entries.length - 1) const Divider(height: 18, color: AppColors.border),
+          if (i != entries.length - 1)
+            const Divider(height: 18, color: AppColors.border),
         ],
       ],
     );
@@ -70,12 +76,33 @@ class _EntryTile extends StatelessWidget {
         Container(
           width: 34,
           height: 34,
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
-          child: Icon(ActivityTypeMeta.iconFor(entry.type), size: 17, color: color),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            ActivityTypeMeta.iconFor(entry.type),
+            size: 17,
+            color: color,
+          ),
         ),
         const SizedBox(width: 10),
-        Expanded(child: Text(entry.title, style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textPrimary))),
-        Text(timeAgo(entry.timestamp), style: AppTextStyles.body.copyWith(fontSize: 10, color: AppColors.textMuted)),
+        Expanded(
+          child: Text(
+            entry.title,
+            style: AppTextStyles.body.copyWith(
+              fontSize: 12,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        Text(
+          timeAgo(entry.timestamp),
+          style: AppTextStyles.body.copyWith(
+            fontSize: 10,
+            color: AppColors.textMuted,
+          ),
+        ),
       ],
     );
   }

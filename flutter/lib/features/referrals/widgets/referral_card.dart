@@ -31,10 +31,7 @@ class ReferralCard extends StatelessWidget {
   }
 
   void _openDetailSheet(BuildContext context) {
-    ReferralDetailSheet.show(
-      context,
-      referral: referral,
-    );
+    ReferralDetailSheet.show(context, referral: referral);
   }
 
   @override
@@ -64,10 +61,16 @@ class ReferralCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (showBeneficiaryName)
-                            Text(referral.beneficiaryName, style: AppTextStyles.label.copyWith(fontSize: 14)),
+                            Text(
+                              referral.beneficiaryName,
+                              style: AppTextStyles.label.copyWith(fontSize: 14),
+                            ),
                           Text(
                             '${referral.createdAt.year}-${referral.createdAt.month.toString().padLeft(2, '0')}-${referral.createdAt.day.toString().padLeft(2, '0')}',
-                            style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+                            style: AppTextStyles.body.copyWith(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ],
                       ),
@@ -76,14 +79,20 @@ class ReferralCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(referral.reason, style: AppTextStyles.body.copyWith(fontSize: 12)),
+                Text(
+                  referral.reason,
+                  style: AppTextStyles.body.copyWith(fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
                     Expanded(
                       child: Text(
                         referral.facility,
-                        style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
                     Row(
@@ -97,7 +106,11 @@ class ReferralCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 2),
-                        const Icon(Icons.chevron_right, size: 14, color: AppColors.darkGreen),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 14,
+                          color: AppColors.darkGreen,
+                        ),
                       ],
                     ),
                   ],
@@ -106,17 +119,24 @@ class ReferralCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+                      border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(
-                          referral.status == 'Completed' ? Icons.check_circle_outline : Icons.notes,
+                          referral.status == 'Completed'
+                              ? Icons.check_circle_outline
+                              : Icons.notes,
                           size: 13,
                           color: _statusColor,
                         ),

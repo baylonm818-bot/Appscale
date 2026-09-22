@@ -213,10 +213,10 @@ function UserManagement() {
     activeBHW: 0,
   };
 
-  const barangays = [...new Set(users.map((u) => u.barangay))];
+  const barangays = GASAN_BARANGAYS;
 
   const filteredUsers = users
-    .filter((u) => u.role === activeTab)
+    .filter((u) => activeTab === 'all' || u.role === activeTab)
     .filter((u) => showArchive ? Boolean(u.deleted_at) : !u.deleted_at)
     .filter((u) => barangayFilter === 'all' || u.barangay === barangayFilter)
     .filter((u) => statusFilter === 'all' || u.status === statusFilter)
@@ -234,9 +234,9 @@ function UserManagement() {
         <StatCard
           label="Total Users"
           value={safeStats.totalUsers}
-          sublabel={`${barangays.length} barangays`}
-          onClick={() => { setActiveTab('bhw'); setStatusFilter('all'); }}
-          isActive={statusFilter === 'all' && (activeTab === 'bhw' || activeTab === 'bns')}
+          sublabel="All assigned users"
+          onClick={() => { setActiveTab('all'); setStatusFilter('all'); }}
+          isActive={activeTab === 'all' && statusFilter === 'all'}
         />
         <StatCard
           label="Total BNS"
@@ -256,7 +256,7 @@ function UserManagement() {
           label="Active Users"
           value={safeStats.activeUsers}
           sublabel="Currently active"
-          onClick={() => { setStatusFilter('active'); setActiveTab('bhw'); }}
+          onClick={() => { setStatusFilter('active'); }}
           isActive={statusFilter === 'active'}
         />
       </div>

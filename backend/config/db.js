@@ -1,27 +1,43 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-const config = {
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || '',
-    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-    waitForConnections: true,
+const parseMysqlUrl = (url) => {
+    if (!url) return null;
+    try {
+        const parsed = new URL(url);
+        return {
+            host: parsed.hostname,
+            user: decodeURIComponent(parsed.username),
+            password: decodeURIComponent(parsed.password),
+            database: parsed.pathname.replace(/^\//, ''),
+            port: parsed.port ? Number(parsed.port) : 3306,
+        };
+    } catch (error) {
+        return null;
+    }
 };
 
-// Log non-sensitive connection info for easier debugging (mask password)
+const dbUrlConfig = parseMysqlUrl(process.env.DATABASE_URL || process.env.MYSQL_URL);
+const config = {
+    host: dbUrlConfig?.host || process.env.DB_HOST || 'localhost',
+    user: dbUrlConfig?.user || process.env.DB_USER || 'root',
+    password: dbUrlConfig?.password ?? process.env.DB_PASSWORD ?? '',
+    database: dbUrlConfig?.database || process.env.DB_NAME || '',
+    port: dbUrlConfig?.port || (process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306),
+    waitForConnections: true,
+    ...(process.env.DB_SSL === 'true' ? { ssl: { rejectUnauthorized: false } } : {}),
+};
+
 console.log('DB config:', {
     host: config.host,
     user: config.user,
     database: config.database,
     port: config.port,
-    password: config.password ? '****' : '(empty)'
+    password: config.password ? '****' : '(empty)',
 });
 
 const pool = mysql.createPool(config);
 
-// Test a connection immediately and log a helpful error if it fails
 (async () => {
     try {
         const [rows] = await pool.query('SELECT 1+1 AS result');

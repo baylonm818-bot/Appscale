@@ -10,12 +10,13 @@ class ActivityLogEntry {
   });
 
   Map<String, dynamic> toMap() => {
-        'type': type,
-        'title': title,
-        'timestamp': timestamp.toIso8601String(),
-      };
+    'type': type,
+    'title': title,
+    'timestamp': timestamp.toIso8601String(),
+  };
 
-  factory ActivityLogEntry.fromMap(Map<dynamic, dynamic> map) => ActivityLogEntry(
+  factory ActivityLogEntry.fromMap(Map<dynamic, dynamic> map) =>
+      ActivityLogEntry(
         type: map['type'] as String,
         title: map['title'] as String,
         timestamp: DateTime.parse(map['timestamp'] as String),

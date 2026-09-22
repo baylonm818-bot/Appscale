@@ -15,7 +15,11 @@ class GrowthClassifier {
     return g == 'male' || g == 'boy' || g == 'm';
   }
 
-  static String classifyWeightForAge({required double weightKg, required int ageMonths, required String gender}) {
+  static String classifyWeightForAge({
+    required double weightKg,
+    required int ageMonths,
+    required String gender,
+  }) {
     final table = _isMale(gender) ? weightForAgeBoys : weightForAgeGirls;
     final t = _nearest(table, ageMonths);
     if (weightKg < t.negThreeSD) return 'Severely Underweight';
@@ -24,7 +28,11 @@ class GrowthClassifier {
     return 'Normal';
   }
 
-  static String classifyHeightForAge({required double heightCm, required int ageMonths, required String gender}) {
+  static String classifyHeightForAge({
+    required double heightCm,
+    required int ageMonths,
+    required String gender,
+  }) {
     final table = _isMale(gender) ? heightForAgeBoys : heightForAgeGirls;
     final t = _nearest(table, ageMonths);
     if (heightCm < t.negThreeSD) return 'Severely Stunted';
@@ -33,9 +41,15 @@ class GrowthClassifier {
     return 'Normal';
   }
 
-  static String classifyWeightForLength({required double weightKg, required double heightCm, required String gender}) {
+  static String classifyWeightForLength({
+    required double weightKg,
+    required double heightCm,
+    required String gender,
+  }) {
     final table = _isMale(gender) ? weightForLengthBoys : weightForLengthGirls;
-    final roundedLength = (heightCm * 2).round() / 2; // nearest 0.5cm, per the source table's own instructions
+    final roundedLength =
+        (heightCm * 2).round() /
+        2; // nearest 0.5cm, per the source table's own instructions
     final t = _nearestByLength(table, roundedLength);
     if (weightKg < t.negThreeSD) return 'SAM';
     if (weightKg < t.negTwoSD) return 'MAM';
@@ -47,12 +61,19 @@ class GrowthClassifier {
   static SdThresholds _nearest(Map<int, SdThresholds> table, int age) {
     if (table.containsKey(age)) return table[age]!;
     final keys = table.keys.toList()..sort();
-    return table[keys.reduce((a, b) => (a - age).abs() < (b - age).abs() ? a : b)]!;
+    return table[keys.reduce(
+      (a, b) => (a - age).abs() < (b - age).abs() ? a : b,
+    )]!;
   }
 
-  static SdThresholds _nearestByLength(Map<double, SdThresholds> table, double length) {
+  static SdThresholds _nearestByLength(
+    Map<double, SdThresholds> table,
+    double length,
+  ) {
     if (table.containsKey(length)) return table[length]!;
     final keys = table.keys.toList()..sort();
-    return table[keys.reduce((a, b) => (a - length).abs() < (b - length).abs() ? a : b)]!;
+    return table[keys.reduce(
+      (a, b) => (a - length).abs() < (b - length).abs() ? a : b,
+    )]!;
   }
 }

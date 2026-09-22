@@ -26,14 +26,20 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
   late final String _motherId = widget.mother.id;
 
   Future<void> _handleEdit(Mother current) async {
-    await Navigator.push<Mother>(context, appPageRoute(AddMotherScreen(existingMother: current)));
+    await Navigator.push<Mother>(
+      context,
+      appPageRoute(AddMotherScreen(existingMother: current)),
+    );
     // No manual refresh needed — AddMotherScreen's save already calls
     // MotherRepository.update, which fires AppDataBus, which this screen
     // is already listening to below.
   }
 
   Future<void> _handleAddVisit(Mother current) async {
-    await Navigator.push(context, appPageRoute(AddCounselingVisitScreen(mother: current)));
+    await Navigator.push(
+      context,
+      appPageRoute(AddCounselingVisitScreen(mother: current)),
+    );
   }
 
   Future<void> _handleStatusAction(Mother current) async {
@@ -45,10 +51,14 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
         accentColor: const Color(0xFF9A2D5E),
       );
       if (reason != null) {
-        await MotherRepository().update(current.copyWith(isActive: false, inactiveReason: reason));
+        await MotherRepository().update(
+          current.copyWith(isActive: false, inactiveReason: reason),
+        );
       }
     } else {
-      await MotherRepository().update(current.copyWith(isActive: true, inactiveReason: null));
+      await MotherRepository().update(
+        current.copyWith(isActive: true, inactiveReason: null),
+      );
     }
   }
 
@@ -70,7 +80,10 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
                   onStatusActionPressed: () => _handleStatusAction(mother),
                   onAddVisitPressed: () => _handleAddVisit(mother),
                 ),
-                MotherProfileTabBar(currentIndex: _tabIndex, onChanged: (i) => setState(() => _tabIndex = i)),
+                MotherProfileTabBar(
+                  currentIndex: _tabIndex,
+                  onChanged: (i) => setState(() => _tabIndex = i),
+                ),
                 Expanded(
                   child: IndexedStack(
                     index: _tabIndex,

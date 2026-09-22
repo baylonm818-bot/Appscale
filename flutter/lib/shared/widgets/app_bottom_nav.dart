@@ -26,7 +26,11 @@ class AppBottomNav extends StatelessWidget {
   static const _items = [
     _NavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
     _NavItem(Icons.list_alt_outlined, Icons.list_alt_rounded, 'List'),
-    _NavItem(Icons.medical_services_outlined, Icons.medical_services_rounded, 'Program'),
+    _NavItem(
+      Icons.medical_services_outlined,
+      Icons.medical_services_rounded,
+      'Program',
+    ),
     _NavItem(Icons.bar_chart_outlined, Icons.bar_chart_rounded, 'Reports'),
   ];
 
@@ -40,7 +44,13 @@ class AppBottomNav extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(28),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -77,13 +87,25 @@ class AppBottomNav extends StatelessWidget {
                 color: isActive ? AppColors.lightGreenBg : Colors.transparent,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(isActive ? item.activeIcon : item.icon, color: isActive ? AppColors.darkGreen : AppColors.textMuted, size: 21),
+              child: Icon(
+                isActive ? item.activeIcon : item.icon,
+                color: isActive ? AppColors.darkGreen : AppColors.textMuted,
+                size: 21,
+              ),
             ),
             const SizedBox(height: 2),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 220),
-              style: TextStyle(color: isActive ? AppColors.darkGreen : AppColors.textMuted, fontSize: 10.5, fontWeight: isActive ? FontWeight.w700 : FontWeight.w500),
-              child: Text(item.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+              style: TextStyle(
+                color: isActive ? AppColors.darkGreen : AppColors.textMuted,
+                fontSize: 10.5,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+              ),
+              child: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -109,9 +131,19 @@ class AppBottomNav extends StatelessWidget {
                   end: Alignment.bottomRight,
                   colors: [AppColors.primaryGreen, AppColors.darkGreen],
                 ),
-                boxShadow: [BoxShadow(color: AppColors.darkGreen.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))],
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.darkGreen.withValues(alpha: 0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
+              child: const Icon(
+                Icons.add_rounded,
+                color: Colors.white,
+                size: 26,
+              ),
             ),
           ),
         ),

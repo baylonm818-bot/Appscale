@@ -15,18 +15,27 @@ class OverviewTab extends StatelessWidget {
   const OverviewTab({super.key});
 
   static final _settings = SettingsRepository();
-  String get _currentBarangay => _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+  String get _currentBarangay =>
+      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   @override
   Widget build(BuildContext context) {
-    final enrolled = FeedingEnrollmentRepository().getEnrolledChildren(_currentBarangay);
-    final loggedDays = FeedingAttendanceRepository().getLoggedDates(_currentBarangay).length;
-    final rate = FeedingAttendanceRepository().getAttendanceRate(_currentBarangay);
+    final enrolled = FeedingEnrollmentRepository().getEnrolledChildren(
+      _currentBarangay,
+    );
+    final loggedDays = FeedingAttendanceRepository()
+        .getLoggedDates(_currentBarangay)
+        .length;
+    final rate = FeedingAttendanceRepository().getAttendanceRate(
+      _currentBarangay,
+    );
     final schedule = FeedingScheduleRepository().get(_currentBarangay);
 
     final samCount = enrolled.where((c) => c.wastingStatus == 'SAM').length;
     final mamCount = enrolled.where((c) => c.wastingStatus == 'MAM').length;
-    final recoveredCount = enrolled.where((c) => c.wastingStatus == 'Normal').length;
+    final recoveredCount = enrolled
+        .where((c) => c.wastingStatus == 'Normal')
+        .length;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -38,11 +47,19 @@ class OverviewTab extends StatelessWidget {
             children: [
               Text('Schedule', style: AppTextStyles.h2.copyWith(fontSize: 16)),
               InkWell(
-                onTap: () => Navigator.push(context, appPageRoute(const SetFeedingScheduleScreen())),
+                onTap: () => Navigator.push(
+                  context,
+                  appPageRoute(const SetFeedingScheduleScreen()),
+                ),
                 child: Row(
                   children: [
-                    Icon(schedule == null ? Icons.add_circle_outline : Icons.edit_outlined,
-                        size: 14, color: AppColors.primaryGreen),
+                    Icon(
+                      schedule == null
+                          ? Icons.add_circle_outline
+                          : Icons.edit_outlined,
+                      size: 14,
+                      color: AppColors.primaryGreen,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       schedule == null ? 'Set schedule' : 'Edit',
@@ -67,26 +84,42 @@ class OverviewTab extends StatelessWidget {
               border: Border.all(color: AppColors.border),
             ),
             child: schedule == null
-                ? Text('No feeding schedule set yet.',
-                    style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted))
+                ? Text(
+                    'No feeding schedule set yet.',
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  )
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${schedule.daysSummary} · ${schedule.startTime} – ${schedule.endTime}',
-                          style: AppTextStyles.label.copyWith(fontSize: 13)),
+                      Text(
+                        '${schedule.daysSummary} · ${schedule.startTime} – ${schedule.endTime}',
+                        style: AppTextStyles.label.copyWith(fontSize: 13),
+                      ),
                       const SizedBox(height: 2),
-                      Text(schedule.location, style: AppTextStyles.body.copyWith(fontSize: 12)),
+                      Text(
+                        schedule.location,
+                        style: AppTextStyles.body.copyWith(fontSize: 12),
+                      ),
                       Text(
                         schedule.endDate == null
                             ? 'Ongoing'
                             : 'Until ${schedule.endDate!.year}-${schedule.endDate!.month.toString().padLeft(2, '0')}-${schedule.endDate!.day.toString().padLeft(2, '0')}',
-                        style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ],
                   ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text('Program Summary', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+          Text(
+            'Program Summary',
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
@@ -133,15 +166,25 @@ class OverviewTab extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.trending_down_outlined, size: 18, color: AppColors.primaryGreen),
+                    const Icon(
+                      Icons.trending_down_outlined,
+                      size: 18,
+                      color: AppColors.primaryGreen,
+                    ),
                     const SizedBox(width: 8),
-                    Text('SAM / MAM Recovery Tracker', style: AppTextStyles.label.copyWith(fontSize: 13)),
+                    Text(
+                      'SAM / MAM Recovery Tracker',
+                      style: AppTextStyles.label.copyWith(fontSize: 13),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Monitors acute malnutrition reduction across the 120-day feeding cycle.',
-                  style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -175,17 +218,28 @@ class OverviewTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text('Weight trend per child', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+          Text(
+            'Weight trend per child',
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
           const SizedBox(height: 4),
           Text(
             'Individual trends since enrollment — a barangay-wide average would hide who is actually improving.',
-            style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+            style: AppTextStyles.body.copyWith(
+              fontSize: 11,
+              color: AppColors.textMuted,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           if (enrolled.isEmpty)
-            const EmptyState(icon: Icons.child_care_outlined, message: 'No children enrolled yet.')
+            const EmptyState(
+              icon: Icons.child_care_outlined,
+              message: 'No children enrolled yet.',
+            )
           else
-            ...enrolled.map((c) => _WeightTrendRow(childId: c.id, childName: c.fullName)),
+            ...enrolled.map(
+              (c) => _WeightTrendRow(childId: c.id, childName: c.fullName),
+            ),
         ],
       ),
     );
@@ -197,7 +251,11 @@ class _RecoveryPill extends StatelessWidget {
   final int count;
   final Color color;
 
-  const _RecoveryPill({required this.label, required this.count, required this.color});
+  const _RecoveryPill({
+    required this.label,
+    required this.count,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -212,12 +270,20 @@ class _RecoveryPill extends StatelessWidget {
         children: [
           Text(
             '$count',
-            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 18),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: TextStyle(color: color, fontSize: 10.5, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: color,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -278,8 +344,11 @@ class _WeightTrendRow extends StatelessWidget {
     Color trendColor = AppColors.textMuted;
     if (measurements.length >= 2) {
       final diff = measurements.last.weightKg - measurements.first.weightKg;
-      trendLabel = '${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(1)} kg since enrollment';
-      trendColor = diff > 0 ? AppColors.primaryGreen : (diff < 0 ? AppColors.statRed : AppColors.textMuted);
+      trendLabel =
+          '${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(1)} kg since enrollment';
+      trendColor = diff > 0
+          ? AppColors.primaryGreen
+          : (diff < 0 ? AppColors.statRed : AppColors.textMuted);
     } else if (measurements.length == 1) {
       trendLabel = 'Only 1 measurement so far';
     }
@@ -295,10 +364,19 @@ class _WeightTrendRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(child: Text(childName, style: AppTextStyles.label.copyWith(fontSize: 13))),
+          Expanded(
+            child: Text(
+              childName,
+              style: AppTextStyles.label.copyWith(fontSize: 13),
+            ),
+          ),
           Text(
             trendLabel,
-            style: AppTextStyles.body.copyWith(fontSize: 11, color: trendColor, fontWeight: FontWeight.w600),
+            style: AppTextStyles.body.copyWith(
+              fontSize: 11,
+              color: trendColor,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

@@ -48,32 +48,42 @@ class ReferralRepository {
 
     // Dispatch notification to mobile user
     if (newStatus == 'Completed') {
-      await NotificationRepository().add(AppNotification(
-        id: NotificationRepository.generateId(),
-        title: 'Referral Resolved by RHU',
-        message: 'RHU/BHW completed referral for ${updated.beneficiaryName}. Outcome: ${notes?.isNotEmpty == true ? notes : "Referral resolved by RHU."}',
-        type: 'referral_completed',
-        referralId: updated.id,
-        timestamp: DateTime.now(),
-      ));
+      await NotificationRepository().add(
+        AppNotification(
+          id: NotificationRepository.generateId(),
+          title: 'Referral Resolved by RHU',
+          message:
+              'RHU/BHW completed referral for ${updated.beneficiaryName}. Outcome: ${notes?.isNotEmpty == true ? notes : "Referral resolved by RHU."}',
+          type: 'referral_completed',
+          referralId: updated.id,
+          timestamp: DateTime.now(),
+        ),
+      );
     } else if (newStatus == 'In Progress') {
-      await NotificationRepository().add(AppNotification(
-        id: NotificationRepository.generateId(),
-        title: 'Referral In Progress at RHU',
-        message: 'RHU/BHW is currently evaluating ${updated.beneficiaryName}.',
-        type: 'referral_in_progress',
-        referralId: updated.id,
-        timestamp: DateTime.now(),
-      ));
+      await NotificationRepository().add(
+        AppNotification(
+          id: NotificationRepository.generateId(),
+          title: 'Referral In Progress at RHU',
+          message:
+              'RHU/BHW is currently evaluating ${updated.beneficiaryName}.',
+          type: 'referral_in_progress',
+          referralId: updated.id,
+          timestamp: DateTime.now(),
+        ),
+      );
     }
 
     AppDataBus.notifyChanged();
   }
 
-  List<Referral> getAll() => _box.values.map((r) => Referral.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+  List<Referral> getAll() => _box.values
+      .map((r) => Referral.fromMap(Map<String, dynamic>.from(r as Map)))
+      .toList();
 
   List<Referral> getForBeneficiary(String beneficiaryId) {
-    final list = getAll().where((r) => r.beneficiaryId == beneficiaryId).toList();
+    final list = getAll()
+        .where((r) => r.beneficiaryId == beneficiaryId)
+        .toList();
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list;
   }
@@ -84,16 +94,28 @@ class ReferralRepository {
   List<Referral> getForBarangay(String barangay) {
     final list = getAll().where((r) => r.barangay == barangay).toList();
     list.sort((a, b) {
-      const order = {'Pending': 0, 'In Progress': 1, 'Completed': 2, 'Cancelled': 3};
-      final statusCompare = (order[a.status] ?? 9).compareTo(order[b.status] ?? 9);
+      const order = {
+        'Pending': 0,
+        'In Progress': 1,
+        'Completed': 2,
+        'Cancelled': 3,
+      };
+      final statusCompare = (order[a.status] ?? 9).compareTo(
+        order[b.status] ?? 9,
+      );
       if (statusCompare != 0) return statusCompare;
       return b.createdAt.compareTo(a.createdAt);
     });
     return list;
   }
 
-  int countOpenForBarangay(String barangay) =>
-      getAll().where((r) => r.barangay == barangay && (r.status == 'Pending' || r.status == 'In Progress')).length;
+  int countOpenForBarangay(String barangay) => getAll()
+      .where(
+        (r) =>
+            r.barangay == barangay &&
+            (r.status == 'Pending' || r.status == 'In Progress'),
+      )
+      .length;
 
   static String generateId() => const Uuid().v4();
 }

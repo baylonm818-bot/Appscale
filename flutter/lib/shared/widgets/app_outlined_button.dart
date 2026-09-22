@@ -26,10 +26,15 @@ class AppOutlinedButton extends StatelessWidget {
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: AppColors.border, width: 1.3),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           backgroundColor: AppColors.surface,
         ),
-        child: Text(label, style: AppTextStyles.label.copyWith(color: color, fontSize: 15)),
+        child: Text(
+          label,
+          style: AppTextStyles.label.copyWith(color: color, fontSize: 15),
+        ),
       ),
     );
   }

@@ -17,6 +17,11 @@ class FeedingSuggestionService {
 
   List<Child> getSuggested(String barangay) => _childRepo
       .getByBarangay(barangay)
-      .where((c) => c.isActive && _isMalnourished(c) && !_enrollmentRepo.isEnrolled(c.id))
+      .where(
+        (c) =>
+            c.isActive &&
+            _isMalnourished(c) &&
+            !_enrollmentRepo.isEnrolled(c.id),
+      )
       .toList();
 }

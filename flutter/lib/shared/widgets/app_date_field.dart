@@ -21,7 +21,8 @@ class AppDateField extends StatelessWidget {
 
   Future<void> _pickDate(BuildContext context) async {
     final effectiveFirst = firstDate ?? DateTime(1950);
-    final effectiveLast = lastDate ?? DateTime.now().add(const Duration(days: 365 * 5));
+    final effectiveLast =
+        lastDate ?? DateTime.now().add(const Duration(days: 365 * 5));
     final baseInitial = value ?? DateTime.now();
     final clampedInitial = baseInitial.isBefore(effectiveFirst)
         ? effectiveFirst
@@ -61,14 +62,20 @@ class AppDateField extends StatelessWidget {
                         ? 'dd/mm/yyyy'
                         : '${value!.day.toString().padLeft(2, '0')}/${value!.month.toString().padLeft(2, '0')}/${value!.year}',
                     style: AppTextStyles.body.copyWith(
-                      color: value == null ? AppColors.textMuted : AppColors.textPrimary,
+                      color: value == null
+                          ? AppColors.textMuted
+                          : AppColors.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.textMuted),
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  size: 16,
+                  color: AppColors.textMuted,
+                ),
               ],
             ),
           ),

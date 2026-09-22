@@ -40,7 +40,10 @@ void main() {
 
     test('delegates reset password requests to the auth endpoint', () async {
       expect(
-        () => AuthApi.resetPassword(email: 'admin@appscale.test', newPassword: 'newpass123'),
+        () => AuthApi.resetPassword(
+          email: 'admin@appscale.test',
+          newPassword: 'newpass123',
+        ),
         throwsA(isA<Exception>()),
       );
     });

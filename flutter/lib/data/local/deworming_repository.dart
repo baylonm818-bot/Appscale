@@ -10,7 +10,9 @@ class DewormingRepository {
 
   List<DewormingRecord> getAllForBarangay(String barangay) {
     final list = _box.values
-        .map((e) => DewormingRecord.fromMap(Map<String, dynamic>.from(e as Map)))
+        .map(
+          (e) => DewormingRecord.fromMap(Map<String, dynamic>.from(e as Map)),
+        )
         .where((r) => r.barangay == barangay)
         .toList();
     list.sort((a, b) => b.dateGiven.compareTo(a.dateGiven));
@@ -19,7 +21,9 @@ class DewormingRepository {
 
   List<DewormingRecord> getByChildId(String childId) {
     final list = _box.values
-        .map((e) => DewormingRecord.fromMap(Map<String, dynamic>.from(e as Map)))
+        .map(
+          (e) => DewormingRecord.fromMap(Map<String, dynamic>.from(e as Map)),
+        )
         .where((r) => r.childId == childId)
         .toList();
     list.sort((a, b) => b.dateGiven.compareTo(a.dateGiven));

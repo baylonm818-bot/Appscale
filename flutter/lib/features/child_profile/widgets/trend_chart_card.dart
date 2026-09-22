@@ -21,7 +21,20 @@ class TrendChartCard extends StatelessWidget {
     required this.valueOf,
   });
 
-  static const _monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  static const _monthLabels = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -36,16 +49,29 @@ class TrendChartCard extends StatelessWidget {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: AppTextStyles.h2.copyWith(fontSize: 15, color: color)),
+            Text(
+              title,
+              style: AppTextStyles.h2.copyWith(fontSize: 15, color: color),
+            ),
             const SizedBox(height: 16),
             Container(
               height: 100,
               alignment: Alignment.center,
-              child: Text('No $title data recorded yet.', style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted)),
+              child: Text(
+                'No $title data recorded yet.',
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
             ),
           ],
         ),
@@ -54,31 +80,60 @@ class TrendChartCard extends StatelessWidget {
 
     final minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
     final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
-    final yPadding = (maxY - minY == 0) ? 2.0 : ((maxY - minY) * 0.2).clamp(0.5, 5.0);
+    final yPadding = (maxY - minY == 0)
+        ? 2.0
+        : ((maxY - minY) * 0.2).clamp(0.5, 5.0);
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.h2.copyWith(fontSize: 15, color: color)),
+          Text(
+            title,
+            style: AppTextStyles.h2.copyWith(fontSize: 15, color: color),
+          ),
           const SizedBox(height: 16),
           SizedBox(
             height: 180,
             child: LineChart(
               LineChartData(
                 minX: spots.length == 1 ? -0.5 : 0,
-                maxX: spots.length == 1 ? 0.5 : (measurementsAscending.length - 1).toDouble(),
+                maxX: spots.length == 1
+                    ? 0.5
+                    : (measurementsAscending.length - 1).toDouble(),
                 minY: (minY - yPadding).clamp(0.0, double.infinity),
                 maxY: maxY + yPadding,
-                gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: _yInterval(spots)),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: _yInterval(spots),
+                ),
                 titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   leftTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: true, reservedSize: 34, getTitlesWidget: (v, _) => Text(v.toStringAsFixed(0), style: const TextStyle(fontSize: 10, color: AppColors.textMuted))),
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 34,
+                      getTitlesWidget: (v, _) => Text(
+                        v.toStringAsFixed(0),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
                   ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
@@ -86,9 +141,19 @@ class TrendChartCard extends StatelessWidget {
                       reservedSize: 24,
                       getTitlesWidget: (value, _) {
                         final index = value.toInt();
-                        if (index < 0 || index >= measurementsAscending.length) return const SizedBox.shrink();
+                        if (index < 0 || index >= measurementsAscending.length)
+                          return const SizedBox.shrink();
                         final month = measurementsAscending[index].date.month;
-                        return Padding(padding: const EdgeInsets.only(top: 4), child: Text(_monthLabels[month - 1], style: const TextStyle(fontSize: 10, color: AppColors.textMuted)));
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            _monthLabels[month - 1],
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        );
                       },
                     ),
                   ),
@@ -100,8 +165,19 @@ class TrendChartCard extends StatelessWidget {
                     isCurved: spots.length > 1,
                     color: color,
                     barWidth: 3,
-                    dotData: FlDotData(show: true, getDotPainter: (spot, pct, bar, index) => FlDotCirclePainter(radius: 4, color: color, strokeWidth: 0)),
-                    belowBarData: BarAreaData(show: true, color: color.withValues(alpha: 0.12)),
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, pct, bar, index) =>
+                          FlDotCirclePainter(
+                            radius: 4,
+                            color: color,
+                            strokeWidth: 0,
+                          ),
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: color.withValues(alpha: 0.12),
+                    ),
                   ),
                 ],
               ),
@@ -115,7 +191,9 @@ class TrendChartCard extends StatelessWidget {
   double _yInterval(List<FlSpot> spots) {
     if (spots.isEmpty) return 1;
     final values = spots.map((s) => s.y);
-    final range = values.reduce((a, b) => a > b ? a : b) - values.reduce((a, b) => a < b ? a : b);
+    final range =
+        values.reduce((a, b) => a > b ? a : b) -
+        values.reduce((a, b) => a < b ? a : b);
     if (range <= 0) return 1;
     return (range / 4).clamp(0.5, double.infinity);
   }

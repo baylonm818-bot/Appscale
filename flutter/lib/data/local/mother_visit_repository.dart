@@ -12,7 +12,9 @@ class MotherVisitRepository {
   List<MotherVisit> getForMother(String motherId) {
     final raw = _box.get(motherId) as List?;
     if (raw == null) return [];
-    final list = raw.map((e) => MotherVisit.fromMap(Map<String, dynamic>.from(e as Map))).toList();
+    final list = raw
+        .map((e) => MotherVisit.fromMap(Map<String, dynamic>.from(e as Map)))
+        .toList();
     list.sort((a, b) => b.date.compareTo(a.date));
     return list;
   }

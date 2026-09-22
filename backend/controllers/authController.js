@@ -66,6 +66,7 @@ exports.forgotPassword = async (req, res) => {
     }
 
     const user = rows[0];
+    console.log('Selected user for login:', user.user_id, user.role);
 
     if (!['admin', 'bhw'].includes(user.role)) {
       return res.status(403).json({ message: 'Password reset is only available for admin and BHW accounts.' });
@@ -183,17 +184,13 @@ exports.login = async (req, res) => {
   const loginIdentifier = (email || username || '').trim();
 
   if (!loginIdentifier || !password) {
-    return res.status(400).json({ message: 'Email and password are required.' });
+    return res.status(400).json({ message: 'Username or email and password are required.' });
   }
 
   const identifierVariants = Array.from(new Set([
     loginIdentifier,
     loginIdentifier.toLowerCase(),
     loginIdentifier.toLowerCase().replace(/\s+/g, ''),
-    'admin@example.com',
-    'admin@apscale.local',
-    'admin',
-    'admincadag',
   ])).filter(Boolean);
 
   console.log('Login attempt for:', loginIdentifier);
@@ -215,7 +212,7 @@ exports.login = async (req, res) => {
     console.log('DB returned rows:', rows && rows.length);
 
     if (rows.length === 0) {
-      return res.status(401).json({ message: 'Invalid email or password.' });
+      return res.status(401).json({ message: 'Invalid username/email or password.' });
     }
 
     const user = rows[0];
@@ -224,21 +221,7 @@ exports.login = async (req, res) => {
     const usesLoginAttemptLock = ['bhw', 'bns'].includes(userRole);
 
     if (isAdmin && user.status === 'locked') {
-      const lockUntil = user.lock_until ? new Date(user.lock_until).getTime() : 0;
-
-      if (lockUntil > Date.now()) {
-        const minutesRemaining = Math.ceil((lockUntil - Date.now()) / 60000);
-        return res.status(423).json({
-          message: `Admin account is temporarily locked. Try again in ${minutesRemaining} minute(s).`,
-        });
-      }
-
-      await pool.query(
-        'UPDATE users SET status = ?, failed_attempts = 0, lock_until = NULL WHERE user_id = ?',
-        ['active', user.user_id]
-      );
-      user.status = 'active';
-      user.failed_attempts = 0;
+      return res.status(423).json({ message: 'Admin account is locked. Please contact the administrator.' });
     }
 
     if (usesLoginAttemptLock && user.status === 'locked') {
@@ -255,17 +238,13 @@ exports.login = async (req, res) => {
 
       if (isAdmin) {
         if (newFailedAttempts >= MAX_FAILED_ATTEMPTS) {
-          const lockLevel = Number(user.lock_level || 0) + 1;
-          const lockMinutes = lockLevel * 5;
-          const lockUntil = new Date(Date.now() + lockMinutes * 60 * 1000);
-
           await pool.query(
-            'UPDATE users SET failed_attempts = 0, status = ?, lock_until = ?, lock_level = ?, deactivation_reason = ? WHERE user_id = ?',
-            ['locked', lockUntil, lockLevel, `Admin login lockout ${lockLevel}: ${lockMinutes} minutes`, user.user_id]
+            'UPDATE users SET failed_attempts = 0, status = ?, deactivation_reason = ? WHERE user_id = ?',
+            ['locked', `Admin locked after ${MAX_FAILED_ATTEMPTS} failed attempts`, user.user_id]
           );
 
           return res.status(423).json({
-            message: `Admin account locked for ${lockMinutes} minutes after ${MAX_FAILED_ATTEMPTS} failed attempts.`,
+            message: `Admin account locked after ${MAX_FAILED_ATTEMPTS} failed attempts.`,
           });
         }
 
@@ -274,7 +253,7 @@ exports.login = async (req, res) => {
           [newFailedAttempts, user.user_id]
         );
         return res.status(401).json({
-          message: `Invalid email or password. ${MAX_FAILED_ATTEMPTS - newFailedAttempts} attempt(s) remaining.`,
+          message: `Invalid username/email or password. ${MAX_FAILED_ATTEMPTS - newFailedAttempts} attempt(s) remaining.`,
         });
       }
 
@@ -297,7 +276,7 @@ exports.login = async (req, res) => {
 
     if (isAdmin) {
       await pool.query(
-        'UPDATE users SET failed_attempts = 0, status = ?, lock_until = NULL WHERE user_id = ?',
+        'UPDATE users SET failed_attempts = 0, status = ? WHERE user_id = ?',
         ['active', user.user_id]
       );
     } else if (usesLoginAttemptLock) {
@@ -337,5 +316,30 @@ exports.login = async (req, res) => {
       return res.status(500).json({ message: 'Server error. See error for details.', error: error && (error.stack || error.message) });
     }
     return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+// Development-only login helper: bypasses some lock logic for quick testing
+exports.devLogin = async (req, res) => {
+  if (process.env.NODE_ENV === 'production') return res.status(404).json({ message: 'Not found' });
+  const { email, username, password } = req.body;
+  const loginIdentifier = (email || username || '').trim();
+  if (!loginIdentifier || !password) return res.status(400).json({ message: 'Identifier and password required' });
+
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) OR LOWER(TRIM(username)) = LOWER(TRIM(?)) AND deleted_at IS NULL LIMIT 1',
+      [loginIdentifier, loginIdentifier]
+    );
+    if (!rows || rows.length === 0) return res.status(401).json({ message: 'Invalid credentials' });
+    const user = rows[0];
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+
+    const token = jwt.sign({ user_id: user.user_id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+    return res.status(200).json({ message: 'Login successful', token });
+  } catch (err) {
+    console.error('Dev login error:', err && (err.stack || err.message));
+    return res.status(500).json({ message: 'Server error' });
   }
 };

@@ -12,7 +12,10 @@ class BeneficiaryLinkService {
   final _childRepo = ChildRepository();
   final _motherRepo = MotherRepository();
 
-  Future<void> linkChildToMother({required Child child, required Mother mother}) async {
+  Future<void> linkChildToMother({
+    required Child child,
+    required Mother mother,
+  }) async {
     if (child.guardian.linkedMotherId != mother.id) {
       final updatedChild = child.copyWith(
         guardian: Guardian(
@@ -26,12 +29,17 @@ class BeneficiaryLinkService {
     }
 
     if (!mother.linkedChildIds.contains(child.id)) {
-      final updatedMother = mother.copyWith(linkedChildIds: [...mother.linkedChildIds, child.id]);
+      final updatedMother = mother.copyWith(
+        linkedChildIds: [...mother.linkedChildIds, child.id],
+      );
       await _motherRepo.update(updatedMother);
     }
   }
 
-  Future<void> unlinkChildFromMother({required Child child, required Mother mother}) async {
+  Future<void> unlinkChildFromMother({
+    required Child child,
+    required Mother mother,
+  }) async {
     final updatedChild = child.copyWith(
       guardian: Guardian(
         fullName: child.guardian.fullName,
@@ -43,7 +51,9 @@ class BeneficiaryLinkService {
     await _childRepo.update(updatedChild);
 
     final updatedMother = mother.copyWith(
-      linkedChildIds: mother.linkedChildIds.where((id) => id != child.id).toList(),
+      linkedChildIds: mother.linkedChildIds
+          .where((id) => id != child.id)
+          .toList(),
     );
     await _motherRepo.update(updatedMother);
   }

@@ -44,7 +44,9 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
     } else {
       // Prefer children >= 12 months
       final eligible = _allChildren.where((c) => c.ageInMonths >= 12).toList();
-      _selectedChild = eligible.isNotEmpty ? eligible.first : (_allChildren.isNotEmpty ? _allChildren.first : null);
+      _selectedChild = eligible.isNotEmpty
+          ? eligible.first
+          : (_allChildren.isNotEmpty ? _allChildren.first : null);
     }
   }
 
@@ -57,15 +59,17 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
 
   Future<void> _save() async {
     if (_selectedChild == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a child')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a child')));
       return;
     }
     if (_selectedChild!.ageInMonths < 12) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Cannot administer deworming: Child is under 12 months old'),
+          content: Text(
+            'Cannot administer deworming: Child is under 12 months old',
+          ),
           backgroundColor: AppColors.statRed,
         ),
       );
@@ -86,7 +90,9 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
         drugName: _drugName,
         round: _round,
         adverseEvents: _adverseEvents,
-        administeredBy: _adminByCtrl.text.trim().isEmpty ? 'BNS Maria' : _adminByCtrl.text.trim(),
+        administeredBy: _adminByCtrl.text.trim().isEmpty
+            ? 'BNS Maria'
+            : _adminByCtrl.text.trim(),
         remarks: _remarksCtrl.text.trim(),
         nextDueDate: _dateGiven.add(const Duration(days: 180)),
         createdAt: DateTime.now(),
@@ -105,9 +111,9 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -132,7 +138,10 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Beneficiary Details', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+              Text(
+                'Beneficiary Details',
+                style: AppTextStyles.h2.copyWith(fontSize: 16),
+              ),
               const SizedBox(height: AppSpacing.sm),
 
               if (widget.initialChild != null)
@@ -147,7 +156,10 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.initialChild!.fullName, style: AppTextStyles.h3),
+                      Text(
+                        widget.initialChild!.fullName,
+                        style: AppTextStyles.h3,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         'Age: ${widget.initialChild!.ageLabel} (${widget.initialChild!.ageInMonths} months) • ${widget.initialChild!.gender}',
@@ -163,7 +175,9 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                     labelText: 'Select Child',
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   items: _allChildren.map((child) {
                     final eligible = child.ageInMonths >= 12;
@@ -195,7 +209,9 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                       : AppColors.primaryGreen.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isUnder12Mos ? AppColors.statRed : AppColors.primaryGreen,
+                    color: isUnder12Mos
+                        ? AppColors.statRed
+                        : AppColors.primaryGreen,
                   ),
                 ),
                 child: Row(
@@ -203,7 +219,9 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                   children: [
                     Icon(
                       isUnder12Mos ? Icons.block : Icons.check_circle_outline,
-                      color: isUnder12Mos ? AppColors.statRed : AppColors.primaryGreen,
+                      color: isUnder12Mos
+                          ? AppColors.statRed
+                          : AppColors.primaryGreen,
                       size: 20,
                     ),
                     const SizedBox(width: 10),
@@ -217,7 +235,9 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                                 : 'DOH Target Age: 12–59 Months (1–4 yrs)',
                             style: AppTextStyles.h3.copyWith(
                               fontSize: 13,
-                              color: isUnder12Mos ? AppColors.statRed : AppColors.darkGreen,
+                              color: isUnder12Mos
+                                  ? AppColors.statRed
+                                  : AppColors.darkGreen,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -235,7 +255,10 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
               ),
 
               const SizedBox(height: AppSpacing.lg),
-              Text('Administration Details', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+              Text(
+                'Administration Details',
+                style: AppTextStyles.h2.copyWith(fontSize: 16),
+              ),
               const SizedBox(height: AppSpacing.sm),
 
               AppDateField(
@@ -254,7 +277,9 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                   labelText: 'Deworming Drug & Dosage',
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 items: const [
                   DropdownMenuItem(
@@ -279,7 +304,9 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                   labelText: 'Campaign Round',
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 items: const [
                   DropdownMenuItem(
@@ -308,7 +335,9 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                   labelText: 'Adverse Reactions Observed',
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 items: const [
                   DropdownMenuItem(
@@ -323,14 +352,8 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                     value: 'Abdominal Discomfort',
                     child: Text('Abdominal Discomfort / Cramps'),
                   ),
-                  DropdownMenuItem(
-                    value: 'Vomiting',
-                    child: Text('Vomiting'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Headache',
-                    child: Text('Headache'),
-                  ),
+                  DropdownMenuItem(value: 'Vomiting', child: Text('Vomiting')),
+                  DropdownMenuItem(value: 'Headache', child: Text('Headache')),
                   DropdownMenuItem(
                     value: 'Other',
                     child: Text('Other Reaction'),
@@ -350,9 +373,12 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                   hintText: 'e.g. BNS Maria',
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
 
               const SizedBox(height: AppSpacing.md),
@@ -365,7 +391,9 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                   hintText: 'e.g. Ingested under direct observation',
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
 

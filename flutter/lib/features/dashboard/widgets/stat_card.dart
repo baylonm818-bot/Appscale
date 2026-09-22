@@ -11,38 +11,58 @@ class StatCard extends StatelessWidget {
   final StatCardData data;
   final VoidCallback? onTap;
   const StatCard({super.key, required this.data, this.onTap});
-  
 
   @override
   Widget build(BuildContext context) {
-     return InkWell(
+    return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              data.label,
+              style: AppTextStyles.body.copyWith(fontSize: 11),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              data.value,
+              style: AppTextStyles.h1.copyWith(fontSize: 24),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              data.subtitle,
+              style: AppTextStyles.body.copyWith(
+                fontSize: 11,
+                color: AppColors.textMuted,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 10),
+            Container(
+              height: 4,
+              decoration: BoxDecoration(
+                color: data.accentColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
+        ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(data.label, style: AppTextStyles.body.copyWith(fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 6),
-          Text(data.value, style: AppTextStyles.h1.copyWith(fontSize: 24), maxLines: 1, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 4),
-          Text(data.subtitle, style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 10),
-          Container(
-            height: 4,
-            decoration: BoxDecoration(color: data.accentColor, borderRadius: BorderRadius.circular(2)),
-          ),
-        ],
-      ),
-    )
-     );
+    );
   }
 }

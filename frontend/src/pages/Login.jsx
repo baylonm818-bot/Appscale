@@ -67,7 +67,7 @@ function LoginCard() {
 
   // ── Load saved email on mount ──
   useEffect(() => {
-    const savedEmail = localStorage.getItem("remembered_email") || localStorage.getItem("remembered_username");
+    const savedEmail = localStorage.getItem("remembered_email");
     const savedRemember = localStorage.getItem("remember_me") === "true";
     if (savedRemember && savedEmail) {
       setEmail(savedEmail);
@@ -87,19 +87,17 @@ function LoginCard() {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Login failed.");
 
       // ── Handle Remember Me ──
       if (rememberMe) {
-        localStorage.setItem("remembered_email", email);
+        localStorage.setItem("remembered_email", email.trim());
         localStorage.setItem("remember_me", "true");
-        localStorage.removeItem("remembered_username");
       } else {
         localStorage.removeItem("remembered_email");
-        localStorage.removeItem("remembered_username");
         localStorage.removeItem("remember_me");
       }
 
@@ -108,11 +106,11 @@ function LoginCard() {
       // HttpOnly secure cookies for production to mitigate XSS risks.
       if (rememberMe) {
         localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.role);
+        localStorage.setItem("role", data.user.role);
         localStorage.setItem("user", JSON.stringify(data.user));
       } else {
         sessionStorage.setItem("token", data.token);
-        sessionStorage.setItem("role", data.role);
+        sessionStorage.setItem("role", data.user.role);
         sessionStorage.setItem("user", JSON.stringify(data.user));
       }
       navigate(data.user.role === "admin" ? "/admin/dashboard" : "/bhw/dashboard", { replace: true });
@@ -374,11 +372,11 @@ function LoginCard() {
       ) : (
         <form onSubmit={handleSignIn} className="space-y-5">
           <Input
-            label="Email"
-            type="email"
+            label="Username or Email"
+            type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
+            placeholder="Enter your username or email"
             required
           />
 

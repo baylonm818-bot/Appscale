@@ -14,7 +14,8 @@ class AddFeedingFeedbackScreen extends StatefulWidget {
   const AddFeedingFeedbackScreen({super.key});
 
   @override
-  State<AddFeedingFeedbackScreen> createState() => _AddFeedingFeedbackScreenState();
+  State<AddFeedingFeedbackScreen> createState() =>
+      _AddFeedingFeedbackScreenState();
 }
 
 class _AddFeedingFeedbackScreenState extends State<AddFeedingFeedbackScreen> {
@@ -24,18 +25,21 @@ class _AddFeedingFeedbackScreenState extends State<AddFeedingFeedbackScreen> {
   String? _tag = 'Went well';
   bool _isSaving = false;
 
-  String get _currentBarangay => _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+  String get _currentBarangay =>
+      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   Future<void> _save() async {
     if (_noteController.text.trim().isEmpty || _date == null) return;
     setState(() => _isSaving = true);
-    await FeedingFeedbackRepository().add(FeedingFeedback(
-      id: FeedingFeedbackRepository.generateId(),
-      date: _date!,
-      note: _noteController.text.trim(),
-      tag: _tag,
-      barangay: _currentBarangay,
-    ));
+    await FeedingFeedbackRepository().add(
+      FeedingFeedback(
+        id: FeedingFeedbackRepository.generateId(),
+        date: _date!,
+        note: _noteController.text.trim(),
+        tag: _tag,
+        barangay: _currentBarangay,
+      ),
+    );
     if (!mounted) return;
     Navigator.pop(context);
   }
@@ -45,35 +49,83 @@ class _AddFeedingFeedbackScreenState extends State<AddFeedingFeedbackScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(children: [
-          Container(
-            width: double.infinity, color: AppColors.darkGreen,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
-            child: Row(children: [
-              InkWell(onTap: () => Navigator.pop(context), child: const Icon(Icons.arrow_back, color: Colors.white)),
-              const SizedBox(width: AppSpacing.sm),
-              Text('Session Feedback', style: AppTextStyles.h2.copyWith(color: Colors.white)),
-            ]),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                FormSectionCard(title: 'How did it go?', highlighted: true, children: [
-                  AppDateField(label: 'Date', value: _date, onChanged: (d) => setState(() => _date = d)),
-                  Row(children: [
-                    Expanded(child: _tagOption('Went well', AppColors.primaryGreen)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _tagOption('Needs improvement', AppColors.statOrange)),
-                  ]),
-                  AppTextField(label: 'Notes', hint: 'What did you observe?', icon: Icons.notes_outlined, controller: _noteController, maxLines: 4),
-                ]),
-                const SizedBox(height: AppSpacing.xl),
-                FormActionButtons(saveLabel: 'Save Feedback', onSave: _save, onCancel: () => Navigator.pop(context), isSaving: _isSaving),
-              ]),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              color: AppColors.darkGreen,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.lg,
+              ),
+              child: Row(
+                children: [
+                  InkWell(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.arrow_back, color: Colors.white),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Session Feedback',
+                    style: AppTextStyles.h2.copyWith(color: Colors.white),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ]),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FormSectionCard(
+                      title: 'How did it go?',
+                      highlighted: true,
+                      children: [
+                        AppDateField(
+                          label: 'Date',
+                          value: _date,
+                          onChanged: (d) => setState(() => _date = d),
+                        ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _tagOption(
+                                'Went well',
+                                AppColors.primaryGreen,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _tagOption(
+                                'Needs improvement',
+                                AppColors.statOrange,
+                              ),
+                            ),
+                          ],
+                        ),
+                        AppTextField(
+                          label: 'Notes',
+                          hint: 'What did you observe?',
+                          icon: Icons.notes_outlined,
+                          controller: _noteController,
+                          maxLines: 4,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    FormActionButtons(
+                      saveLabel: 'Save Feedback',
+                      onSave: _save,
+                      onCancel: () => Navigator.pop(context),
+                      isSaving: _isSaving,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -86,8 +138,19 @@ class _AddFeedingFeedbackScreenState extends State<AddFeedingFeedbackScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: selected ? color : AppColors.surface, borderRadius: BorderRadius.circular(10), border: Border.all(color: selected ? color : AppColors.border)),
-        child: Text(label, style: TextStyle(color: selected ? Colors.white : AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+        decoration: BoxDecoration(
+          color: selected ? color : AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: selected ? color : AppColors.border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

@@ -19,7 +19,14 @@ class EmptyState extends StatelessWidget {
           children: [
             Icon(icon, size: 36, color: AppColors.textMuted),
             const SizedBox(height: 10),
-            Text(message, textAlign: TextAlign.center, style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.body.copyWith(
+                fontSize: 12,
+                color: AppColors.textMuted,
+              ),
+            ),
           ],
         ),
       ),

@@ -26,15 +26,31 @@ class MasterlistHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Master list', style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 20)),
+          Text(
+            'Master list',
+            style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 20),
+          ),
           const SizedBox(height: AppSpacing.md),
           Container(
             padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Row(
               children: [
-                Expanded(child: _segment('Children ($childrenCount)', MasterlistCategory.children)),
-                Expanded(child: _segment('Mothers ($mothersCount)', MasterlistCategory.mothers)),
+                Expanded(
+                  child: _segment(
+                    'Children ($childrenCount)',
+                    MasterlistCategory.children,
+                  ),
+                ),
+                Expanded(
+                  child: _segment(
+                    'Mothers ($mothersCount)',
+                    MasterlistCategory.mothers,
+                  ),
+                ),
               ],
             ),
           ),

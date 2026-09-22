@@ -24,7 +24,10 @@ class FormActionButtons extends StatelessWidget {
       children: [
         AppButton(label: saveLabel, onPressed: onSave, isLoading: isSaving),
         const SizedBox(height: 10),
-        AppOutlinedButton(label: 'Cancel', onPressed: isSaving ? null : onCancel),
+        AppOutlinedButton(
+          label: 'Cancel',
+          onPressed: isSaving ? null : onCancel,
+        ),
       ],
     );
   }

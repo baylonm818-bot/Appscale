@@ -13,31 +13,50 @@ class DashboardRepository {
   final _childRepo = ChildRepository();
   final _motherRepo = MotherRepository();
 
-  String get _currentBarangay => _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+  String get _currentBarangay =>
+      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   List<StatCardData> getStatCards() {
-    final activeChildren = _childRepo.getByBarangay(_currentBarangay).where((c) => c.isActive).toList();
-    final activeMothers = _motherRepo.getAll().where((m) => m.barangay == _currentBarangay && m.isActive).toList();
+    final activeChildren = _childRepo
+        .getByBarangay(_currentBarangay)
+        .where((c) => c.isActive)
+        .toList();
+    final activeMothers = _motherRepo
+        .getAll()
+        .where((m) => m.barangay == _currentBarangay && m.isActive)
+        .toList();
 
-    final childrenThisMonth = activeChildren.where((c) => _isThisMonth(c.createdAt)).length;
-    final mothersThisMonth = activeMothers.where((m) => _isThisMonth(m.createdAt)).length;
+    final childrenThisMonth = activeChildren
+        .where((c) => _isThisMonth(c.createdAt))
+        .length;
+    final mothersThisMonth = activeMothers
+        .where((m) => _isThisMonth(m.createdAt))
+        .length;
     // SAM = wasting SAM (weight-for-length), not weight-for-age —
     // the clinically correct definition for this indicator.
-    final samCases = activeChildren.where((c) => c.wastingStatus == 'SAM').length;
+    final samCases = activeChildren
+        .where((c) => c.wastingStatus == 'SAM')
+        .length;
 
-    final enrolledCount = FeedingEnrollmentRepository().getEnrolledChildren(_currentBarangay).length;
+    final enrolledCount = FeedingEnrollmentRepository()
+        .getEnrolledChildren(_currentBarangay)
+        .length;
 
     return [
       StatCardData(
         label: 'Children 0-59 months',
         value: '${activeChildren.length}',
-        subtitle: childrenThisMonth > 0 ? '↑ $childrenThisMonth this month' : 'No new records this month',
+        subtitle: childrenThisMonth > 0
+            ? '↑ $childrenThisMonth this month'
+            : 'No new records this month',
         accentColor: AppColors.primaryGreen,
       ),
       StatCardData(
         label: 'Lactating Mothers',
         value: '${activeMothers.length}',
-        subtitle: mothersThisMonth > 0 ? '↑ $mothersThisMonth this month' : 'No new records this month',
+        subtitle: mothersThisMonth > 0
+            ? '↑ $mothersThisMonth this month'
+            : 'No new records this month',
         accentColor: AppColors.statAmber,
       ),
       StatCardData(
@@ -49,7 +68,9 @@ class DashboardRepository {
       StatCardData(
         label: 'Feeding enrollees',
         value: '$enrolledCount',
-        subtitle: enrolledCount > 0 ? '$enrolledCount active in program' : 'No children enrolled yet',
+        subtitle: enrolledCount > 0
+            ? '$enrolledCount active in program'
+            : 'No children enrolled yet',
         accentColor: AppColors.statPurple,
       ),
     ];
@@ -81,7 +102,14 @@ class DashboardRepository {
     final total = weighedChildren.length;
     return order
         .where((s) => counts[s]! > 0)
-        .map((s) => NutritionStatusItem(label: s, count: counts[s]!, percent: (counts[s]! / total) * 100, color: ChildStatusMeta.colorFor(s)))
+        .map(
+          (s) => NutritionStatusItem(
+            label: s,
+            count: counts[s]!,
+            percent: (counts[s]! / total) * 100,
+            color: ChildStatusMeta.colorFor(s),
+          ),
+        )
         .toList();
   }
 
@@ -89,8 +117,18 @@ class DashboardRepository {
     final upcoming = ProgramScheduleRepository().getUpcoming(_currentBarangay);
 
     const monthNames = [
-      'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-      'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
+      'JAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AUG',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DEC',
     ];
 
     Color colorForType(String type) {

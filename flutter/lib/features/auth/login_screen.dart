@@ -47,16 +47,20 @@ class _LoginScreenState extends State<LoginScreen> {
       final session = await AuthApi.login(email: email, password: password);
       await _settings.setRememberMe(_rememberMe);
       await _settings.setAuthToken(session.token);
-      await _settings.setAuthUser(session.toMap()['user'] as Map<String, dynamic>);
+      await _settings.setAuthUser(
+        session.toMap()['user'] as Map<String, dynamic>,
+      );
 
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainShell()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const MainShell()));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -87,7 +91,11 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.location_on, size: 14, color: AppColors.textMuted),
+                  const Icon(
+                    Icons.location_on,
+                    size: 14,
+                    color: AppColors.textMuted,
+                  ),
                   const SizedBox(width: 4),
                   Text('Municipality of Gasan', style: AppTextStyles.body),
                 ],
@@ -134,17 +142,24 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: Checkbox(
                                 value: _rememberMe,
                                 activeColor: AppColors.primaryGreen,
-                                onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                                onChanged: (v) =>
+                                    setState(() => _rememberMe = v ?? false),
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Text('Remember Me', style: AppTextStyles.body, softWrap: false),
+                            Text(
+                              'Remember Me',
+                              style: AppTextStyles.body,
+                              softWrap: false,
+                            ),
                           ],
                         ),
                         TextButton(
                           onPressed: () {
                             Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordScreen(),
+                              ),
                             );
                           },
                           style: TextButton.styleFrom(
@@ -154,7 +169,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           child: Text(
                             'Forgot Password?',
-                            style: AppTextStyles.body.copyWith(color: AppColors.darkGreen, fontWeight: FontWeight.w600),
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.darkGreen,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],

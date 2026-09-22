@@ -37,7 +37,13 @@ class FormSectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.h2.copyWith(fontSize: 15, color: AppColors.textPrimary)),
+          Text(
+            title,
+            style: AppTextStyles.h2.copyWith(
+              fontSize: 15,
+              color: AppColors.textPrimary,
+            ),
+          ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
             Text(subtitle!, style: AppTextStyles.body.copyWith(fontSize: 12)),

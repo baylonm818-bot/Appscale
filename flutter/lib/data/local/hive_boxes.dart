@@ -52,17 +52,20 @@ class HiveBoxes {
 class SettingsRepository {
   final _box = Hive.box(HiveBoxes.settings);
 
-  bool get hasSeenOnboarding => _box.get('has_seen_onboarding', defaultValue: false);
+  bool get hasSeenOnboarding =>
+      _box.get('has_seen_onboarding', defaultValue: false);
   Future<void> setSeenOnboarding() => _box.put('has_seen_onboarding', true);
 
   bool get rememberMe => _box.get('remember_me', defaultValue: false);
   Future<void> setRememberMe(bool value) => _box.put('remember_me', value);
 
   String? get authToken => _box.get('auth_token');
-  Future<void> setAuthToken(String? value) => value == null ? _box.delete('auth_token') : _box.put('auth_token', value);
+  Future<void> setAuthToken(String? value) =>
+      value == null ? _box.delete('auth_token') : _box.put('auth_token', value);
 
   Map<String, dynamic>? get authUser => _box.get('auth_user');
-  Future<void> setAuthUser(Map<String, dynamic>? value) => value == null ? _box.delete('auth_user') : _box.put('auth_user', value);
+  Future<void> setAuthUser(Map<String, dynamic>? value) =>
+      value == null ? _box.delete('auth_user') : _box.put('auth_user', value);
 
   Future<void> clearSession() async {
     await _box.delete('auth_token');

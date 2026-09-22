@@ -29,9 +29,10 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 900),
     );
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
-    _scale = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
+    _scale = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
     _controller.forward();
 
     // Use a cancellable Timer so tests can dispose the widget without leaving
@@ -76,10 +77,7 @@ class _SplashScreenState extends State<SplashScreen>
           opacity: _fade,
           child: ScaleTransition(
             scale: _scale,
-            child: Image.asset(
-              'assets/images/appscale_logo.png',
-              width: 220,
-            ),
+            child: Image.asset('assets/images/appscale_logo.png', width: 220),
           ),
         ),
       ),

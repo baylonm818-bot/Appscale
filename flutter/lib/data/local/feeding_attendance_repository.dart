@@ -10,7 +10,11 @@ class FeedingAttendanceRepository {
   String _key(String barangay, DateTime date) =>
       '$barangay|${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-  Future<void> saveForDate(String barangay, DateTime date, Map<String, String> statuses) async {
+  Future<void> saveForDate(
+    String barangay,
+    DateTime date,
+    Map<String, String> statuses,
+  ) async {
     await _box.put(_key(barangay, date), statuses);
     AppDataBus.notifyChanged();
   }
@@ -25,7 +29,11 @@ class FeedingAttendanceRepository {
     final prefix = '$barangay|';
     return _box.keys.where((k) => k.toString().startsWith(prefix)).map((k) {
       final parts = k.toString().substring(prefix.length).split('-');
-      return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+      return DateTime(
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+        int.parse(parts[2]),
+      );
     }).toList();
   }
 

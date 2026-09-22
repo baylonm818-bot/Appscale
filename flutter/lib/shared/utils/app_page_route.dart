@@ -11,11 +11,15 @@ Route<T> appPageRoute<T>(Widget page) {
     reverseTransitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (context, animation, secondaryAnimation) => page,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final slide = Tween<Offset>(begin: const Offset(0.08, 0), end: Offset.zero)
-          .chain(CurveTween(curve: Curves.easeOutCubic))
-          .animate(animation);
+      final slide = Tween<Offset>(
+        begin: const Offset(0.08, 0),
+        end: Offset.zero,
+      ).chain(CurveTween(curve: Curves.easeOutCubic)).animate(animation);
       final fade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
-      return FadeTransition(opacity: fade, child: SlideTransition(position: slide, child: child));
+      return FadeTransition(
+        opacity: fade,
+        child: SlideTransition(position: slide, child: child),
+      );
     },
   );
 }

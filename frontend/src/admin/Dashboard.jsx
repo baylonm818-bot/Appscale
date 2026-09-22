@@ -34,7 +34,8 @@ function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [timeRange, setTimeRange] = useState('3M');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const rawUser = localStorage.getItem('user') || sessionStorage.getItem('user') || '{}';
+    const user = JSON.parse(rawUser);
 
     useEffect(() => {
         const fetchMalnutrionData = async () => {
@@ -78,7 +79,7 @@ function Dashboard() {
         <div className="space-y-6">
 
             {/* Welcome Banner - soft gradient */}
-            <HeaderBanner title={`Hello, ${user.full_name || 'Admin'}!`} subtitle="Municipal Nutrition Overview" location={''} />
+            <HeaderBanner title={`Hello, ${user.full_name || user.username || 'Admin'}!`} subtitle="Municipal Nutrition Overview" location={''} />
 
             {/* Stat Cards + Nutrition Trend */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

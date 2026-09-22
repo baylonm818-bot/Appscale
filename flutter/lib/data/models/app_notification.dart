@@ -38,22 +38,22 @@ class AppNotification {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'title': title,
-        'message': message,
-        'type': type,
-        'referralId': referralId,
-        'timestamp': timestamp.toIso8601String(),
-        'isRead': isRead,
-      };
+    'id': id,
+    'title': title,
+    'message': message,
+    'type': type,
+    'referralId': referralId,
+    'timestamp': timestamp.toIso8601String(),
+    'isRead': isRead,
+  };
 
   factory AppNotification.fromMap(Map<dynamic, dynamic> map) => AppNotification(
-        id: map['id'] as String,
-        title: map['title'] as String,
-        message: map['message'] as String,
-        type: map['type'] as String,
-        referralId: map['referralId'] as String?,
-        timestamp: DateTime.parse(map['timestamp'] as String),
-        isRead: map['isRead'] as bool? ?? false,
-      );
+    id: map['id'] as String,
+    title: map['title'] as String,
+    message: map['message'] as String,
+    type: map['type'] as String,
+    referralId: map['referralId'] as String?,
+    timestamp: DateTime.parse(map['timestamp'] as String),
+    isRead: map['isRead'] as bool? ?? false,
+  );
 }

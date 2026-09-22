@@ -14,7 +14,9 @@ class FeedingFeedbackRepository {
 
   List<FeedingFeedback> getForBarangay(String barangay) {
     final list = _box.values
-        .map((e) => FeedingFeedback.fromMap(Map<String, dynamic>.from(e as Map)))
+        .map(
+          (e) => FeedingFeedback.fromMap(Map<String, dynamic>.from(e as Map)),
+        )
         .where((f) => f.barangay == barangay)
         .toList();
     list.sort((a, b) => b.date.compareTo(a.date));

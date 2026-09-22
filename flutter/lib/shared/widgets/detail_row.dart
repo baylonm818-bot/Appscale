@@ -8,7 +8,12 @@ class DetailRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const DetailRow({super.key, required this.icon, required this.label, required this.value});
+  const DetailRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +23,10 @@ class DetailRow extends StatelessWidget {
         Container(
           width: 34,
           height: 34,
-          decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Icon(icon, size: 17, color: AppColors.textMuted),
         ),
         const SizedBox(width: 12),
@@ -26,7 +34,13 @@ class DetailRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted)),
+              Text(
+                label,
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
+              ),
               const SizedBox(height: 2),
               Text(value, style: AppTextStyles.label.copyWith(fontSize: 14)),
             ],
