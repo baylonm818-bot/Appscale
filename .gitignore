@@ -1,0 +1,19 @@
+# Local secrets
+backend/.env
+frontend/.env
+frontend/.env.*
+!.env.example
+
+# Flutter generated files
+flutter/.dart_tool/
+flutter/build/
+flutter/.flutter-plugins
+flutter/.flutter-plugins-dependencies
+flutter/.packages
+flutter/**/GeneratedPluginRegistrant.*
+
+# IDE and OS files
+.DS_Store
+.idea/
+*.iml
+*.log
