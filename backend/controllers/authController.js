@@ -220,10 +220,6 @@ exports.login = async (req, res) => {
     const isAdmin = userRole === 'admin';
     const usesLoginAttemptLock = ['bhw', 'bns'].includes(userRole);
 
-    if (isAdmin && user.status === 'locked') {
-      return res.status(423).json({ message: 'Admin account is locked. Please contact the administrator.' });
-    }
-
     if (usesLoginAttemptLock && user.status === 'locked') {
       return res.status(403).json({ message: 'Account is locked. Please contact the administrator.' });
     }
@@ -234,28 +230,12 @@ exports.login = async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
     if (!passwordMatch) {
-      const newFailedAttempts = Number(user.failed_attempts || 0) + 1;
-
       if (isAdmin) {
-        if (newFailedAttempts >= MAX_FAILED_ATTEMPTS) {
-          await pool.query(
-            'UPDATE users SET failed_attempts = 0, status = ?, deactivation_reason = ? WHERE user_id = ?',
-            ['locked', `Admin locked after ${MAX_FAILED_ATTEMPTS} failed attempts`, user.user_id]
-          );
-
-          return res.status(423).json({
-            message: `Admin account locked after ${MAX_FAILED_ATTEMPTS} failed attempts.`,
-          });
-        }
-
-        await pool.query(
-          'UPDATE users SET failed_attempts = ? WHERE user_id = ?',
-          [newFailedAttempts, user.user_id]
-        );
-        return res.status(401).json({
-          message: `Invalid username/email or password. ${MAX_FAILED_ATTEMPTS - newFailedAttempts} attempt(s) remaining.`,
-        });
+        // Admin accounts are never locked — just return a generic invalid credentials message.
+        return res.status(401).json({ message: 'Invalid username/email or password.' });
       }
+
+      const newFailedAttempts = Number(user.failed_attempts || 0) + 1;
 
       if (newFailedAttempts >= MAX_FAILED_ATTEMPTS) {
         await pool.query(
@@ -274,12 +254,7 @@ exports.login = async (req, res) => {
       }
     }
 
-    if (isAdmin) {
-      await pool.query(
-        'UPDATE users SET failed_attempts = 0, status = ? WHERE user_id = ?',
-        ['active', user.user_id]
-      );
-    } else if (usesLoginAttemptLock) {
+    if (usesLoginAttemptLock) {
       await pool.query('UPDATE users SET failed_attempts = 0 WHERE user_id = ?', [user.user_id]);
     }
 

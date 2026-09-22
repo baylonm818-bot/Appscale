@@ -4,7 +4,14 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem("user") || sessionStorage.getItem("user");
+    // Determine which storage holds the active session token,
+    // then read the user from the same storage.
+    const storage = sessionStorage.getItem("token")
+      ? sessionStorage
+      : localStorage.getItem("token")
+      ? localStorage
+      : null;
+    const stored = storage ? storage.getItem("user") : null;
     return stored ? JSON.parse(stored) : null;
   });
 

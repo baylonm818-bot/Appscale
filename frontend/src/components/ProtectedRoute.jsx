@@ -1,8 +1,10 @@
 import { Navigate } from "react-router-dom";
 
 function ProtectedRoute({ children, allowedRoles }) {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    const rawUser = localStorage.getItem('user') || sessionStorage.getItem('user');
+    // Prefer sessionStorage (non-persistent login); fall back to localStorage (Remember Me).
+    const activeStorage = sessionStorage.getItem('token') ? sessionStorage : localStorage;
+    const token = activeStorage.getItem('token');
+    const rawUser = activeStorage.getItem('user');
 
     let user = {};
     if (rawUser) {
