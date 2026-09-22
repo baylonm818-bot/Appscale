@@ -64,7 +64,8 @@ exports.getChildren = async (req, res) => {
 exports.getMothers = async (req, res) => {
   try {
     const [mothers] = await pool.query(
-      `SELECT mother_id, first_name, last_name, barangay, contact_number, status, child_id
+      `SELECT mother_id, first_name, last_name, barangay, contact_number, status, child_id,
+              (status = 'inactive') AS is_completed
        FROM mothers
        ORDER BY first_name ASC`
     );
@@ -84,6 +85,7 @@ exports.getMothers = async (req, res) => {
 
     const mothersWithChildren = mothers.map((mother) => ({
       ...mother,
+      is_completed: Boolean(mother.is_completed),
       linked_children: linkedChildren.filter(
         (child) => child.mother_id === mother.mother_id || child.child_id === mother.child_id
       ),

@@ -112,7 +112,7 @@ function Masterlist() {
     .filter((m) => statusFilter === 'all' || (statusFilter === 'completed' && m.is_completed))
     .filter((m) =>
       search === '' ||
-      `${m.first_name} ${m.last_name}.toLowerCase().includes(search.toLowerCase())`
+      `${m.first_name} ${m.last_name}`.toLowerCase().includes(search.toLowerCase())
     );
 
   return (
