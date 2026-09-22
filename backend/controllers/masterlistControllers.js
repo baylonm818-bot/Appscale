@@ -6,8 +6,7 @@ exports.getMasterlistStats = async (req, res) => {
       `SELECT
          SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS totalChildren,
          SUM(CASE WHEN status = 'graduate' THEN 1 ELSE 0 END) AS graduateChildren
-       FROM children
-       WHERE external_id IS NULL`
+       FROM children`
     );
 
     const [[motherStats]] = await pool.query(
@@ -51,7 +50,6 @@ exports.getChildren = async (req, res) => {
            GROUP BY child_id
          ) latest ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
        ) nr ON nr.child_id = c.child_id
-       WHERE c.external_id IS NULL
        ORDER BY c.first_name ASC`
     );
     return res.status(200).json(children);
@@ -79,7 +77,7 @@ exports.getMothers = async (req, res) => {
          END AS age_group,
          barangay, status
        FROM children
-       WHERE mother_id IS NOT NULL AND external_id IS NULL
+       WHERE mother_id IS NOT NULL
        ORDER BY first_name ASC`
     );
 
