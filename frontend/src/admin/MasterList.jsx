@@ -20,26 +20,28 @@ function StatusBadge({ status }) {
 
 /* ── Stat card ── */
 function StatCard({ icon: Icon, label, value, sublabel, gradient, iconCls, onClick, isActive }) {
+  const colored = isActive && gradient;
   return (
     <button
       type="button"
       onClick={onClick}
       className={`w-full text-left rounded-2xl p-5 shadow-sm transition-all duration-200 focus:outline-none
-        ${gradient ? gradient : 'bg-white'}
+        ${colored ? gradient : 'bg-white'}
         ${onClick ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:translate-y-0' : ''}
-        ${isActive ? 'ring-2 ring-offset-2 ring-green-500 shadow-md' : ''}
+        ${isActive && !gradient ? 'ring-2 ring-offset-2 ring-green-500 shadow-md' : ''}
+        ${isActive && gradient ? 'shadow-md' : ''}
       `}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className={`text-sm font-medium leading-tight ${gradient ? 'text-white/80' : 'text-gray-500'}`}>{label}</p>
-        <div className={`shrink-0 rounded-xl p-2.5 ${gradient ? 'bg-white/20' : (iconCls || 'bg-green-600')}`}>
+        <p className={`text-sm font-medium leading-tight ${colored ? 'text-white/80' : 'text-gray-500'}`}>{label}</p>
+        <div className={`shrink-0 rounded-xl p-2.5 ${colored ? 'bg-white/20' : (iconCls || 'bg-green-600')}`}>
           <Icon size={18} className="text-white" />
         </div>
       </div>
-      <p className={`text-4xl font-black mt-3 tracking-tight ${gradient ? 'text-white' : 'text-gray-800'}`}>
+      <p className={`text-4xl font-black mt-3 tracking-tight ${colored ? 'text-white' : 'text-gray-800'}`}>
         {value ?? '—'}
       </p>
-      <p className={`text-xs mt-1 font-medium ${gradient ? 'text-white/60' : 'text-gray-400'}`}>{sublabel}</p>
+      <p className={`text-xs mt-1 font-medium ${colored ? 'text-white/60' : 'text-gray-400'}`}>{sublabel}</p>
     </button>
   );
 }
