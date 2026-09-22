@@ -81,56 +81,50 @@ function BHWLayout() {
     navigate('/login');
   };
 
-  const pageTitles = {
-  '/bhw/dashboard': <div className="mb-4">
-      <h1 className="text-xl font-bold text-gray-800">BNS Dashboard</h1>
-      <p className="text-sm text-gray-500">{user.barangay} — Health Monitoring</p>
-      </div>,
-
-
-  '/bhw/medical-records': <div className="mb-4">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <FileText className="text-green-600" size={22} /> Medical Records
-        </h1>
-        <p className="text-sm text-gray-500">
-          Full health history of children in {user.barangay}
-        </p>
-      </div>
-,
-
-
-  '/bhw/need-attention': <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <AlertCircle className="text-red-500" size={22} /> Need Attention
-          </h1>
-          <p className="text-sm text-gray-500">
-            Children in {user.barangay} flagged for malnutrition or growth concerns
-          </p>
-        </div>,
-
-
-  '/bhw/schedule': <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Schedule Management</h2>
-        <p className="text-sm text-gray-400">Plan and track health activities across barangays</p>
-      </div>,
-
-
-  '/bhw/notifications': <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Notifications</h2>
-        <p className="text-sm text-gray-400">Manage your account information and password</p>
-      </div>,
-
-   '/bhw/referrals': <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Notifications</h2>
-        <p className="text-sm text-gray-400">Manage your account information and password</p>
-      </div>,
-
-
-  '/bhw/profile': <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Settings</h2>
-        <p className="text-sm text-gray-400">Manage your account information and password</p>
-      </div>,
-};
+    const pageTitles = {
+      '/bhw/dashboard': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Health Worker Dashboard</h2>
+          <p className="text-xs text-gray-400">{user.barangay ? `${user.barangay} Barangay Health & Nutrition` : 'Community Health Monitoring'}</p>
+        </div>
+      ),
+      '/bhw/need-attention': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Need Attention</h2>
+          <p className="text-xs text-gray-400">Children flagged for malnutrition or overdue health follow-ups</p>
+        </div>
+      ),
+      '/bhw/referrals': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Referrals Management</h2>
+          <p className="text-xs text-gray-400">Community health cases and doctor/RHU referrals</p>
+        </div>
+      ),
+      '/bhw/medical-records': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Medical Records</h2>
+          <p className="text-xs text-gray-400">Health history, growth assessments, and service records</p>
+        </div>
+      ),
+      '/bhw/schedule': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Schedule & Activities</h2>
+          <p className="text-xs text-gray-400">Feeding, home visits, checkups, and seminars</p>
+        </div>
+      ),
+      '/bhw/notifications': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Notifications</h2>
+          <p className="text-xs text-gray-400">View recent health alerts and assignment reminders</p>
+        </div>
+      ),
+      '/bhw/profile': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">My Profile & Settings</h2>
+          <p className="text-xs text-gray-400">Manage account information and security</p>
+        </div>
+      ),
+    };
 
 const currentTitle = pageTitles[location.pathname] || '';
 

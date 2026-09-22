@@ -54,41 +54,43 @@ function AdminLayout() {
     };
 
     const pageTitles = {
-  '/admin/dashboard': <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Dashboard</h2>
-        <p className="text-sm text-gray-400">Manage your account information and password</p>
-      </div>,
-
-
-  '/admin/users': <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">User Management</h2>
-        <p className="text-sm text-gray-400">Manage BHW and BNS accounts across all barangays</p>
-      </div>
-,
-
-
-  '/admin/masterlist': <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Masterlist</h2>
-        <p className="text-sm text-gray-400">Complete registry of children and mothers across all barangays</p>
-      </div>,
-
-
-  '/admin/schedule': <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Schedule Management</h2>
-        <p className="text-sm text-gray-400">Plan and track health activities across barangays</p>
-      </div>,
-
-
-  '/admin/notifications': <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Notifications</h2>
-        <p className="text-sm text-gray-400">Manage your account information and password</p>
-      </div>,
-
-  '/admin/profile': <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Settings</h2>
-        <p className="text-sm text-gray-400">Manage your account information and password</p>
-      </div>,
-};
+      '/admin/dashboard': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Municipal Dashboard</h2>
+          <p className="text-xs text-gray-400">Real-time municipal nutrition and health overview</p>
+        </div>
+      ),
+      '/admin/users': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">User Management</h2>
+          <p className="text-xs text-gray-400">Manage BHW and BNS accounts across all barangays</p>
+        </div>
+      ),
+      '/admin/masterlist': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Masterlist Registry</h2>
+          <p className="text-xs text-gray-400">Complete registry of registered children and mothers</p>
+        </div>
+      ),
+      '/admin/schedule': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Schedule Management</h2>
+          <p className="text-xs text-gray-400">Plan and track health activities across municipality</p>
+        </div>
+      ),
+      '/admin/notifications': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Notifications</h2>
+          <p className="text-xs text-gray-400">View recent alerts, updates, and system messages</p>
+        </div>
+      ),
+      '/admin/profile': (
+        <div className="mb-1 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Settings & Profile</h2>
+          <p className="text-xs text-gray-400">Manage account information, security, and preferences</p>
+        </div>
+      ),
+    };
 
 const currentTitle = pageTitles[location.pathname] || '';
 

@@ -2,80 +2,59 @@ const pool = require('../config/db');
 
 exports.getAdminStats = async (req, res) => {
   try {
-    console.log('HTTP getAdminStats called', { path: req.path, user: req.user && { user_id: req.user.user_id, username: req.user.username, role: req.user.role }, query: req.query });
-    const rangeMonths = { '3M': 3, '6M': 6, '1Y': 12 }[req.query.range] || 3;
-    const rangeFilter = `record_date >= DATE_SUB(CURDATE(), INTERVAL ${rangeMonths} MONTH)`;
+    const range = req.query.range || '3M';
+    let rangeFilter = '1=1';
+    if (range === '3M') rangeFilter = 'nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)';
+    else if (range === '6M') rangeFilter = 'nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)';
+    else if (range === '1Y') rangeFilter = 'nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)';
 
-    // helper to verify a column exists in the current DB
+    // helper to verify a column exists in the current active DB
     const hasColumn = async (table, column) => {
-      const dbName = process.env.DB_DATABASE || process.env.DB_NAME || process.env.MYSQL_DATABASE || 'appscale_db';
       const [[{ cnt }]] = await pool.query(
-        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-        [dbName, table, column]
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+        [table, column]
       );
       return Number(cnt) > 0;
     };
 
     const [[{ totalChildren }]] = await pool.query(`SELECT COUNT(*) AS totalChildren FROM children WHERE status = 'active'`);
-
     const [[{ totalMothers }]] = await pool.query(`SELECT COUNT(*) AS totalMothers FROM mothers WHERE status = 'active'`);
+    const [[{ totalBarangays }]] = await pool.query(`SELECT COUNT(DISTINCT barangay) AS totalBarangays FROM children WHERE status = 'active' AND barangay IS NOT NULL`);
+    const [[{ totalUsers }]] = await pool.query(`SELECT COUNT(*) AS totalUsers FROM users WHERE role IN ('bhw', 'bns') AND status = 'active' AND deleted_at IS NULL`);
 
-
-    const [[{ totalBarangays }]] = await pool.query(`SELECT COUNT(DISTINCT barangay) AS totalBarangays FROM children where status = 'active' `);
-
-    const [[{ totalUsers }]] = await pool.query(`SELECT COUNT(*) AS totalUsers FROM users WHERE role IN ('bhw', 'bns') AND status = 'active' `);
-
-    const [trendRows] = await pool.query(
-      `SELECT nr.overall_status, COUNT(*) AS count
-       FROM nutrition_records nr
-       INNER JOIN (
-             SELECT child_id, MAX(record_date) AS latest_date
-             FROM nutrition_records
-             WHERE ${rangeFilter}
-           GROUP BY child_id
-           ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
-           WHERE ${rangeFilter}
-       GROUP BY nr.overall_status`
-    );
-
-    const nutritionTrends = {normal: 0, MAM: 0, SAM: 0, overweight: 0, underweight: 0};
-
-    trendRows.forEach(row => {
-      if(nutritionTrends.hasOwnProperty(row.overall_status)) {
-        nutritionTrends[row.overall_status] = row.count;
-      }
-    });
-
-    
-    // build condition dynamically depending on available columns to avoid SQL errors
+    // Check if optional columns exist
     const hasWasting = await hasColumn('nutrition_records', 'wasting_status');
-    const conditionParts = ["nr.weight_status IN ('underweight', 'severly_underweight')", "nr.height_status IN ('stunted', 'severly_stunted')"];
-    if (hasWasting) conditionParts.push("nr.wasting_status IN ('wasted', 'severly_wasted')");
+
+    // Conditions identifying malnutrition / at-risk
+    const conditionParts = [
+      "nr.weight_status IN ('underweight', 'severely_underweight', 'severly_underweight')",
+      "nr.height_status IN ('stunted', 'severely_stunted', 'severly_stunted')",
+      "nr.overall_status IN ('MAM', 'SAM', 'underweight', 'severely_underweight')"
+    ];
+    if (hasWasting) conditionParts.push("nr.wasting_status IN ('wasted', 'severely_wasted', 'severly_wasted')");
     const malnutritionWhere = conditionParts.join(' OR ');
 
+    // Malnutrition cases grouped by barangay
     let [malnutritionByBarangayRows] = await pool.query(
-      `SELECT c.barangay, COUNT(*) AS cases
-      FROM nutrition_records nr
-      INNER JOIN (
-            SELECT child_id, MAX(record_date) AS latest_date
-            FROM nutrition_records
-            WHERE ${rangeFilter}
-          GROUP BY child_id
-      ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
-      INNER JOIN children c ON c.child_id = nr.child_id
-          WHERE ${rangeFilter}
-          AND (${malnutritionWhere})
-      GROUP BY c.barangay
-      ORDER BY cases DESC`
+      `SELECT c.barangay, COUNT(DISTINCT c.child_id) AS cases
+       FROM nutrition_records nr
+       INNER JOIN (
+         SELECT child_id, MAX(record_date) AS latest_date
+         FROM nutrition_records
+         GROUP BY child_id
+       ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
+       INNER JOIN children c ON c.child_id = nr.child_id
+       WHERE c.status = 'active' AND ${rangeFilter} AND (${malnutritionWhere})
+       GROUP BY c.barangay
+       ORDER BY cases DESC`
     );
-    let malnutritionOverviewFallback = false;
 
+    let malnutritionOverviewFallback = false;
     if (malnutritionByBarangayRows.length === 0) {
-      
-      // fallback: same logic but without range filter
-      const fallbackCondition = malnutritionWhere;
+      // Fallback: search without range filter if no recent records match
       [malnutritionByBarangayRows] = await pool.query(
-        `SELECT c.barangay, COUNT(*) AS cases
+        `SELECT c.barangay, COUNT(DISTINCT c.child_id) AS cases
          FROM nutrition_records nr
          INNER JOIN (
            SELECT child_id, MAX(record_date) AS latest_date
@@ -83,70 +62,79 @@ exports.getAdminStats = async (req, res) => {
            GROUP BY child_id
          ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
          INNER JOIN children c ON c.child_id = nr.child_id
-         WHERE ${fallbackCondition}
+         WHERE c.status = 'active' AND (${malnutritionWhere})
          GROUP BY c.barangay
          ORDER BY cases DESC`
       );
       malnutritionOverviewFallback = malnutritionByBarangayRows.length > 0;
     }
 
+    // Upcoming pending activities
     const [upcomingActivities] = await pool.query(
-      `SELECT schedule_id, title, schedule_type, schedule_date, schedule_time, venue, barangay
-      FROM schedules
-      WHERE status = 'pending' AND schedule_date >= CURDATE()
-      ORDER BY schedule_date ASC`
+      `SELECT schedule_id, title, schedule_type, schedule_date, schedule_time, venue, barangay, target_role, facilitator
+       FROM schedules
+       WHERE status = 'pending' AND schedule_date >= CURDATE()
+       ORDER BY schedule_date ASC
+       LIMIT 5`
     );
 
-    // dynamically select only existing columns
-    const hasWastingCol = await hasColumn('nutrition_records', 'wasting_status');
-    const selectCols = ['weight_status', 'height_status'];
-    if (hasWastingCol) selectCols.push('wasting_status');
+    // Dynamic selection of latest nutrition records
+    const selectCols = ['nr.weight_status', 'nr.height_status', 'nr.overall_status'];
+    if (hasWasting) selectCols.push('nr.wasting_status');
+
     const [nineCategoryRows] = await pool.query(
       `SELECT ${selectCols.join(', ')}
-      FROM nutrition_records nr
-      INNER JOIN (
-          SELECT child_id, MAX(record_date) AS latest_date
-          FROM nutrition_records
-          GROUP BY child_id
-        ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date`
+       FROM nutrition_records nr
+       INNER JOIN (
+         SELECT child_id, MAX(record_date) AS latest_date
+         FROM nutrition_records
+         GROUP BY child_id
+       ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
+       INNER JOIN children c ON c.child_id = nr.child_id
+       WHERE c.status = 'active'`
     );
 
     const nineCategoryTrend = {
       normal: 0,
       underweight: 0,
-      severly_underweight: 0,
+      severely_underweight: 0,
       stunted: 0,
-      wasted: 0,
+      severely_stunted: 0,
       overweight: 0,
-      severly_stunted: 0,
-      severly_wasted: 0,
       obese: 0,
-      
+      wasted: 0,
+      severely_wasted: 0,
     };
 
     nineCategoryRows.forEach((row) => {
-      if (row.weight_status === 'underweight') nineCategoryTrend.underweight++;
-      else if (row.weight_status === 'severly_underweight') nineCategoryTrend.severly_underweight++;
-      else if (row.weight_status === 'overweight') nineCategoryTrend.overweight++;
-      else if (row.weight_status === 'obese') nineCategoryTrend.obese++;
+      const ws = String(row.weight_status || '').toLowerCase();
+      const hs = String(row.height_status || '').toLowerCase();
+      const was = String(row.wasting_status || '').toLowerCase();
+      const os = String(row.overall_status || '').toLowerCase();
 
-      if (row.height_status === 'stunted') nineCategoryTrend.stunted++;
-      else if (row.height_status === 'severly_stunted') nineCategoryTrend.severly_stunted++;
+      let isNormal = true;
 
-      if (row.wasting_status === 'wasted') nineCategoryTrend.wasted++;
-      else if (row.wasting_status === 'severly_wasted') nineCategoryTrend.severly_wasted++;
+      if (ws === 'underweight') { nineCategoryTrend.underweight++; isNormal = false; }
+      else if (ws === 'severely_underweight' || ws === 'severly_underweight') { nineCategoryTrend.severely_underweight++; isNormal = false; }
+      else if (ws === 'overweight') { nineCategoryTrend.overweight++; isNormal = false; }
+      else if (ws === 'obese') { nineCategoryTrend.obese++; isNormal = false; }
 
-      if (row.weight_status === 'normal' && row.height_status === 'normal' && row.wasting_status === 'normal') {
+      if (hs === 'stunted') { nineCategoryTrend.stunted++; isNormal = false; }
+      else if (hs === 'severely_stunted' || hs === 'severly_stunted') { nineCategoryTrend.severely_stunted++; isNormal = false; }
+
+      if (was === 'wasted') { nineCategoryTrend.wasted++; isNormal = false; }
+      else if (was === 'severely_wasted' || was === 'severly_wasted') { nineCategoryTrend.severely_wasted++; isNormal = false; }
+
+      if (isNormal || os === 'normal') {
         nineCategoryTrend.normal++;
       }
     });
 
     return res.status(200).json({
-      totalChildren,
-      totalMothers,
-      totalBarangays,
-      totalUsers,
-      nutritionTrends,
+      totalChildren: totalChildren || 0,
+      totalMothers: totalMothers || 0,
+      totalBarangays: totalBarangays || 0,
+      totalUsers: totalUsers || 0,
       nineCategoryTrend,
       malnutritionByBarangay: malnutritionByBarangayRows,
       malnutritionOverviewFallback,
@@ -169,11 +157,9 @@ exports.getAdminNeedAttention = async (req, res) => {
       params.push(barangay);
     }
 
-    // avoid referencing optional columns directly
-    const dbName = process.env.DB_DATABASE || process.env.DB_NAME || process.env.MYSQL_DATABASE || 'appscale_db';
     const [[{ cnt: wastingCnt }]] = await pool.query(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-      [dbName, 'nutrition_records', 'wasting_status']
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'nutrition_records' AND COLUMN_NAME = 'wasting_status'`
     );
     const hasWastingCol = Number(wastingCnt) > 0;
 
@@ -187,10 +173,10 @@ exports.getAdminNeedAttention = async (req, res) => {
 
     const conditionParts = [
       "nr.overall_status IN ('MAM','SAM')",
-      "nr.weight_status IN ('underweight','severly_underweight','severly_underweight')",
-      "nr.height_status IN ('stunted','severly_stunted')",
+      "nr.weight_status IN ('underweight','severely_underweight','severly_underweight')",
+      "nr.height_status IN ('stunted','severely_stunted','severly_stunted')",
     ];
-    if (hasWastingCol) conditionParts.push("nr.wasting_status IN ('wasted','severly_wasted')");
+    if (hasWastingCol) conditionParts.push("nr.wasting_status IN ('wasted','severely_wasted','severly_wasted')");
 
     const sql = `SELECT ${selectCols.join(', ')}
       FROM children c

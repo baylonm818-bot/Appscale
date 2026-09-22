@@ -8,45 +8,57 @@ function timeAgo(dateString) {
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString("en-US", {
-    weekday: "long",
-    hour: "numeric",
-    minute: "2-digit",
+    weekday: "long", month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit",
   });
 }
 
+const TYPE_CONFIG = {
+  referral:     { label: "Referral",     color: "bg-blue-500",    light: "bg-blue-50 text-blue-700"    },
+  malnutrition: { label: "Malnutrition", color: "bg-red-500",     light: "bg-red-50 text-red-700"      },
+  schedule:     { label: "Schedule",     color: "bg-emerald-500", light: "bg-emerald-50 text-emerald-700" },
+};
+
 function NotificationItem({ notif, onMarkRead }) {
+  const cfg = TYPE_CONFIG[notif.type?.toLowerCase()] || { color: "bg-green-600", light: "bg-green-50 text-green-700" };
+  const initial = (notif.type?.[0] || "N").toUpperCase();
+
   return (
     <div
-      className={`flex gap-3 p-4 border-b border-gray-100 last:border-0 ${
-        !notif.is_read ? "bg-green-50/40" : ""
-      }`}
       onClick={() => !notif.is_read && onMarkRead(notif.notification_id)}
+      className={`flex gap-4 px-6 py-4 border-b border-gray-50 last:border-0 transition-colors
+        ${!notif.is_read ? "bg-green-50/50 cursor-pointer hover:bg-green-50" : "hover:bg-gray-50/60"}`}
     >
-      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 text-green-700 font-bold text-sm">
-        {notif.type?.[0]?.toUpperCase() || "N"}
+      <div className={`shrink-0 w-10 h-10 rounded-full ${cfg.color} flex items-center justify-center text-white text-sm font-bold shadow-xs`}>
+        {initial}
       </div>
 
-      <div className="flex-1 min-w-0 cursor-pointer">
-        <div className="flex justify-between items-start">
-          <p className="text-sm font-semibold text-gray-800">{notif.title}</p>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-gray-800 leading-snug">{notif.title}</p>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide ${cfg.light}`}>
+              {notif.type || "General"}
+            </span>
+          </div>
           {!notif.is_read && (
-            <span className="w-2 h-2 rounded-full bg-green-500 mt-1.5 flex-shrink-0" />
+            <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-green-500 mt-1 ring-2 ring-white" />
           )}
         </div>
 
-        <div className="flex justify-between items-center mt-1">
+        <div className="flex items-center gap-3 mt-1">
           <p className="text-xs text-gray-400">{formatDate(notif.created_at)}</p>
-          <p className="text-xs text-gray-400">{timeAgo(notif.created_at)}</p>
+          <span className="text-gray-200">·</span>
+          <p className="text-xs font-medium text-green-600">{timeAgo(notif.created_at)}</p>
         </div>
 
         {notif.message && (
-          <div className="bg-gray-50 rounded-lg p-3 mt-2 text-sm text-gray-600">
+          <div className="mt-2 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-600 leading-relaxed">
             {notif.message}
           </div>
         )}
@@ -57,17 +69,16 @@ function NotificationItem({ notif, onMarkRead }) {
 
 function Notifications() {
   const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [activeTab, setActiveTab] = useState("all");
-  const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount]     = useState(0);
+  const [activeTab, setActiveTab]         = useState("all");
+  const [loading, setLoading]             = useState(true);
 
   const fetchNotifications = async () => {
     setLoading(true);
     try {
       const res = await axiosClient.get('/notifications');
-      const data = res.data;
-      setNotifications(data.notifications || []);
-      setUnreadCount(data.unreadCount || 0);
+      setNotifications(res.data.notifications || []);
+      setUnreadCount(res.data.unreadCount || 0);
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
     } finally {
@@ -97,50 +108,58 @@ function Notifications() {
     }
   };
 
-  // ✅ Client-side filtering (backend doesn't support filter param)
-  const filteredNotifications = notifications.filter((n)=> {
-    if (activeTab === "all") return true;
+  const tabs = [
+    { key: "all",          label: "All",         count: notifications.length },
+    { key: "unread",       label: "Unread",       count: unreadCount },
+    { key: "referral",     label: "Referrals"     },
+    { key: "malnutrition", label: "Malnutrition"  },
+    { key: "schedule",     label: "Schedule"      },
+  ];
+
+  const filtered = notifications.filter((n) => {
+    if (activeTab === "all")    return true;
     if (activeTab === "unread") return !n.is_read;
     return n.type?.toLowerCase() === activeTab;
   });
 
-  const tabs = [
-    { key: "all", label: "All", count: notifications.length },
-    { key: "unread", label: "Unread", count: unreadCount },
-    { key: "referral", label: "Referrals" },
-    { key: "malnutrition", label: "Malnutrition" },
-    { key: "schedule", label: "Schedule" },
-  ];
-
   return (
-    <div className="w-full flex justify-center px-4 py-1">
-      <div className="w-full bg-white rounded-2xl shadow-lg overflow-hidden">
-        <div className="flex justify-between items-center px-6 py-5 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-gray-900">Your Notifications</h1>
-          <button
-            onClick={handleMarkAllRead}
-            className="text-sm text-green-600 font-semibold hover:underline"
-          >
-            ✓✓ Mark all as read
-          </button>
+    <div className="space-y-0">
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+
+        {/* Green gradient header */}
+        <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-white">Barangay Notifications</h1>
+            <p className="text-white/70 text-xs mt-0.5">
+              {unreadCount > 0 ? `${unreadCount} unread alerts` : "All caught up"}
+            </p>
+          </div>
+          {unreadCount > 0 && (
+            <button
+              onClick={handleMarkAllRead}
+              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition"
+            >
+              ✓✓ Mark all read
+            </button>
+          )}
         </div>
 
-        <div className="flex gap-2 px-6 py-4 border-b border-gray-100 overflow-x-auto">
+        {/* Tab pills */}
+        <div className="flex gap-1.5 px-6 py-3 border-b border-gray-100 overflow-x-auto bg-gray-50/50">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
-                activeTab === tab.key
-                  ? "bg-green-600 text-white"
-                  : "text-gray-500 hover:bg-gray-50"
-              }`}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all
+                ${activeTab === tab.key
+                  ? "bg-[#2e7d32] text-white shadow-xs"
+                  : "text-gray-500 hover:bg-gray-100"
+                }`}
             >
               {tab.label}
               {tab.count !== undefined && (
-                <span className={`text-xs px-1.5 rounded-full ${
-                  activeTab === tab.key ? "bg-white/20" : "bg-gray-100"
-                }`}>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold
+                  ${activeTab === tab.key ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"}`}>
                   {tab.count}
                 </span>
               )}
@@ -148,18 +167,26 @@ function Notifications() {
           ))}
         </div>
 
-        <div className="max-h-[500px] overflow-y-auto">
+        {/* List */}
+        <div className="max-h-[600px] overflow-y-auto">
           {loading ? (
-            <p className="text-center text-gray-400 py-10 text-sm">Loading...</p>
-          ) : filteredNotifications.length === 0 ? (
-            <p className="text-center text-gray-400 py-10 text-sm">No notifications found.</p>
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="w-8 h-8 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
+              <p className="text-sm text-gray-400">Loading notifications…</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+              </div>
+              <p className="text-sm font-semibold text-gray-500">No notifications</p>
+              <p className="text-xs text-gray-400">You're all caught up with barangay alerts!</p>
+            </div>
           ) : (
-            filteredNotifications.map((notif) => (
-              <NotificationItem
-                key={notif.notification_id}
-                notif={notif}
-                onMarkRead={handleMarkRead}
-              />
+            filtered.map((notif) => (
+              <NotificationItem key={notif.notification_id} notif={notif} onMarkRead={handleMarkRead} />
             ))
           )}
         </div>

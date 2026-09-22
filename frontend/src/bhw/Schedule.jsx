@@ -1,29 +1,6 @@
 import { useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
-
-function SummaryCard({ icon, label, value, sublabel, isActive, onClick, highlight }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`text-left rounded-2xl p-5 shadow-sm transition ${
-        highlight
-          ? 'bg-gradient-to-br from-green-500 to-green-600 text-white'
-          : isActive
-          ? 'bg-green-50 border-2 border-green-500'
-          : 'bg-white border border-gray-100 hover:border-green-300'
-      }`}
-    >
-      <div className="flex justify-between items-start mb-3">
-        <p className={`text-sm font-medium ${highlight ? 'text-white/90' : 'text-gray-500'}`}>{label}</p>
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${highlight ? 'bg-white/20' : 'bg-green-100'}`}>
-          {icon}
-        </div>
-      </div>
-      <p className={`text-3xl font-bold ${highlight ? 'text-white' : 'text-gray-900'}`}>{value}</p>
-      <p className={`text-xs mt-1 ${highlight ? 'text-white/80' : 'text-gray-400'}`}>{sublabel}</p>
-    </button>
-  );
-}
+import { Calendar, Clock, CheckCircle2, Archive, Search, X } from 'lucide-react';
 
 const statusLabels = { pending: 'Scheduled', done: 'Completed', cancelled: 'Cancelled', archived: 'Archived', missed: 'Missed' };
 
@@ -37,18 +14,42 @@ const isMissed = (activity) => activity.status === 'pending' && !isUpcoming(acti
 
 const getDisplayStatus = (activity) => (isMissed(activity) ? 'missed' : activity.status);
 
+const STATUS_STYLE = {
+  pending:   'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200',
+  done:      'bg-green-100   text-green-800   ring-1 ring-green-200',
+  cancelled: 'bg-red-100     text-red-800     ring-1 ring-red-200',
+  archived:  'bg-gray-100    text-gray-700    ring-1 ring-gray-200',
+  missed:    'bg-amber-100   text-amber-800   ring-1 ring-amber-200',
+};
+
 function StatusBadge({ status }) {
-  const styles = {
-    pending: 'bg-emerald-100 text-emerald-700',
-    done: 'bg-green-100 text-green-700',
-    cancelled: 'bg-red-100 text-red-700',
-    archived: 'bg-gray-100 text-gray-600',
-    missed: 'bg-amber-100 text-amber-700',
-  };
   return (
-    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${styles[status] || 'bg-gray-100 text-gray-600'}`}>
+    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase ${STATUS_STYLE[status] || 'bg-gray-100 text-gray-600'}`}>
       {statusLabels[status] || status}
     </span>
+  );
+}
+
+function SummaryCard({ icon: Icon, label, value, sublabel, isActive, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left rounded-2xl p-5 shadow-sm transition-all duration-200 focus:outline-none cursor-pointer
+        ${isActive
+          ? 'bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-white shadow-md'
+          : 'bg-white hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'
+        }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className={`text-sm font-medium leading-tight ${isActive ? 'text-white/80' : 'text-gray-500'}`}>{label}</p>
+        <div className={`shrink-0 rounded-xl p-2.5 ${isActive ? 'bg-white/20' : 'bg-green-50'}`}>
+          <Icon size={18} className={isActive ? 'text-white' : 'text-[#2e7d32]'} />
+        </div>
+      </div>
+      <p className={`text-4xl font-black mt-3 tracking-tight ${isActive ? 'text-white' : 'text-gray-800'}`}>{value}</p>
+      <p className={`text-xs mt-1 font-medium ${isActive ? 'text-white/60' : 'text-gray-400'}`}>{sublabel}</p>
+    </button>
   );
 }
 
@@ -56,32 +57,36 @@ function ActivityRow({ activity, onComplete, onArchive }) {
   const date = new Date(activity.schedule_date);
   const month = date.toLocaleString('en-US', { month: 'short' });
   const day = date.getDate();
+  const status = getDisplayStatus(activity);
 
   return (
-    <div className="flex flex-col gap-3 p-4 hover:bg-gray-50 rounded-xl transition border-b border-gray-100 last:border-0 sm:flex-row sm:items-center sm:gap-4">
-      <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-green-50 text-green-700 flex-shrink-0 self-start sm:self-auto">
-        <span className="text-xs font-semibold uppercase">{month}</span>
-        <span className="text-lg font-bold leading-none">{day}</span>
+    <div className="flex flex-col gap-3 px-6 py-4 hover:bg-green-50/30 transition-colors border-b border-gray-50 last:border-0 sm:flex-row sm:items-center sm:gap-5">
+      <div className="flex flex-col items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-white shrink-0 shadow-xs">
+        <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{month}</span>
+        <span className="text-xl font-black leading-none">{day}</span>
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-semibold text-gray-900">{activity.title}</h3>
-          <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs capitalize">
+          <h3 className="font-bold text-gray-900 text-sm">{activity.title}</h3>
+          <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize">
             {activity.schedule_type?.replace('_', ' ')}
           </span>
-          <StatusBadge status={getDisplayStatus(activity)} />
+          <StatusBadge status={status} />
         </div>
-        <p className="text-sm text-gray-400 mt-0.5 break-words">
-          {activity.barangay} {activity.venue && `· ${activity.venue}`} {activity.facilitator && `· ${activity.facilitator}`}
+        <p className="text-xs text-gray-400 mt-1 break-words">
+          {activity.barangay || 'Barangay Activity'}
+          {activity.venue && ` · ${activity.venue}`}
+          {activity.facilitator && ` · ${activity.facilitator}`}
+          {activity.schedule_time && ` · ${activity.schedule_time}`}
         </p>
       </div>
 
-      <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto">
+      <div className="flex gap-2 shrink-0">
         {(activity.status === 'cancelled' || activity.status === 'done') && (
           <button
             onClick={() => onArchive(activity.schedule_id)}
-            className="flex-1 px-4 py-1.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition sm:flex-none"
+            className="px-3 py-1.5 text-xs font-semibold border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition"
           >
             Archive
           </button>
@@ -89,7 +94,7 @@ function ActivityRow({ activity, onComplete, onArchive }) {
         {activity.status === 'pending' && !isMissed(activity) && (
           <button
             onClick={() => onComplete(activity.schedule_id)}
-            className="flex-1 px-4 py-1.5 text-sm border border-green-200 text-green-700 rounded-lg hover:bg-green-50 transition sm:flex-none"
+            className="px-3.5 py-1.5 text-xs font-bold border border-green-300 bg-green-50 text-green-800 rounded-xl hover:bg-green-100 transition shadow-xs"
           >
             Mark Done
           </button>
@@ -99,31 +104,22 @@ function ActivityRow({ activity, onComplete, onArchive }) {
   );
 }
 
-const emptyForm = {
-  title: '', schedule_type: 'feeding', schedule_date: '', schedule_time: '',
-  venue: '', barangay: '', assigned_to: '', facilitator: '', notes: '',
-};
-
 function Schedule() {
   const [activities, setActivities] = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [formError, setFormError] = useState('');
-  const [saving, setSaving] = useState(false);
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
 
   const fetchActivities = async () => {
     setLoading(true);
     try {
-      const res = await axiosClient.get('/bhw/schedule', {
+      const response = await axiosClient.get('/bhw/schedule', {
         params: { barangay: user.barangay, user_id: user.user_id },
       });
-      setActivities(res.data || []);
-    } catch (err) {
+      setActivities(response.data || []);
+    } catch {
       setError('Failed to load schedule.');
     } finally {
       setLoading(false);
@@ -136,30 +132,10 @@ function Schedule() {
 
   const updateStatus = async (id, status) => {
     try {
-      if (status === 'done') {
-        await axiosClient.patch(`/bhw/schedule/${id}/done`);
-      }
+      await axiosClient.patch(`/bhw/schedule/${id}/status`, { status });
       fetchActivities();
-    } catch (err) {
-      alert('Failed to update schedule.');
-    }
-  };
-
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setFormError('');
-    setSaving(true);
-    try {
-      await axiosClient.post('/schedule', form);
-      setShowModal(false);
-      setForm(emptyForm);
-      fetchActivities();
-    } catch (err) {
-      setFormError(err.response?.data?.message || 'Something went wrong.');
-    } finally {
-      setSaving(false);
+    } catch {
+      alert('Failed to update activity status.');
     }
   };
 
@@ -187,104 +163,95 @@ function Schedule() {
     return matchesFilter && matchesSearch;
   });
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
+        <p className="text-sm font-medium text-gray-400">Loading schedule…</p>
+      </div>
+    );
+  }
+
+  if (error) return <p className="text-red-600 p-6">{error}</p>;
+
   return (
-    <div>
-     
+    <div className="space-y-6">
 
-      {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
-          label="Total Activities" value={counts.all} sublabel="All barangays" 
-          isActive={activeFilter === 'all'} onClick={() => setActiveFilter('all')}
-          icon={<svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+          icon={Calendar}
+          label="Total Activities"
+          value={counts.all}
+          sublabel="All scheduled events"
+          isActive={activeFilter === 'all'}
+          onClick={() => setActiveFilter('all')}
         />
         <SummaryCard
-          label="Upcoming" value={counts.upcoming} sublabel="Scheduled activities"
-          isActive={activeFilter === 'upcoming'} onClick={() => setActiveFilter('upcoming')}
-          icon={<svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          icon={Clock}
+          label="Upcoming"
+          value={counts.upcoming}
+          sublabel="Pending activities"
+          isActive={activeFilter === 'upcoming'}
+          onClick={() => setActiveFilter('upcoming')}
         />
         <SummaryCard
-          label="Completed" value={counts.completed} sublabel="Done activities"
-          isActive={activeFilter === 'completed'} onClick={() => setActiveFilter('completed')}
-          icon={<svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          icon={CheckCircle2}
+          label="Completed"
+          value={counts.completed}
+          sublabel="Done & executed"
+          isActive={activeFilter === 'completed'}
+          onClick={() => setActiveFilter('completed')}
         />
         <SummaryCard
-          label="Archived" value={counts.archived} sublabel="Archived activities"
-          isActive={activeFilter === 'archived'} onClick={() => setActiveFilter('archived')}
-          icon={<svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2v-8a2 2 0 00-2-2M5 8V6a2 2 0 012-2h10a2 2 0 012 2v2" /></svg>}
+          icon={Archive}
+          label="Archived"
+          value={counts.archived}
+          sublabel="Past & archived"
+          isActive={activeFilter === 'archived'}
+          onClick={() => setActiveFilter('archived')}
         />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      {/* ── Search Bar ── */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
-          <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <Search size={16} className="text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by date or brgy..."
-            className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-green-500"
+            placeholder="Search activity by title or venue…"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition bg-white"
           />
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 transition whitespace-nowrap"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          Add Schedule Activity
-        </button>
       </div>
 
+      {/* ── Activity List ── */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        {loading ? (
-          <p className="text-center text-gray-400 py-10 text-sm">Loading...</p>
-        ) : filteredActivities.length === 0 ? (
-          <p className="text-center text-gray-400 py-10 text-sm">No activities found.</p>
-        ) : (
-          <div className="px-2">
-            {filteredActivities.map((activity) => (
-              <ActivityRow
-                key={activity.schedule_id}
-                activity={activity}
-                onComplete={(id) => updateStatus(id, 'done')}
-                onArchive={(id) => updateStatus(id, 'archived')}
-              />
-            ))}
+        <div className="px-6 py-3.5 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            {filteredActivities.length} {activeFilter === 'all' ? 'total' : activeFilter} activities in {user.barangay}
+          </p>
+        </div>
+
+        {filteredActivities.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <Calendar className="text-gray-300" size={32} />
+            <p className="text-sm font-semibold text-gray-500">No activities found</p>
+            <p className="text-xs text-gray-400">There are no activities matching your filter criteria.</p>
           </div>
+        ) : (
+          filteredActivities.map((act) => (
+            <ActivityRow
+              key={act.schedule_id}
+              activity={act}
+              onComplete={(id) => updateStatus(id, 'done')}
+              onArchive={(id) => updateStatus(id, 'archived')}
+            />
+          ))
         )}
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Add Schedule Activity</h2>
-            {formError && <p className="text-red-600 text-sm mb-3">{formError}</p>}
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <input name="title" placeholder="Activity Title" value={form.title} onChange={handleChange} required className="border rounded-lg px-3 py-2 text-sm w-full" />
-              <select name="schedule_type" value={form.schedule_type} onChange={handleChange} className="border rounded-lg px-3 py-2 text-sm w-full">
-                <option value="feeding">Feeding</option>
-                <option value="home_visit">Home Visit</option>
-                <option value="seminar">Seminar</option>
-                <option value="checkup">Checkup</option>
-              </select>
-              <div className="grid grid-cols-2 gap-3">
-                <input name="schedule_date" type="date" value={form.schedule_date} onChange={handleChange} required className="border rounded-lg px-3 py-2 text-sm" />
-                <input name="schedule_time" type="time" value={form.schedule_time} onChange={handleChange} className="border rounded-lg px-3 py-2 text-sm" />
-              </div>
-              <input name="barangay" placeholder="Barangay" value={form.barangay} onChange={handleChange} required className="border rounded-lg px-3 py-2 text-sm w-full" />
-              <input name="venue" placeholder="Venue" value={form.venue} onChange={handleChange} className="border rounded-lg px-3 py-2 text-sm w-full" />
-              <input name="facilitator" placeholder="Facilitator" value={form.facilitator} onChange={handleChange} className="border rounded-lg px-3 py-2 text-sm w-full" />
-              <textarea name="notes" placeholder="Notes" value={form.notes} onChange={handleChange} className="border rounded-lg px-3 py-2 text-sm w-full" rows={3} />
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 border border-gray-200 text-gray-600 py-2 rounded-lg text-sm">Cancel</button>
-                <button type="submit" disabled={saving} className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 text-sm">
-                  {saving ? 'Saving...' : 'Create Activity'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
