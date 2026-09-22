@@ -73,7 +73,11 @@ function ActivityRow({ activity, onCancel, onComplete, onArchive }) {
           <StatusBadge status={getDisplayStatus(activity)} />
         </div>
         <p className="text-sm text-gray-400 mt-0.5 break-words">
-          {activity.barangay || 'All Barangays'} {activity.venue && `· ${activity.venue}`} {activity.assigned_name && `· For ${activity.assigned_name}`} {activity.facilitator && `· ${activity.facilitator}`}
+          {activity.barangay || 'All Barangays'}
+          {activity.target_role && ` · For ${activity.target_role.toUpperCase()}s`}
+          {activity.venue && ` · ${activity.venue}`}
+          {activity.assigned_name && ` · For ${activity.assigned_name}`}
+          {activity.facilitator && ` · ${activity.facilitator}`}
         </p>
       </div>
 
@@ -109,7 +113,7 @@ function ActivityRow({ activity, onCancel, onComplete, onArchive }) {
 
 const emptyForm = {
   title: '', schedule_type: 'feeding', schedule_date: '', schedule_time: '',
-  venue: '', barangay: 'All Barangays', assigned_to: '', recipient_type: 'all', facilitator: '', notes: '',
+  venue: '', barangay: 'All Barangays', assigned_to: '', target_role: '', recipient_type: 'all', facilitator: '', notes: '',
 };
 
 function Schedule() {
@@ -162,6 +166,7 @@ function Schedule() {
       recipient_type: recipientType,
       barangay: recipientType === 'all' ? 'All Barangays' : '',
       assigned_to: '',
+      target_role: '',
     });
   };
 
@@ -174,8 +179,19 @@ function Schedule() {
       if (recipient_type === 'all') {
         schedule.barangay = 'All Barangays';
         schedule.assigned_to = null;
+        schedule.target_role = null;
       }
-      if (recipient_type === 'barangay') schedule.assigned_to = null;
+      if (recipient_type === 'barangay') {
+        schedule.assigned_to = null;
+        schedule.target_role = null;
+      }
+      if (recipient_type === 'role') {
+        schedule.barangay = 'All Barangays';
+        schedule.assigned_to = null;
+      }
+      if (recipient_type === 'user') {
+        schedule.target_role = null;
+      }
       await axiosClient.post('/schedule', schedule);
       setShowModal(false);
       setForm(emptyForm);
@@ -296,28 +312,42 @@ function Schedule() {
                 <input name="schedule_date" type="date" value={form.schedule_date} onChange={handleChange} required className="border rounded-lg px-3 py-2 text-sm" />
                 <input name="schedule_time" type="time" value={form.schedule_time} onChange={handleChange} className="border rounded-lg px-3 py-2 text-sm" />
               </div>
-              <select name="recipient_type" value={form.recipient_type} onChange={handleRecipientChange} className="border rounded-lg px-3 py-2 text-sm w-full">
-                <option value="all">Assign to all barangays</option>
-                <option value="barangay">Assign to a barangay</option>
-                <option value="user">Assign to a specific user</option>
+              <select name="recipient_type" value={form.recipient_type} onChange={handleRecipientChange} className="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:border-green-500">
+                <option value="all">📍 Whole Municipality (All Barangays)</option>
+                <option value="barangay">🏘️ Specific Barangay</option>
+                <option value="role">👥 By Role (BHW / BNS)</option>
+                <option value="user">👤 Specific User</option>
               </select>
+
+              {/* Barangay picker */}
               {form.recipient_type === 'barangay' && (
-                <select name="barangay" value={form.barangay} onChange={handleChange} required className="border rounded-lg px-3 py-2 text-sm w-full">
+                <select name="barangay" value={form.barangay} onChange={handleChange} required className="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:border-green-500">
                   <option value="">Select barangay</option>
-                  {[...new Set(users.map((user) => user.barangay).filter(Boolean))].sort().map((barangay) => (
-                    <option key={barangay} value={barangay}>{barangay}</option>
+                  {[...new Set(users.map((u) => u.barangay).filter(Boolean))].sort().map((b) => (
+                    <option key={b} value={b}>{b}</option>
                   ))}
                 </select>
               )}
+
+              {/* Role picker */}
+              {form.recipient_type === 'role' && (
+                <select name="target_role" value={form.target_role} onChange={handleChange} required className="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:border-green-500">
+                  <option value="">Select role</option>
+                  <option value="bhw">BHW — Barangay Health Worker</option>
+                  <option value="bns">BNS — Barangay Nutrition Scholar</option>
+                </select>
+              )}
+
+              {/* User picker */}
               {form.recipient_type === 'user' && (
                 <select name="assigned_to" value={form.assigned_to} onChange={(e) => {
-                  const selectedUser = users.find((user) => String(user.user_id) === e.target.value);
+                  const selectedUser = users.find((u) => String(u.user_id) === e.target.value);
                   setForm({ ...form, assigned_to: e.target.value, barangay: selectedUser?.barangay || '' });
-                }} required className="border rounded-lg px-3 py-2 text-sm w-full">
+                }} required className="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:border-green-500">
                   <option value="">Select user</option>
-                  {users.map((user) => (
-                    <option key={user.user_id} value={user.user_id}>
-                      {user.first_name} {user.last_name} ({user.role.toUpperCase()}) - {user.barangay}
+                  {users.map((u) => (
+                    <option key={u.user_id} value={u.user_id}>
+                      {u.first_name} {u.last_name} ({u.role.toUpperCase()}) — {u.barangay}
                     </option>
                   ))}
                 </select>
