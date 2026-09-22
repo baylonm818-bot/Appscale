@@ -218,7 +218,7 @@ exports.login = async (req, res) => {
     if (!passwordMatch) {
       if (isAdmin) {
         // Admin accounts are never locked — just return a generic invalid credentials message.
-        return res.status(401).json({ message: 'Invalid username/email or password.' });
+        return res.status(401).json({ message: 'Invalid email or password.' });
       }
 
       const newFailedAttempts = Number(user.failed_attempts || 0) + 1;
