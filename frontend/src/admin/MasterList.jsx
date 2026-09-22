@@ -204,19 +204,7 @@ function Masterlist() {
       {/* ── Search + Filters panel ── */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
 
-        {/* Green title strip (no tab buttons) */}
-        <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center gap-3">
-          {activeTab === 'children'
-            ? <Baby size={18} className="text-white/80" />
-            : <Heart size={18} className="text-white/80" />
-          }
-          <p className="text-white font-semibold text-sm">
-            {activeTab === 'children' ? 'Children List' : 'Mothers List'}
-          </p>
-          <span className="ml-auto text-xs bg-white/20 text-white font-bold px-2.5 py-1 rounded-full">
-            {activeTab === 'children' ? children.length : mothers.length} records
-          </span>
-        </div>
+
 
         {/* Search + filters bar */}
         <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center">
