@@ -180,39 +180,25 @@ exports.verifyOtp = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, username, password } = req.body;
-  const loginIdentifier = (email || username || '').trim();
+  const { email, password } = req.body;
+  const loginEmail = (email || '').trim();
 
-  if (!loginIdentifier || !password) {
-    return res.status(400).json({ message: 'Username or email and password are required.' });
+  if (!loginEmail || !password) {
+    return res.status(400).json({ message: 'Email and password are required.' });
   }
 
-  const identifierVariants = Array.from(new Set([
-    loginIdentifier,
-    loginIdentifier.toLowerCase(),
-    loginIdentifier.toLowerCase().replace(/\s+/g, ''),
-  ])).filter(Boolean);
-
-  console.log('Login attempt for:', loginIdentifier);
+  console.log('Login attempt for:', loginEmail);
 
   try {
-    const normalizedEmailCandidates = identifierVariants.map((value) => value.toLowerCase());
-    const normalizedUsernameCandidates = identifierVariants.map((value) => value.toLowerCase());
-    const placeholders = normalizedEmailCandidates.map(() => '?').join(', ');
-    const usernamePlaceholders = normalizedUsernameCandidates.map(() => '?').join(', ');
-
     const [rows] = await pool.query(
-      `SELECT * FROM users WHERE (
-        LOWER(TRIM(email)) IN (${placeholders}) OR
-        LOWER(TRIM(username)) IN (${usernamePlaceholders})
-      ) AND deleted_at IS NULL LIMIT 1`,
-      [...normalizedEmailCandidates, ...normalizedUsernameCandidates]
+      `SELECT * FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND deleted_at IS NULL LIMIT 1`,
+      [loginEmail]
     );
 
     console.log('DB returned rows:', rows && rows.length);
 
     if (rows.length === 0) {
-      return res.status(401).json({ message: 'Invalid username/email or password.' });
+      return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
     const user = rows[0];

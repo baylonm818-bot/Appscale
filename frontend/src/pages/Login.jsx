@@ -372,11 +372,11 @@ function LoginCard() {
       ) : (
         <form onSubmit={handleSignIn} className="space-y-5">
           <Input
-            label="Username or Email"
-            type="text"
+            label="Email"
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your username or email"
+            placeholder="Enter your email"
             required
           />
 
