@@ -161,34 +161,61 @@ function Masterlist() {
   return (
     <div className="space-y-6">
 
-      {/* ── Tabs + Search + Filters ── */}
+      {/* ── Stat cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={Baby}
+          label="Total Children"
+          value={stats.totalChildren}
+          sublabel={`${barangayCount} barangay${barangayCount !== 1 ? 's' : ''}`}
+          gradient="bg-gradient-to-br from-[#1b5e20] to-[#2e7d32]"
+          onClick={() => switchTab('children')}
+          isActive={activeTab === 'children' && statusFilter === 'all'}
+        />
+        <StatCard
+          icon={Baby}
+          label="Graduate Children"
+          value={stats.graduateChildren}
+          sublabel="Completed program"
+          iconCls="bg-emerald-500"
+          onClick={() => { switchTab('children'); setStatusFilter('graduate'); }}
+          isActive={activeTab === 'children' && statusFilter === 'graduate'}
+        />
+        <StatCard
+          icon={Heart}
+          label="Total Mothers"
+          value={stats.totalMothers}
+          sublabel={`${barangayCount} barangay${barangayCount !== 1 ? 's' : ''}`}
+          gradient="bg-gradient-to-br from-emerald-600 to-teal-500"
+          onClick={() => switchTab('mothers')}
+          isActive={activeTab === 'mothers' && statusFilter === 'all'}
+        />
+        <StatCard
+          icon={Heart}
+          label="Completed Mothers"
+          value={stats.completedMothers}
+          sublabel="Finished monitoring"
+          iconCls="bg-teal-600"
+          onClick={() => { switchTab('mothers'); setStatusFilter('completed'); }}
+          isActive={activeTab === 'mothers' && statusFilter === 'completed'}
+        />
+      </div>
+
+      {/* ── Search + Filters panel ── */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
 
-        {/* Green tab header */}
-        <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 pt-5 pb-0">
-          <div className="flex items-center gap-1">
-            {[
-              { key: 'children', label: 'Children', icon: Baby },
-              { key: 'mothers',  label: 'Mothers',  icon: Heart },
-            ].map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => switchTab(key)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-t-xl text-sm font-semibold transition-all
-                  ${activeTab === key
-                    ? 'bg-white text-[#1b5e20]'
-                    : 'text-white/70 hover:text-white hover:bg-white/10'
-                  }`}
-              >
-                <Icon size={15} />
-                {label}
-                <span className={`ml-1 text-xs rounded-full px-2 py-0.5 font-bold
-                  ${activeTab === key ? 'bg-green-100 text-green-700' : 'bg-white/20 text-white'}`}>
-                  {key === 'children' ? children.length : mothers.length}
-                </span>
-              </button>
-            ))}
-          </div>
+        {/* Green title strip (no tab buttons) */}
+        <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center gap-3">
+          {activeTab === 'children'
+            ? <Baby size={18} className="text-white/80" />
+            : <Heart size={18} className="text-white/80" />
+          }
+          <p className="text-white font-semibold text-sm">
+            {activeTab === 'children' ? 'Children List' : 'Mothers List'}
+          </p>
+          <span className="ml-auto text-xs bg-white/20 text-white font-bold px-2.5 py-1 rounded-full">
+            {activeTab === 'children' ? children.length : mothers.length} records
+          </span>
         </div>
 
         {/* Search + filters bar */}
