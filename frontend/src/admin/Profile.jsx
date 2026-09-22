@@ -115,7 +115,7 @@ function Profile() {
     setProfileImageSrc(null);
     const pic = profile?.profile_picture;
     if (!pic || typeof pic !== 'string' || !pic.trim()) return;
-    if (/^(data:|https?:)?\\/\\//i.test(pic.trim())) return;
+    if (/^(data:|https?:)?\/\//i.test(pic.trim())) return;
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token || !profile?.user_id) return;
     (async () => {
