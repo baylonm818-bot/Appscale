@@ -45,6 +45,17 @@ function StatCard({ icon: Icon, label, value, sublabel, gradient, iconCls, onCli
 }
 
 
+/* ── Profile detail row ── */
+function DetailRow({ label, value }) {
+  if (!value && value !== 0) return null;
+  return (
+    <div className="py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
+      <p className="text-sm font-semibold text-gray-800 mt-0.5">{value}</p>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════════════ */
 function Masterlist() {
   const [stats, setStats]         = useState(null);
@@ -149,28 +160,6 @@ function Masterlist() {
 
   return (
     <div className="space-y-6">
-
-      {/* ── Stat cards ── */}
-      <div className="grid grid-cols-2 gap-4">
-        <StatCard
-          icon={Baby}
-          label="Total Children"
-          value={stats.totalChildren}
-          sublabel={`${barangayCount} barangay${barangayCount !== 1 ? 's' : ''}`}
-          gradient="bg-gradient-to-br from-[#1b5e20] to-[#2e7d32]"
-          onClick={() => { switchTab('children'); }}
-          isActive={activeTab === 'children'}
-        />
-        <StatCard
-          icon={Heart}
-          label="Total Mothers"
-          value={stats.totalMothers}
-          sublabel={`${barangayCount} barangay${barangayCount !== 1 ? 's' : ''}`}
-          gradient="bg-gradient-to-br from-emerald-600 to-teal-500"
-          onClick={() => { switchTab('mothers'); }}
-          isActive={activeTab === 'mothers'}
-        />
-      </div>
 
       {/* ── Tabs + Search + Filters ── */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -283,10 +272,11 @@ function Masterlist() {
           {activeTab === 'children' ? (
             <table className="w-full text-sm table-fixed">
               <colgroup>
-                <col className="w-[38%]" />
-                <col className="w-[17%]" />
-                <col className="w-[28%]" />
-                <col className="w-[17%]" />
+                <col className="w-[32%]" />
+                <col className="w-[14%]" />
+                <col className="w-[24%]" />
+                <col className="w-[15%]" />
+                <col className="w-[15%]" />
               </colgroup>
               <thead>
                 <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80">
@@ -294,17 +284,18 @@ function Masterlist() {
                   <th className="px-4 py-3">Age</th>
                   <th className="px-4 py-3">Barangay</th>
                   <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredChildren.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-14 text-center text-gray-400 text-sm">
+                    <td colSpan={5} className="px-6 py-14 text-center text-gray-400 text-sm">
                       No children match your search.
                     </td>
                   </tr>
                 ) : filteredChildren.map((c) => (
-                  <tr key={c.child_id} className="hover:bg-green-50/40 transition-colors">
+                  <tr key={c.child_id} className="hover:bg-green-50/40 transition-colors group">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
@@ -328,6 +319,14 @@ function Masterlist() {
                     <td className="px-4 py-3">
                       <StatusBadge status={c.status === 'graduate' ? 'graduate' : c.overall_status} />
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => setSelectedPerson({ ...c, _type: 'child' })}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition group-hover:border-green-300"
+                      >
+                        View
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -335,26 +334,28 @@ function Masterlist() {
           ) : (
             <table className="w-full text-sm table-fixed">
               <colgroup>
-                <col className="w-[45%]" />
-                <col className="w-[30%]" />
-                <col className="w-[25%]" />
+                <col className="w-[38%]" />
+                <col className="w-[27%]" />
+                <col className="w-[20%]" />
+                <col className="w-[15%]" />
               </colgroup>
               <thead>
                 <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80">
                   <th className="px-6 py-3">Name</th>
                   <th className="px-4 py-3">Barangay</th>
                   <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredMothers.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-6 py-14 text-center text-gray-400 text-sm">
+                    <td colSpan={4} className="px-6 py-14 text-center text-gray-400 text-sm">
                       No mothers match your search.
                     </td>
                   </tr>
                 ) : filteredMothers.map((m) => (
-                  <tr key={m.mother_id} className="hover:bg-green-50/40 transition-colors">
+                  <tr key={m.mother_id} className="hover:bg-green-50/40 transition-colors group">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
@@ -378,6 +379,14 @@ function Masterlist() {
                         {m.is_completed ? 'Completed' : 'Ongoing'}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => setSelectedPerson({ ...m, _type: 'mother' })}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition group-hover:border-green-300"
+                      >
+                        View
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -385,6 +394,107 @@ function Masterlist() {
           )}
         </div>
       </div>
+
+      {/* ── Profile Modal ── */}
+      {selectedPerson && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setSelectedPerson(null); }}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+
+            {/* Modal header */}
+            <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-lg">
+                  {(selectedPerson.first_name ?? '?').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-bold text-white text-base leading-tight">
+                    {selectedPerson.first_name} {selectedPerson.last_name}
+                  </p>
+                  <p className="text-white/70 text-xs mt-0.5">
+                    {selectedPerson._type === 'child' ? 'Child Record' : 'Mother Record'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedPerson(null)}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="px-6 py-4 max-h-[70vh] overflow-y-auto divide-y divide-gray-50">
+
+              {selectedPerson._type === 'child' ? (
+                <>
+                  <DetailRow label="Barangay"        value={selectedPerson.barangay} />
+                  <DetailRow label="Age"              value={selectedPerson.age_in_months != null ? `${selectedPerson.age_in_months} months old` : null} />
+                  <DetailRow label="Sex"              value={selectedPerson.sex ? selectedPerson.sex.charAt(0).toUpperCase() + selectedPerson.sex.slice(1) : null} />
+                  <DetailRow label="Guardian"         value={selectedPerson.guardian_name} />
+                  <DetailRow label="Weight"           value={selectedPerson.weight_kg ? `${selectedPerson.weight_kg} kg` : null} />
+                  <DetailRow label="Height"           value={selectedPerson.height_cm  ? `${selectedPerson.height_cm} cm`  : null} />
+                  <DetailRow label="Last Visit"       value={selectedPerson.last_visit ? new Date(selectedPerson.last_visit).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null} />
+                  <div className="py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Nutrition Status</p>
+                    <StatusBadge status={selectedPerson.status === 'graduate' ? 'graduate' : selectedPerson.overall_status} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <DetailRow label="Barangay"        value={selectedPerson.barangay} />
+                  <DetailRow label="Contact Number"  value={selectedPerson.contact_number} />
+                  <div className="py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Monitoring Status</p>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ring-1
+                      ${selectedPerson.is_completed
+                        ? 'bg-emerald-100 text-emerald-700 ring-emerald-200'
+                        : 'bg-amber-100 text-amber-700 ring-amber-200'
+                      }`}>
+                      {selectedPerson.is_completed ? 'Completed' : 'Ongoing'}
+                    </span>
+                  </div>
+                  <div className="py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Linked Children</p>
+                    {selectedPerson.linked_children?.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedPerson.linked_children.map((child) => (
+                          <div key={child.child_id} className="flex items-center gap-3 rounded-xl bg-green-50 border border-green-100 px-4 py-3">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                              {(child.first_name ?? '?').charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-800 truncate">{child.first_name} {child.last_name}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {child.age_in_months != null ? `${child.age_in_months} mos` : ''}{child.barangay ? ` · ${child.barangay}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">No child linked to this mother.</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div className="px-6 pb-5 pt-2">
+              <button
+                onClick={() => setSelectedPerson(null)}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-[#2e7d32] border-2 border-green-200 hover:bg-green-50 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
