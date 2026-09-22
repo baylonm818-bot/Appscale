@@ -57,6 +57,7 @@ function Masterlist() {
   const [search, setSearch]       = useState('');
   const [ageFilter, setAgeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedPerson, setSelectedPerson] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -150,7 +151,7 @@ function Masterlist() {
     <div className="space-y-6">
 
       {/* ── Stat cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <StatCard
           icon={Baby}
           label="Total Children"
@@ -158,16 +159,7 @@ function Masterlist() {
           sublabel={`${barangayCount} barangay${barangayCount !== 1 ? 's' : ''}`}
           gradient="bg-gradient-to-br from-[#1b5e20] to-[#2e7d32]"
           onClick={() => { switchTab('children'); }}
-          isActive={activeTab === 'children' && statusFilter === 'all'}
-        />
-        <StatCard
-          icon={Baby}
-          label="Graduate Children"
-          value={stats.graduateChildren}
-          sublabel="Completed program"
-          iconCls="bg-emerald-500"
-          onClick={() => { switchTab('children'); setStatusFilter('graduate'); }}
-          isActive={activeTab === 'children' && statusFilter === 'graduate'}
+          isActive={activeTab === 'children'}
         />
         <StatCard
           icon={Heart}
@@ -176,16 +168,7 @@ function Masterlist() {
           sublabel={`${barangayCount} barangay${barangayCount !== 1 ? 's' : ''}`}
           gradient="bg-gradient-to-br from-emerald-600 to-teal-500"
           onClick={() => { switchTab('mothers'); }}
-          isActive={activeTab === 'mothers' && statusFilter === 'all'}
-        />
-        <StatCard
-          icon={Heart}
-          label="Completed Mothers"
-          value={stats.completedMothers}
-          sublabel="Finished monitoring"
-          iconCls="bg-teal-600"
-          onClick={() => { switchTab('mothers'); setStatusFilter('completed'); }}
-          isActive={activeTab === 'mothers' && statusFilter === 'completed'}
+          isActive={activeTab === 'mothers'}
         />
       </div>
 
