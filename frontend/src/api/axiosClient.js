@@ -9,7 +9,8 @@ const axiosClient = axios.create({
 });
 
 axiosClient.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    // Prefer sessionStorage (non-persistent login); fall back to localStorage (Remember Me).
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
     }
