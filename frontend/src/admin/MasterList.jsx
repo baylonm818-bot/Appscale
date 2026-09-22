@@ -179,7 +179,7 @@ function Masterlist() {
           label="Graduate Children"
           value={stats.graduateChildren}
           sublabel="Completed program"
-          iconCls="bg-emerald-500"
+          gradient="bg-gradient-to-br from-[#1b5e20] to-[#2e7d32]"
           onClick={() => { switchTab('children'); setStatusFilter('graduate'); }}
           isActive={activeTab === 'children' && statusFilter === 'graduate'}
         />
@@ -188,7 +188,7 @@ function Masterlist() {
           label="Total Mothers"
           value={stats.totalMothers}
           sublabel={`${barangayCount} barangay${barangayCount !== 1 ? 's' : ''}`}
-          gradient="bg-gradient-to-br from-emerald-600 to-teal-500"
+          gradient="bg-gradient-to-br from-[#1b5e20] to-[#2e7d32]"
           onClick={() => switchTab('mothers')}
           isActive={activeTab === 'mothers' && statusFilter === 'all'}
         />
@@ -197,7 +197,7 @@ function Masterlist() {
           label="Completed Mothers"
           value={stats.completedMothers}
           sublabel="Finished monitoring"
-          iconCls="bg-teal-600"
+          gradient="bg-gradient-to-br from-[#1b5e20] to-[#2e7d32]"
           onClick={() => { switchTab('mothers'); setStatusFilter('completed'); }}
           isActive={activeTab === 'mothers' && statusFilter === 'completed'}
         />
