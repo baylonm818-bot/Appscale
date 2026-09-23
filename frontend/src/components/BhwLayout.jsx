@@ -16,7 +16,7 @@ import {
   X,
   Sun,
   Moon,
-} from 'lucide-react'; 
+} from 'lucide-react';
 
 const menuItems = [
   { name: 'Dashboard', path: '/bhw/dashboard', icon: LayoutDashboard },
@@ -50,7 +50,6 @@ function BHWLayout() {
     if (!pic || typeof pic !== 'string') return;
     const trimmed = pic.trim();
     if (!trimmed) return;
-    // If already a data URL or absolute URL, no need to fetch fallback
     if (/^(data:|https?:)?\/\//i.test(trimmed)) return;
 
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -63,9 +62,7 @@ function BHWLayout() {
         if (!res.ok) return;
         const j = await res.json();
         if (!cancelled && j?.profile_picture) setProfileImageSrc(j.profile_picture);
-      } catch (e) {
-        // ignore and fall back to direct URL
-      }
+      } catch {}
     })();
 
     return () => { cancelled = true; };
@@ -81,77 +78,83 @@ function BHWLayout() {
     navigate('/login');
   };
 
-    const pageTitles = {
-      '/bhw/dashboard': (
-        <div className="mb-1 px-4">
-          <h2 className="text-xl font-bold text-gray-800">Health Worker Dashboard</h2>
-          <p className="text-xs text-gray-400">{user.barangay ? `${user.barangay} Barangay Health & Nutrition` : 'Community Health Monitoring'}</p>
-        </div>
-      ),
-      '/bhw/need-attention': (
-        <div className="mb-1 px-4">
-          <h2 className="text-xl font-bold text-gray-800">Need Attention</h2>
-          <p className="text-xs text-gray-400">Children flagged for malnutrition or overdue health follow-ups</p>
-        </div>
-      ),
-      '/bhw/referrals': (
-        <div className="mb-1 px-4">
-          <h2 className="text-xl font-bold text-gray-800">Referrals Management</h2>
-          <p className="text-xs text-gray-400">Community health cases and doctor/RHU referrals</p>
-        </div>
-      ),
-      '/bhw/medical-records': (
-        <div className="mb-1 px-4">
-          <h2 className="text-xl font-bold text-gray-800">Medical Records</h2>
-          <p className="text-xs text-gray-400">Health history, growth assessments, and service records</p>
-        </div>
-      ),
-      '/bhw/schedule': (
-        <div className="mb-1 px-4">
-          <h2 className="text-xl font-bold text-gray-800">Schedule & Activities</h2>
-          <p className="text-xs text-gray-400">Feeding, home visits, checkups, and seminars</p>
-        </div>
-      ),
-      '/bhw/notifications': (
-        <div className="mb-1 px-4">
-          <h2 className="text-xl font-bold text-gray-800">Notifications</h2>
-          <p className="text-xs text-gray-400">View recent health alerts and assignment reminders</p>
-        </div>
-      ),
-      '/bhw/profile': (
-        <div className="mb-1 px-4">
-          <h2 className="text-xl font-bold text-gray-800">My Profile & Settings</h2>
-          <p className="text-xs text-gray-400">Manage account information and security</p>
-        </div>
-      ),
-    };
+  const pageTitles = {
+    '/bhw/dashboard': (
+      <div className="mb-1 px-4">
+        <h2 className="text-xl font-bold text-gray-800">Health Worker Dashboard</h2>
+        <p className="text-xs text-gray-400">{user.barangay ? `${user.barangay} Barangay Health & Nutrition` : 'Community Health Monitoring'}</p>
+      </div>
+    ),
+    '/bhw/need-attention': (
+      <div className="mb-1 px-4">
+        <h2 className="text-xl font-bold text-gray-800">Need Attention</h2>
+        <p className="text-xs text-gray-400">Children flagged for malnutrition or overdue health follow-ups</p>
+      </div>
+    ),
+    '/bhw/referrals': (
+      <div className="mb-1 px-4">
+        <h2 className="text-xl font-bold text-gray-800">Referrals Management</h2>
+        <p className="text-xs text-gray-400">Community health cases and doctor/RHU referrals</p>
+      </div>
+    ),
+    '/bhw/medical-records': (
+      <div className="mb-1 px-4">
+        <h2 className="text-xl font-bold text-gray-800">Medical Records</h2>
+        <p className="text-xs text-gray-400">Health history, growth assessments, and service records</p>
+      </div>
+    ),
+    '/bhw/schedule': (
+      <div className="mb-1 px-4">
+        <h2 className="text-xl font-bold text-gray-800">Schedule & Activities</h2>
+        <p className="text-xs text-gray-400">Feeding, home visits, checkups, and seminars</p>
+      </div>
+    ),
+    '/bhw/notifications': (
+      <div className="mb-1 px-4">
+        <h2 className="text-xl font-bold text-gray-800">Notifications</h2>
+        <p className="text-xs text-gray-400">View recent health alerts and assignment reminders</p>
+      </div>
+    ),
+    '/bhw/profile': (
+      <div className="mb-1 px-4">
+        <h2 className="text-xl font-bold text-gray-800">My Profile & Settings</h2>
+        <p className="text-xs text-gray-400">Manage account information and security</p>
+      </div>
+    ),
+  };
 
-const currentTitle = pageTitles[location.pathname] || '';
-
+  const currentTitle = pageTitles[location.pathname] || '';
 
   return (
     <div className="app-shell flex h-screen overflow-hidden">
-      <aside className={`app-sidebar ${isSidebarOpen ? 'w-64 mobile-open' : 'w-16'} text-white flex flex-col h-screen transition-all duration-300 shrink-0`}>
+      {/* ── Sidebar ── */}
+      <aside className={`app-sidebar ${isSidebarOpen ? 'w-64 mobile-open' : 'w-18'} text-white flex flex-col h-screen transition-all duration-300 shrink-0`}>
+        {/* Brand Header */}
         <div className={`app-sidebar-header flex items-center p-4 border-b ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
-          {isSidebarOpen ? (
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="rounded-2xl bg-white/95 p-1 shadow-lg shadow-black/10 ring-2 ring-white/20">
-                  <img src={logo} alt="AppScale logo" className="h-10 w-10 rounded-xl object-contain" />
-                </div>
-                <div className="min-w-0 leading-none">
-                  <span className="block truncate text-lg font-black tracking-tight text-white">AppScale</span>
-                  <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100/75">Health system</span>
-                </div>
+          {isSidebarOpen && (
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="rounded-2xl bg-white p-1.5 shadow-lg shadow-black/15 ring-2 ring-white/20 shrink-0">
+                <img src={logo} alt="AppScale logo" className="h-8 w-8 rounded-lg object-contain" />
+              </div>
+              <div className="min-w-0 leading-none">
+                <span className="block truncate text-lg font-black tracking-tight text-white">AppScale</span>
+                <span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-300">
+                  {user.role ? `${user.role.toUpperCase()} Portal` : 'Health Portal'}
+                </span>
+              </div>
             </div>
-          ) : null}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          )}
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-1.5 rounded-xl hover:bg-white/10 text-white/80 hover:text-white transition"
+          >
+            {isSidebarOpen ? <X size={18} /> : <Menu size={20} />}
           </button>
         </div>
 
-        
-
-        <nav className="flex-1 overflow-y-auto py-2">
+        {/* Navigation Items */}
+        <nav className="flex-1 overflow-y-auto py-3 space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -162,22 +165,29 @@ const currentTitle = pageTitles[location.pathname] || '';
                 onClick={() => {
                   if (window.innerWidth < 768) setIsSidebarOpen(false);
                 }}
-                className={`app-sidebar-link ${isActive ? 'is-active font-semibold' : ''} flex items-center gap-3 px-4 py-2 mx-2 rounded-lg mb-0.5 transition-colors duration-150 text-sm`}
+                className={`app-sidebar-link ${isActive ? 'is-active' : ''} flex items-center gap-3 px-3.5 py-2.5 mx-2.5 rounded-xl text-sm transition-all duration-150 ${
+                  !isSidebarOpen ? 'justify-center mx-1.5 px-2' : ''
+                }`}
+                title={!isSidebarOpen ? item.name : undefined}
               >
-                <Icon size={18} />
-                {isSidebarOpen && <span>{item.name}</span>}
+                <Icon size={19} className="shrink-0" />
+                {isSidebarOpen && <span className="truncate">{item.name}</span>}
               </Link>
             );
           })}
         </nav>
 
-        <div className="app-sidebar-footer app-sidebar-header border-t p-2">
+        {/* Footer Logout */}
+        <div className="app-sidebar-footer app-sidebar-header border-t p-2.5">
           <button
             onClick={handleLogout}
-            className="app-sidebar-link flex items-center gap-3 px-4 py-2 mx-2 w-[calc(100%-1rem)] rounded-lg transition-colors duration-150 text-sm"
+            className={`flex items-center gap-3 px-3.5 py-2.5 w-full rounded-xl transition-all duration-150 text-sm text-red-200/85 hover:text-white hover:bg-red-500/20 ${
+              !isSidebarOpen ? 'justify-center px-2' : ''
+            }`}
+            title={!isSidebarOpen ? 'Logout' : undefined}
           >
-            <LogOut size={18} />
-            {isSidebarOpen && <span>Logout</span>}
+            <LogOut size={18} className="shrink-0" />
+            {isSidebarOpen && <span className="font-semibold truncate">Logout</span>}
           </button>
         </div>
       </aside>
@@ -191,14 +201,15 @@ const currentTitle = pageTitles[location.pathname] || '';
         />
       )}
 
+      {/* ── Main Content Area ── */}
       <div className="app-content-shell flex-1 flex flex-col overflow-hidden min-w-0">
-          <div className="app-topbar relative z-40 px-2 py-2 flex justify-between items-center gap-3">
+        <div className="app-topbar relative z-40 px-3 py-2.5 flex justify-between items-center gap-3">
           <div className="min-w-0 flex items-center gap-2">
             {!isSidebarOpen && (
               <button
                 type="button"
                 aria-label="Open sidebar"
-                className="md:hidden p-2 rounded-lg text-green-800 hover:bg-green-50"
+                className="md:hidden p-2 rounded-xl text-green-800 hover:bg-green-50"
                 onClick={() => setIsSidebarOpen(true)}
               >
                 <Menu size={20} />
@@ -207,14 +218,14 @@ const currentTitle = pageTitles[location.pathname] || '';
             {currentTitle}
           </div>
 
-          <div className="relative flex items-center gap-2">
+          <div className="relative flex items-center gap-3">
             <button
               type="button"
               aria-label="Toggle color theme"
               onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
               className="theme-toggle"
             >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
             </button>
 
             <button
@@ -224,7 +235,7 @@ const currentTitle = pageTitles[location.pathname] || '';
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
               className="flex items-center gap-2 rounded-full p-1 pr-2 transition hover:bg-green-50"
             >
-              <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-green-600 text-sm font-bold text-white shadow-sm ring-1 ring-green-100">
+              <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-sm font-bold text-white shadow-sm ring-2 ring-green-100">
                 {user?.profile_picture ? (
                   <img
                     src={profileImageSrc || getProfileImageUrl(user.profile_picture)}
@@ -244,10 +255,10 @@ const currentTitle = pageTitles[location.pathname] || '';
             </button>
 
             {isProfileMenuOpen && (
-              <div className="absolute right-0 top-14 z-100 w-56 rounded-2xl border border-white/10 bg-[#111827] p-2 shadow-2xl shadow-black/30">
-                <div className="border-b border-white/10 px-3 py-2">
-                  <p className="truncate text-sm font-bold text-white">{user?.full_name || user?.username || "BHW User"}</p>
-                  <p className="truncate text-xs text-slate-300">{user?.email || "BHW account"}</p>
+              <div className="absolute right-0 top-14 z-100 w-56 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-black/15">
+                <div className="border-b border-gray-100 px-3 py-2">
+                  <p className="truncate text-sm font-bold text-gray-900">{user?.full_name || user?.username || "Health Worker"}</p>
+                  <p className="truncate text-xs text-gray-400">{user?.email || "Health Worker account"}</p>
                 </div>
                 <button
                   type="button"
@@ -255,14 +266,14 @@ const currentTitle = pageTitles[location.pathname] || '';
                     setIsProfileMenuOpen(false);
                     navigate('/bhw/profile');
                   }}
-                  className="mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white"
+                  className="mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-800 transition"
                 >
                   View profile
                 </button>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                  className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition"
                 >
                   Logout
                 </button>
@@ -270,7 +281,7 @@ const currentTitle = pageTitles[location.pathname] || '';
             )}
           </div>
         </div>
-        
+
         <main className="app-main flex-1 overflow-y-auto p-6" style={{ background: 'var(--canvas)' }}>
           <div key={location.pathname} className="app-route-view">
             <Outlet />
