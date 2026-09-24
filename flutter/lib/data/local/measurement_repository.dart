@@ -1,16 +1,12 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/measurement.dart';
+import '../remote/beneficiary_api.dart';
 import 'app_data_bus.dart';
 import 'hive_boxes.dart';
 
-/// Measurements are stored as a list per child, keyed by childId.
-/// This keeps a child's full history in one read instead of scanning
-/// a flat box for matches, which matters once histories grow long.
 class MeasurementRepository {
   Box get _box => Hive.box(HiveBoxes.measurements);
 
-  /// Returns newest-first — matches how History and the header's
-  /// "Latest" badge expect the data.
   List<Measurement> getForChild(String childId) {
     final raw = _box.get(childId) as List?;
     if (raw == null) return [];
@@ -21,7 +17,6 @@ class MeasurementRepository {
     return list;
   }
 
-  /// Charts read oldest-first, since a trend line reads left-to-right in time.
   List<Measurement> getForChildAscending(String childId) =>
       getForChild(childId).reversed.toList();
 
@@ -29,5 +24,11 @@ class MeasurementRepository {
     final current = (_box.get(childId) as List?) ?? [];
     await _box.put(childId, [...current, measurement.toMap()]);
     AppDataBus.notifyChanged();
+
+    try {
+      await BeneficiaryApi.syncNutritionRecord(childId, measurement);
+    } catch (e) {
+      print('Offline measurement sync failed: $e');
+    }
   }
 }

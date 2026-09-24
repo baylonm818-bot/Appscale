@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../local/hive_boxes.dart';
 import '../models/child.dart';
 import '../models/mother.dart';
+import '../models/measurement.dart';
 
 class BeneficiaryApi {
   BeneficiaryApi._();
@@ -41,6 +42,21 @@ class BeneficiaryApi {
       'barangay': mother.barangay,
       'linked_child_external_ids': mother.linkedChildIds,
       'encoded_by': settings.authUser?['user_id'],
+    }, settings.authToken);
+  }
+
+  static Future<void> syncNutritionRecord(String childExternalId, Measurement measurement) async {
+    final settings = SettingsRepository();
+    await _post('/mobile/nutrition-records', {
+      'child_external_id': childExternalId,
+      'record_date': _date(measurement.date),
+      'weight_kg': measurement.weightKg,
+      'height_cm': measurement.heightCm,
+      'muac_cm': measurement.muacCm,
+      'weight_status': measurement.weightForAgeStatus,
+      'height_status': measurement.heightForAgeStatus,
+      'overall_status': measurement.effectiveWastingStatus,
+      'recorded_by': settings.authUser?['user_id'],
     }, settings.authToken);
   }
 
