@@ -9,7 +9,7 @@ class ReferralApi {
   static String get _baseUrl {
     const configured = String.fromEnvironment('API_BASE_URL');
     if (configured.isNotEmpty) return configured;
-    return kIsWeb ? 'http://localhost:5000/api' : 'http://10.0.2.2:5000/api';
+    return kIsWeb ? 'https://appscale-1.onrender.com/api' : 'https://appscale-1.onrender.com/api';
   }
 
   static Future<void> submit(Referral referral) async {
