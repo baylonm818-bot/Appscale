@@ -1,26 +1,5 @@
 const pool = require('../config/db');
 
-async function getScopedBnsFilter(req, tableName, alias) {
-  const role = String(req.user?.role || '').toLowerCase();
-  if (role !== 'bns') {
-    return { clause: '', params: [] };
-  }
-
-  const [[{ cnt }]] = await pool.query(
-    `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-    [process.env.DB_DATABASE || process.env.DB_NAME || 'appscale_db', tableName, 'encoded_by']
-  );
-
-  if (Number(cnt) === 0) {
-    return { clause: '', params: [] };
-  }
-
-  return {
-    clause: `AND ${alias}.encoded_by = ?`,
-    params: [req.user.user_id],
-  };
-}
-
 exports.getBhwStats = async (req, res) => {
   const { barangay } = req.query;
 
@@ -29,29 +8,38 @@ exports.getBhwStats = async (req, res) => {
   }
 
   try {
-    const { clause: childScopeClause, params: childScopeParams } = await getScopedBnsFilter(req, 'children', 'c');
+    // Scope filter: BNS users only see records they personally encoded
+    const role = String(req.user?.role || '').toLowerCase();
+    const isBns = role === 'bns';
+    const childScopeClause = isBns ? 'AND c.encoded_by = ?' : '';
+    const childScopeParams = isBns ? [req.user.user_id] : [];
+    const motherScopeClause = isBns ? 'AND m.encoded_by = ?' : '';
+    const motherScopeParams = isBns ? [req.user.user_id] : [];
+
+    // ── Total children & mothers in barangay ──
     const [[childStats]] = await pool.query(
-      `SELECT COUNT(*) AS totalChildren FROM children c WHERE c.barangay = ? AND c.status = 'active' ${childScopeClause}`,
+      `SELECT COUNT(*) AS totalChildren FROM children c
+       WHERE c.barangay = ? AND c.status = 'active' ${childScopeClause}`,
       [barangay, ...childScopeParams]
     );
 
-    const { clause: motherScopeClause, params: motherScopeParams } = await getScopedBnsFilter(req, 'mothers', 'm');
     const [[motherStats]] = await pool.query(
-      `SELECT COUNT(*) AS totalMothers FROM mothers m WHERE m.barangay = ? AND m.status = 'active' ${motherScopeClause}`,
+      `SELECT COUNT(*) AS totalMothers FROM mothers m
+       WHERE m.barangay = ? AND m.status = 'active' ${motherScopeClause}`,
       [barangay, ...motherScopeParams]
     );
 
-    // Latest nutrition record per child in this barangay
-    // Check if wasting_status column exists to avoid ER_BAD_FIELD_ERROR
+    // ── Check if optional wasting_status column exists ──
     const [[{ cnt }]] = await pool.query(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-      [process.env.DB_DATABASE || process.env.DB_NAME || 'appscale_db', 'nutrition_records', 'wasting_status']
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'nutrition_records' AND COLUMN_NAME = 'wasting_status'`
     );
     const hasWasting = Number(cnt) > 0;
 
     const selectCols = ['nr.weight_status', 'nr.height_status', 'nr.overall_status'];
     if (hasWasting) selectCols.splice(2, 0, 'nr.wasting_status');
 
+    // ── Latest nutrition records for children in this barangay ──
     const [latestRecords] = await pool.query(
       `SELECT ${selectCols.join(', ')}
        FROM nutrition_records nr
@@ -74,11 +62,15 @@ exports.getBhwStats = async (req, res) => {
       if (r.overall_status === 'MAM' || r.overall_status === 'SAM') atRiskChildren++;
     });
 
+    // ── At-risk mothers (weight < 45 kg) ──
     const [[atRiskMothersRow]] = await pool.query(
-      `SELECT COUNT(*) AS atRiskMothers FROM mothers m WHERE m.barangay = ? AND m.status = 'active' AND m.weight_kg IS NOT NULL AND m.weight_kg < 45 ${motherScopeClause}`,
+      `SELECT COUNT(*) AS atRiskMothers FROM mothers m
+       WHERE m.barangay = ? AND m.status = 'active'
+         AND m.weight_kg IS NOT NULL AND m.weight_kg < 45 ${motherScopeClause}`,
       [barangay, ...motherScopeParams]
     );
 
+    // ── Monthly monitoring trend for past 6 months ──
     const [monthlyRows] = await pool.query(
       `SELECT DATE_FORMAT(nr.record_date, '%Y-%m') AS month_key,
               COUNT(DISTINCT nr.child_id) AS monitored,
