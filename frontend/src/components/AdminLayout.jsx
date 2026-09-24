@@ -29,14 +29,14 @@ const menuItems = [
 function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem('appscale-theme') || 'light');
+  
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('appscale-theme', theme);
+    
+    
   }, [theme]);
 
   const handleLogout = () => {
@@ -182,14 +182,7 @@ function AdminLayout() {
           </div>
 
           <div className="relative flex items-center gap-3">
-            <button
-              type="button"
-              aria-label="Toggle color theme"
-              onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
-              className="theme-toggle"
-            >
-              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
+
 
             <button
               type="button"
@@ -256,3 +249,5 @@ function AdminLayout() {
 }
 
 export default AdminLayout;
+
+

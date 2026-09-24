@@ -34,20 +34,7 @@
   --success: #2e7d32;
 }
 
-:root[data-theme='dark'] {
-  --ink: #edfdf5;
-  --muted: #b9d8cf;
-  --surface: #122c29;
-  --canvas: #0d201e;
-  --line: rgba(175, 219, 205, 0.15);
-  --panel: #163632;
-  --panel-alt: #1c433f;
-  --header: rgba(16, 34, 31, 0.88);
-  --sidebar: linear-gradient(180deg, #061709 0%, #0c2410 40%, #133816 100%);
-  --shadow-soft: rgba(2, 12, 10, 0.38);
-  --toggle-track: #1f4e45;
-  --toggle-knob: #d8fff0;
-}
+
 
 * {
   box-sizing: border-box;

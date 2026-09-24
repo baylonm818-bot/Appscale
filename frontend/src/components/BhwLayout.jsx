@@ -219,14 +219,7 @@ function BHWLayout() {
           </div>
 
           <div className="relative flex items-center gap-3">
-            <button
-              type="button"
-              aria-label="Toggle color theme"
-              onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
-              className="theme-toggle"
-            >
-              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
+
 
             <button
               type="button"
