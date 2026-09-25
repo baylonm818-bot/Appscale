@@ -22,6 +22,10 @@ import BHWProfile from './bhw/Profile';
 
 
 function App() {
+  localStorage.removeItem('appscale-theme');
+  document.documentElement.removeAttribute('data-theme');
+  document.documentElement.classList.remove('dark');
+
   return(
     <BrowserRouter>
     <Routes>

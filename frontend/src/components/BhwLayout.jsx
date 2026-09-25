@@ -31,7 +31,7 @@ const menuItems = [
 function BHWLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem('appscale-theme') || 'light');
+  
   const navigate = useNavigate();
   const location = useLocation();
   const { user: authUser } = useAuth();
@@ -39,8 +39,8 @@ function BHWLayout() {
   const [profileImageSrc, setProfileImageSrc] = useState(null);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('appscale-theme', theme);
+    
+    
   }, [theme]);
 
   useEffect(() => {
