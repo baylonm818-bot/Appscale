@@ -11,9 +11,9 @@ exports.getBhwStats = async (req, res) => {
     // Scope filter: BNS users only see records they personally encoded
     const role = String(req.user?.role || '').toLowerCase();
     const isBns = role === 'bns';
-    const childScopeClause = isBns ? 'AND c.encoded_by = ?' : '';
+    const childScopeClause = isBns ? 'AND (c.encoded_by IS NULL OR c.encoded_by = ?)' : '';
     const childScopeParams = isBns ? [req.user.user_id] : [];
-    const motherScopeClause = isBns ? 'AND m.encoded_by = ?' : '';
+    const motherScopeClause = isBns ? 'AND (m.encoded_by IS NULL OR m.encoded_by = ?)' : '';
     const motherScopeParams = isBns ? [req.user.user_id] : [];
 
     // ── Total children & mothers in barangay ──

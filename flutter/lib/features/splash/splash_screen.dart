@@ -39,6 +39,8 @@ class _SplashScreenState extends State<SplashScreen>
     _navigationTimer = Timer(const Duration(milliseconds: 1800), () async {
       if (!mounted) return;
 
+      final navigator = Navigator.of(context);
+
       await Future.wait([
         ChildRepository().syncPending(),
         MotherRepository().syncPending(),
@@ -46,17 +48,20 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
 
       final settings = SettingsRepository();
-      
+
       Widget nextScreen;
       if (!settings.hasSeenOnboarding) {
         nextScreen = const OnboardingScreen();
-      } else if (settings.authToken != null && settings.authToken!.isNotEmpty) {
+      } else if (settings.hasValidSession) {
         nextScreen = const MainShell();
       } else {
+        await settings.clearSession();
         nextScreen = const LoginScreen();
       }
 
-      Navigator.of(context).pushReplacement(
+      if (!mounted) return;
+
+      navigator.pushReplacement(
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 500),
           pageBuilder: (_, animation, _) => nextScreen,

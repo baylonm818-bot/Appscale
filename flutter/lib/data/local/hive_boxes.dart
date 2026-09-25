@@ -59,6 +59,31 @@ class SettingsRepository {
   bool get rememberMe => _box.get('remember_me', defaultValue: false);
   Future<void> setRememberMe(bool value) => _box.put('remember_me', value);
 
+  DateTime? get sessionExpiresAt {
+    final raw = _box.get('session_expires_at');
+    if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
+    if (raw is String && raw.isNotEmpty) {
+      return DateTime.tryParse(raw);
+    }
+    return null;
+  }
+
+  Future<void> setSessionExpiresAt(DateTime? value) async {
+    if (value == null) {
+      await _box.delete('session_expires_at');
+      return;
+    }
+    await _box.put('session_expires_at', value.millisecondsSinceEpoch);
+  }
+
+  bool get hasValidSession {
+    final token = authToken;
+    if (token == null || token.isEmpty) return false;
+    final expiresAt = sessionExpiresAt;
+    if (expiresAt == null) return false;
+    return DateTime.now().isBefore(expiresAt);
+  }
+
   String? get authToken => _box.get('auth_token');
   Future<void> setAuthToken(String? value) =>
       value == null ? _box.delete('auth_token') : _box.put('auth_token', value);
@@ -70,5 +95,6 @@ class SettingsRepository {
   Future<void> clearSession() async {
     await _box.delete('auth_token');
     await _box.delete('auth_user');
+    await _box.delete('session_expires_at');
   }
 }

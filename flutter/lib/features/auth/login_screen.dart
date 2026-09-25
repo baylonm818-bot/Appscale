@@ -45,8 +45,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final session = await AuthApi.login(email: email, password: password);
+      const expiryDuration = Duration(days: 30);
+      final expiresAt = DateTime.now().add(expiryDuration);
+
       await _settings.setRememberMe(_rememberMe);
       await _settings.setAuthToken(session.token);
+      await _settings.setSessionExpiresAt(expiresAt);
       await _settings.setAuthUser(
         session.toMap()['user'] as Map<String, dynamic>,
       );

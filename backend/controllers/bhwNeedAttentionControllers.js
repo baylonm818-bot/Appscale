@@ -55,7 +55,7 @@ exports.getNeedAttention = async (req, res) => {
       );
 
       if (Number(encodedCount) > 0) {
-        childScopeClause = 'AND c.encoded_by = ?';
+        childScopeClause = 'AND (c.encoded_by IS NULL OR c.encoded_by = ?)';
         childScopeParams = [req.user.user_id];
       }
     }

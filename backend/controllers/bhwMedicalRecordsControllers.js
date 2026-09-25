@@ -19,7 +19,7 @@ exports.getMedicalRecordsList = async (req, res) => {
       );
 
       if (Number(cnt) > 0) {
-        scopeClause = 'AND c.encoded_by = ?';
+        scopeClause = 'AND (c.encoded_by IS NULL OR c.encoded_by = ?)';
         scopeParams = [req.user.user_id];
       }
     }
