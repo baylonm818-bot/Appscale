@@ -361,7 +361,7 @@ function NeedAttention() {
                     <tr key={c.child_id} className="hover:bg-green-50/40 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-red-500 flex items-center justify-center text-white text-xs font-bold shadow-xs">
+                          <div className="shrink-0 w-9 h-9 rounded-full bg-linear-to-br from-amber-400 to-red-500 flex items-center justify-center text-white text-xs font-bold shadow-xs">
                             {(c.first_name ?? '?').charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">

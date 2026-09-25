@@ -21,7 +21,7 @@ function StatCard({ icon: Icon, label, value, sublabel, isActive, onClick }) {
       onClick={onClick}
       className={`w-full text-left rounded-2xl p-5 shadow-sm transition-all duration-200 focus:outline-none cursor-pointer
         ${isActive
-          ? 'bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-white shadow-md'
+          ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white shadow-md'
           : 'bg-white hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'
         }`}
     >
@@ -350,7 +350,7 @@ function UserManagement() {
                   <tr key={u.user_id} className="hover:bg-green-50/40 transition-colors group">
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xs font-bold shadow-xs">
+                        <div className="shrink-0 w-9 h-9 rounded-full bg-linear-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xs font-bold shadow-xs">
                           {(u.first_name ?? '?').charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">

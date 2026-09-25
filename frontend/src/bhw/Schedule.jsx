@@ -37,7 +37,7 @@ function SummaryCard({ icon: Icon, label, value, sublabel, isActive, onClick }) 
       onClick={onClick}
       className={`w-full text-left rounded-2xl p-5 shadow-sm transition-all duration-200 focus:outline-none cursor-pointer
         ${isActive
-          ? 'bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-white shadow-md'
+          ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white shadow-md'
           : 'bg-white hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'
         }`}
     >
@@ -61,7 +61,7 @@ function ActivityRow({ activity, onComplete, onArchive }) {
 
   return (
     <div className="flex flex-col gap-3 px-6 py-4 hover:bg-green-50/30 transition-colors border-b border-gray-50 last:border-0 sm:flex-row sm:items-center sm:gap-5">
-      <div className="flex flex-col items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-white shrink-0 shadow-xs">
+      <div className="flex flex-col items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white shrink-0 shadow-xs">
         <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{month}</span>
         <span className="text-xl font-black leading-none">{day}</span>
       </div>

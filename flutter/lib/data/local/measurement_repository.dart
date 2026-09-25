@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/measurement.dart';
 import '../remote/beneficiary_api.dart';
@@ -28,7 +29,7 @@ class MeasurementRepository {
     try {
       await BeneficiaryApi.syncNutritionRecord(childId, measurement);
     } catch (e) {
-      print('Offline measurement sync failed: $e');
+      debugPrint('Offline measurement sync failed: $e');
     }
   }
 }

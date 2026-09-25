@@ -190,7 +190,7 @@ function MedicalRecords() {
                     >
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white ${
                         isSelected
-                          ? 'bg-gradient-to-br from-[#1b5e20] to-[#2e7d32]'
+                          ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32]'
                           : 'bg-gray-400'
                       }`}>
                         {(c.first_name ?? '?').charAt(0).toUpperCase()}

@@ -186,13 +186,13 @@ function Profile() {
                       const cont = ev.currentTarget.parentElement; if (!cont) return;
                       ev.currentTarget.style.display = 'none';
                       const fb = document.createElement('div');
-                      fb.className = 'w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black';
+                      fb.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black';
                       fb.textContent = getUserInitials(profile);
                       cont.replaceChildren(fb);
                     }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black">
+                  <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black">
                     {getUserInitials(profile)}
                   </div>
                 )}

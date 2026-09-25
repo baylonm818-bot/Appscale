@@ -33,7 +33,7 @@ function StatCard({ icon: Icon, label, value, sublabel, to }) {
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100/80 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-medium text-gray-500">{label}</p>
-        <div className="shrink-0 w-10 h-10 rounded-xl bg-green-50 text-[#2e7d32] flex items-center justify-center group-hover:bg-gradient-to-br group-hover:from-[#1b5e20] group-hover:to-[#2e7d32] group-hover:text-white transition-all shadow-xs">
+        <div className="shrink-0 w-10 h-10 rounded-xl bg-green-50 text-[#2e7d32] flex items-center justify-center group-hover:bg-linear-to-br group-hover:from-[#1b5e20] group-hover:to-[#2e7d32] group-hover:text-white transition-all shadow-xs">
           <Icon size={18} />
         </div>
       </div>
@@ -315,7 +315,7 @@ function Dashboard() {
                   key={act.schedule_id}
                   className="flex items-start gap-3.5 p-4 rounded-xl bg-gray-50/70 border border-gray-100 hover:bg-green-50/40 hover:border-green-200 transition-all"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0 shadow-xs">
+                  <div className="w-12 h-12 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0 shadow-xs">
                     <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{month}</span>
                     <span className="text-lg font-black leading-none">{day}</span>
                   </div>

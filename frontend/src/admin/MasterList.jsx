@@ -170,7 +170,7 @@ function Masterlist() {
           label="Total Children"
           value={stats.totalChildren}
           sublabel={`${barangayCount} barangay${barangayCount !== 1 ? 's' : ''}`}
-          gradient="bg-gradient-to-br from-[#1b5e20] to-[#2e7d32]"
+          gradient="bg-linear-to-br from-[#1b5e20] to-[#2e7d32]"
           onClick={() => switchTab('children')}
           isActive={activeTab === 'children' && statusFilter === 'all'}
         />
@@ -179,7 +179,7 @@ function Masterlist() {
           label="Graduate Children"
           value={stats.graduateChildren}
           sublabel="Completed program"
-          gradient="bg-gradient-to-br from-[#1b5e20] to-[#2e7d32]"
+          gradient="bg-linear-to-br from-[#1b5e20] to-[#2e7d32]"
           onClick={() => { switchTab('children'); setStatusFilter('graduate'); }}
           isActive={activeTab === 'children' && statusFilter === 'graduate'}
         />
@@ -188,7 +188,7 @@ function Masterlist() {
           label="Total Mothers"
           value={stats.totalMothers}
           sublabel={`${barangayCount} barangay${barangayCount !== 1 ? 's' : ''}`}
-          gradient="bg-gradient-to-br from-[#1b5e20] to-[#2e7d32]"
+          gradient="bg-linear-to-br from-[#1b5e20] to-[#2e7d32]"
           onClick={() => switchTab('mothers')}
           isActive={activeTab === 'mothers' && statusFilter === 'all'}
         />
@@ -197,7 +197,7 @@ function Masterlist() {
           label="Completed Mothers"
           value={stats.completedMothers}
           sublabel="Finished monitoring"
-          gradient="bg-gradient-to-br from-[#1b5e20] to-[#2e7d32]"
+          gradient="bg-linear-to-br from-[#1b5e20] to-[#2e7d32]"
           onClick={() => { switchTab('mothers'); setStatusFilter('completed'); }}
           isActive={activeTab === 'mothers' && statusFilter === 'completed'}
         />
@@ -315,7 +315,7 @@ function Masterlist() {
                   <tr key={c.child_id} className="hover:bg-green-50/40 transition-colors group">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                        <div className="shrink-0 w-8 h-8 rounded-full bg-linear-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
                           {(c.first_name ?? '?').charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
@@ -375,7 +375,7 @@ function Masterlist() {
                   <tr key={m.mother_id} className="hover:bg-green-50/40 transition-colors group">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                        <div className="shrink-0 w-8 h-8 rounded-full bg-linear-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
                           {(m.first_name ?? '?').charAt(0).toUpperCase()}
                         </div>
                         <p className="font-semibold text-gray-800 truncate">{m.first_name} {m.last_name}</p>
@@ -480,7 +480,7 @@ function Masterlist() {
                       <div className="space-y-2">
                         {selectedPerson.linked_children.map((child) => (
                           <div key={child.child_id} className="flex items-center gap-3 rounded-xl bg-green-50 border border-green-100 px-4 py-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-linear-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                               {(child.first_name ?? '?').charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0">

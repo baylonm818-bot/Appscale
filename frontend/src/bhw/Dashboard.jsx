@@ -12,7 +12,7 @@ function StatCard({ icon: Icon, label, value, sublabel, to, accent }) {
         <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-xs ${
           accent === 'red' ? 'bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white' :
           accent === 'amber' ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white' :
-          'bg-green-50 text-[#2e7d32] group-hover:bg-gradient-to-br group-hover:from-[#1b5e20] group-hover:to-[#2e7d32] group-hover:text-white'
+          'bg-green-50 text-[#2e7d32] group-hover:bg-linear-to-br group-hover:from-[#1b5e20] group-hover:to-[#2e7d32] group-hover:text-white'
         }`}>
           <Icon size={18} />
         </div>
@@ -232,7 +232,7 @@ function Dashboard() {
                       key={act.schedule_id}
                       className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50/70 border border-gray-100 hover:bg-green-50/40 transition"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0">
                         <span className="text-[9px] font-bold uppercase opacity-80">{month}</span>
                         <span className="text-sm font-black leading-none">{day}</span>
                       </div>
@@ -304,7 +304,7 @@ function Dashboard() {
             to={to}
             className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all"
           >
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} text-white flex items-center justify-center mb-3 shadow-xs group-hover:scale-105 transition`}>
+            <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${color} text-white flex items-center justify-center mb-3 shadow-xs group-hover:scale-105 transition`}>
               <Icon size={18} />
             </div>
             <p className="font-bold text-gray-900 text-sm group-hover:text-[#2e7d32] transition">{label}</p>

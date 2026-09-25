@@ -187,7 +187,7 @@ function AdminLayout() {
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
               className="flex items-center gap-2 rounded-full p-1 pr-2 transition hover:bg-green-50"
             >
-              <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-sm font-bold text-gray-900 shadow-sm ring-2 ring-green-100">
+              <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-sm font-bold text-gray-900 shadow-sm ring-2 ring-green-100">
                 {user?.profile_picture ? (
                   <img
                     src={getProfileImageUrl(user.profile_picture)}
