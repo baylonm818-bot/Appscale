@@ -93,7 +93,7 @@ function AdminLayout() {
   return (
     <div className="app-shell flex h-screen overflow-hidden">
       {/* ── Sidebar ── */}
-      <aside className={`app-sidebar ${isSidebarOpen ? 'w-64 mobile-open' : 'w-18'} text-white flex flex-col h-screen transition-all duration-300 shrink-0`}>
+      <aside className={`app-sidebar border-r border-gray-200 ${isSidebarOpen ? 'w-64 mobile-open' : 'w-18'} text-gray-900 flex flex-col h-screen transition-all duration-300 shrink-0`}>
         {/* Brand Header */}
         <div className={`app-sidebar-header flex items-center p-4 border-b ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {isSidebarOpen && (
@@ -102,15 +102,15 @@ function AdminLayout() {
                 <img src={logo} alt="AppScale logo" className="h-8 w-8 rounded-lg object-contain" />
               </div>
               <div className="min-w-0 leading-none">
-                <span className="block truncate text-lg font-black tracking-tight text-white">AppScale</span>
-                <span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-300">Admin Portal</span>
+                <span className="block truncate text-lg font-black tracking-tight text-gray-900">AppScale</span>
+                <span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-[0.16em] text-green-600">Admin Portal</span>
               </div>
             </div>
           )}
           <button
             type="button"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-1.5 rounded-xl hover:bg-white/10 text-white/80 hover:text-white transition"
+            className="p-1.5 rounded-xl hover:bg-green-50 text-gray-600 hover:text-green-800 transition"
           >
             {isSidebarOpen ? <X size={18} /> : <Menu size={20} />}
           </button>
@@ -144,7 +144,7 @@ function AdminLayout() {
         <div className="app-sidebar-footer app-sidebar-header border-t p-2.5">
           <button
             onClick={handleLogout}
-            className={`flex items-center gap-3 px-3.5 py-2.5 w-full rounded-xl transition-all duration-150 text-sm text-red-200/85 hover:text-white hover:bg-red-500/20 ${
+            className={`flex items-center gap-3 px-3.5 py-2.5 w-full rounded-xl transition-all duration-150 text-sm text-red-200/85 hover:text-green-800 hover:bg-red-500/20 ${
               !isSidebarOpen ? 'justify-center px-2' : ''
             }`}
             title={!isSidebarOpen ? 'Logout' : undefined}
@@ -191,7 +191,7 @@ function AdminLayout() {
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
               className="flex items-center gap-2 rounded-full p-1 pr-2 transition hover:bg-green-50"
             >
-              <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-sm font-bold text-white shadow-sm ring-2 ring-green-100">
+              <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-[#1b5e20] to-[#2e7d32] text-sm font-bold text-gray-900 shadow-sm ring-2 ring-green-100">
                 {user?.profile_picture ? (
                   <img
                     src={getProfileImageUrl(user.profile_picture)}
@@ -247,6 +247,8 @@ function AdminLayout() {
 }
 
 export default AdminLayout;
+
+
 
 
 
