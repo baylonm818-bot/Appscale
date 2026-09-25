@@ -239,9 +239,7 @@ function AdminLayout() {
         </div>
 
         <div className="app-main flex-1 overflow-auto p-6">
-          <div key={location.pathname} className="app-route-view">
-            <Outlet />
-          </div>
+          <motion.div key={location.pathname} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.3 }} className="app-route-view"><Outlet /></motion.div>
         </div>
       </div>
     </div>
@@ -249,5 +247,6 @@ function AdminLayout() {
 }
 
 export default AdminLayout;
+
 
 

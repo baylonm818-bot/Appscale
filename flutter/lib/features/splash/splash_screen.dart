@@ -5,6 +5,7 @@ import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../auth/login_screen.dart';
 import '../onboarding/onboarding_screen.dart';
+import '../shell/main_shell.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -35,8 +36,6 @@ class _SplashScreenState extends State<SplashScreen>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
     _controller.forward();
 
-    // Use a cancellable Timer so tests can dispose the widget without leaving
-    // pending timers (which would fail test invariant checks).
     _navigationTimer = Timer(const Duration(milliseconds: 1800), () async {
       if (!mounted) return;
 
@@ -47,9 +46,15 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
 
       final settings = SettingsRepository();
-      final nextScreen = settings.hasSeenOnboarding
-          ? const LoginScreen()
-          : const OnboardingScreen();
+      
+      Widget nextScreen;
+      if (!settings.hasSeenOnboarding) {
+        nextScreen = const OnboardingScreen();
+      } else if (settings.authToken != null && settings.authToken!.isNotEmpty) {
+        nextScreen = const MainShell();
+      } else {
+        nextScreen = const LoginScreen();
+      }
 
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
