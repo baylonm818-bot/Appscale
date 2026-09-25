@@ -127,7 +127,7 @@ function BHWLayout() {
       <aside className={`app-sidebar border-r border-gray-200 ${isSidebarOpen ? 'w-64 mobile-open' : 'w-18'} text-gray-900 flex flex-col h-screen transition-all duration-300 shrink-0`}>
         {/* Brand Header */}
         <div className={`app-sidebar-header flex items-center p-4 border-b ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
-          {isSidebarOpen && (
+          {isSidebarOpen ? (
             <div className="flex min-w-0 items-center gap-3">
               <div className="rounded-2xl bg-white p-1.5 shadow-lg shadow-black/15 ring-2 ring-white/20 shrink-0">
                 <img src={logo} alt="AppScale logo" className="h-8 w-8 rounded-lg object-contain" />
@@ -138,6 +138,13 @@ function BHWLayout() {
                   {user.role ? `${user.role.toUpperCase()} Portal` : 'Health Portal'}
                 </span>
               </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-1 text-center">
+              <div className="rounded-2xl bg-white p-1.5 shadow-lg shadow-black/15 ring-2 ring-white/20">
+                <img src={logo} alt="AppScale logo" className="h-7 w-7 rounded-lg object-contain" />
+              </div>
+              <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white/90">AppScale</span>
             </div>
           )}
           <button
