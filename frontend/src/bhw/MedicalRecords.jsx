@@ -86,7 +86,13 @@ function MedicalRecords() {
     setDetailLoading(true);
     try {
       const response = await axiosClient.get(`/bhw/medical-records/${child.child_id}`);
-      setDetail(response.data);
+      const payload = response.data || {};
+      setDetail({
+        ...payload,
+        growth_history: payload.growth_history || payload.nutritionHistory || [],
+        services: payload.services || payload.servicesHistory || [],
+        referrals: payload.referrals || [],
+      });
     } catch {
       setDetailError('Failed to load clinical records for this child.');
     } finally {
