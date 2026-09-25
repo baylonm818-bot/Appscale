@@ -131,10 +131,12 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
   String _buildMotherReferralReason() {
     final parts = <String>[];
     if (_observation == 'Signs of concern' &&
-        _observationNoteController.text.trim().isNotEmpty)
+        _observationNoteController.text.trim().isNotEmpty) {
       parts.add(_observationNoteController.text.trim());
-    if (_hasConcern && _concernNoteController.text.trim().isNotEmpty)
+    }
+    if (_hasConcern && _concernNoteController.text.trim().isNotEmpty) {
       parts.add(_concernNoteController.text.trim());
+    }
     return parts.isEmpty ? 'Signs of concern observed' : parts.join(' · ');
   }
 

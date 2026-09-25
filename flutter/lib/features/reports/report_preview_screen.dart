@@ -41,8 +41,9 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
     );
-    if (picked != null)
+    if (picked != null) {
       setState(() => _period = DateTime(picked.year, picked.month));
+    }
   }
 
   Future<void> _exportConsolidationPdf() async {

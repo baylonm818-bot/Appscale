@@ -66,8 +66,9 @@ class BeneficiaryApi {
     String? token,
   ) async {
     final headers = <String, String>{'Content-Type': 'application/json'};
-    if (token != null && token.isNotEmpty)
+    if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
+    }
     final response = await http
         .post(
           Uri.parse('$_baseUrl$path'),

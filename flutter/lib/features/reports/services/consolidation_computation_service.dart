@@ -29,8 +29,9 @@ class ConsolidationComputationService {
     return _childRepo.getByBarangay(barangay).where((c) {
       if (!c.isActive) return false;
       if (minAge != null && c.ageInMonths < minAge) return false;
-      if (maxAgeExclusive != null && c.ageInMonths >= maxAgeExclusive)
+      if (maxAgeExclusive != null && c.ageInMonths >= maxAgeExclusive) {
         return false;
+      }
       return true;
     }).toList();
   }

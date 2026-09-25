@@ -191,13 +191,16 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
   String _buildSevereReason(Measurement m) {
     final reasons = <String>[];
-    if (m.weightForAgeStatus == 'Severely Underweight')
+    if (m.weightForAgeStatus == 'Severely Underweight') {
       reasons.add('Severely Underweight');
-    if (m.heightForAgeStatus == 'Severely Stunted')
+    }
+    if (m.heightForAgeStatus == 'Severely Stunted') {
       reasons.add('Severely Stunted');
+    }
     if (m.bilateralPittingEdema) reasons.add('Bilateral Pitting Edema');
-    if (m.weightForLengthStatus == 'SAM' && !m.bilateralPittingEdema)
+    if (m.weightForLengthStatus == 'SAM' && !m.bilateralPittingEdema) {
       reasons.add('SAM (weight-for-length)');
+    }
     return reasons.join(', ');
   }
 

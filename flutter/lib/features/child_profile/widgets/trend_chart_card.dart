@@ -141,8 +141,9 @@ class TrendChartCard extends StatelessWidget {
                       reservedSize: 24,
                       getTitlesWidget: (value, _) {
                         final index = value.toInt();
-                        if (index < 0 || index >= measurementsAscending.length)
+                        if (index < 0 || index >= measurementsAscending.length) {
                           return const SizedBox.shrink();
+                        }
                         final month = measurementsAscending[index].date.month;
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),

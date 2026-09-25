@@ -59,8 +59,9 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.prefillReason != null)
+    if (widget.prefillReason != null) {
       _reasonController.text = widget.prefillReason!;
+    }
   }
 
   bool get _isFormValid =>

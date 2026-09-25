@@ -99,13 +99,16 @@ class ChildRepository {
           matchesFilter = c.nutritionStatus == 'Not weighed';
         } else {
           if (filter.weightForAge != 'All' &&
-              c.nutritionStatus != filter.weightForAge)
+              c.nutritionStatus != filter.weightForAge) {
             matchesFilter = false;
+          }
           if (filter.heightForAge != 'All' &&
-              c.stuntingStatus != filter.heightForAge)
+              c.stuntingStatus != filter.heightForAge) {
             matchesFilter = false;
-          if (filter.wasting != 'All' && c.wastingStatus != filter.wasting)
+          }
+          if (filter.wasting != 'All' && c.wastingStatus != filter.wasting) {
             matchesFilter = false;
+          }
         }
       }
       return matchesActive && matchesQuery && matchesFilter;
