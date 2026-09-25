@@ -104,19 +104,25 @@ function ActivityRow({ activity, onComplete, onArchive }) {
   );
 }
 
+const emptyForm = { title: '', schedule_type: 'weighing', schedule_date: '', schedule_time: '', venue: '', facilitator: '', notes: '' };
+
 function Schedule() {
   const [activities, setActivities] = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
 
   const fetchActivities = async () => {
     setLoading(true);
     try {
       const response = await axiosClient.get('/bhw/schedule', {
-        params: { barangay: user.barangay, user_id: user.user_id },
+        params: { barangay: user.barangay, user_id: user.user_id, role: user.role },
       });
       setActivities(response.data || []);
     } catch {
@@ -137,6 +143,18 @@ function Schedule() {
     } catch {
       alert('Failed to update activity status.');
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.title || !form.schedule_date) { setFormError('Title and date are required.'); return; }
+    setSaving(true); setFormError('');
+    try {
+      await axiosClient.post('/bhw/schedule', form);
+      setShowModal(false); setForm(emptyForm); fetchActivities();
+    } catch (err) {
+      setFormError(err?.response?.data?.message || 'Failed to save schedule.');
+    } finally { setSaving(false); }
   };
 
   const counts = {

@@ -1,22 +1,24 @@
 const pool = require('../config/db');
 
-// Ensure target_role column exists (safe to run every startup)
+// Ensure target_role and created_by columns exist (safe to run every startup)
 (async () => {
-  try {
-    await pool.query(`
-      ALTER TABLE schedules ADD COLUMN IF NOT EXISTS target_role VARCHAR(20) NULL DEFAULT NULL
-    `);
-  } catch (e) {
-    // Ignore — some MySQL versions don't support IF NOT EXISTS on ALTER COLUMN
+  const cols = ['target_role VARCHAR(20)', 'created_by INT'];
+  for (const col of cols) {
+    const colName = col.split(' ')[0];
     try {
-      const [[{ cnt }]] = await pool.query(
-        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'schedules' AND COLUMN_NAME = 'target_role'`
-      );
-      if (Number(cnt) === 0) {
-        await pool.query(`ALTER TABLE schedules ADD COLUMN target_role VARCHAR(20) NULL DEFAULT NULL`);
-      }
-    } catch (_) {}
+      await pool.query(`ALTER TABLE schedules ADD COLUMN IF NOT EXISTS ${col} NULL DEFAULT NULL`);
+    } catch (e) {
+      try {
+        const [[{ cnt }]] = await pool.query(
+          `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'schedules' AND COLUMN_NAME = ?`,
+          [colName]
+        );
+        if (Number(cnt) === 0) {
+          await pool.query(`ALTER TABLE schedules ADD COLUMN ${col} NULL DEFAULT NULL`);
+        }
+      } catch (_) {}
+    }
   }
 })();
 

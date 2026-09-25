@@ -384,6 +384,28 @@ exports.syncNutritionRecord = async (req, res) => {
       ]
     );
 
+    // Auto-notification for SAM/MAM children
+    if (['SAM', 'MAM'].includes(os)) {
+      try {
+        const [[childRow]] = await pool.query(
+          'SELECT first_name, last_name, barangay FROM children WHERE child_id = ? LIMIT 1',
+          [resolvedChildId]
+        );
+        const childName = childRow ? `${childRow.first_name} ${childRow.last_name}` : `Child #${resolvedChildId}`;
+        const statusLabel = os === 'SAM' ? 'Severe Acute Malnutrition (SAM)' : 'Moderate Acute Malnutrition (MAM)';
+        await pool.query(
+          `INSERT INTO notifications (title, message, type, is_read, created_at)
+           VALUES (?, ?, 'alert', FALSE, NOW())`,
+          [
+            `${os} Alert: ${childName}`,
+            `${childName} has been measured and classified as ${statusLabel}. Immediate attention is required.`,
+          ]
+        );
+      } catch (notifErr) {
+        console.error('Auto-notification error (non-fatal):', notifErr && notifErr.message);
+      }
+    }
+
     return res.status(201).json({
       message: 'Nutrition measurement synced successfully.',
       record_id: result.insertId,
