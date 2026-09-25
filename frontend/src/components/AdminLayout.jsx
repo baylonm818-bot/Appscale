@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { motion } from 'framer-motion';
 import logo from '../assets/logo.png';
 import { useAuth } from '../components/AuthContext';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
@@ -33,11 +34,6 @@ function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-
-  useEffect(() => {
-    
-    
-  }, [theme]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');

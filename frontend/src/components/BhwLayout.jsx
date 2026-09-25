@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
@@ -37,11 +38,6 @@ function BHWLayout() {
   const { user: authUser } = useAuth();
   const user = authUser || JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
   const [profileImageSrc, setProfileImageSrc] = useState(null);
-
-  useEffect(() => {
-    
-    
-  }, [theme]);
 
   useEffect(() => {
     let cancelled = false;
