@@ -103,11 +103,11 @@ function AdminLayout() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center gap-1 text-center">
+            <div className="flex flex-col items-center justify-center gap-1 text-center whitespace-nowrap">
               <div className="rounded-2xl bg-white p-1.5 shadow-lg shadow-black/15 ring-2 ring-white/20">
                 <img src={logo} alt="AppScale logo" className="h-7 w-7 rounded-lg object-contain" />
               </div>
-              <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white/90">AppScale</span>
+              <span className="text-[8px] font-black uppercase tracking-[0.18em] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">AppScale</span>
             </div>
           )}
           <button
