@@ -84,30 +84,32 @@ class _DashboardBodyState extends State<DashboardBody> {
                   appPageRoute(const UserProfileScreen()),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ResponsiveStatGrid(
-                      items: stats,
-                      onTaps: [
-                        () => widget.onNavigateToMasterlist?.call(
-                          MasterlistCategory.children,
-                        ),
-                        () => widget.onNavigateToMasterlist?.call(
-                          MasterlistCategory.mothers,
-                        ),
-                        () => Navigator.push(
-                          context,
-                          appPageRoute(const ReferralsOverviewScreen()),
-                        ),
-                        null,
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    NutritionStatusCard(items: nutrition),
-                    const SizedBox(height: AppSpacing.lg),
+              Transform.translate(
+                offset: const Offset(0, -50),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ResponsiveStatGrid(
+                        items: stats,
+                        onTaps: [
+                          () => widget.onNavigateToMasterlist?.call(
+                            MasterlistCategory.children,
+                          ),
+                          () => widget.onNavigateToMasterlist?.call(
+                            MasterlistCategory.mothers,
+                          ),
+                          () => Navigator.push(
+                            context,
+                            appPageRoute(const ReferralsOverviewScreen()),
+                          ),
+                          null,
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      NutritionStatusCard(items: nutrition),
+                      const SizedBox(height: AppSpacing.lg),
                     UpcomingActivitiesCard(activities: upcoming),
                     const SizedBox(height: AppSpacing.lg),
                     RecentActivityCard(entries: recent),

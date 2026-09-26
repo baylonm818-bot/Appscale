@@ -1,14 +1,23 @@
 const pool = require('../config/db');
 
 exports.getMedicalRecordsList = async (req, res) => {
-  const { barangay } = req.query;
+  let { barangay } = req.query;
+  const role = String(req.user?.role || '').toLowerCase();
+
+  // SECURITY FIX: Enforce barangay check for non-admins to prevent IDOR
+  if (role !== 'admin') {
+      if (req.user?.barangay) {
+          barangay = req.user.barangay; // Force the query to use the assigned barangay
+      } else {
+          return res.status(403).json({ message: 'Unauthorized: No assigned barangay for this user.' });
+      }
+  }
 
   if (!barangay) {
     return res.status(400).json({ message: 'Barangay is required.' });
   }
 
   try {
-    const role = String(req.user?.role || '').toLowerCase();
     let scopeClause = '';
     let scopeParams = [];
 
