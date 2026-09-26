@@ -98,8 +98,8 @@ function AdminLayout() {
                 <img src={logo} alt="AppScale logo" className="h-8 w-8 rounded-lg object-contain" />
               </div>
               <div className="min-w-0 leading-none">
-                <span className="block truncate text-lg font-black tracking-tight text-gray-900">AppScale</span>
-                <span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-[0.16em] text-green-600">Admin Portal</span>
+                <span className="block truncate text-lg font-black tracking-tight text-white">AppScale</span>
+                <span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100">Admin Portal</span>
               </div>
             </div>
           ) : (
