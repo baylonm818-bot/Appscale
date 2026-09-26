@@ -62,12 +62,26 @@ exports.getChildMedicalHistory = async (req, res) => {
       [childId]
     );
 
+    const [[serviceTypesRow]] = await pool.query(
+      `SELECT COUNT(*) AS cnt
+       FROM INFORMATION_SCHEMA.TABLES
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
+      ['service_types']
+    );
+
+    const hasServiceTypesTable = Number(serviceTypesRow?.cnt || 0) > 0;
+
     const [servicesHistory] = await pool.query(
-      `SELECT cs.service_id, cs.service_date, cs.next_schedule, cs.provided_by, st.type_name
-       FROM child_services cs
-      LEFT JOIN service_types st ON st.type_name = cs.service_type
-       WHERE cs.child_id = ?
-       ORDER BY cs.service_date DESC`,
+      hasServiceTypesTable
+        ? `SELECT cs.service_id, cs.service_date, cs.next_schedule, cs.provided_by, st.type_name
+            FROM child_services cs
+            LEFT JOIN service_types st ON st.type_name = cs.service_type
+            WHERE cs.child_id = ?
+            ORDER BY cs.service_date DESC`
+        : `SELECT cs.service_id, cs.service_date, cs.next_schedule, cs.provided_by, cs.service_type AS type_name
+            FROM child_services cs
+            WHERE cs.child_id = ?
+            ORDER BY cs.service_date DESC`,
       [childId]
     );
 
