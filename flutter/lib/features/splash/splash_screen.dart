@@ -41,10 +41,15 @@ class _SplashScreenState extends State<SplashScreen>
 
       final navigator = Navigator.of(context);
 
-      await Future.wait([
-        ChildRepository().syncPending(),
-        MotherRepository().syncPending(),
-      ]);
+      try {
+        await Future.wait([
+          ChildRepository().syncPending(),
+          MotherRepository().syncPending(),
+        ]);
+      } catch (e) {
+        debugPrint('Sync pending failed on splash: $e');
+      }
+      
       if (!mounted) return;
 
       final settings = SettingsRepository();

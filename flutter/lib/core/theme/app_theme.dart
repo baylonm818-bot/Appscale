@@ -47,5 +47,11 @@ class AppTheme {
           bodyMedium: AppTextStyles.body,
           labelLarge: AppTextStyles.label,
         ),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          },
+        ),
   );
 }
