@@ -240,7 +240,7 @@ function MedicalRecords() {
               </div>
 
               {/* Profile Card Header */}
-              <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] p-6 text-white flex flex-wrap items-center justify-between gap-4">
+              <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] p-6 text-white flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-white text-xl font-black shadow-sm">
                     {(selectedChild.first_name ?? '?').charAt(0).toUpperCase()}
