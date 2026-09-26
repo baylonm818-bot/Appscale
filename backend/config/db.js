@@ -18,14 +18,16 @@ const parseMysqlUrl = (url) => {
 };
 
 const dbUrlConfig = parseMysqlUrl(process.env.DATABASE_URL || process.env.MYSQL_URL);
+const resolvedHost = dbUrlConfig?.host || process.env.DB_HOST || 'localhost';
+const shouldUseSsl = process.env.DB_SSL === 'true' || /aivencloud\.com$/i.test(resolvedHost);
 const config = {
-    host: dbUrlConfig?.host || process.env.DB_HOST || 'localhost',
+    host: resolvedHost,
     user: dbUrlConfig?.user || process.env.DB_USER || 'root',
     password: dbUrlConfig?.password ?? process.env.DB_PASSWORD ?? '',
     database: dbUrlConfig?.database || process.env.DB_NAME || '',
     port: dbUrlConfig?.port || (process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306),
     waitForConnections: true,
-    ...(process.env.DB_SSL === 'true' ? { ssl: { rejectUnauthorized: false } } : {}),
+    ...(shouldUseSsl ? { ssl: { rejectUnauthorized: false } } : {}),
 };
 
 console.log('DB config:', {
@@ -33,6 +35,7 @@ console.log('DB config:', {
     user: config.user,
     database: config.database,
     port: config.port,
+    ssl: shouldUseSsl,
     password: config.password ? '****' : '(empty)',
 });
 
