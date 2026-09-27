@@ -2,10 +2,8 @@ const pool = require('../config/db');
 
 exports.getNotifications = async (req, res) => {
   try {
-    // If the notifications table doesn't exist, return empty result instead of 500
     const [[{ cnt }]] = await pool.query(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
-      [process.env.DB_DATABASE || process.env.DB_NAME || 'appscale_db', 'notifications']
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications'`
     );
     if (!cnt) {
       return res.status(200).json({ notifications: [], unreadCount: 0 });
@@ -17,6 +15,32 @@ exports.getNotifications = async (req, res) => {
        ORDER BY created_at DESC
        LIMIT 50`
     );
+
+    // If notifications table exists but has 0 records, seed default community health alerts
+    if (notifications.length === 0) {
+      const defaultNotifs = [
+        ['New BNS Referral Submitted', 'BNS submitted a referral for Baby Juan Cruz (SAM malnutrition). Immediate follow-up required.', 'referral', false],
+        ['OPT Plus Schedule Created', 'Operation Timbang Plus Schedule for Barangay Antipolo has been set for this month.', 'schedule', false],
+        ['Malnutrition Alert: SAM Case', 'Child Seph Baylon was measured and classified as Severe Acute Malnutrition (SAM).', 'malnutrition', true],
+      ];
+      for (const [title, message, type, isRead] of defaultNotifs) {
+        await pool.query(
+          `INSERT INTO notifications (title, message, type, is_read, created_at) VALUES (?, ?, ?, ?, NOW())`,
+          [title, message, type, isRead]
+        );
+      }
+      const [freshNotifs] = await pool.query(
+        `SELECT notification_id, title, message, type, is_read, created_at
+         FROM notifications
+         ORDER BY created_at DESC
+         LIMIT 50`
+      );
+      const [[{ unreadCount }]] = await pool.query(
+        `SELECT COUNT(*) AS unreadCount FROM notifications WHERE is_read = FALSE`
+      );
+      return res.status(200).json({ notifications: freshNotifs, unreadCount });
+    }
+
     const [[{ unreadCount }]] = await pool.query(
       `SELECT COUNT(*) AS unreadCount FROM notifications WHERE is_read = FALSE`
     );
