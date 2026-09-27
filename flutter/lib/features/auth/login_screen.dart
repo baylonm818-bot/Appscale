@@ -70,13 +70,72 @@ class _LoginScreenState extends State<LoginScreen> {
           final children = await BeneficiaryApi.fetchChildrenForBarangay(barangay, _settings.authToken);
           final mothers = await BeneficiaryApi.fetchMothersForBarangay(barangay, _settings.authToken);
           // store into local repositories / boxes
+          // NOTE: API returns snake_case fields; we map them to the camelCase format
+          // that Child.fromMap() and Mother.fromMap() expect so data survives reinstalls.
           final childBox = Hive.box(HiveBoxes.children);
           final motherBox = Hive.box(HiveBoxes.mothers);
           for (final c in children) {
-            childBox.put(c['external_id'] ?? c['child_id'].toString(), c);
+            final key = (c['external_id'] ?? c['child_id']).toString();
+            // Only seed if not already locally stored (don't overwrite local edits)
+            if (!childBox.containsKey(key)) {
+              final firstName = c['first_name'] as String? ?? '';
+              final middleInitial = c['middle_initial'] as String? ?? '';
+              final lastName = c['last_name'] as String? ?? '';
+              final fullName = [firstName, if (middleInitial.isNotEmpty) middleInitial, lastName]
+                  .where((s) => s.isNotEmpty)
+                  .join(' ');
+              childBox.put(key, {
+                'id': key,
+                'sequenceNo': key,
+                'fullName': fullName,
+                'birthDate': (c['birth_date'] as String?)?.split('T').first ?? DateTime.now().toIso8601String(),
+                'gender': c['sex'] as String? ?? 'Male',
+                'address': c['purok'] as String? ?? '',
+                'barangay': c['barangay'] as String? ?? barangay,
+                'belongsToIpGroup': false,
+                'disability': '',
+                'guardian': {
+                  'fullName': c['guardian_name'] as String? ?? '',
+                  'relationship': 'Guardian',
+                  'contactNo': c['guardian_contact'] as String? ?? '',
+                  'linkedMotherId': null,
+                },
+                'createdAt': DateTime.now().toIso8601String(),
+                'nutritionStatus': c['weight_status'] as String? ?? 'Not weighed',
+                'stuntingStatus': c['height_status'] as String? ?? 'Not weighed',
+                'wastingStatus': c['overall_status'] as String? ?? 'Not weighed',
+                'lastWeighedAt': c['last_visit'] != null
+                    ? (c['last_visit'] as String).split('T').first
+                    : null,
+                'isActive': (c['status'] as String? ?? 'active') == 'active',
+                'inactiveReason': null,
+                '_syncStatus': 'synced',
+              });
+            }
           }
           for (final m in mothers) {
-            motherBox.put(m['external_id'] ?? m['mother_id'].toString(), m);
+            final key = (m['external_id'] ?? m['mother_id']).toString();
+            if (!motherBox.containsKey(key)) {
+              final firstName = m['first_name'] as String? ?? '';
+              final middleInitial = m['middle_initial'] as String? ?? '';
+              final lastName = m['last_name'] as String? ?? '';
+              final fullName = [firstName, if (middleInitial.isNotEmpty) middleInitial, lastName]
+                  .where((s) => s.isNotEmpty)
+                  .join(' ');
+              motherBox.put(key, {
+                'id': key,
+                'fullName': fullName,
+                'birthDate': (m['birth_date'] as String?)?.split('T').first ?? DateTime.now().toIso8601String(),
+                'contactNo': m['contact_number'] as String? ?? '',
+                'address': m['purok'] as String? ?? '',
+                'barangay': m['barangay'] as String? ?? barangay,
+                'linkedChildIds': <String>[],
+                'isActive': (m['status'] as String? ?? 'active') == 'active',
+                'inactiveReason': null,
+                'createdAt': DateTime.now().toIso8601String(),
+                '_syncStatus': 'synced',
+              });
+            }
           }
         }
       } catch (seedErr) {

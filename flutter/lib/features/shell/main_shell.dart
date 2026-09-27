@@ -72,7 +72,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     }
   }
 
+  bool _isHandlingResume = false;
+
   Future<void> _handleResume() async {
+    if (_isHandlingResume) return;
+    _isHandlingResume = true;
     try {
       // If the saved session has expired while the app was backgrounded,
       // clear and force the user back to login to avoid showing empty data.
@@ -86,12 +90,19 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         return;
       }
 
-      // Try syncing any pending local changes and notify UI to refresh.
-      await _childRepo.syncPending();
-      await _motherRepo.syncPending();
+      // Always notify the UI first so it never stays blank,
+      // then attempt to sync pending records in the background.
       AppDataBus.notifyChanged();
-    } catch (e) {
-      debugPrint('Error during resume sync: $e');
+      try {
+        await _childRepo.syncPending();
+        await _motherRepo.syncPending();
+        // Refresh again after sync completes in case counts changed.
+        AppDataBus.notifyChanged();
+      } catch (syncErr) {
+        debugPrint('Background sync error (non-fatal): $syncErr');
+      }
+    } finally {
+      _isHandlingResume = false;
     }
   }
 }

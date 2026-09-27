@@ -82,27 +82,74 @@ class Child {
     'wastingStatus': wastingStatus,
   };
 
-  factory Child.fromMap(Map map) => Child(
-    id: map['id'] as String,
-    sequenceNo: map['sequenceNo'] as String,
-    fullName: map['fullName'] as String,
-    birthDate: DateTime.parse(map['birthDate'] as String),
-    gender: map['gender'] as String,
-    address: map['address'] as String,
-    barangay: map['barangay'] as String,
-    belongsToIpGroup: map['belongsToIpGroup'] as bool,
-    disability: map['disability'] as String,
-    guardian: Guardian.fromMap(map['guardian'] as Map),
-    createdAt: DateTime.parse(map['createdAt'] as String),
-    nutritionStatus: map['nutritionStatus'] as String? ?? 'Not weighed',
-    stuntingStatus: map['stuntingStatus'] as String? ?? 'Not weighed',
-    lastWeighedAt: map['lastWeighedAt'] != null
-        ? DateTime.parse(map['lastWeighedAt'] as String)
-        : null,
-    isActive: map['isActive'] as bool? ?? true,
-    inactiveReason: map['inactiveReason'] as String?,
-    wastingStatus: map['wastingStatus'] as String? ?? 'Not weighed',
-  );
+  factory Child.fromMap(Map map) {
+    // Support both camelCase (local) and snake_case (API/legacy) keys.
+    String strVal(String camel, String snake) =>
+        ((map[camel] ?? map[snake]) as String?) ?? '';
+    bool boolVal(String camel, String snake, bool def) =>
+        (map[camel] ?? map[snake] ?? def) as bool;
+
+    final firstName = map['first_name'] as String? ?? '';
+    final middleInitial = map['middle_initial'] as String? ?? '';
+    final lastName = map['last_name'] as String? ?? '';
+    final apiFullName = [firstName, if (middleInitial.isNotEmpty) middleInitial, lastName]
+        .where((s) => s.isNotEmpty)
+        .join(' ');
+
+    final rawGuardian = map['guardian'];
+    Guardian guardian;
+    if (rawGuardian is Map) {
+      guardian = Guardian.fromMap(rawGuardian);
+    } else {
+      guardian = Guardian(
+        fullName: map['guardian_name'] as String? ?? '',
+        relationship: 'Guardian',
+        contactNo: map['guardian_contact'] as String? ?? '',
+        linkedMotherId: null,
+      );
+    }
+
+    final rawId = (map['id'] ?? map['external_id'] ?? map['child_id'] ?? '').toString();
+    final rawBirth = strVal('birthDate', 'birth_date');
+
+    return Child(
+      id: rawId,
+      sequenceNo: strVal('sequenceNo', 'sequence_no').isNotEmpty
+          ? strVal('sequenceNo', 'sequence_no')
+          : rawId,
+      fullName: strVal('fullName', 'full_name').isNotEmpty
+          ? strVal('fullName', 'full_name')
+          : apiFullName,
+      birthDate: DateTime.parse(
+          rawBirth.isNotEmpty ? rawBirth.split('T').first : DateTime.now().toIso8601String()),
+      gender: strVal('gender', 'sex').isNotEmpty ? strVal('gender', 'sex') : 'Male',
+      address: strVal('address', 'purok'),
+      barangay: strVal('barangay', 'barangay'),
+      belongsToIpGroup: boolVal('belongsToIpGroup', 'belongs_to_ip_group', false),
+      disability: strVal('disability', 'disability'),
+      guardian: guardian,
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'] as String)
+          : DateTime.now(),
+      nutritionStatus: strVal('nutritionStatus', 'weight_status').isNotEmpty
+          ? strVal('nutritionStatus', 'weight_status')
+          : 'Not weighed',
+      stuntingStatus: strVal('stuntingStatus', 'height_status').isNotEmpty
+          ? strVal('stuntingStatus', 'height_status')
+          : 'Not weighed',
+      lastWeighedAt: (map['lastWeighedAt'] ?? map['last_visit']) != null
+          ? DateTime.tryParse(
+              ((map['lastWeighedAt'] ?? map['last_visit']) as String).split('T').first)
+          : null,
+      isActive: map['isActive'] != null
+          ? map['isActive'] as bool
+          : (map['status'] as String? ?? 'active') == 'active',
+      inactiveReason: map['inactiveReason'] as String?,
+      wastingStatus: strVal('wastingStatus', 'overall_status').isNotEmpty
+          ? strVal('wastingStatus', 'overall_status')
+          : 'Not weighed',
+    );
+  }
 
   Child copyWith({
     Guardian? guardian,
