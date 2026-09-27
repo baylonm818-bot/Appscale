@@ -30,23 +30,31 @@ class StatCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              data.label,
-              style: AppTextStyles.body.copyWith(fontSize: 11),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 6),
-            Text(
               data.value,
-              style: AppTextStyles.h1.copyWith(fontSize: 24),
+              style: AppTextStyles.h1.copyWith(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
+            Text(
+              data.label,
+              style: AppTextStyles.body.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
             Text(
               data.subtitle,
               style: AppTextStyles.body.copyWith(
-                fontSize: 11,
+                fontSize: 10,
                 color: AppColors.textMuted,
               ),
               maxLines: 1,

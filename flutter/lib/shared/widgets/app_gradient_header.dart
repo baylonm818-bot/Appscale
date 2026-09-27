@@ -15,25 +15,17 @@ class AppGradientHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 220),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
+        AppSpacing.md,
         AppSpacing.lg,
         AppSpacing.lg,
-        AppSpacing.xl * 2, // Extra padding at bottom for overlap
       ),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.darkGreen,
-            AppColors.primaryGreen,
-          ],
-        ),
+        color: AppColors.primaryGreen,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(36),
-          bottomRight: Radius.circular(36),
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
       ),
       child: child,
