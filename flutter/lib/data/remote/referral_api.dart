@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../local/hive_boxes.dart';
 import '../models/referral.dart';
 
 class ReferralApi {
@@ -13,6 +14,17 @@ class ReferralApi {
   }
 
   static Future<void> submit(Referral referral) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    final userId = settings.authUser?['user_id'];
+
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
     final trimmedBeneficiaryId = referral.beneficiaryId.trim();
     final payload = <String, dynamic>{
       'beneficiary_type': referral.beneficiaryType,
@@ -22,6 +34,7 @@ class ReferralApi {
       'reason': referral.reason.trim(),
       'notes': referral.notes.trim(),
       'severity': 'medium',
+      'referred_by': userId,
     };
 
     if (trimmedBeneficiaryId.isNotEmpty &&
@@ -29,11 +42,13 @@ class ReferralApi {
       payload['child_id'] = trimmedBeneficiaryId;
     }
 
-    final response = await http.post(
-      Uri.parse('$_baseUrl/bhw/referrals'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(payload),
-    );
+    final response = await http
+        .post(
+          Uri.parse('$_baseUrl/bhw/referrals'),
+          headers: headers,
+          body: jsonEncode(payload),
+        )
+        .timeout(const Duration(seconds: 5));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       Map<String, dynamic>? body;

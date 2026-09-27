@@ -13,11 +13,15 @@ class ProgramScheduleRepository {
   Box get _box => Hive.box(HiveBoxes.programSchedule);
 
   List<ProgramSchedule> getAllForBarangay(String barangay) {
+    final target = barangay.trim().toLowerCase();
     final list = _box.values
         .map(
           (e) => ProgramSchedule.fromMap(Map<String, dynamic>.from(e as Map)),
         )
-        .where((s) => s.barangay == barangay)
+        .where((s) {
+          final b = s.barangay.trim().toLowerCase();
+          return b == target || target.isEmpty || b.isEmpty;
+        })
         .toList();
     list.sort((a, b) => a.date.compareTo(b.date));
     return list;
@@ -84,60 +88,8 @@ class ProgramScheduleRepository {
   }
 
   Future<void> seedInitialIfEmpty(String barangay) async {
-    if (_box.isNotEmpty) return;
-
-    final now = DateTime.now();
-    final samples = [
-      ProgramSchedule(
-        id: generateId(),
-        title: 'Weekly Supplementary Feeding Session',
-        programType: 'Feeding',
-        date: now.add(const Duration(days: 2)),
-        startTime: '08:30 AM',
-        endTime: '10:30 AM',
-        location: 'Barangay Covered Court',
-        targetGroup: 'Enrolled SAM and MAM children',
-        notes: 'Bring feeding utensils and attendance cards.',
-        barangay: barangay,
-        createdBy: 'BNS Mobile',
-        createdAt: now.subtract(const Duration(days: 1)),
-      ),
-      ProgramSchedule(
-        id: generateId(),
-        title: 'Garantisadong Pambata: Vitamin A Distribution',
-        programType: 'Vitamin A',
-        date: now.add(const Duration(days: 5)),
-        startTime: '09:00 AM',
-        endTime: '12:00 PM',
-        location: 'Barangay Health Center',
-        targetGroup: 'All infants and children 6–59 months',
-        notes:
-            'Administer Blue (100k IU) for 6-11m and Red (200k IU) for 12-59m.',
-        barangay: barangay,
-        createdBy: 'RHU Web Admin',
-        createdAt: now.subtract(const Duration(days: 2)),
-      ),
-      ProgramSchedule(
-        id: generateId(),
-        title: 'National Deworming Round',
-        programType: 'Deworming',
-        date: now.add(const Duration(days: 10)),
-        startTime: '08:00 AM',
-        endTime: '11:30 AM',
-        location: 'Barangay Day Care Center',
-        targetGroup: 'Children 1–4 years old (12–59 months)',
-        notes:
-            'Albendazole 400mg chewable tablets. Ensure child has eaten breakfast.',
-        barangay: barangay,
-        createdBy: 'RHU Web Admin',
-        createdAt: now.subtract(const Duration(days: 3)),
-      ),
-    ];
-
-    for (final s in samples) {
-      await _box.put(s.id, s.toMap());
-    }
-    AppDataBus.notifyChanged();
+    // No mockup seeding — display real user/backend schedules only
+    return;
   }
 
   static String generateId() => const Uuid().v4();

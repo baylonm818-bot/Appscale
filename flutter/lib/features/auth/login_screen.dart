@@ -77,6 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
           for (final c in children) {
             final key = (c['external_id'] ?? c['child_id']).toString();
             // Only seed if not already locally stored (don't overwrite local edits)
+            final existing = childBox.get(key) as Map?;
             if (!childBox.containsKey(key)) {
               final firstName = c['first_name'] as String? ?? '';
               final middleInitial = c['middle_initial'] as String? ?? '';
@@ -101,12 +102,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   'linkedMotherId': null,
                 },
                 'createdAt': DateTime.now().toIso8601String(),
-                'nutritionStatus': c['weight_status'] as String? ?? 'Not weighed',
-                'stuntingStatus': c['height_status'] as String? ?? 'Not weighed',
-                'wastingStatus': c['overall_status'] as String? ?? 'Not weighed',
+                'nutritionStatus': (c['weight_status'] != null && c['weight_status'] != 'Not weighed')
+                    ? c['weight_status']
+                    : (existing?['nutritionStatus'] ?? 'Not weighed'),
+                'stuntingStatus': (c['height_status'] != null && c['height_status'] != 'Not weighed')
+                    ? c['height_status']
+                    : (existing?['stuntingStatus'] ?? 'Not weighed'),
+                'wastingStatus': (c['overall_status'] != null && c['overall_status'] != 'Not weighed')
+                    ? c['overall_status']
+                    : (existing?['wastingStatus'] ?? 'Not weighed'),
                 'lastWeighedAt': c['last_visit'] != null
                     ? (c['last_visit'] as String).split('T').first
-                    : null,
+                    : existing?['lastWeighedAt'],
                 'isActive': (c['status'] as String? ?? 'active') == 'active',
                 'inactiveReason': null,
                 '_syncStatus': 'synced',

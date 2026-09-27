@@ -21,8 +21,7 @@ import {
 
 const menuItems = [
   { name: 'Dashboard', path: '/bhw/dashboard', icon: LayoutDashboard },
-  { name: 'Need Attention', path: '/bhw/need-attention', icon: AlertCircle },
-  { name: 'Referrals Received', path: '/bhw/referrals', icon: Users },
+  { name: 'Referrals & Action Needed', path: '/bhw/referrals', icon: AlertCircle },
   { name: 'Medical Records', path: '/bhw/medical-records', icon: FileText },
   { name: 'Schedule', path: '/bhw/schedule', icon: Calendar },
   { name: 'Notification', path: '/bhw/notifications', icon: Bell },
@@ -89,8 +88,8 @@ function BHWLayout() {
     ),
     '/bhw/referrals': (
       <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Referrals Management</h2>
-        <p className="text-xs text-gray-400">Community health cases and doctor/RHU referrals</p>
+        <h2 className="text-xl font-bold text-gray-800">Referrals & Action Needed</h2>
+        <p className="text-xs text-gray-400">Manage BNS referrals, provide medicine/services, and evaluate health cases</p>
       </div>
     ),
     '/bhw/medical-records': (

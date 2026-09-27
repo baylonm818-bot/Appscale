@@ -3,6 +3,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/app_data_bus.dart';
+import '../../data/local/hive_boxes.dart';
 import '../../data/local/program_schedule_repository.dart';
 import '../../data/models/program_schedule.dart';
 import '../../shared/utils/app_page_route.dart';
@@ -26,12 +27,10 @@ class _ProgramScreenState extends State<ProgramScreen> {
   bool _showingPrograms = true;
   String _selectedFilter = 'All';
   final _scheduleRepo = ProgramScheduleRepository();
+  final _settings = SettingsRepository();
 
-  @override
-  void initState() {
-    super.initState();
-    _scheduleRepo.seedInitialIfEmpty(widget.barangay);
-  }
+  String get _currentBarangay =>
+      _settings.authUser?['barangay']?.toString() ?? widget.barangay;
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +197,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
   }
 
   Widget _buildScheduleView(BuildContext context) {
-    final allSchedules = _scheduleRepo.getAllForBarangay(widget.barangay);
+    final allSchedules = _scheduleRepo.getAllForBarangay(_currentBarangay);
     final filtered = _selectedFilter == 'All'
         ? allSchedules
         : allSchedules.where((s) => s.programType == _selectedFilter).toList();

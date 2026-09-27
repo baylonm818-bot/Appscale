@@ -116,17 +116,57 @@ class NotificationsScreen extends StatelessWidget {
                         notification: item,
                         onTap: () async {
                           await notificationRepo.markAsRead(item.id);
-                          if (item.referralId != null && context.mounted) {
-                            final referral = ReferralRepository().getById(
-                              item.referralId!,
-                            );
+                          if (!context.mounted) return;
+
+                          if (item.referralId != null) {
+                            final referral = ReferralRepository().getById(item.referralId!);
                             if (referral != null) {
-                              ReferralDetailSheet.show(
-                                context,
-                                referral: referral,
-                              );
+                              ReferralDetailSheet.show(context, referral: referral);
+                              return;
                             }
                           }
+
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              title: Row(
+                                children: [
+                                  const Icon(Icons.notifications_active_outlined, color: AppColors.primaryGreen),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      item.title,
+                                      style: AppTextStyles.h2.copyWith(fontSize: 16),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    timeAgo(item.timestamp),
+                                    style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    item.message,
+                                    style: AppTextStyles.body.copyWith(fontSize: 14, height: 1.4),
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('Close'),
+                                ),
+                              ],
+                            ),
+                          );
                         },
                       );
                     },
