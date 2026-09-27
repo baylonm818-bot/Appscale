@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'data/local/hive_boxes.dart';
-import 'features/splash/splash_screen.dart';
+import 'features/mobile/mock_mobile_home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +29,7 @@ class AppScaleApp extends StatelessWidget {
           child: child!,
         );
       },
-      home: const SplashScreen(),
+      home: const MockMobileHomeScreen(),
     );
   }
 }
