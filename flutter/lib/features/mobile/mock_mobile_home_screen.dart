@@ -6,15 +6,17 @@ class MockMobileHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFD9D9D9),
+      backgroundColor: const Color(0xFFD8D8D8),
       body: SafeArea(
         child: Column(
           children: [
-            _StatusBar(),
-            const Expanded(
-              child: SizedBox(),
+            const _StatusBar(),
+            Expanded(
+              child: Container(
+                color: const Color(0xFFD8D8D8),
+              ),
             ),
-            _BottomNav(),
+            const _BottomNav(),
           ],
         ),
       ),
@@ -23,49 +25,47 @@ class MockMobileHomeScreen extends StatelessWidget {
 }
 
 class _StatusBar extends StatelessWidget {
+  const _StatusBar();
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-      color: const Color(0xFFD9D9D9),
+      height: 54,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      color: const Color(0xFFD8D8D8),
       child: Row(
         children: [
-          const Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '5:45 PM',
-                style: TextStyle(
-                  color: Color(0xFF1E1E1E),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
-                ),
-              ),
+          const Text(
+            '5:54 PM',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1B1B1B),
+              letterSpacing: -0.4,
             ),
           ),
+          const Spacer(),
           Row(
             children: [
-              const Icon(Icons.signal_cellular_4_bar_rounded, size: 16, color: Color(0xFF1E1E1E)),
-              const SizedBox(width: 4),
-              const Icon(Icons.wifi_rounded, size: 16, color: Color(0xFF1E1E1E)),
+              const Icon(Icons.signal_cellular_4_bar_rounded, size: 15, color: Color(0xFF1B1B1B)),
               const SizedBox(width: 6),
+              const Icon(Icons.wifi_rounded, size: 15, color: Color(0xFF1B1B1B)),
+              const SizedBox(width: 8),
               Container(
-                width: 26,
-                height: 14,
+                width: 28,
+                height: 15,
+                padding: const EdgeInsets.only(left: 2, right: 2),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: const Color(0xFF1E1E1E), width: 1.5),
+                  borderRadius: BorderRadius.circular(3.5),
+                  border: Border.all(color: const Color(0xFF1B1B1B), width: 1.5),
                 ),
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: Container(
                     width: 18,
                     height: 8,
-                    margin: const EdgeInsets.only(right: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E1E),
+                      color: const Color(0xFF1B1B1B),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -80,41 +80,78 @@ class _StatusBar extends StatelessWidget {
 }
 
 class _BottomNav extends StatelessWidget {
+  const _BottomNav();
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFF4F4F4),
+      color: const Color(0xFFF1F1F1),
       child: Column(
         children: [
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 0),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.center,
+          SizedBox(
+            height: 104,
+            child: Stack(
+              alignment: Alignment.bottomCenter,
               children: [
-                _NavItem(icon: Icons.home_rounded, label: 'Home', active: true),
-                _NavItem(icon: Icons.format_list_bulleted_rounded, label: 'List', active: false),
-                _CenterAddButton(),
-                _NavItem(icon: Icons.add_box_rounded, label: 'Program', active: false),
-                _NavItem(icon: Icons.bar_chart_rounded, label: 'Reports', active: false),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const SizedBox(width: 56, child: _NavItem(icon: Icons.home_rounded, label: 'Home', active: true)),
+                        const SizedBox(width: 56, child: _NavItem(icon: Icons.format_list_bulleted_rounded, label: 'List', active: false)),
+                        const SizedBox(width: 64),
+                        const SizedBox(width: 56, child: _NavItem(icon: Icons.grid_view_rounded, label: 'Program', active: false)),
+                        const SizedBox(width: 56, child: _NavItem(icon: Icons.bar_chart_rounded, label: 'Reports', active: false)),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 8,
+                  child: Container(
+                    width: 82,
+                    height: 82,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF9AE18E),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 14,
+                          offset: const Offset(0, 7),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      size: 46,
+                      color: Color(0xFF1B1B1B),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
           Container(
             height: 1,
             width: double.infinity,
-            color: const Color(0xFFDEDEDE),
+            color: const Color(0xFFDFDFDF),
           ),
           Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
+            height: 62,
+            color: const Color(0xFFF8F8F8),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Icon(Icons.menu_rounded, size: 30, color: Color(0xFF1F1F1F)),
-                Icon(Icons.circle_outlined, size: 30, color: Color(0xFF1F1F1F)),
-                Icon(Icons.arrow_back_ios_new_rounded, size: 22, color: Color(0xFF1F1F1F)),
+              children: [
+                Icon(Icons.menu_rounded, size: 28, color: Color(0xFF1D1D1D)),
+                Icon(Icons.circle_outlined, size: 30, color: Color(0xFF1D1D1D)),
+                Icon(Icons.arrow_back_ios_new_rounded, size: 24, color: Color(0xFF1D1D1D)),
               ],
             ),
           ),
@@ -137,54 +174,25 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 68,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 28,
-            color: active ? const Color(0xFF1E1E1E) : const Color(0xFF59626C),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Icon(
+          icon,
+          size: 28,
+          color: active ? const Color(0xFF1B1B1B) : const Color(0xFF5B646D),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            color: active ? const Color(0xFF1B1B1B) : const Color(0xFF5E6972),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: active ? const Color(0xFF1E1E1E) : const Color(0xFF636C73),
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CenterAddButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 74,
-      height: 74,
-      margin: const EdgeInsets.only(top: 0, bottom: 12),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFF99DF7A),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: const Icon(
-        Icons.add_rounded,
-        size: 42,
-        color: Color(0xFF1F1F1F),
-      ),
+        ),
+      ],
     );
   }
 }
