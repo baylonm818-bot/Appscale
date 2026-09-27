@@ -132,9 +132,9 @@ function BHWLayout() {
                 <img src={logo} alt="AppScale logo" className="h-8 w-8 rounded-lg object-contain" />
               </div>
               <div className="min-w-0 leading-none">
-                <span className="block truncate text-lg font-black tracking-tight text-gray-900">AppScale</span>
-                <span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-[0.16em] text-green-600">
-                  {user.role ? `${user.role.toUpperCase()} Portal` : 'Health Portal'}
+                <span className="block truncate text-lg font-black tracking-tight text-white">AppScale</span>
+                <span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100">
+                  {user.role ? `${user.role.toUpperCase()} Portal` : 'BHW Portal'}
                 </span>
               </div>
             </div>
@@ -149,7 +149,7 @@ function BHWLayout() {
           <button
             type="button"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-1.5 rounded-xl hover:bg-green-50 text-gray-600 hover:text-green-800 transition"
+            className="p-1.5 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition"
           >
             {isSidebarOpen ? <X size={18} /> : <Menu size={20} />}
           </button>
