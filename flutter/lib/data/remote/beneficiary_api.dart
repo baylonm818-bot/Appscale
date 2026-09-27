@@ -60,6 +60,31 @@ class BeneficiaryApi {
     }, settings.authToken);
   }
 
+  // Fetch helpers used to seed local Hive boxes after login
+  static Future<List<Map<String, dynamic>>> fetchChildrenForBarangay(String barangay, String? token) async {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
+    final uri = Uri.parse('$_baseUrl/mobile/children?barangay=${Uri.encodeComponent(barangay)}');
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 5));
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      final data = jsonDecode(resp.body) as List<dynamic>;
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    throw Exception('Failed to fetch children for barangay');
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchMothersForBarangay(String barangay, String? token) async {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
+    final uri = Uri.parse('$_baseUrl/mobile/mothers?barangay=${Uri.encodeComponent(barangay)}');
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 5));
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      final data = jsonDecode(resp.body) as List<dynamic>;
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    throw Exception('Failed to fetch mothers for barangay');
+  }
+
   static Future<void> _post(
     String path,
     Map<String, dynamic> payload,

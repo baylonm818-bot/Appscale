@@ -68,6 +68,18 @@ exports.upsertChild = async (req, res) => {
     encoded_by,
   } = req.body;
 
+  // Enforce barangay ownership from JWT for non-admin users to prevent
+  // clients writing records into other barangays.
+  const role = String(req.user?.role || '').toLowerCase();
+  let resolvedBarangay = barangay;
+  if (role !== 'admin') {
+    if (req.user?.barangay) {
+      resolvedBarangay = req.user.barangay;
+    } else {
+      return res.status(403).json({ message: 'Unauthorized: No assigned barangay for this user.' });
+    }
+  }
+
   const resolvedGender = sex || gender || 'male';
   const resolvedEncodedBy = encoded_by || req.user?.user_id || null;
 
@@ -82,7 +94,7 @@ exports.upsertChild = async (req, res) => {
     middleInitial = parts.middleInitial;
   }
 
-  if (!firstName || !birth_date || !barangay) {
+  if (!firstName || !birth_date || !resolvedBarangay) {
     return res.status(400).json({
       message: 'Child first name, birth date, and barangay are required.',
     });
@@ -135,7 +147,7 @@ exports.upsertChild = async (req, res) => {
             resolvedGender,
             birth_date,
             birth_date,
-            barangay,
+            resolvedBarangay,
             purok || address || 'Purok 1',
             guardian_name || null,
             guardian_contact || null,
@@ -212,6 +224,17 @@ exports.upsertMother = async (req, res) => {
     encoded_by,
   } = req.body;
 
+  // Enforce barangay ownership from JWT for non-admin users.
+  const role = String(req.user?.role || '').toLowerCase();
+  let resolvedBarangay = barangay;
+  if (role !== 'admin') {
+    if (req.user?.barangay) {
+      resolvedBarangay = req.user.barangay;
+    } else {
+      return res.status(403).json({ message: 'Unauthorized: No assigned barangay for this user.' });
+    }
+  }
+
   let firstName = first_name;
   let lastName = last_name;
   let middleInitial = middle_initial;
@@ -223,12 +246,11 @@ exports.upsertMother = async (req, res) => {
     middleInitial = parts.middleInitial;
   }
 
-  if (!firstName || !barangay) {
+  if (!firstName || !resolvedBarangay) {
     return res.status(400).json({ message: 'Mother first name and barangay are required.' });
   }
 
   const resolvedEncodedBy = encoded_by || req.user?.user_id || null;
-
   try {
     if (external_id) {
       const [existing] = await pool.query(
@@ -258,7 +280,7 @@ exports.upsertMother = async (req, res) => {
             lastName || '',
             birth_date || null,
             contact_number || null,
-            barangay,
+            resolvedBarangay,
             purok || address || 'Purok 1',
             weight_kg ? Number(weight_kg) : null,
             height_cm ? Number(height_cm) : null,
@@ -290,7 +312,7 @@ exports.upsertMother = async (req, res) => {
         middleInitial || null,
         lastName || '',
         birth_date || null,
-        barangay,
+        resolvedBarangay,
         purok || address || 'Purok 1',
         contact_number || null,
         weight_kg ? Number(weight_kg) : null,

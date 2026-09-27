@@ -10,4 +10,9 @@ class AppDataBus {
   AppDataBus._();
   static final ValueNotifier<int> version = ValueNotifier<int>(0);
   static void notifyChanged() => version.value++;
+  
+  /// Simple app-wide sync status notifier. Set to `true` when background
+  /// sync or resume sync is running so UI can show loading indicators.
+  static final ValueNotifier<bool> isSyncing = ValueNotifier<bool>(false);
+  static void setSyncing(bool v) => isSyncing.value = v;
 }

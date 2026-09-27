@@ -5,6 +5,11 @@ import '../dashboard/dashboard_screen.dart';
 import '../masterlist/masterlist_screen.dart';
 import '../program/program_screen.dart';
 import '../reports/reports_home_screen.dart';
+import '../../data/local/child_repository.dart';
+import '../../data/local/mother_repository.dart';
+import '../../data/local/hive_boxes.dart';
+import '../../data/local/app_data_bus.dart';
+import '../auth/login_screen.dart';
 
 import '../masterlist/widgets/masterlist_header.dart';
 
@@ -17,9 +22,12 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _navIndex = 0;
   final _masterlistKey = GlobalKey<MasterlistScreenState>();
+  final _childRepo = ChildRepository();
+  final _motherRepo = MotherRepository();
+  final _settings = SettingsRepository();
 
   void _navigateToMasterlist(MasterlistCategory category) {
     setState(() => _navIndex = 1);
@@ -42,5 +50,48 @@ class _MainShellState extends State<MainShell> {
         ],
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _handleResume();
+    }
+  }
+
+  Future<void> _handleResume() async {
+    try {
+      // If the saved session has expired while the app was backgrounded,
+      // clear and force the user back to login to avoid showing empty data.
+      if (!_settings.hasValidSession) {
+        await _settings.clearSession();
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+        return;
+      }
+
+      // Try syncing any pending local changes and notify UI to refresh.
+      await _childRepo.syncPending();
+      await _motherRepo.syncPending();
+      AppDataBus.notifyChanged();
+    } catch (e) {
+      debugPrint('Error during resume sync: $e');
+    }
   }
 }

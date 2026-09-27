@@ -3,6 +3,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/remote/auth_api.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../../data/remote/beneficiary_api.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_text_field.dart';
 import '../shell/main_shell.dart';
@@ -58,6 +60,29 @@ class _LoginScreenState extends State<LoginScreen> {
       await _settings.setAuthUser(
         session.toMap()['user'] as Map<String, dynamic>,
       );
+
+      // After storing session, fetch server-side beneficiaries for this user's barangay
+      // and seed local Hive so a fresh install shows server data immediately.
+      try {
+        final barangay = _settings.authUser?['barangay'] as String?;
+        if (barangay != null && barangay.isNotEmpty) {
+          // fetch children and mothers for barangay and seed local boxes
+          final children = await BeneficiaryApi.fetchChildrenForBarangay(barangay, _settings.authToken);
+          final mothers = await BeneficiaryApi.fetchMothersForBarangay(barangay, _settings.authToken);
+          // store into local repositories / boxes
+          final childBox = Hive.box(HiveBoxes.children);
+          final motherBox = Hive.box(HiveBoxes.mothers);
+          for (final c in children) {
+            childBox.put(c['external_id'] ?? c['child_id'].toString(), c);
+          }
+          for (final m in mothers) {
+            motherBox.put(m['external_id'] ?? m['mother_id'].toString(), m);
+          }
+        }
+      } catch (seedErr) {
+        // Non-fatal: proceed to main UI even if seeding failed.
+        debugPrint('Failed to seed local data after login: $seedErr');
+      }
 
       if (!mounted) return;
       Navigator.of(
