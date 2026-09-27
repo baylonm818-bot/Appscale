@@ -88,7 +88,12 @@ class SettingsRepository {
   Future<void> setAuthToken(String? value) =>
       value == null ? _box.delete('auth_token') : _box.put('auth_token', value);
 
-  Map<String, dynamic>? get authUser => _box.get('auth_user');
+  Map<String, dynamic>? get authUser {
+    final raw = _box.get('auth_user');
+    if (raw == null) return null;
+    return Map<String, dynamic>.from(raw as Map);
+  }
+
   Future<void> setAuthUser(Map<String, dynamic>? value) =>
       value == null ? _box.delete('auth_user') : _box.put('auth_user', value);
 
