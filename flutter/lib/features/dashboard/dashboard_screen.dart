@@ -10,7 +10,10 @@ import '../../core/theme/app_spacing.dart';
 import '../../shared/widgets/responsive_stat_grid.dart';
 import '../../data/local/app_data_bus.dart';
 import '../../data/local/auto_graduation_service.dart';
+import '../../data/local/child_repository.dart';
+import '../../data/local/mother_repository.dart';
 import '../referrals/referrals_overview_screen.dart';
+import '../reports/sync_status_screen.dart';
 import '../../shared/utils/app_page_route.dart';
 
 import '../../data/local/notification_repository.dart';
@@ -34,7 +37,10 @@ class _DashboardBodyState extends State<DashboardBody> {
   final _dashboardRepo = DashboardRepository();
   final _activityRepo = ActivityLogRepository();
   final _notificationRepo = NotificationRepository();
+  final _childRepo = ChildRepository();
+  final _motherRepo = MotherRepository();
   final _settings = SettingsRepository();
+
 
   String get _currentBarangay =>
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
@@ -72,9 +78,12 @@ class _DashboardBodyState extends State<DashboardBody> {
               DashboardHeader(
                 bnsName: _bnsName,
                 barangayName: 'Barangay $_currentBarangay',
-                pendingSyncCount: 12,
+                pendingSyncCount: _childRepo.pendingCount + _motherRepo.pendingCount,
                 unreadNotificationCount: unreadNotifs,
-                onSyncTap: () {},
+                onSyncTap: () => Navigator.push(
+                  context,
+                  appPageRoute(const SyncStatusScreen()),
+                ),
                 onNotificationTap: () => Navigator.push(
                   context,
                   appPageRoute(const NotificationsScreen()),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -6,6 +7,8 @@ import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/referral_repository.dart';
 import '../../data/local/hive_boxes.dart';
+import '../../data/local/app_data_bus.dart';
+import '../../data/remote/beneficiary_api.dart';
 
 class SyncStatusScreen extends StatefulWidget {
   const SyncStatusScreen({super.key});
@@ -31,19 +34,122 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     }
   }
 
+  /// Push any local pending records to server, then pull fresh data back
+  /// from the server so the BNS always sees the most up-to-date records.
   Future<void> _syncNow() async {
     setState(() {
       _isSyncing = true;
       _message = null;
     });
-    await Future.wait([_children.syncPending(), _mothers.syncPending()]);
-    if (!mounted) return;
-    setState(() {
-      _isSyncing = false;
-      _message = _children.pendingCount + _mothers.pendingCount == 0
-          ? 'All child and mother records are synced.'
-          : 'Some records remain pending. Check your connection and try again.';
-    });
+    try {
+      // 1. Push pending local records to server
+      await Future.wait([_children.syncPending(), _mothers.syncPending()]);
+
+      // 2. Pull fresh data from server for this barangay (re-seed)
+      final token = _settings.authToken;
+      if (_currentBarangay.isNotEmpty && token != null) {
+        try {
+          final serverChildren = await BeneficiaryApi.fetchChildrenForBarangay(
+              _currentBarangay, token);
+          final serverMothers = await BeneficiaryApi.fetchMothersForBarangay(
+              _currentBarangay, token);
+
+          final childBox = Hive.box(HiveBoxes.children);
+          final motherBox = Hive.box(HiveBoxes.mothers);
+
+          for (final c in serverChildren) {
+            final key = (c['external_id'] ?? c['child_id']).toString();
+            // Only update records that are already synced — don't overwrite local pending edits
+            final existing = childBox.get(key) as Map?;
+            if (existing == null || existing['_syncStatus'] == 'synced') {
+              final firstName = c['first_name'] as String? ?? '';
+              final middleInitial = c['middle_initial'] as String? ?? '';
+              final lastName = c['last_name'] as String? ?? '';
+              final fullName = [
+                firstName,
+                if (middleInitial.isNotEmpty) middleInitial,
+                lastName,
+              ].where((s) => s.isNotEmpty).join(' ');
+              childBox.put(key, {
+                'id': key,
+                'sequenceNo': key,
+                'fullName': fullName,
+                'birthDate': (c['birth_date'] as String?)?.split('T').first ??
+                    DateTime.now().toIso8601String(),
+                'gender': c['sex'] as String? ?? 'Male',
+                'address': c['purok'] as String? ?? '',
+                'barangay': c['barangay'] as String? ?? _currentBarangay,
+                'belongsToIpGroup': false,
+                'disability': '',
+                'guardian': {
+                  'fullName': c['guardian_name'] as String? ?? '',
+                  'relationship': 'Guardian',
+                  'contactNo': c['guardian_contact'] as String? ?? '',
+                  'linkedMotherId': null,
+                },
+                'createdAt': existing?['createdAt'] ?? DateTime.now().toIso8601String(),
+                'nutritionStatus': c['weight_status'] as String? ?? 'Not weighed',
+                'stuntingStatus': c['height_status'] as String? ?? 'Not weighed',
+                'wastingStatus': c['overall_status'] as String? ?? 'Not weighed',
+                'lastWeighedAt': c['last_visit'] != null
+                    ? (c['last_visit'] as String).split('T').first
+                    : null,
+                'isActive': (c['status'] as String? ?? 'active') == 'active',
+                'inactiveReason': null,
+                '_syncStatus': 'synced',
+              });
+            }
+          }
+
+          for (final m in serverMothers) {
+            final key = (m['external_id'] ?? m['mother_id']).toString();
+            final existing = motherBox.get(key) as Map?;
+            if (existing == null || existing['_syncStatus'] == 'synced') {
+              final firstName = m['first_name'] as String? ?? '';
+              final middleInitial = m['middle_initial'] as String? ?? '';
+              final lastName = m['last_name'] as String? ?? '';
+              final fullName = [
+                firstName,
+                if (middleInitial.isNotEmpty) middleInitial,
+                lastName,
+              ].where((s) => s.isNotEmpty).join(' ');
+              motherBox.put(key, {
+                'id': key,
+                'fullName': fullName,
+                'birthDate': (m['birth_date'] as String?)?.split('T').first ??
+                    DateTime.now().toIso8601String(),
+                'contactNo': m['contact_number'] as String? ?? '',
+                'address': m['purok'] as String? ?? '',
+                'barangay': m['barangay'] as String? ?? _currentBarangay,
+                'linkedChildIds': existing?['linkedChildIds'] ?? <String>[],
+                'isActive': (m['status'] as String? ?? 'active') == 'active',
+                'inactiveReason': null,
+                'createdAt': existing?['createdAt'] ?? DateTime.now().toIso8601String(),
+                '_syncStatus': 'synced',
+              });
+            }
+          }
+          AppDataBus.notifyChanged();
+        } catch (fetchErr) {
+          debugPrint('Re-seed after sync failed (non-fatal): $fetchErr');
+        }
+      }
+
+      if (!mounted) return;
+      final remaining = _children.pendingCount + _mothers.pendingCount;
+      setState(() {
+        _isSyncing = false;
+        _message = remaining == 0
+            ? '✓ All records synced and local data refreshed.'
+            : '$remaining records still pending. Check your connection and try again.';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSyncing = false;
+        _message = 'Sync failed: ${e.toString().replaceFirst('Exception: ', '')}';
+      });
+    }
   }
 
   @override
@@ -140,9 +246,11 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                       style: AppTextStyles.h2.copyWith(fontSize: 15),
                     ),
                     const SizedBox(height: AppSpacing.sm),
-                    _row('Children', childCount),
-                    _row('Mothers', motherCount),
-                    _row('Referrals', referralCount),
+                    _row('Children', childCount,
+                        synced: childCount - _children.pendingCount),
+                    _row('Mothers', motherCount,
+                        synced: motherCount - _mothers.pendingCount),
+                    _row('Referrals', referralCount, synced: referralCount),
                     const SizedBox(height: AppSpacing.lg),
                     SizedBox(
                       width: double.infinity,
@@ -177,7 +285,8 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     );
   }
 
-  Widget _row(String label, int count) {
+  Widget _row(String label, int count, {required int synced}) {
+    final pending = count - synced < 0 ? 0 : count - synced;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
@@ -196,18 +305,23 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                 '$count on device',
                 style: AppTextStyles.body.copyWith(fontSize: 12),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: pending > 0
+                      ? AppColors.statAmber.withValues(alpha: 0.15)
+                      : AppColors.lightGreenBg,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '0 synced',
+                  pending > 0 ? '$pending pending' : '$synced synced',
                   style: AppTextStyles.body.copyWith(
                     fontSize: 10,
-                    color: AppColors.textMuted,
+                    color: pending > 0
+                        ? AppColors.statAmber
+                        : AppColors.darkGreen,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
