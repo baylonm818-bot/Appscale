@@ -5,6 +5,7 @@ import '../local/hive_boxes.dart';
 import '../models/child.dart';
 import '../models/mother.dart';
 import '../models/measurement.dart';
+import '../models/program_schedule.dart';
 
 class BeneficiaryApi {
   BeneficiaryApi._();
@@ -57,6 +58,20 @@ class BeneficiaryApi {
       'height_status': measurement.heightForAgeStatus,
       'overall_status': measurement.effectiveWastingStatus,
       'recorded_by': settings.authUser?['user_id'],
+    }, settings.authToken);
+  }
+
+  static Future<void> syncSchedule(ProgramSchedule schedule) async {
+    final settings = SettingsRepository();
+    await _post('/mobile/schedules', {
+      'title': schedule.title,
+      'schedule_type': schedule.programType,
+      'schedule_date': _date(schedule.date),
+      'schedule_time': schedule.startTime,
+      'venue': schedule.location,
+      'barangay': schedule.barangay,
+      'target_role': 'bns',
+      'notes': schedule.notes,
     }, settings.authToken);
   }
 

@@ -4,6 +4,8 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
+import '../../data/local/hive_boxes.dart';
+import '../auth/login_screen.dart';
 
 class UserProfileScreen extends StatelessWidget {
   final String bnsName;
@@ -229,11 +231,13 @@ class UserProfileScreen extends StatelessWidget {
               'Log Out / Switch Account',
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Offline session preserved for BNS Maria'),
-                ),
+            onPressed: () async {
+              final settings = SettingsRepository();
+              await settings.clearSession();
+              if (!context.mounted) return;
+              Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (_) => false,
               );
             },
           ),

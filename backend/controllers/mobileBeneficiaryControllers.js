@@ -541,3 +541,30 @@ exports.getMobileSchedules = async (req, res) => {
     return res.status(500).json({ message: 'Server error. Unable to load schedules.' });
   }
 };
+
+exports.createMobileSchedule = async (req, res) => {
+  const { title, schedule_type, schedule_date, schedule_time, venue, barangay, target_role, notes } = req.body;
+  const resolvedBarangay = barangay || req.user?.barangay;
+
+  if (!title || !schedule_type || !schedule_date) {
+    return res.status(400).json({ message: 'Title, type, and date are required.' });
+  }
+
+  try {
+    const [result] = await pool.query(
+      `INSERT INTO schedules
+       (title, schedule_type, schedule_date, schedule_time, venue, barangay, target_role, notes, status, facilitator)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'BNS Mobile')`,
+      [title, schedule_type, schedule_date, schedule_time || null, venue || null,
+       resolvedBarangay || null, target_role || 'bns', notes || null]
+    );
+
+    return res.status(201).json({ 
+      message: 'Schedule created successfully.',
+      schedule_id: result.insertId 
+    });
+  } catch (error) {
+    console.error('Create mobile schedule error:', error);
+    return res.status(500).json({ message: 'Unable to sync schedule to server.' });
+  }
+};

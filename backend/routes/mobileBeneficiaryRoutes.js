@@ -7,11 +7,13 @@ const {
   getMobileChildren,
   getMobileMothers,
   getMobileSchedules,
+  createMobileSchedule,
 } = require('../controllers/mobileBeneficiaryControllers');
 
 router.post('/children', upsertChild);
 router.post('/mothers', upsertMother);
 router.post('/nutrition-records', syncNutritionRecord);
+router.post('/schedules', createMobileSchedule);
 
 router.get('/children', getMobileChildren);
 router.get('/mothers', getMobileMothers);

@@ -6,6 +6,8 @@ import 'activity_log_repository.dart';
 import 'app_data_bus.dart';
 import 'hive_boxes.dart';
 import 'notification_repository.dart';
+import '../remote/beneficiary_api.dart';
+import 'package:flutter/foundation.dart';
 
 class ProgramScheduleRepository {
   Box get _box => Hive.box(HiveBoxes.programSchedule);
@@ -45,6 +47,13 @@ class ProgramScheduleRepository {
       title: 'Scheduled: ${schedule.title}',
     );
     AppDataBus.notifyChanged();
+
+    // Fire and forget sync to remote backend so Web Admins and BHWs see it
+    try {
+      await BeneficiaryApi.syncSchedule(schedule);
+    } catch (e) {
+      debugPrint('Failed to sync schedule (non-fatal): $e');
+    }
   }
 
   /// Processes schedule entries created or updated by RHU Admin / BHW

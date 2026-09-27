@@ -149,8 +149,19 @@ class _LoginScreenState extends State<LoginScreen> {
       ).pushReplacement(MaterialPageRoute(builder: (_) => const MainShell()));
     } catch (error) {
       if (!mounted) return;
+      final raw = error.toString();
+      final isNetworkError = error.runtimeType.toString() == 'SocketException' ||
+          raw.contains('ClientSoftware') ||
+          raw.contains('SocketException') ||
+          raw.contains('connection abort') ||
+          raw.contains('Failed host lookup') ||
+          raw.contains('Network is unreachable') ||
+          raw.contains('Connection refused') ||
+          raw.contains('timed out');
       setState(() {
-        _loginError = error.toString().replaceFirst('Exception: ', '');
+        _loginError = isNetworkError
+            ? 'No internet connection. Please check your network and try again.'
+            : raw.replaceFirst('Exception: ', '');
       });
     } finally {
       if (mounted) setState(() => _isLoading = false);
