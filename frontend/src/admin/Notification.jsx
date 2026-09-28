@@ -200,7 +200,7 @@ function Notifications() {
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100/80">
 
         {/* Green gradient header */}
-        <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between flex-wrap gap-3">
+        <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between flex-wrap gap-3">
           <div>
             <div className="flex items-center gap-2">
               <Bell size={20} className="text-white" />
@@ -252,7 +252,7 @@ function Notifications() {
         </div>
 
         {/* List */}
-        <div className="max-h-[640px] overflow-y-auto divide-y divide-gray-50">
+        <div className="max-h-160 overflow-y-auto divide-y divide-gray-50">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <div className="w-9 h-9 rounded-full border-4 border-green-200 border-t-green-700 animate-spin" />

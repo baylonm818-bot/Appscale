@@ -1,6 +1,26 @@
 const pool = require('../config/db');
 const { canAccessSchedule } = require('../utils/roleAccess');
 
+async function createScheduleStatusNotification(scheduleId, statusOverride) {
+  try {
+    const [[sched]] = await pool.query('SELECT title, barangay FROM schedules WHERE schedule_id = ?', [scheduleId]);
+    if (!sched) return;
+
+    const label = statusOverride === 'done' ? 'Completed' : statusOverride === 'cancelled' ? 'Cancelled' : String(statusOverride || 'Updated').toUpperCase();
+    await pool.query(
+      `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
+       VALUES (?, ?, 'schedule', FALSE, ?, NOW())`,
+      [
+        `Schedule ${label}: ${sched.title}`,
+        `"${sched.title}" (${sched.barangay || 'All Barangays'}) was updated to ${statusOverride || 'updated'}.`,
+        scheduleId,
+      ]
+    );
+  } catch (notifErr) {
+    console.warn('Failed to insert schedule status notification:', notifErr && notifErr.message);
+  }
+}
+
 // BHW/BNS: Get schedules for their barangay (from admin + their own)
 exports.getBhwSchedules = async (req, res) => {
   const user = req.user;
@@ -72,6 +92,7 @@ exports.markScheduleDone = async (req, res) => {
   const { id } = req.params;
   try {
     await pool.query(`UPDATE schedules SET status = 'done' WHERE schedule_id = ?`, [id]);
+    await createScheduleStatusNotification(id, 'done');
     return res.status(200).json({ message: 'Marked as done.' });
   } catch (error) {
     console.error('Mark schedule done error:', error);
@@ -90,6 +111,7 @@ exports.updateBhwScheduleStatus = async (req, res) => {
 
   try {
     await pool.query('UPDATE schedules SET status = ? WHERE schedule_id = ?', [status, id]);
+    await createScheduleStatusNotification(id, status);
     return res.status(200).json({ message: 'Schedule status updated.' });
   } catch (error) {
     console.error('Update BHW schedule status error:', error);

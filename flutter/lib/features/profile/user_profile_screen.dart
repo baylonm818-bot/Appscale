@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -8,30 +12,102 @@ import '../../data/local/mother_repository.dart';
 import '../../shared/utils/app_user_identity.dart';
 import '../auth/login_screen.dart';
 
-class UserProfileScreen extends StatelessWidget {
+class UserProfileScreen extends StatefulWidget {
   final String bnsName;
   final String barangay;
 
-  const UserProfileScreen({
-    super.key,
-    this.bnsName = '',
-    this.barangay = '',
-  });
+  const UserProfileScreen({super.key, this.bnsName = '', this.barangay = ''});
+
+  @override
+  State<UserProfileScreen> createState() => _UserProfileScreenState();
+}
+
+class _UserProfileScreenState extends State<UserProfileScreen> {
+  bool _isUploadingPicture = false;
+
+  Future<void> _pickAndUploadProfilePicture() async {
+    final settings = SettingsRepository();
+    final userId = settings.authUser?['user_id']?.toString();
+    final token = settings.authToken;
+    if (userId == null || userId.isEmpty) return;
+
+    final pickedFile = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1200,
+      maxHeight: 1200,
+    );
+    if (pickedFile == null) return;
+
+    setState(() => _isUploadingPicture = true);
+
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse(
+          'https://appscale-1.onrender.com/api/profile/$userId/picture',
+        ),
+      );
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.files.add(
+        await http.MultipartFile.fromPath('profile_picture', pickedFile.path),
+      );
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final parsed = jsonDecode(responseBody);
+        final message = (parsed is Map && parsed['message'] is String)
+            ? parsed['message'] as String
+            : 'Unable to upload profile picture.';
+        throw Exception(message);
+      }
+
+      final parsed = responseBody.isEmpty
+          ? <String, dynamic>{}
+          : Map<String, dynamic>.from(jsonDecode(responseBody) as Map);
+      final updatedUser = Map<String, dynamic>.from(settings.authUser ?? {});
+      final uploadedPath = parsed['profile_picture'];
+      if (uploadedPath != null && uploadedPath.toString().trim().isNotEmpty) {
+        updatedUser['profile_picture'] = uploadedPath.toString();
+        await settings.setAuthUser(updatedUser);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile picture updated.')));
+      setState(() {});
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingPicture = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final settings = SettingsRepository();
-    final resolvedName = bnsName.isNotEmpty
-        ? bnsName
+    final resolvedName = widget.bnsName.isNotEmpty
+        ? widget.bnsName
         : AppUserIdentity.resolveDisplayName(settings.authUser);
-    final resolvedBarangay = barangay.isNotEmpty
-        ? barangay
+    final resolvedBarangay = widget.barangay.isNotEmpty
+        ? widget.barangay
         : AppUserIdentity.resolveBarangay(settings.authUser);
     final profileImageUrl = settings.authUser?['profile_picture']?.toString();
     final normalizedProfileImageUrl = (() {
       final raw = profileImageUrl?.trim();
       if (raw == null || raw.isEmpty) return null;
-      if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) {
+      if (raw.startsWith('http://') ||
+          raw.startsWith('https://') ||
+          raw.startsWith('data:')) {
         return raw;
       }
       if (raw.startsWith('/')) {
@@ -55,8 +131,8 @@ class UserProfileScreen extends StatelessWidget {
     final barangayLabel = resolvedBarangay.trim().isEmpty
         ? 'Barangay Tiguion'
         : resolvedBarangay.toLowerCase().startsWith('barangay ')
-            ? resolvedBarangay
-            : 'Barangay $resolvedBarangay';
+        ? resolvedBarangay
+        : 'Barangay $resolvedBarangay';
     final totalChildren = ChildRepository()
         .getAll()
         .where((c) => c.isActive)
@@ -98,37 +174,9 @@ class UserProfileScreen extends StatelessWidget {
             child: Column(
               children: [
                 GestureDetector(
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Select Profile Icon / Badge'),
-                        content: Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          alignment: WrapAlignment.center,
-                          children: ['👩‍⚕️', '🩺', '🌿', '🏥', '🍎', '📋', '👶', '❤️'].map((badge) {
-                            return InkWell(
-                              onTap: () {
-                                Navigator.pop(ctx);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Profile badge updated to $badge')),
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.lightGreenBg,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(badge, style: const TextStyle(fontSize: 28)),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    );
-                  },
+                  onTap: _isUploadingPicture
+                      ? null
+                      : _pickAndUploadProfilePicture,
                   child: Stack(
                     children: [
                       normalizedProfileImageUrl != null
@@ -138,11 +186,13 @@ class UserProfileScreen extends StatelessWidget {
                                 width: 72,
                                 height: 72,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => CircleAvatar(
+                                errorBuilder: (_, _, _) => CircleAvatar(
                                   radius: 36,
                                   backgroundColor: Colors.white,
                                   child: Text(
-                                    resolvedName.isNotEmpty ? resolvedName[0].toUpperCase() : 'B',
+                                    resolvedName.isNotEmpty
+                                        ? resolvedName[0].toUpperCase()
+                                        : 'B',
                                     style: const TextStyle(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
@@ -156,7 +206,9 @@ class UserProfileScreen extends StatelessWidget {
                               radius: 36,
                               backgroundColor: Colors.white,
                               child: Text(
-                                resolvedName.isNotEmpty ? resolvedName[0].toUpperCase() : 'B',
+                                resolvedName.isNotEmpty
+                                    ? resolvedName[0].toUpperCase()
+                                    : 'B',
                                 style: const TextStyle(
                                   fontSize: 32,
                                   fontWeight: FontWeight.bold,
@@ -164,18 +216,44 @@ class UserProfileScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primaryGreen,
-                            shape: BoxShape.circle,
+                      if (_isUploadingPicture)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                        )
+                      else
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primaryGreen,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -343,12 +421,20 @@ class UserProfileScreen extends StatelessWidget {
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   title: const Row(
                     children: [
                       Icon(Icons.logout, color: Colors.red, size: 22),
                       SizedBox(width: 8),
-                      Text('Log Out', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Log Out',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                   content: const Text(
@@ -358,16 +444,24 @@ class UserProfileScreen extends StatelessWidget {
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.w700)),
+                      child: const Text(
+                        'Log Out',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ],
                 ),

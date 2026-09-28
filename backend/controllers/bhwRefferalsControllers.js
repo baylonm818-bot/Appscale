@@ -1,6 +1,17 @@
 const pool = require('../config/db');
 const { canAccessReferral } = require('../utils/roleAccess');
 
+function normalizeIdValue(value) {
+  const trimmed = String(value ?? '').trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+function isNumericId(value) {
+  const trimmed = normalizeIdValue(value);
+  if (!trimmed) return false;
+  return /^\d+$/.test(trimmed);
+}
+
 async function getReferralTableMeta() {
   const [columns] = await pool.query(
     `SELECT COLUMN_NAME
@@ -47,12 +58,21 @@ exports.createReferral = async (req, res) => {
     if (beneficiaryType === 'child') {
       let childQuery;
       if (resolvedChildId) {
-        childQuery = await pool.query(
-          `SELECT c.child_id, c.first_name, c.last_name, c.barangay
-           FROM children c
-           WHERE c.child_id = ?`,
-          [resolvedChildId]
-        );
+        if (isNumericId(resolvedChildId)) {
+          childQuery = await pool.query(
+            `SELECT c.child_id, c.first_name, c.last_name, c.barangay
+             FROM children c
+             WHERE c.child_id = ?`,
+            [Number(resolvedChildId)]
+          );
+        } else {
+          childQuery = await pool.query(
+            `SELECT c.child_id, c.first_name, c.last_name, c.barangay
+             FROM children c
+             WHERE c.external_id = ?`,
+            [normalizeIdValue(resolvedChildId)]
+          );
+        }
       } else if (targetDisplayName && targetBarangay) {
         childQuery = await pool.query(
           `SELECT c.child_id, c.first_name, c.last_name, c.barangay
@@ -78,12 +98,21 @@ exports.createReferral = async (req, res) => {
     } else {
       let motherQuery;
       if (resolvedMotherId) {
-        motherQuery = await pool.query(
-          `SELECT m.mother_id, m.first_name, m.last_name, m.barangay
-           FROM mothers m
-           WHERE m.mother_id = ?`,
-          [resolvedMotherId]
-        );
+        if (isNumericId(resolvedMotherId)) {
+          motherQuery = await pool.query(
+            `SELECT m.mother_id, m.first_name, m.last_name, m.barangay
+             FROM mothers m
+             WHERE m.mother_id = ?`,
+            [Number(resolvedMotherId)]
+          );
+        } else {
+          motherQuery = await pool.query(
+            `SELECT m.mother_id, m.first_name, m.last_name, m.barangay
+             FROM mothers m
+             WHERE m.external_id = ?`,
+            [normalizeIdValue(resolvedMotherId)]
+          );
+        }
       } else if (targetDisplayName && targetBarangay) {
         motherQuery = await pool.query(
           `SELECT m.mother_id, m.first_name, m.last_name, m.barangay

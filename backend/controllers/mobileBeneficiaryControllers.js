@@ -11,6 +11,26 @@ function splitName(fullName) {
   };
 }
 
+function normalizeNutritionStatus(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+
+  const normalized = raw.toLowerCase().replace(/\s+/g, '_');
+  const aliases = {
+    'severely_underweight': 'severely_underweight',
+    'underweight': 'underweight',
+    'normal': 'normal',
+    'severely_stunted': 'severely_stunted',
+    'stunted': 'stunted',
+    'obese': 'obese',
+    'overweight': 'overweight',
+    'sam': 'SAM',
+    'mam': 'MAM',
+  };
+
+  return aliases[normalized] ?? normalized;
+}
+
 // Helper to determine WHO/DOH nutrition status if not provided by client
 function computeNutritionStatus(weightKg, heightCm, ageMonths, sex) {
   const w = Number(weightKg);
@@ -378,9 +398,9 @@ exports.syncNutritionRecord = async (req, res) => {
       child?.sex || 'male'
     );
 
-    const ws = weight_status || calculated.weightStatus;
-    const hs = height_status || calculated.heightStatus;
-    const os = overall_status || calculated.overallStatus;
+    const ws = normalizeNutritionStatus(weight_status) || normalizeNutritionStatus(calculated.weightStatus);
+    const hs = normalizeNutritionStatus(height_status) || normalizeNutritionStatus(calculated.heightStatus);
+    const os = normalizeNutritionStatus(overall_status) || normalizeNutritionStatus(calculated.overallStatus);
     const recBy = recorded_by || req.user?.user_id || null;
     const date = record_date || new Date().toISOString().slice(0, 10);
 
@@ -421,7 +441,8 @@ exports.syncNutritionRecord = async (req, res) => {
     );
 
     // Auto-notification for SAM/MAM children
-    if (['SAM', 'MAM'].includes(os)) {
+    const normalizedOverall = String(os || '').toUpperCase();
+    if (['SAM', 'MAM'].includes(normalizedOverall)) {
       try {
         const [[childRow]] = await pool.query(
           'SELECT first_name, last_name, barangay FROM children WHERE child_id = ? LIMIT 1',

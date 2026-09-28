@@ -44,13 +44,10 @@ class _AppTextFieldState extends State<AppTextField> {
   Widget build(BuildContext context) {
     final resolvedKeyboardType = widget.keyboardType ??
         (widget.isNumericOnly ? TextInputType.number : null);
-    final resolvedFormatters = <TextInputFormatter>[]
-      ..addAll(widget.inputFormatters ?? const [])
-      ..addAll(
-        widget.isNumericOnly
-            ? [FilteringTextInputFormatter.digitsOnly]
-            : const [],
-      );
+    final resolvedFormatters = <TextInputFormatter>[
+      ...?widget.inputFormatters,
+      if (widget.isNumericOnly) FilteringTextInputFormatter.digitsOnly,
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
