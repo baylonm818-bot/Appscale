@@ -131,3 +131,48 @@ test('referral creation falls back to beneficiary name when mobile sends a UUID 
     pool.getConnection = originalGetConnection;
   }
 });
+
+test('referral list loads when legacy beneficiary_type column does not exist', async () => {
+  const pool = require('../config/db');
+  const originalQuery = pool.query;
+
+  pool.query = async (sql, params) => {
+    if (sql.includes('SELECT DISTINCT')) {
+      return [[{
+        referral_id: 30001,
+        beneficiary_type: 'child',
+        reason: 'Severely Stunted',
+        severity: 'medium',
+        status: 'pending',
+        referred_by: 9,
+        referred_to: 9,
+        response_notes: 'Facility: Barangay Health Center',
+        created_at: '2026-09-27T09:37:23.000Z',
+        child_first_name: 'Maria',
+        child_last_name: 'Lopez',
+        child_id: 4,
+        beneficiary_first_name: 'Maria',
+        beneficiary_last_name: 'Lopez',
+        barangay: 'Barangay 1',
+      }]];
+    }
+    return [[{ ok: true }]];
+  };
+
+  try {
+    const controller = require('../controllers/bhwRefferalsControllers');
+    const req = {
+      user: { user_id: 9, role: 'bhw', barangay: 'Barangay 1' },
+    };
+    const res = makeRes();
+
+    await controller.getReferrals(req, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(Array.isArray(res.payload), true);
+    assert.equal(res.payload[0].beneficiary_type, 'child');
+    assert.equal(res.payload[0].barangay, 'Barangay 1');
+  } finally {
+    pool.query = originalQuery;
+  }
+});

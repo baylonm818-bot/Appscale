@@ -257,7 +257,11 @@ exports.getReferrals = async (req, res) => {
     const [referrals] = await pool.query(
       `SELECT DISTINCT
          r.referral_id,
-         r.beneficiary_type,
+         CASE
+           WHEN c.child_id IS NOT NULL THEN 'child'
+           WHEN m.mother_id IS NOT NULL THEN 'mother'
+           ELSE 'child'
+         END AS beneficiary_type,
          r.reason,
          r.severity,
          r.status,
