@@ -69,6 +69,8 @@ function App() {
   <Route path="profile" element={<BHWProfile/>} />
 </Route>
        
+      {/* Catch-all unknown routes: redirect to login / dashboard */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
 
 

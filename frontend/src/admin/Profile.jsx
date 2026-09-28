@@ -84,7 +84,7 @@ function Profile() {
   const [activeTab, setActiveTab] = useState('profile');
   const [notificationPreferences, setNotificationPreferences] = useState(() => {
     const saved = localStorage.getItem('notificationPreferences');
-    return saved ? JSON.parse(saved) : { referrals: true, schedules: true, malnutrition: true };
+    return saved ? JSON.parse(saved) : { schedules: true, accounts: true, system: true };
   });
 
   const [profileMsg, setProfileMsg] = useState('');
@@ -337,9 +337,9 @@ function Profile() {
             </div>
             <div className="space-y-0 divide-y divide-gray-50">
               {[
-                ['referrals',    'Referral Alerts',      'New referrals submitted by BHWs'],
-                ['schedules',    'Schedule Reminders',   'Upcoming and missed activities'],
-                ['malnutrition', 'Malnutrition Alerts',  'Children needing nutrition follow-up'],
+                ['schedules', 'Schedule Reminders',   'Upcoming, completed, and missed community health schedules'],
+                ['accounts',  'Account & User Alerts', 'User account creations, lockouts, and restorations'],
+                ['system',    'System Alerts',        'Administrative and municipal maintenance notifications'],
               ].map(([name, label, desc]) => (
                 <div key={name} className="flex items-center justify-between py-4">
                   <div>

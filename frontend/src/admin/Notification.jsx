@@ -1,67 +1,127 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
+import { Calendar, UserCheck, ShieldAlert, Bell, CheckCheck, Clock, ExternalLink } from "lucide-react";
 
 function timeAgo(dateString) {
+  if (!dateString) return "Just now";
   const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
   if (seconds < 60) return "Just now";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 function formatDate(dateString) {
+  if (!dateString) return "";
   return new Date(dateString).toLocaleDateString("en-US", {
-    weekday: "long", month: "short", day: "numeric",
-    hour: "numeric", minute: "2-digit",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 
 const TYPE_CONFIG = {
-  referral:     { label: "Referral",     color: "bg-blue-500",    light: "bg-blue-50 text-blue-700"    },
-  malnutrition: { label: "Malnutrition", color: "bg-red-500",     light: "bg-red-50 text-red-700"      },
-  schedule:     { label: "Schedule",     color: "bg-emerald-500", light: "bg-emerald-50 text-emerald-700" },
+  schedule: {
+    label: "Schedule",
+    color: "bg-emerald-600",
+    light: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+    icon: Calendar,
+  },
+  account: {
+    label: "Account",
+    color: "bg-purple-600",
+    light: "bg-purple-50 text-purple-700 ring-1 ring-purple-200",
+    icon: UserCheck,
+  },
+  system: {
+    label: "System",
+    color: "bg-blue-600",
+    light: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+    icon: ShieldAlert,
+  },
 };
 
 function NotificationItem({ notif, onMarkRead }) {
-  const cfg = TYPE_CONFIG[notif.type?.toLowerCase()] || { color: "bg-green-600", light: "bg-green-50 text-green-700" };
-  const initial = (notif.type?.[0] || "N").toUpperCase();
+  const typeKey = (notif.type || "").toLowerCase();
+  const cfg = TYPE_CONFIG[typeKey] || {
+    label: notif.type || "General",
+    color: "bg-emerald-700",
+    light: "bg-green-50 text-green-700 ring-1 ring-green-200",
+    icon: Bell,
+  };
+  const Icon = cfg.icon;
 
   return (
     <div
       onClick={() => !notif.is_read && onMarkRead(notif.notification_id)}
-      className={`flex gap-4 px-6 py-4 border-b border-gray-50 last:border-0 transition-colors
-        ${!notif.is_read ? "bg-green-50/50 cursor-pointer hover:bg-green-50" : "hover:bg-gray-50/60"}`}
+      className={`flex gap-4 px-6 py-4.5 border-b border-gray-100 last:border-0 transition-colors ${
+        !notif.is_read ? "bg-green-50/40 cursor-pointer hover:bg-green-50/70" : "hover:bg-gray-50/70"
+      }`}
     >
-      {/* Avatar */}
-      <div className={`shrink-0 w-10 h-10 rounded-full ${cfg.color} flex items-center justify-center text-white text-sm font-bold shadow-sm`}>
-        {initial}
+      {/* Icon Avatar */}
+      <div className={`shrink-0 w-11 h-11 rounded-2xl ${cfg.color} flex items-center justify-center text-white shadow-xs`}>
+        <Icon size={20} />
       </div>
 
       {/* Body */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-gray-800 leading-snug">{notif.title}</p>
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide ${cfg.light}`}>
-              {notif.type || "General"}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <p className="text-sm font-bold text-gray-900 leading-snug">{notif.title}</p>
+            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${cfg.light}`}>
+              {cfg.label}
             </span>
           </div>
           {!notif.is_read && (
-            <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-green-500 mt-1 ring-2 ring-white" />
+            <span
+              title="Unread notification"
+              className="shrink-0 w-2.5 h-2.5 rounded-full bg-emerald-600 ring-4 ring-emerald-100 mt-1"
+            />
           )}
         </div>
 
-        <div className="flex items-center gap-3 mt-1">
-          <p className="text-xs text-gray-400">{formatDate(notif.created_at)}</p>
-          <span className="text-gray-200">·</span>
-          <p className="text-xs font-medium text-green-600">{timeAgo(notif.created_at)}</p>
+        <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+          <Clock size={12} className="shrink-0" />
+          <span>{formatDate(notif.created_at)}</span>
+          <span>·</span>
+          <span className="font-semibold text-emerald-700">{timeAgo(notif.created_at)}</span>
         </div>
 
         {notif.message && (
-          <div className="mt-2 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-600 leading-relaxed">
+          <div className="mt-2.5 bg-gray-50/80 border border-gray-100 rounded-xl px-4 py-2.5 text-xs text-gray-700 leading-relaxed">
             {notif.message}
+          </div>
+        )}
+
+        {/* Quick action link for schedules */}
+        {typeKey === "schedule" && (
+          <div className="mt-2.5 flex items-center gap-2">
+            <Link
+              to="/admin/schedule"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-lg transition"
+            >
+              <Calendar size={13} /> View in Schedule Calendar <ExternalLink size={11} />
+            </Link>
+          </div>
+        )}
+
+        {typeKey === "account" && (
+          <div className="mt-2.5 flex items-center gap-2">
+            <Link
+              to="/admin/users"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1 rounded-lg transition"
+            >
+              <UserCheck size={13} /> Manage Users <ExternalLink size={11} />
+            </Link>
           </div>
         )}
       </div>
@@ -79,7 +139,11 @@ function Notifications() {
     setLoading(true);
     try {
       const res = await axiosClient.get("/notifications");
-      setNotifications(res.data.notifications || []);
+      // Explicitly filter out any legacy referral or malnutrition notifications
+      const fetched = (res.data.notifications || []).filter(
+        (n) => n.type?.toLowerCase() !== "referral" && n.type?.toLowerCase() !== "malnutrition"
+      );
+      setNotifications(fetched);
       setUnreadCount(res.data.unreadCount || 0);
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
@@ -88,70 +152,98 @@ function Notifications() {
     }
   };
 
-  useEffect(() => { fetchNotifications(); }, []);
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   const handleMarkAllRead = async () => {
-    try { await axiosClient.patch("/notifications/read-all"); fetchNotifications(); }
-    catch (err) { console.error(err); }
+    try {
+      await axiosClient.patch("/notifications/read-all");
+      fetchNotifications();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleMarkRead = async (id) => {
-    try { await axiosClient.patch(`/notifications/${id}/read`); fetchNotifications(); }
-    catch (err) { console.error(err); }
+    try {
+      await axiosClient.patch(`/notifications/${id}/read`);
+      setNotifications((prev) =>
+        prev.map((n) => (n.notification_id === id ? { ...n, is_read: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
+  const scheduleCount = notifications.filter((n) => n.type?.toLowerCase() === "schedule").length;
+  const accountCount = notifications.filter((n) => ["account", "system"].includes(n.type?.toLowerCase())).length;
+
   const tabs = [
-    { key: "all",          label: "All",         count: notifications.length },
-    { key: "unread",       label: "Unread",       count: unreadCount },
-    { key: "referral",     label: "Referrals"     },
-    { key: "malnutrition", label: "Malnutrition"  },
-    { key: "schedule",     label: "Schedule"      },
+    { key: "all",      label: "All",               count: notifications.length },
+    { key: "unread",   label: "Unread",            count: unreadCount },
+    { key: "schedule", label: "Schedules",         count: scheduleCount },
+    { key: "account",  label: "Accounts & System", count: accountCount },
   ];
 
   const filtered = notifications.filter((n) => {
-    if (activeTab === "all")    return true;
+    if (activeTab === "all") return true;
     if (activeTab === "unread") return !n.is_read;
+    if (activeTab === "schedule") return n.type?.toLowerCase() === "schedule";
+    if (activeTab === "account") return ["account", "system"].includes(n.type?.toLowerCase());
     return n.type?.toLowerCase() === activeTab;
   });
 
   return (
     <div className="space-y-0">
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100/80">
 
         {/* Green gradient header */}
-        <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-lg font-bold text-white">Notifications</h1>
-            <p className="text-white/70 text-xs mt-0.5">
-              {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+            <div className="flex items-center gap-2">
+              <Bell size={20} className="text-white" />
+              <h1 className="text-lg font-bold text-white">Admin Notifications</h1>
+            </div>
+            <p className="text-white/80 text-xs mt-0.5">
+              {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : "All notifications caught up"}
             </p>
           </div>
-          {unreadCount > 0 && (
-            <button
-              onClick={handleMarkAllRead}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition"
-            >
-              ✓✓ Mark all read
-            </button>
-          )}
+
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={handleMarkAllRead}
+                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-white/20 hover:bg-white/30 px-3.5 py-1.5 rounded-full transition shadow-xs cursor-pointer"
+              >
+                <CheckCheck size={14} /> Mark all read
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Tab pills */}
-        <div className="flex gap-1.5 px-6 py-3 border-b border-gray-100 overflow-x-auto bg-gray-50/50">
+        <div className="flex gap-2 px-6 py-3.5 border-b border-gray-100 overflow-x-auto bg-gray-50/60">
           {tabs.map((tab) => (
             <button
               key={tab.key}
+              type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all
-                ${activeTab === tab.key
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === tab.key
                   ? "bg-[#2e7d32] text-white shadow-sm"
-                  : "text-gray-500 hover:bg-gray-100"
-                }`}
+                  : "text-gray-600 hover:bg-white bg-transparent"
+              }`}
             >
-              {tab.label}
+              <span>{tab.label}</span>
               {tab.count !== undefined && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold
-                  ${activeTab === tab.key ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"}`}>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    activeTab === tab.key ? "bg-white/25 text-white" : "bg-gray-200/80 text-gray-700"
+                  }`}
+                >
                   {tab.count}
                 </span>
               )}
@@ -160,21 +252,25 @@ function Notifications() {
         </div>
 
         {/* List */}
-        <div className="max-h-[600px] overflow-y-auto">
+        <div className="max-h-[640px] overflow-y-auto divide-y divide-gray-50">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="w-8 h-8 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
-              <p className="text-sm text-gray-400">Loading notifications…</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <div className="w-9 h-9 rounded-full border-4 border-green-200 border-t-green-700 animate-spin" />
+              <p className="text-sm font-medium text-gray-400">Loading notifications…</p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
-                <svg className="w-7 h-7 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <div className="w-16 h-16 rounded-2xl bg-green-50 flex items-center justify-center shadow-xs">
+                <Bell className="w-8 h-8 text-green-600" />
               </div>
-              <p className="text-sm font-semibold text-gray-500">No notifications</p>
-              <p className="text-xs text-gray-400">You're all caught up!</p>
+              <p className="text-sm font-bold text-gray-800">No notifications found</p>
+              <p className="text-xs text-gray-400">
+                {activeTab === "unread"
+                  ? "You have read all your notifications!"
+                  : activeTab === "schedule"
+                  ? "No schedule activity updates found."
+                  : "You're all caught up with your admin alerts."}
+              </p>
             </div>
           ) : (
             filtered.map((notif) => (

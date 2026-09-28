@@ -9,29 +9,10 @@ exports.getNotifications = async (req, res) => {
        LIMIT 50`
     );
 
-    if (notifications.length === 0) {
-      const defaultNotifs = [
-        ['New BNS Referral Submitted', 'BNS submitted a referral for Baby Juan Cruz (SAM malnutrition). Immediate follow-up required.', 'referral', false],
-        ['OPT Plus Schedule Created', 'Operation Timbang Plus Schedule for Barangay Antipolo has been set for this month.', 'schedule', false],
-        ['Malnutrition Alert: SAM Case', 'Child Seph Baylon was measured and classified as Severe Acute Malnutrition (SAM).', 'malnutrition', true],
-      ];
-      for (const [title, message, type, isRead] of defaultNotifs) {
-        await pool.query(
-          `INSERT INTO notifications (title, message, type, is_read, created_at) VALUES (?, ?, ?, ?, NOW())`,
-          [title, message, type, isRead]
-        );
-      }
-      const [freshNotifs] = await pool.query(
-        `SELECT notification_id, title, message, type, is_read, created_at
-         FROM notifications
-         ORDER BY created_at DESC
-         LIMIT 50`
-      );
-      const [[{ unreadCount }]] = await pool.query(
-        `SELECT COUNT(*) AS unreadCount FROM notifications WHERE is_read = FALSE`
-      );
-      return res.status(200).json({ notifications: freshNotifs, unreadCount });
-    }
+    const [[{ unreadCount }]] = await pool.query(
+      `SELECT COUNT(*) AS unreadCount FROM notifications WHERE is_read = FALSE`
+    );
+    return res.status(200).json({ notifications, unreadCount });
 
     const [[{ unreadCount }]] = await pool.query(
       `SELECT COUNT(*) AS unreadCount FROM notifications WHERE is_read = FALSE`

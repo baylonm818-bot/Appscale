@@ -42,8 +42,8 @@ exports.getUsers = async (req, res) => {
     exports.createUsers = async (req, res) => {
         const { first_name, middle_initial, last_name, email, username, password, role, municipality, barangay , purok, contact_number} = req.body;
 
-        if (!first_name || !middle_initial || !last_name || !email || !username || !password || !role || !municipality || !barangay || !purok || !contact_number) {
-            return res.status(400).json({ message: 'All fields are required.' });
+        if (!first_name || !last_name || !email || !username || !password || !role || !barangay) {
+            return res.status(400).json({ message: 'First name, last name, email, username, password, role, and barangay are required.' });
         }
         try{
             if (role === 'bns') {
@@ -152,6 +152,23 @@ exports.getUsers = async (req, res) => {
                 'UPDATE users SET status = ?, deactivation_reason = ?, failed_attempts = 0 WHERE user_id = ?',
                 [status, deactivation_reason || null, user_id]
             );
+
+            try {
+                const [[targetUser]] = await pool.query('SELECT first_name, last_name, role FROM users WHERE user_id = ?', [user_id]);
+                if (targetUser) {
+                    const actionLabel = status === 'locked' ? 'Locked' : status === 'active' ? 'Unlocked' : 'Deactivated';
+                    await pool.query(
+                        `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
+                         VALUES (?, ?, 'account', FALSE, ?, NOW())`,
+                        [
+                            `Account ${actionLabel}: ${targetUser.first_name} ${targetUser.last_name}`,
+                            `${targetUser.first_name} ${targetUser.last_name} (${(targetUser.role || '').toUpperCase()}) was ${status} by administrator.`,
+                            user_id
+                        ]
+                    );
+                }
+            } catch (_) {}
+
             return res.status(200).json({ message: 'User status updated successfully.' });
         } catch (error) {
             console.error('Update user status error:', error);
@@ -167,6 +184,22 @@ exports.getUsers = async (req, res) => {
                 'UPDATE users SET status = ?, deleted_at = NOW(), failed_attempts = 0 WHERE user_id = ?',
                 ['inactive', user_id]
             );
+
+            try {
+                const [[targetUser]] = await pool.query('SELECT first_name, last_name, role FROM users WHERE user_id = ?', [user_id]);
+                if (targetUser) {
+                    await pool.query(
+                        `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
+                         VALUES (?, ?, 'account', FALSE, ?, NOW())`,
+                        [
+                            `Account Archived: ${targetUser.first_name} ${targetUser.last_name}`,
+                            `${targetUser.first_name} ${targetUser.last_name} (${(targetUser.role || '').toUpperCase()}) was archived.`,
+                            user_id
+                        ]
+                    );
+                }
+            } catch (_) {}
+
             return res.status(200).json({ message: 'User archived successfully.' });
         } catch (error) {
             console.error('Archive user error:', error);
@@ -182,6 +215,22 @@ exports.getUsers = async (req, res) => {
                 'UPDATE users SET status = ?, deleted_at = NULL, failed_attempts = 0 WHERE user_id = ?',
                 ['active', user_id]
             );
+
+            try {
+                const [[targetUser]] = await pool.query('SELECT first_name, last_name, role FROM users WHERE user_id = ?', [user_id]);
+                if (targetUser) {
+                    await pool.query(
+                        `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
+                         VALUES (?, ?, 'account', FALSE, ?, NOW())`,
+                        [
+                            `Account Restored: ${targetUser.first_name} ${targetUser.last_name}`,
+                            `${targetUser.first_name} ${targetUser.last_name} (${(targetUser.role || '').toUpperCase()}) was restored to active.`,
+                            user_id
+                        ]
+                    );
+                }
+            } catch (_) {}
+
             return res.status(200).json({ message: 'User restored successfully.' });
         } catch (error) {
             console.error('Restore user error:', error);

@@ -69,13 +69,30 @@ exports.createSchedule = async (req, res) => {
   }
 
   try {
-    await pool.query(
+    const [result] = await pool.query(
       `INSERT INTO schedules
        (title, schedule_type, schedule_date, schedule_time, venue, barangay, assigned_to, target_role, facilitator, notes, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [title, schedule_type, schedule_date, schedule_time || null, venue || null,
        barangay || null, assigned_to || null, target_role || null, facilitator || null, notes || null]
     );
+
+    try {
+      const formattedDate = new Date(schedule_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const location = [venue, barangay && barangay !== 'All Barangays' ? barangay : null].filter(Boolean).join(', ') || 'Municipal Venue';
+      await pool.query(
+        `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
+         VALUES (?, ?, 'schedule', FALSE, ?, NOW())`,
+        [
+          `New Schedule: ${title}`,
+          `${schedule_type.toUpperCase()} scheduled for ${formattedDate} at ${location}.`,
+          result.insertId
+        ]
+      );
+    } catch (notifErr) {
+      console.warn('Failed to insert schedule notification:', notifErr && notifErr.message);
+    }
+
     return res.status(201).json({ message: 'Schedule created successfully.' });
   } catch (error) {
     console.error('Create schedule error:', error);
@@ -93,6 +110,23 @@ exports.updateScheduleStatus = async (req, res) => {
 
   try {
     await pool.query('UPDATE schedules SET status = ? WHERE schedule_id = ?', [status, id]);
+
+    try {
+      const [[sched]] = await pool.query('SELECT title, barangay FROM schedules WHERE schedule_id = ?', [id]);
+      if (sched) {
+        const statusLabel = status === 'done' ? 'Completed' : status === 'cancelled' ? 'Cancelled' : status.toUpperCase();
+        await pool.query(
+          `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
+           VALUES (?, ?, 'schedule', FALSE, ?, NOW())`,
+          [
+            `Schedule ${statusLabel}: ${sched.title}`,
+            `"${sched.title}" (${sched.barangay || 'All Barangays'}) was updated to ${status}.`,
+            id
+          ]
+        );
+      }
+    } catch (_) {}
+
     return res.status(200).json({ message: 'Schedule status updated successfully.' });
   } catch (error) {
     console.error('Update schedule status error:', error);

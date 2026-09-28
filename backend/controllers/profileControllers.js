@@ -10,11 +10,11 @@ fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) =>{
+  filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `user_${req.params.id}_${Date.now()}${ext}`);
-  }
-})
+  },
+});
 
 const fileFilter = (req, file, cb) => {
   if (!allowedMime.includes(file.mimetype)) {
@@ -23,10 +23,23 @@ const fileFilter = (req, file, cb) => {
   cb(null, true);
 };
 
-exports.upload = multer({storage, limits:{fileSize: 5* 1024 * 1024}, fileFilter});
+exports.upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 }, fileFilter });
+
+// Helper to check user permission on profile
+function canAccessProfile(req, targetId) {
+  const requesterId = Number(req.user?.user_id);
+  const target = Number(targetId);
+  const role = String(req.user?.role || '').toLowerCase();
+  return role === 'admin' || requesterId === target;
+}
 
 exports.getProfile = async (req, res) => {
   const { id } = req.params;
+
+  if (!canAccessProfile(req, id)) {
+    return res.status(403).json({ message: 'Forbidden. You are not authorized to view this profile.' });
+  }
+
   try {
     const [rows] = await pool.query(
       `SELECT user_id, first_name, middle_initial, last_name, email, username,
@@ -44,15 +57,26 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// New: return profile picture as base64 to avoid CORP/CORS issues when frontend
 exports.getProfilePictureData = async (req, res) => {
   const { id } = req.params;
+
+  if (!canAccessProfile(req, id)) {
+    return res.status(403).json({ message: 'Forbidden. You are not authorized to access this profile picture.' });
+  }
+
   try {
     const [rows] = await pool.query('SELECT profile_picture FROM users WHERE user_id = ?', [id]);
     if (rows.length === 0) return res.status(404).json({ message: 'User not found.' });
     const picPath = rows[0].profile_picture;
     if (!picPath) return res.status(404).json({ message: 'No profile picture.' });
-    const absPath = path.join(__dirname, '..', picPath);
+    
+    // Normalize path to prevent path traversal
+    const safeRelPath = picPath.replace(/^[/\\]+/, '');
+    const absPath = path.resolve(__dirname, '..', safeRelPath);
+    if (!absPath.startsWith(path.resolve(__dirname, '..', 'uploads'))) {
+      return res.status(400).json({ message: 'Invalid file path.' });
+    }
+
     if (!fs.existsSync(absPath)) return res.status(404).json({ message: 'File not found.' });
     const data = fs.readFileSync(absPath);
     const mime = picPath.endsWith('.png') ? 'image/png' : picPath.endsWith('.jpg') || picPath.endsWith('.jpeg') ? 'image/jpeg' : 'image/webp';
@@ -66,9 +90,25 @@ exports.getProfilePictureData = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   const { id } = req.params;
+
+  if (!canAccessProfile(req, id)) {
+    return res.status(403).json({ message: 'Forbidden. You are not authorized to update this profile.' });
+  }
+
   const { first_name, middle_initial, last_name, email, contact_number, purok } = req.body;
 
   try {
+    // Check if email is already taken by another user
+    if (email) {
+      const [existing] = await pool.query(
+        'SELECT user_id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND user_id <> ? LIMIT 1',
+        [email, id]
+      );
+      if (existing.length > 0) {
+        return res.status(409).json({ message: 'Email is already in use by another account.' });
+      }
+    }
+
     await pool.query(
       `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?
        WHERE user_id = ?`,
@@ -83,10 +123,21 @@ exports.updateProfile = async (req, res) => {
 
 exports.changePassword = async (req, res) => {
   const { id } = req.params;
+  const requesterId = Number(req.user?.user_id);
+
+  // Security: only the authenticated user themselves can change their password
+  if (requesterId !== Number(id)) {
+    return res.status(403).json({ message: 'Forbidden. You can only change your own password.' });
+  }
+
   const { current_password, new_password } = req.body;
 
   if (!current_password || !new_password) {
     return res.status(400).json({ message: 'Please fill in all fields.' });
+  }
+
+  if (new_password.length < 8) {
+    return res.status(400).json({ message: 'New password must be at least 8 characters.' });
   }
 
   try {
@@ -111,6 +162,10 @@ exports.changePassword = async (req, res) => {
 
 exports.uploadProfilePicture = async (req, res) => {
   const { id } = req.params;
+
+  if (!canAccessProfile(req, id)) {
+    return res.status(403).json({ message: 'Forbidden. You are not authorized to update this profile photo.' });
+  }
 
   if (!req.file) {
     return res.status(400).json({ message: 'No file uploaded.' });

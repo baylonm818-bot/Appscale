@@ -54,6 +54,7 @@ function UserManagement() {
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [statusConfirm, setStatusConfirm] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -399,7 +400,7 @@ function UserManagement() {
                           <>
                             <button
                               type="button"
-                              onClick={() => toggleStatus(u)}
+                              onClick={() => setStatusConfirm({ user: u, action: u.status === 'active' ? 'lock' : 'unlock' })}
                               title={u.status === 'active' ? 'Lock Account' : 'Unlock Account'}
                               className={`p-1.5 rounded-lg text-xs font-semibold transition ${
                                 u.status === 'active'
@@ -568,6 +569,75 @@ function UserManagement() {
                   {saving ? 'Saving…' : (editingUser ? 'Save Changes' : 'Create Account')}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Status Change Confirmation Modal (Are you sure?) ── */}
+      {statusConfirm && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setStatusConfirm(null); }}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                statusConfirm.action === 'lock' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-700'
+              }`}>
+                {statusConfirm.action === 'lock' ? <Lock size={22} /> : <Unlock size={22} />}
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">
+                  {statusConfirm.action === 'lock' ? 'Lock User Account' : 'Unlock User Account'}
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Action confirmation
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-5 leading-relaxed">
+              Are you sure you want to <strong className="text-gray-900">{statusConfirm.action}</strong> the account of{' '}
+              <strong className="text-gray-900">{statusConfirm.user.first_name} {statusConfirm.user.last_name}</strong>{' '}
+              ({(statusConfirm.user.role || '').toUpperCase()})?
+            </p>
+
+            {statusConfirm.action === 'lock' ? (
+              <div className="mb-6 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
+                <span className="shrink-0 text-base">⚠️</span>
+                <span>The user will be immediately prevented from logging into AppScale until unlocked by an administrator.</span>
+              </div>
+            ) : (
+              <div className="mb-6 p-3 bg-green-50 rounded-xl border border-green-200 text-xs text-green-800 flex items-start gap-2">
+                <span className="shrink-0 text-base">✓</span>
+                <span>The user's failed login counter will be reset and they will be allowed to log in again.</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setStatusConfirm(null)}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const targetUser = statusConfirm.user;
+                  setStatusConfirm(null);
+                  await toggleStatus(targetUser);
+                }}
+                className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl transition shadow-sm ${
+                  statusConfirm.action === 'lock'
+                    ? 'bg-amber-600 hover:bg-amber-700'
+                    : 'bg-green-700 hover:bg-green-800'
+                }`}
+              >
+                Yes, {statusConfirm.action === 'lock' ? 'Lock Account' : 'Unlock Account'}
+              </button>
             </div>
           </div>
         </div>

@@ -1,49 +1,72 @@
 const pool = require('../config/db');
 
+// Ensure table exists on initialization
+(async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        notification_id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        message TEXT,
+        type VARCHAR(50) DEFAULT 'schedule',
+        is_read BOOLEAN DEFAULT FALSE,
+        related_id INT NULL,
+        created_by INT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch (err) {
+    console.error('Error creating notifications table:', err && err.message);
+  }
+})();
+
 exports.getNotifications = async (req, res) => {
   try {
-    const [[{ cnt }]] = await pool.query(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications'`
-    );
-    if (!cnt) {
-      return res.status(200).json({ notifications: [], unreadCount: 0 });
+    // 1. Ensure any existing schedules from schedules table are synced into notifications
+    try {
+      const [unsyncedSchedules] = await pool.query(`
+        SELECT s.schedule_id, s.title, s.schedule_type, s.schedule_date, s.schedule_time, s.venue, s.barangay, s.status
+        FROM schedules s
+        WHERE NOT EXISTS (
+          SELECT 1 FROM notifications n 
+          WHERE n.related_id = s.schedule_id AND n.type = 'schedule'
+        )
+      `);
+
+      for (const s of unsyncedSchedules) {
+        const dateStr = s.schedule_date
+          ? new Date(s.schedule_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          : 'Date TBD';
+        const loc = [s.venue, s.barangay && s.barangay !== 'All Barangays' ? s.barangay : null].filter(Boolean).join(', ') || 'Municipal Venue';
+        await pool.query(
+          `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
+           VALUES (?, ?, 'schedule', FALSE, ?, NOW())`,
+          [
+            `Scheduled: ${s.title}`,
+            `${(s.schedule_type || 'Activity').toUpperCase()} on ${dateStr} at ${loc} (Status: ${s.status || 'pending'}).`,
+            s.schedule_id,
+          ]
+        );
+      }
+    } catch (syncErr) {
+      console.warn('Schedule sync warning (non-fatal):', syncErr && syncErr.message);
     }
 
+    // 2. Fetch notifications excluding referral and malnutrition for admin
     const [notifications] = await pool.query(
       `SELECT notification_id, title, message, type, is_read, created_at
        FROM notifications
+       WHERE type NOT IN ('referral', 'malnutrition')
        ORDER BY created_at DESC
        LIMIT 50`
     );
 
-    // If notifications table exists but has 0 records, seed default community health alerts
-    if (notifications.length === 0) {
-      const defaultNotifs = [
-        ['New BNS Referral Submitted', 'BNS submitted a referral for Baby Juan Cruz (SAM malnutrition). Immediate follow-up required.', 'referral', false],
-        ['OPT Plus Schedule Created', 'Operation Timbang Plus Schedule for Barangay Antipolo has been set for this month.', 'schedule', false],
-        ['Malnutrition Alert: SAM Case', 'Child Seph Baylon was measured and classified as Severe Acute Malnutrition (SAM).', 'malnutrition', true],
-      ];
-      for (const [title, message, type, isRead] of defaultNotifs) {
-        await pool.query(
-          `INSERT INTO notifications (title, message, type, is_read, created_at) VALUES (?, ?, ?, ?, NOW())`,
-          [title, message, type, isRead]
-        );
-      }
-      const [freshNotifs] = await pool.query(
-        `SELECT notification_id, title, message, type, is_read, created_at
-         FROM notifications
-         ORDER BY created_at DESC
-         LIMIT 50`
-      );
-      const [[{ unreadCount }]] = await pool.query(
-        `SELECT COUNT(*) AS unreadCount FROM notifications WHERE is_read = FALSE`
-      );
-      return res.status(200).json({ notifications: freshNotifs, unreadCount });
-    }
-
     const [[{ unreadCount }]] = await pool.query(
-      `SELECT COUNT(*) AS unreadCount FROM notifications WHERE is_read = FALSE`
+      `SELECT COUNT(*) AS unreadCount
+       FROM notifications
+       WHERE is_read = FALSE AND type NOT IN ('referral', 'malnutrition')`
     );
+
     return res.status(200).json({ notifications, unreadCount });
   } catch (error) {
     console.error('Get notifications error:', error && (error.stack || error));
@@ -64,7 +87,9 @@ exports.markAsRead = async (req, res) => {
 
 exports.markAllAsRead = async (req, res) => {
   try {
-    await pool.query('UPDATE notifications SET is_read = TRUE WHERE is_read = FALSE');
+    await pool.query(
+      "UPDATE notifications SET is_read = TRUE WHERE is_read = FALSE AND type NOT IN ('referral', 'malnutrition')"
+    );
     return res.status(200).json({ message: 'All marked as read.' });
   } catch (error) {
     console.error('Mark all as read error:', error);

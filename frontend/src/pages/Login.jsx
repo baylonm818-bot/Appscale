@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import { API_URL } from "../api/config";
+import { useAuth } from "../components/AuthContext";
 
 
 function AppScaleLogo() {
@@ -50,6 +51,7 @@ function Input({ label, type = "text", value, onChange, placeholder, required })
 
 function LoginCard() {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -113,6 +115,7 @@ function LoginCard() {
         sessionStorage.setItem("role", data.user.role);
         sessionStorage.setItem("user", JSON.stringify(data.user));
       }
+      if (setUser) setUser(data.user);
       navigate(data.user.role === "admin" ? "/admin/dashboard" : "/bhw/dashboard", { replace: true });
     } catch (err) {
       setError(err.message);

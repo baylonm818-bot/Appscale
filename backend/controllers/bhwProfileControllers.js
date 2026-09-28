@@ -1,8 +1,20 @@
 const pool = require('../config/db');
 const bcrypt = require('bcrypt');
 
+function canAccessProfile(req, targetId) {
+  const requesterId = Number(req.user?.user_id);
+  const target = Number(targetId);
+  const role = String(req.user?.role || '').toLowerCase();
+  return role === 'admin' || requesterId === target;
+}
+
 exports.getProfile = async (req, res) => {
   const { id } = req.params;
+
+  if (!canAccessProfile(req, id)) {
+    return res.status(403).json({ message: 'Forbidden. You are not authorized to view this profile.' });
+  }
+
   try {
     const [rows] = await pool.query(
       `SELECT user_id, first_name, middle_initial, last_name, email, username,
@@ -22,9 +34,24 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   const { id } = req.params;
+
+  if (!canAccessProfile(req, id)) {
+    return res.status(403).json({ message: 'Forbidden. You are not authorized to update this profile.' });
+  }
+
   const { first_name, middle_initial, last_name, email, contact_number, purok } = req.body;
 
   try {
+    if (email) {
+      const [existing] = await pool.query(
+        'SELECT user_id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND user_id <> ? LIMIT 1',
+        [email, id]
+      );
+      if (existing.length > 0) {
+        return res.status(409).json({ message: 'Email is already in use by another account.' });
+      }
+    }
+
     await pool.query(
       `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?
        WHERE user_id = ?`,
@@ -39,10 +66,20 @@ exports.updateProfile = async (req, res) => {
 
 exports.changePassword = async (req, res) => {
   const { id } = req.params;
+  const requesterId = Number(req.user?.user_id);
+
+  if (requesterId !== Number(id)) {
+    return res.status(403).json({ message: 'Forbidden. You can only change your own password.' });
+  }
+
   const { current_password, new_password } = req.body;
 
   if (!current_password || !new_password) {
     return res.status(400).json({ message: 'Please fill in all fields.' });
+  }
+
+  if (new_password.length < 8) {
+    return res.status(400).json({ message: 'New password must be at least 8 characters.' });
   }
 
   try {
