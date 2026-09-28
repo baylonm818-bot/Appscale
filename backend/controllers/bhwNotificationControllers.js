@@ -13,11 +13,6 @@ exports.getNotifications = async (req, res) => {
       `SELECT COUNT(*) AS unreadCount FROM notifications WHERE is_read = FALSE`
     );
     return res.status(200).json({ notifications, unreadCount });
-
-    const [[{ unreadCount }]] = await pool.query(
-      `SELECT COUNT(*) AS unreadCount FROM notifications WHERE is_read = FALSE`
-    );
-    return res.status(200).json({ notifications, unreadCount });
   } catch (error) {
     console.error('Get notifications error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });
