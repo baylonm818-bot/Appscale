@@ -129,7 +129,7 @@ function Notifications() {
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
 
         {/* Green gradient header */}
-        <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between">
+        <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold text-white">Barangay Notifications</h1>
             <p className="text-white/70 text-xs mt-0.5">
@@ -170,7 +170,7 @@ function Notifications() {
         </div>
 
         {/* List */}
-        <div className="max-h-[600px] overflow-y-auto">
+        <div className="max-h-150 overflow-y-auto">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="w-8 h-8 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
