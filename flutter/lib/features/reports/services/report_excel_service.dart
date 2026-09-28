@@ -9,6 +9,13 @@ import 'excel_table_data.dart';
 /// file, then hands the file to the OS share sheet so the BNS can save
 /// or send it. No server, no conversion service involved.
 class ReportExcelService {
+  static String normalizeCellValue(Object? value) {
+    if (value == null) return '';
+    if (value is String) return value;
+    if (value is num || value is bool) return value.toString();
+    return value.toString();
+  }
+
   Future<void> exportAndShare({
     required String fileTitle,
     required ExcelTableData data,
@@ -18,10 +25,16 @@ class ReportExcelService {
     final sheet = workbook['Report'];
     workbook.delete('Sheet1');
 
-    sheet.appendRow([xls.TextCellValue(metadataLine)]);
-    sheet.appendRow(data.headers.map((h) => xls.TextCellValue(h)).toList());
+    sheet.appendRow([xls.TextCellValue(normalizeCellValue(metadataLine))]);
+    sheet.appendRow(
+      data.headers.map((h) => xls.TextCellValue(normalizeCellValue(h))).toList(),
+    );
     for (final row in data.rows) {
-      sheet.appendRow(row.map((v) => xls.TextCellValue(v)).toList());
+      sheet.appendRow(
+        row
+            .map((v) => xls.TextCellValue(normalizeCellValue(v)))
+            .toList(),
+      );
     }
 
     final bytes = workbook.encode();

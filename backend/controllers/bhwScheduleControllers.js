@@ -1,10 +1,11 @@
 const pool = require('../config/db');
+const { canAccessSchedule } = require('../utils/roleAccess');
 
 // BHW/BNS: Get schedules for their barangay (from admin + their own)
 exports.getBhwSchedules = async (req, res) => {
-  const { barangay, user_id, role } = req.query;
+  const user = req.user;
 
-  if (!barangay) {
+  if (!user?.barangay) {
     return res.status(400).json({ message: 'Barangay is required.' });
   }
 
@@ -14,14 +15,14 @@ exports.getBhwSchedules = async (req, res) => {
               venue, barangay, assigned_to, target_role, facilitator, notes, status,
               created_by
        FROM schedules
-       WHERE (barangay = ? OR barangay = 'All Barangays')
-         AND (assigned_to IS NULL OR assigned_to = ?)
-         AND (target_role IS NULL OR target_role = ? OR target_role = 'all')
+       WHERE barangay = ?
          AND status != 'archived'
        ORDER BY schedule_date ASC`,
-      [barangay, user_id || 0, role || '']
+      [user.barangay]
     );
-    return res.status(200).json(schedules);
+
+    const allowedSchedules = schedules.filter((schedule) => canAccessSchedule(user, schedule));
+    return res.status(200).json(allowedSchedules);
   } catch (error) {
     console.error('Get BHW schedules error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });

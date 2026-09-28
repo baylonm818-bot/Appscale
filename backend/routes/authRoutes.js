@@ -2,16 +2,18 @@ const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const { login, forgotPassword, verifyOtp, resetPassword, devLogin } = require('../controllers/authController');
+const { buildLoginLimiterKey } = require('../utils/authRateLimit');
 
-// Login rate limiter — ONLY counts failed attempts (skipSuccessfulRequests: true)
-// This means: correct password ALWAYS works, even after many wrong attempts
+// Login rate limiter — count failed attempts by email/account instead of a shared IP.
+// This prevents one user from poisoning another user's login flow behind a shared network.
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes window
-  max: 20,                   // max 20 FAILED attempts per IP per window
-  skipSuccessfulRequests: true, // ← KEY: successful logins don't count
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: 'Too many failed login attempts from this device. Please try again in 15 minutes.' },
+  keyGenerator: (req) => buildLoginLimiterKey(req),
+  message: { message: 'Too many failed login attempts for this account. Please try again in 15 minutes.' },
 });
 
 // OTP brute-force protection: max 10 attempts per 15 minutes per IP

@@ -28,15 +28,30 @@ class DashboardHeader extends StatelessWidget {
   static String? normalizeProfileImageUrl(String? value) {
     if (value == null || value.trim().isEmpty) return null;
     final raw = value.trim();
+
     if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) {
       return raw;
     }
+
     if (raw.startsWith('/')) {
-      return 'https://appscale-1.onrender.com$raw';
+      final relative = raw.replaceFirst(RegExp(r'^/+'), '');
+      if (relative.startsWith('uploads/')) {
+        return 'https://appscale-1.onrender.com/$relative';
+      }
+      if (relative.startsWith('profile-pictures/')) {
+        return 'https://appscale-1.onrender.com/uploads/$relative';
+      }
+      return 'https://appscale-1.onrender.com/$relative';
     }
+
     if (raw.startsWith('uploads/')) {
       return 'https://appscale-1.onrender.com/$raw';
     }
+
+    if (raw.startsWith('profile-pictures/')) {
+      return 'https://appscale-1.onrender.com/uploads/$raw';
+    }
+
     return raw;
   }
 

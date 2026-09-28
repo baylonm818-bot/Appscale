@@ -326,4 +326,4 @@ exports.devLogin = async (req, res) => {
     console.error('Dev login error:', err && (err.stack || err.message));
     return res.status(500).json({ message: 'Server error' });
   }
-};
+}; 

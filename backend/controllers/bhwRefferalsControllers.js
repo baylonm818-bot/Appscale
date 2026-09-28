@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { canAccessReferral } = require('../utils/roleAccess');
 
 async function getReferralTableMeta() {
   const [columns] = await pool.query(
@@ -217,9 +218,9 @@ exports.createReferral = async (req, res) => {
 };
 
 exports.getReferrals = async (req, res) => {
-  const { barangay } = req.query;
+  const user = req.user;
 
-  if (!barangay) {
+  if (!user?.barangay) {
     return res.status(400).json({ message: 'Barangay is required.' });
   }
 
@@ -244,15 +245,18 @@ exports.getReferrals = async (req, res) => {
          m.last_name AS mother_last_name,
          COALESCE(c.barangay, m.barangay) AS beneficiary_barangay,
          COALESCE(c.first_name, m.first_name) AS beneficiary_first_name,
-         COALESCE(c.last_name, m.last_name) AS beneficiary_last_name
+         COALESCE(c.last_name, m.last_name) AS beneficiary_last_name,
+         COALESCE(c.barangay, m.barangay) AS barangay
        FROM referrals r
        LEFT JOIN children c ON c.child_id = r.child_id
        LEFT JOIN mothers m ON m.mother_id = r.mother_id
        WHERE COALESCE(c.barangay, m.barangay) = ?
        ORDER BY FIELD(r.status, 'pending', 'responded', 'closed'), r.created_at DESC`,
-      [barangay]
+      [user.barangay]
     );
-    return res.status(200).json(referrals);
+
+    const allowedReferrals = referrals.filter((referral) => canAccessReferral(user, referral));
+    return res.status(200).json(allowedReferrals);
   } catch (error) {
     console.error('Get referrals error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });

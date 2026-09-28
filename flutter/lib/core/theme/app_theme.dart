@@ -14,6 +14,7 @@ class AppTheme {
           primary: AppColors.primaryGreen,
         ),
         fontFamily: 'Poppins',
+        fontFamilyFallback: const ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'sans-serif'],
         appBarTheme: AppBarTheme(
           backgroundColor: AppColors.surface,
           elevation: 0,

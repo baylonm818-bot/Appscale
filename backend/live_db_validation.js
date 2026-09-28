@@ -1,7 +1,11 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-const BASE = 'http://127.0.0.1:4011';
+const DRY_RUN = process.env.DRY_RUN !== 'false';
+const resolvedHost = process.env.DB_HOST || 'localhost';
+const shouldUseSsl = process.env.DB_SSL === 'true' || /aivencloud\.com$/i.test(resolvedHost) || /tidbcloud\.com$/i.test(resolvedHost) || /aws\.com$/i.test(resolvedHost);
+
+const BASE = `http://127.0.0.1:${process.env.PORT || 3000}`;
 
 async function api(path, init = {}) {
   const res = await fetch(BASE + path, init);
@@ -14,12 +18,13 @@ async function api(path, init = {}) {
 (async () => {
   const results = {};
   const db = await mysql.createConnection({
-    host: process.env.DB_HOST,
+    host: resolvedHost,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: Number(process.env.DB_PORT || 3306),
     connectTimeout: 15000,
+    ...(shouldUseSsl ? { ssl: { rejectUnauthorized: false } } : {}),
   });
 
   const [users] = await db.query(
@@ -71,16 +76,22 @@ async function api(path, init = {}) {
     contact_number: '09171234567'
   };
 
-  const createUser = await api('/api/users', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(createPayload)
-  });
+  if (DRY_RUN) {
+    console.log('DRY_RUN enabled: skipping live write operations that create or update users.');
+  }
+
+  const createUser = DRY_RUN
+    ? { ok: true, status: 200, data: { message: 'Dry run skipped write.' } }
+    : await api('/api/users', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(createPayload)
+      });
   results.createUser = createUser;
   console.log('CREATE_USER', createUser.status, createUser.data);
 
   let createdUser = null;
-  if (createUser.ok) {
+  if (!DRY_RUN && createUser.ok) {
     const [newUserRows] = await db.query(
       'SELECT user_id, email, username, role FROM users WHERE email = ? OR username = ? ORDER BY user_id DESC LIMIT 1',
       [createPayload.email, createPayload.username]
@@ -88,17 +99,19 @@ async function api(path, init = {}) {
     createdUser = newUserRows[0] || null;
   }
 
-  if (createdUser) {
-    const updateUser = await api(`/api/users/${createdUser.user_id}`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...createPayload,
-        first_name: 'QA Updated',
-        middle_initial: 'M',
-        contact_number: '09999888777'
-      })
-    });
+  if (createdUser || DRY_RUN) {
+    const updateUser = DRY_RUN
+      ? { ok: true, status: 200, data: { message: 'Dry run skipped update.' } }
+      : await api(`/api/users/${createdUser.user_id}`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...createPayload,
+            first_name: 'QA Updated',
+            middle_initial: 'M',
+            contact_number: '09999888777'
+          })
+        });
     results.updateUser = updateUser;
     console.log('UPDATE_USER', updateUser.status, updateUser.data);
 
@@ -121,30 +134,36 @@ async function api(path, init = {}) {
       results.nonAdminAccess = forbidden;
       console.log('NON_ADMIN_ACCESS', forbidden.status, forbidden.data);
     }
+
+    if (DRY_RUN) {
+      console.log('DRY_RUN enabled: skipping live child and nutrition writes.');
+    }
   }
 
   const childExt = `qa_child_${Date.now()}`;
-  const childSync = await api('/api/mobile/children', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      external_id: childExt,
-      full_name: 'QA Child Live',
-      birth_date: '2022-02-15',
-      barangay: targetBarangay,
-      purok: 'Purok 2',
-      guardian_name: 'QA Guardian',
-      guardian_contact: '09112223344',
-      encoded_by: createdUser ? createdUser.user_id : 1
-    })
-  });
+  const childSync = DRY_RUN
+    ? { ok: true, status: 200, data: { message: 'Dry run skipped child write.' } }
+    : await api('/api/mobile/children', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          external_id: childExt,
+          full_name: 'QA Child Live',
+          birth_date: '2022-02-15',
+          barangay: targetBarangay,
+          purok: 'Purok 2',
+          guardian_name: 'QA Guardian',
+          guardian_contact: '09112223344',
+          encoded_by: createdUser ? createdUser.user_id : 1
+        })
+      });
   results.childSync = childSync;
   console.log('UPSERT_CHILD', childSync.status, childSync.data);
 
   const [childRows] = await db.query('SELECT child_id FROM children WHERE external_id = ? LIMIT 1', [childExt]);
   const childId = childRows[0] ? childRows[0].child_id : null;
 
-  if (childId) {
+  if (childId && !DRY_RUN) {
     const nutritionSync = await api('/api/mobile/nutrition-records', {
       method: 'POST',
       headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },

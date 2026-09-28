@@ -28,15 +28,30 @@ class UserProfileScreen extends StatelessWidget {
         ? barangay
         : AppUserIdentity.resolveBarangay(settings.authUser);
     final profileImageUrl = settings.authUser?['profile_picture']?.toString();
-    final normalizedProfileImageUrl = profileImageUrl == null || profileImageUrl.trim().isEmpty
-        ? null
-        : profileImageUrl.trim().startsWith('http') || profileImageUrl.trim().startsWith('data:')
-            ? profileImageUrl.trim()
-            : profileImageUrl.trim().startsWith('/')
-                ? 'https://appscale-1.onrender.com${profileImageUrl.trim()}'
-                : profileImageUrl.trim().startsWith('uploads/')
-                    ? 'https://appscale-1.onrender.com/${profileImageUrl.trim()}'
-                    : profileImageUrl.trim();
+    final normalizedProfileImageUrl = (() {
+      final raw = profileImageUrl?.trim();
+      if (raw == null || raw.isEmpty) return null;
+      if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) {
+        return raw;
+      }
+      if (raw.startsWith('/')) {
+        final relative = raw.replaceFirst(RegExp(r'^/+'), '');
+        if (relative.startsWith('uploads/')) {
+          return 'https://appscale-1.onrender.com/$relative';
+        }
+        if (relative.startsWith('profile-pictures/')) {
+          return 'https://appscale-1.onrender.com/uploads/$relative';
+        }
+        return 'https://appscale-1.onrender.com/$relative';
+      }
+      if (raw.startsWith('uploads/')) {
+        return 'https://appscale-1.onrender.com/$raw';
+      }
+      if (raw.startsWith('profile-pictures/')) {
+        return 'https://appscale-1.onrender.com/uploads/$raw';
+      }
+      return raw;
+    })();
     final barangayLabel = resolvedBarangay.trim().isEmpty
         ? 'Barangay Tiguion'
         : resolvedBarangay.toLowerCase().startsWith('barangay ')

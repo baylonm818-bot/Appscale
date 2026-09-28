@@ -75,7 +75,7 @@ app.use((req, res, next) => {
 // basic rate limiter for all requests
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
-    max: 120, // limit each IP to 120 requests per windowMs
+    max: 300, // allow normal bursty traffic without blocking legitimate multi-user access
     standardHeaders: true,
     legacyHeaders: false,
 });

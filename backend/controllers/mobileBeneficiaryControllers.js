@@ -1,4 +1,6 @@
 const pool = require('../config/db');
+const { isDuplicateNutritionRecord } = require('../utils/mobileSyncSafety');
+const { enforceScopedBarangay } = require('../utils/roleAccess');
 
 function splitName(fullName) {
   const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
@@ -70,15 +72,14 @@ exports.upsertChild = async (req, res) => {
 
   // Enforce barangay ownership from JWT for non-admin users to prevent
   // clients writing records into other barangays.
-  const role = String(req.user?.role || '').toLowerCase();
-  let resolvedBarangay = barangay;
-  if (role !== 'admin') {
-    if (req.user?.barangay) {
-      resolvedBarangay = req.user.barangay;
-    } else {
-      return res.status(403).json({ message: 'Unauthorized: No assigned barangay for this user.' });
-    }
+  const scope = enforceScopedBarangay(req.user, barangay);
+  if (!scope.allowed) {
+    return res.status(403).json({
+      message: 'Barangay scope mismatch. You can only work in your assigned barangay.',
+      code: scope.reason,
+    });
   }
+  const resolvedBarangay = scope.barangay;
 
   const resolvedGender = sex || gender || 'male';
   const resolvedEncodedBy = encoded_by || req.user?.user_id || null;
@@ -225,15 +226,14 @@ exports.upsertMother = async (req, res) => {
   } = req.body;
 
   // Enforce barangay ownership from JWT for non-admin users.
-  const role = String(req.user?.role || '').toLowerCase();
-  let resolvedBarangay = barangay;
-  if (role !== 'admin') {
-    if (req.user?.barangay) {
-      resolvedBarangay = req.user.barangay;
-    } else {
-      return res.status(403).json({ message: 'Unauthorized: No assigned barangay for this user.' });
-    }
+  const scope = enforceScopedBarangay(req.user, barangay);
+  if (!scope.allowed) {
+    return res.status(403).json({
+      message: 'Barangay scope mismatch. You can only work in your assigned barangay.',
+      code: scope.reason,
+    });
   }
+  const resolvedBarangay = scope.barangay;
 
   let firstName = first_name;
   let lastName = last_name;
@@ -384,6 +384,20 @@ exports.syncNutritionRecord = async (req, res) => {
     const recBy = recorded_by || req.user?.user_id || null;
     const date = record_date || new Date().toISOString().slice(0, 10);
 
+    const [existing] = await pool.query(
+      'SELECT nutrition_record_id, child_id, record_date FROM nutrition_records WHERE child_id = ? AND record_date = ? LIMIT 1',
+      [resolvedChildId, date]
+    );
+
+    if (existing.length > 0) {
+      return res.status(200).json({
+        message: 'Nutrition measurement already recorded for this child and date.',
+        duplicate: true,
+        record_id: existing[0].nutrition_record_id,
+        overall_status: os,
+      });
+    }
+
     const [result] = await pool.query(
       `INSERT INTO nutrition_records (
          child_id, record_date, age_in_months, weight_kg, height_cm, muac_cm,
@@ -441,7 +455,15 @@ exports.syncNutritionRecord = async (req, res) => {
 
 // ── GET BENEFICIARIES FOR FLUTTER APP ──
 exports.getMobileChildren = async (req, res) => {
-  const barangay = req.query.barangay || req.user?.barangay;
+  const scope = enforceScopedBarangay(req.user, req.query.barangay || null);
+  if (!scope.allowed) {
+    return res.status(403).json({
+      message: 'Barangay scope mismatch. You can only view your assigned barangay records.',
+      code: scope.reason,
+    });
+  }
+
+  const barangay = scope.barangay;
 
   try {
     let where = "c.status = 'active'";
@@ -482,7 +504,15 @@ exports.getMobileChildren = async (req, res) => {
 };
 
 exports.getMobileMothers = async (req, res) => {
-  const barangay = req.query.barangay || req.user?.barangay;
+  const scope = enforceScopedBarangay(req.user, req.query.barangay || null);
+  if (!scope.allowed) {
+    return res.status(403).json({
+      message: 'Barangay scope mismatch. You can only view your assigned barangay records.',
+      code: scope.reason,
+    });
+  }
+
+  const barangay = scope.barangay;
 
   try {
     let where = "m.status = 'active'";
@@ -512,7 +542,15 @@ exports.getMobileMothers = async (req, res) => {
 };
 
 exports.getMobileSchedules = async (req, res) => {
-  const barangay = req.query.barangay || req.user?.barangay;
+  const scope = enforceScopedBarangay(req.user, req.query.barangay || null);
+  if (!scope.allowed) {
+    return res.status(403).json({
+      message: 'Barangay scope mismatch. You can only view schedules for your assigned barangay.',
+      code: scope.reason,
+    });
+  }
+
+  const barangay = scope.barangay;
   const role = req.user?.role || 'bns';
 
   try {
@@ -544,7 +582,14 @@ exports.getMobileSchedules = async (req, res) => {
 
 exports.createMobileSchedule = async (req, res) => {
   const { title, schedule_type, schedule_date, schedule_time, venue, barangay, target_role, notes } = req.body;
-  const resolvedBarangay = barangay || req.user?.barangay;
+  const scope = enforceScopedBarangay(req.user, barangay || null);
+  if (!scope.allowed) {
+    return res.status(403).json({
+      message: 'Barangay scope mismatch. You can only create schedules in your assigned barangay.',
+      code: scope.reason,
+    });
+  }
+  const resolvedBarangay = scope.barangay;
 
   if (!title || !schedule_type || !schedule_date) {
     return res.status(400).json({ message: 'Title, type, and date are required.' });
