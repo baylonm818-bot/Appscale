@@ -8,6 +8,7 @@ class AppTextField extends StatefulWidget {
   final String hint;
   final IconData icon;
   final bool isPassword;
+  final bool isNumericOnly;
   final TextEditingController? controller;
   final int maxLines;
   final TextInputType? keyboardType;
@@ -19,6 +20,7 @@ class AppTextField extends StatefulWidget {
     required this.hint,
     required this.icon,
     this.isPassword = false,
+    this.isNumericOnly = false,
     this.controller,
     this.maxLines = 1,
     this.keyboardType,
@@ -40,6 +42,16 @@ class _AppTextFieldState extends State<AppTextField> {
 
   @override
   Widget build(BuildContext context) {
+    final resolvedKeyboardType = widget.keyboardType ??
+        (widget.isNumericOnly ? TextInputType.number : null);
+    final resolvedFormatters = <TextInputFormatter>[]
+      ..addAll(widget.inputFormatters ?? const [])
+      ..addAll(
+        widget.isNumericOnly
+            ? [FilteringTextInputFormatter.digitsOnly]
+            : const [],
+      );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -48,8 +60,8 @@ class _AppTextFieldState extends State<AppTextField> {
         TextField(
           controller: widget.controller,
           obscureText: _obscure,
-          keyboardType: widget.keyboardType,
-          inputFormatters: widget.inputFormatters,
+          keyboardType: resolvedKeyboardType,
+          inputFormatters: resolvedFormatters,
           style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
           maxLines: widget.isPassword ? 1 : widget.maxLines,
           decoration: InputDecoration(

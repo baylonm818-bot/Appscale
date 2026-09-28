@@ -337,6 +337,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                                 hint: '09XXXXXXXXX',
                                 icon: Icons.call_outlined,
                                 controller: _guardianContactController,
+                                isNumericOnly: true,
                               ),
                             ),
                           ],
