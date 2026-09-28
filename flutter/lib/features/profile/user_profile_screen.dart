@@ -3,8 +3,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/child_repository.dart';
-import '../../data/local/mother_repository.dart';
 import '../../data/local/hive_boxes.dart';
+import '../../data/local/mother_repository.dart';
 import '../auth/login_screen.dart';
 
 class UserProfileScreen extends StatelessWidget {
@@ -13,12 +13,29 @@ class UserProfileScreen extends StatelessWidget {
 
   const UserProfileScreen({
     super.key,
-    this.bnsName = 'Maria Santos',
-    this.barangay = 'Barangay Tiguion',
+    this.bnsName = '',
+    this.barangay = '',
   });
 
   @override
   Widget build(BuildContext context) {
+    final settings = SettingsRepository();
+    final resolvedName = (bnsName.isNotEmpty
+            ? bnsName
+            : settings.authUser?['full_name'] ??
+                settings.authUser?['name'] ??
+                settings.authUser?['username'] ??
+                'Worker')
+        .toString();
+    final resolvedBarangay = (barangay.isNotEmpty
+            ? barangay
+            : settings.authUser?['barangay'] ?? 'Tiguion')
+        .toString();
+    final barangayLabel = resolvedBarangay.trim().isEmpty
+        ? 'Barangay Tiguion'
+        : resolvedBarangay.toLowerCase().startsWith('barangay ')
+            ? resolvedBarangay
+            : 'Barangay $resolvedBarangay';
     final totalChildren = ChildRepository()
         .getAll()
         .where((c) => c.isActive)
@@ -122,7 +139,7 @@ class UserProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  bnsName,
+                  resolvedName,
                   style: AppTextStyles.h1.copyWith(
                     color: Colors.white,
                     fontSize: 22,
@@ -149,7 +166,7 @@ class UserProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '$barangay • Rural Health Unit',
+                  '$barangayLabel • Rural Health Unit',
                   style: AppTextStyles.body.copyWith(
                     color: Colors.white70,
                     fontSize: 13,
@@ -203,7 +220,7 @@ class UserProfileScreen extends StatelessWidget {
                 _buildInfoRow(
                   Icons.place_outlined,
                   'Assigned Barangay',
-                  barangay,
+                  barangayLabel,
                 ),
                 const Divider(height: 1, color: AppColors.border),
                 _buildInfoRow(

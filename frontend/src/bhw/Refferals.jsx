@@ -126,6 +126,17 @@ function Referrals() {
     }
   };
 
+  const getBeneficiaryDisplay = (r) => {
+    const isMother = r.beneficiary_type === 'mother';
+    const firstName = isMother
+      ? r.mother_first_name || r.beneficiary_first_name || ''
+      : r.child_first_name || r.beneficiary_first_name || '';
+    const lastName = isMother
+      ? r.mother_last_name || r.beneficiary_last_name || ''
+      : r.child_last_name || r.beneficiary_last_name || '';
+    return `${firstName} ${lastName}`.trim();
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
@@ -229,6 +240,8 @@ function Referrals() {
             filteredReferrals.map((r) => {
               const overdueDays = r.status === 'pending' ? daysSince(r.created_at) : null;
               const isOverdue = overdueDays !== null && overdueDays > 7;
+              const beneficiaryDisplay = getBeneficiaryDisplay(r);
+              const beneficiaryTypeLabel = r.beneficiary_type === 'mother' ? 'Mother' : 'Child';
 
               return (
                 <div
@@ -239,8 +252,11 @@ function Referrals() {
                     <div className="space-y-1.5 flex-1 min-w-[260px]">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-bold text-gray-900 text-sm">
-                          {r.child_first_name} {r.child_last_name}
+                          {beneficiaryDisplay || 'Unnamed beneficiary'}
                         </h4>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-700 ring-1 ring-slate-200">
+                          {beneficiaryTypeLabel}
+                        </span>
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${severityColors[r.severity] || 'bg-gray-100'}`}>
                           {r.severity} Priority
                         </span>
@@ -266,7 +282,9 @@ function Referrals() {
                       )}
 
                       <p className="text-[11px] text-gray-400 pt-1">
-                        Guardian: {r.guardian_name || '—'} · Referred by: {r.referred_by_name || r.referred_by || 'BNS/RHU'} · {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {r.beneficiary_type === 'mother'
+                          ? 'Mother record'
+                          : `Guardian: ${r.guardian_name || '—'}`} · Referred by: {r.referred_by_name || r.referred_by || 'BNS/RHU'} · {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>
 
@@ -306,7 +324,11 @@ function Referrals() {
             <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white">
               <div>
                 <h3 className="font-bold text-base">Respond to Referral</h3>
-                <p className="text-xs text-white/80 mt-0.5">{respondTarget.child_first_name} {respondTarget.child_last_name}</p>
+                <p className="text-xs text-white/80 mt-0.5">
+                  {respondTarget.beneficiary_type === 'mother'
+                    ? `${respondTarget.mother_first_name || ''} ${respondTarget.mother_last_name || ''}`.trim() || 'Mother beneficiary'
+                    : `${respondTarget.child_first_name || ''} ${respondTarget.child_last_name || ''}`.trim() || 'Child beneficiary'}
+                </p>
               </div>
               <button onClick={() => setRespondTarget(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white">
                 <X size={16} />

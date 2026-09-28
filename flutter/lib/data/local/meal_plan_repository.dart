@@ -57,21 +57,6 @@ class MealPlanRepository {
 
   Future<void> seedInitialIfEmpty(String barangay) async {
     if (getAllForBarangay(barangay).isNotEmpty) return;
-    final defaultPlan = MealPlan(
-      id: generateId(),
-      foodItems: [
-        'Mon: Champorado with Milk & Hard Boiled Egg',
-        'Tue: Ginataang Monggo with Malunggay & Dilis',
-        'Wed: Chicken Arroz Caldo with Carrots & Ginger',
-        'Thu: Pork Picadillo with Sayote, Carrots & Rice',
-        'Fri: Sotanghon Guisado with Vegetables & Boiled Egg',
-      ],
-      effectiveFrom: DateTime.now().subtract(const Duration(days: 14)),
-      effectiveTo: null,
-      barangay: barangay,
-      createdAt: DateTime.now().subtract(const Duration(days: 14)),
-    );
-    await _box.put(defaultPlan.id, defaultPlan.toMap());
     AppDataBus.notifyChanged();
   }
 

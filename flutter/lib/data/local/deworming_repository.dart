@@ -1,5 +1,4 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:uuid/uuid.dart';
 import '../models/deworming_record.dart';
 import 'activity_log_repository.dart';
 import 'app_data_bus.dart';
@@ -61,43 +60,5 @@ class DewormingRepository {
 
   void seedInitialIfEmpty(String barangay) {
     if (_box.isNotEmpty) return;
-
-    final now = DateTime.now();
-    final seeds = [
-      DewormingRecord(
-        id: const Uuid().v4(),
-        childId: 'c2',
-        childName: 'Maria Santos',
-        barangay: barangay,
-        ageInMonths: 24,
-        dateGiven: now.subtract(const Duration(days: 20)),
-        drugName: 'Albendazole 400mg',
-        round: currentNationalRound(),
-        adverseEvents: 'None',
-        administeredBy: 'BNS Maria',
-        remarks: 'Administered under direct observation',
-        nextDueDate: now.add(const Duration(days: 160)),
-        createdAt: now.subtract(const Duration(days: 20)),
-      ),
-      DewormingRecord(
-        id: const Uuid().v4(),
-        childId: 'c3',
-        childName: 'Baby Boy Reyes',
-        barangay: barangay,
-        ageInMonths: 18,
-        dateGiven: now.subtract(const Duration(days: 35)),
-        drugName: 'Albendazole 400mg',
-        round: currentNationalRound(),
-        adverseEvents: 'None',
-        administeredBy: 'BNS Maria',
-        remarks: 'Taken with water after meal',
-        nextDueDate: now.add(const Duration(days: 145)),
-        createdAt: now.subtract(const Duration(days: 35)),
-      ),
-    ];
-
-    for (final r in seeds) {
-      _box.put(r.id, r.toMap());
-    }
   }
 }

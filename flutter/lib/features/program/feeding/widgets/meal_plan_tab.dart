@@ -25,12 +25,6 @@ class _MealPlanTabState extends State<MealPlanTab> {
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   @override
-  void initState() {
-    super.initState();
-    MealPlanRepository().seedInitialIfEmpty(_currentBarangay);
-  }
-
-  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,

@@ -10,7 +10,7 @@ class FeedingTabBar extends StatelessWidget {
     required this.onChanged,
   });
 
-  static const _labels = ['Overview', 'Attendance', 'Meal Plan', 'Weighing'];
+  static const _labels = ['Overview', 'Meal Plan', 'Weighing'];
 
   @override
   Widget build(BuildContext context) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -104,11 +105,14 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
 
     setState(() => _isSaving = true);
 
+    final sanitizedContact = _contactController.text
+        .replaceAll(RegExp(r'\D'), '');
+
     final mother = Mother(
       id: widget.existingMother?.id ?? MotherRepository.generateId(),
       fullName: _fullNameController.text.trim(),
       birthDate: _birthDate!,
-      contactNo: _contactController.text.trim(),
+      contactNo: sanitizedContact,
       address: _addressController.text.trim(),
       barangay: _currentBarangay,
       breastfeedingPractice: _breastfeedingPractice,
@@ -230,6 +234,8 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
                                 hint: '09XXXXXXXXX',
                                 icon: Icons.call_outlined,
                                 controller: _contactController,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                               ),
                             ),
                           ],

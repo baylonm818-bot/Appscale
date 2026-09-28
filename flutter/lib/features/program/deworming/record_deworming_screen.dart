@@ -5,6 +5,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/local/child_repository.dart';
 import '../../../data/local/deworming_repository.dart';
+import '../../../data/local/hive_boxes.dart';
 import '../../../data/models/child.dart';
 import '../../../data/models/deworming_record.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -23,6 +24,7 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _childRepo = ChildRepository();
   final _dewormingRepo = DewormingRepository();
+  final _settings = SettingsRepository();
 
   List<Child> _allChildren = [];
   Child? _selectedChild;
@@ -30,7 +32,14 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
   String _drugName = 'Albendazole 400mg';
   late String _round;
   String _adverseEvents = 'None';
-  final _adminByCtrl = TextEditingController(text: 'BNS Maria');
+  String get _defaultAdminName =>
+      (_settings.authUser?['full_name'] ??
+              _settings.authUser?['name'] ??
+              _settings.authUser?['username'] ??
+              'Worker')
+          .toString();
+  late final TextEditingController _adminByCtrl =
+      TextEditingController(text: _defaultAdminName);
   final _remarksCtrl = TextEditingController();
   bool _saving = false;
 
@@ -91,7 +100,7 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
         round: _round,
         adverseEvents: _adverseEvents,
         administeredBy: _adminByCtrl.text.trim().isEmpty
-            ? 'BNS Maria'
+            ? _defaultAdminName
             : _adminByCtrl.text.trim(),
         remarks: _remarksCtrl.text.trim(),
         nextDueDate: _dateGiven.add(const Duration(days: 180)),
@@ -370,7 +379,7 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                 controller: _adminByCtrl,
                 decoration: InputDecoration(
                   labelText: 'Administered By',
-                  hintText: 'e.g. BNS Maria',
+                  hintText: 'Enter staff name',
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(

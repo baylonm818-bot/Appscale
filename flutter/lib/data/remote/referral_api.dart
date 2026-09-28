@@ -39,7 +39,11 @@ class ReferralApi {
 
     if (trimmedBeneficiaryId.isNotEmpty &&
         RegExp(r'^\d+$').hasMatch(trimmedBeneficiaryId)) {
-      payload['child_id'] = trimmedBeneficiaryId;
+      if (referral.beneficiaryType == 'mother') {
+        payload['mother_id'] = trimmedBeneficiaryId;
+      } else {
+        payload['child_id'] = trimmedBeneficiaryId;
+      }
     }
 
     final response = await http

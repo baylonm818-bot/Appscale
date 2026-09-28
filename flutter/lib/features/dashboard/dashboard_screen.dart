@@ -48,7 +48,7 @@ class _DashboardBodyState extends State<DashboardBody> {
       (_settings.authUser?['full_name'] ??
               _settings.authUser?['name'] ??
               _settings.authUser?['username'] ??
-              'BNS User')
+              'Worker')
           .toString();
 
   @override

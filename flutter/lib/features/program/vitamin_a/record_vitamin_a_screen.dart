@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/local/child_repository.dart';
+import '../../../data/local/hive_boxes.dart';
 import '../../../data/local/vitamin_a_repository.dart';
 import '../../../data/models/child.dart';
 import '../../../data/models/vitamin_a_record.dart';
@@ -23,13 +24,21 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
   final _formKey = GlobalKey<FormState>();
   final _childRepo = ChildRepository();
   final _vitARepo = VitaminARepository();
+  final _settings = SettingsRepository();
 
   List<Child> _allChildren = [];
   Child? _selectedChild;
   DateTime _dateGiven = DateTime.now();
   String _dosage = '100,000 IU (Blue)';
   String _doseType = 'Routine (6-11 mos)';
-  final _adminByCtrl = TextEditingController(text: 'BNS Maria');
+  String get _defaultAdminName =>
+      (_settings.authUser?['full_name'] ??
+              _settings.authUser?['name'] ??
+              _settings.authUser?['username'] ??
+              'Worker')
+          .toString();
+  late final TextEditingController _adminByCtrl =
+      TextEditingController(text: _defaultAdminName);
   final _remarksCtrl = TextEditingController();
   bool _saving = false;
 
@@ -39,10 +48,8 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
     _allChildren = _childRepo.getByBarangay('Tiguion');
     if (widget.initialChild != null) {
       _selectedChild = widget.initialChild;
-    } else if (_allChildren.isNotEmpty) {
-      _selectedChild = _allChildren.first;
+      _applyDohRulesForChild(_selectedChild);
     }
-    _applyDohRulesForChild(_selectedChild);
   }
 
   @override
@@ -91,7 +98,7 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
         dosage: _dosage,
         doseType: _doseType,
         administeredBy: _adminByCtrl.text.trim().isEmpty
-            ? 'BNS Maria'
+            ? _defaultAdminName
             : _adminByCtrl.text.trim(),
         remarks: _remarksCtrl.text.trim(),
         nextDueDate: _dateGiven.add(const Duration(days: 180)),
@@ -198,70 +205,71 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
 
               const SizedBox(height: AppSpacing.md),
 
-              // DOH Guidance Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: age < 6
-                      ? AppColors.statRed.withValues(alpha: 0.1)
-                      : (age <= 11
-                            ? Colors.blue.withValues(alpha: 0.1)
-                            : Colors.orange.withValues(alpha: 0.1)),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
+              // DOH Guidance Card only after a child is selected.
+              if (_selectedChild != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
                     color: age < 6
-                        ? AppColors.statRed
-                        : (age <= 11 ? Colors.blue : Colors.orange),
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      age < 6
-                          ? Icons.warning_amber_rounded
-                          : Icons.info_outline,
+                        ? AppColors.statRed.withValues(alpha: 0.1)
+                        : (age <= 11
+                              ? Colors.blue.withValues(alpha: 0.1)
+                              : Colors.orange.withValues(alpha: 0.1)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
                       color: age < 6
                           ? AppColors.statRed
                           : (age <= 11 ? Colors.blue : Colors.orange),
-                      size: 20,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            age < 6
-                                ? 'Under Age Warning'
-                                : (age <= 11
-                                      ? 'DOH Standard: 6–11 Months'
-                                      : 'DOH Standard: 12–59 Months'),
-                            style: AppTextStyles.h3.copyWith(
-                              fontSize: 13,
-                              color: age < 6
-                                  ? AppColors.statRed
-                                  : (age <= 11
-                                        ? Colors.blue[800]
-                                        : Colors.orange[900]),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            age < 6
-                                ? 'Routine Vitamin A capsule is contraindicated for infants under 6 months. Exclusive breastfeeding provides sufficient Vitamin A.'
-                                : (age <= 11
-                                      ? 'Recommended dosage: 100,000 IU (Blue Capsule) given once.'
-                                      : 'Recommended dosage: 200,000 IU (Red Capsule) given every 6 months.'),
-                            style: AppTextStyles.caption.copyWith(fontSize: 12),
-                          ),
-                        ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        age < 6
+                            ? Icons.warning_amber_rounded
+                            : Icons.info_outline,
+                        color: age < 6
+                            ? AppColors.statRed
+                            : (age <= 11 ? Colors.blue : Colors.orange),
+                        size: 20,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              age < 6
+                                  ? 'Under Age Warning'
+                                  : (age <= 11
+                                        ? 'DOH Standard: 6–11 Months'
+                                        : 'DOH Standard: 12–59 Months'),
+                              style: AppTextStyles.h3.copyWith(
+                                fontSize: 13,
+                                color: age < 6
+                                    ? AppColors.statRed
+                                    : (age <= 11
+                                          ? Colors.blue[800]
+                                          : Colors.orange[900]),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              age < 6
+                                  ? 'Routine Vitamin A capsule is contraindicated for infants under 6 months. Exclusive breastfeeding provides sufficient Vitamin A.'
+                                  : (age <= 11
+                                        ? 'Recommended dosage: 100,000 IU (Blue Capsule) given once.'
+                                        : 'Recommended dosage: 200,000 IU (Red Capsule) given every 6 months.'),
+                              style: AppTextStyles.caption.copyWith(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
               const SizedBox(height: AppSpacing.lg),
               Text(
@@ -346,7 +354,7 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
                 controller: _adminByCtrl,
                 decoration: InputDecoration(
                   labelText: 'Administered By',
-                  hintText: 'e.g. BNS Maria',
+                  hintText: 'Enter staff name',
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(

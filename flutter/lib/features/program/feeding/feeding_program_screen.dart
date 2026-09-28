@@ -3,7 +3,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/local/app_data_bus.dart';
-import 'widgets/attendance_tab.dart';
 import 'widgets/feeding_header.dart';
 import 'widgets/feeding_tab_bar.dart';
 import 'widgets/meal_plan_tab.dart';
@@ -73,7 +72,6 @@ class _FeedingProgramScreenState extends State<FeedingProgramScreen> {
                     index: _tabIndex,
                     children: [
                       OverviewTab(key: ValueKey('overview_$version')),
-                      AttendanceTab(key: ValueKey('attendance_$version')),
                       MealPlanTab(key: ValueKey('meal_plan_$version')),
                       WeighingTab(key: ValueKey('weighing_$version')),
                     ],

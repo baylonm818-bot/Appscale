@@ -1,5 +1,4 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:uuid/uuid.dart';
 import '../models/vitamin_a_record.dart';
 import 'activity_log_repository.dart';
 import 'app_data_bus.dart';
@@ -69,55 +68,5 @@ class VitaminARepository {
 
   void seedInitialIfEmpty(String barangay) {
     if (_box.isNotEmpty) return;
-
-    final now = DateTime.now();
-    final seeds = [
-      VitaminARecord(
-        id: const Uuid().v4(),
-        childId: 'c1',
-        childName: 'Juan Dela Cruz Jr.',
-        barangay: barangay,
-        ageInMonths: 8,
-        dateGiven: now.subtract(const Duration(days: 14)),
-        dosage: '100,000 IU (Blue)',
-        doseType: 'Routine (6-11 mos)',
-        administeredBy: 'BNS Maria',
-        remarks: 'Normal, no adverse reaction',
-        nextDueDate: now.add(const Duration(days: 166)),
-        createdAt: now.subtract(const Duration(days: 14)),
-      ),
-      VitaminARecord(
-        id: const Uuid().v4(),
-        childId: 'c2',
-        childName: 'Maria Santos',
-        barangay: barangay,
-        ageInMonths: 24,
-        dateGiven: now.subtract(const Duration(days: 30)),
-        dosage: '200,000 IU (Red)',
-        doseType: 'Routine (12-59 mos)',
-        administeredBy: 'BNS Maria',
-        remarks: 'Administered during Garantisadong Pambata',
-        nextDueDate: now.add(const Duration(days: 150)),
-        createdAt: now.subtract(const Duration(days: 30)),
-      ),
-      VitaminARecord(
-        id: const Uuid().v4(),
-        childId: 'c3',
-        childName: 'Baby Boy Reyes',
-        barangay: barangay,
-        ageInMonths: 18,
-        dateGiven: now.subtract(const Duration(days: 45)),
-        dosage: '200,000 IU (Red)',
-        doseType: 'Routine (12-59 mos)',
-        administeredBy: 'BNS Maria',
-        remarks: 'Given at Barangay Health Center',
-        nextDueDate: now.add(const Duration(days: 135)),
-        createdAt: now.subtract(const Duration(days: 45)),
-      ),
-    ];
-
-    for (final r in seeds) {
-      _box.put(r.id, r.toMap());
-    }
   }
 }

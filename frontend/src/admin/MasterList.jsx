@@ -10,11 +10,12 @@ const STATUS_CONFIG = {
   overweight:  { label: 'Overweight',  cls: 'bg-orange-100 text-orange-700 ring-1 ring-orange-200' },
   obese:       { label: 'Obese',       cls: 'bg-rose-100   text-rose-700   ring-1 ring-rose-200'   },
   graduate:    { label: 'Graduate',    cls: 'bg-blue-100   text-blue-700   ring-1 ring-blue-200'   },
+  no_record:   { label: 'No Record',   cls: 'bg-gray-100   text-gray-500   ring-1 ring-gray-200'   },
 };
 
 function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status];
-  if (!cfg) return <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 ring-1 ring-gray-200">—</span>;
+  const key = status || 'no_record';
+  const cfg = STATUS_CONFIG[key] || STATUS_CONFIG.no_record;
   return <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.cls}`}>{cfg.label}</span>;
 }
 
@@ -111,15 +112,6 @@ function Masterlist() {
   );
 
   const hasBnsUsers = Number(userStats?.totalBNS || 0) > 0;
-  if (!hasBnsUsers) return (
-    <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
-      <div className="w-16 h-16 mx-auto rounded-full bg-green-50 flex items-center justify-center mb-4">
-        <Users size={28} className="text-green-600" />
-      </div>
-      <h3 className="text-lg font-bold text-gray-800 mb-1">Masterlist unavailable</h3>
-      <p className="text-sm text-gray-400">Add at least one BNS account to populate the masterlist.</p>
-    </div>
-  );
 
   const barangayCount = new Set(children.map((c) => c.barangay).filter(Boolean)).size;
 
@@ -134,8 +126,9 @@ function Masterlist() {
     })
     .filter((c) =>
       statusFilter === 'all' ||
-      c.overall_status === statusFilter ||
-      (statusFilter === 'graduate' && c.status === 'graduate')
+      (statusFilter === 'graduate' && c.status === 'graduate') ||
+      (statusFilter === 'no_record' && !c.overall_status && c.status !== 'graduate') ||
+      c.overall_status === statusFilter
     )
     .filter((c) =>
       !search ||
@@ -162,6 +155,14 @@ function Masterlist() {
 
   return (
     <div className="space-y-6">
+
+      {/* Notice if no BNS users yet */}
+      {!hasBnsUsers && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 flex items-center gap-3">
+          <Users size={18} className="text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-700 font-medium">No BNS account yet. Add a BNS account to start syncing data from the mobile app.</p>
+        </div>
+      )}
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -265,6 +266,7 @@ function Masterlist() {
                 <option value="overweight">Overweight</option>
                 <option value="obese">Obese</option>
                 <option value="graduate">Graduate</option>
+                <option value="no_record">No Record</option>
               </>
             ) : (
               <>

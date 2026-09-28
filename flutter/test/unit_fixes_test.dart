@@ -185,7 +185,7 @@ void main() {
         dateGiven: now,
         dosage: '100,000 IU (Blue)',
         doseType: 'Routine (6-11 mos)',
-        administeredBy: 'BNS Maria',
+        administeredBy: 'Nutrition Staff',
         remarks: 'No reaction',
         nextDueDate: now.add(const Duration(days: 180)),
         createdAt: now,
@@ -197,7 +197,7 @@ void main() {
       expect(restored.id, equals('vit-101'));
       expect(restored.childName, equals('Baby Juan'));
       expect(restored.dosage, equals('100,000 IU (Blue)'));
-      expect(restored.administeredBy, equals('BNS Maria'));
+      expect(restored.administeredBy, equals('Nutrition Staff'));
       expect(restored.nextDueDate, isNotNull);
     });
   });
@@ -227,7 +227,7 @@ void main() {
         drugName: 'Albendazole 400mg',
         round: '1st Round (Jan - Jun)',
         adverseEvents: 'None',
-        administeredBy: 'BNS Maria',
+        administeredBy: 'Nutrition Staff',
         remarks: 'Taken with water',
         nextDueDate: now.add(const Duration(days: 180)),
         createdAt: now,

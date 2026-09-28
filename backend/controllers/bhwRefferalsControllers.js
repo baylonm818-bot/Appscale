@@ -1,62 +1,183 @@
 const pool = require('../config/db');
 
-exports.createReferral = async (req, res) => {
-  const { child_id, beneficiary_name, beneficiary_type, barangay, facility, notes, severity, reason, referred_by } = req.body;
+async function getReferralTableMeta() {
+  const [columns] = await pool.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'referrals'`
+  );
 
-  if ((!child_id && !beneficiary_name) || !reason) {
+  const names = new Set(columns.map((column) => column.COLUMN_NAME));
+  return {
+    hasChildId: names.has('child_id'),
+    hasMotherId: names.has('mother_id'),
+    hasBeneficiaryType: names.has('beneficiary_type'),
+  };
+}
+
+exports.createReferral = async (req, res) => {
+  const {
+    child_id,
+    mother_id,
+    beneficiary_name,
+    beneficiary_type,
+    barangay,
+    facility,
+    notes,
+    severity,
+    reason,
+    referred_by,
+  } = req.body;
+
+  if ((!child_id && !mother_id && !beneficiary_name) || !reason) {
     return res.status(400).json({ message: 'Beneficiary and referral reason are required.' });
   }
 
   try {
-    let resolvedChildId = child_id;
-    let childQuery;
-    if (child_id) {
-      childQuery = await pool.query(
-        `SELECT c.child_id, c.first_name, c.last_name, c.barangay
-         FROM children c
-         WHERE c.child_id = ?`,
-        [child_id]
-      );
-    } else if (beneficiary_type === 'child' && beneficiary_name && barangay) {
-      childQuery = await pool.query(
-        `SELECT c.child_id, c.first_name, c.last_name, c.barangay
-         FROM children c
-         WHERE c.barangay = ?
-           AND CONCAT_WS(' ', c.first_name, c.middle_initial, c.last_name) = ?
-         LIMIT 2`,
-        [barangay, beneficiary_name.trim()]
-      );
-    } else {
-      return res.status(400).json({ message: 'Only child referrals can be sent to the BHW web portal.' });
-    }
+    const { hasChildId, hasMotherId, hasBeneficiaryType } = await getReferralTableMeta();
+    let resolvedChildId = child_id || null;
+    let resolvedMotherId = mother_id || null;
+    let beneficiaryType = beneficiary_type || (resolvedChildId ? 'child' : 'mother');
+    let targetBarangay = barangay || null;
+    let targetDisplayName = beneficiary_name || null;
+    let targetLabel = 'Beneficiary';
 
-    const [children] = childQuery;
-    const child = children[0];
-    if (!child) return res.status(404).json({ message: 'Child not found.' });
-    if (children.length > 1) return res.status(409).json({ message: 'Multiple children match this referral.' });
-    resolvedChildId = child.child_id;
+    if (beneficiaryType === 'child') {
+      let childQuery;
+      if (resolvedChildId) {
+        childQuery = await pool.query(
+          `SELECT c.child_id, c.first_name, c.last_name, c.barangay
+           FROM children c
+           WHERE c.child_id = ?`,
+          [resolvedChildId]
+        );
+      } else if (targetDisplayName && targetBarangay) {
+        childQuery = await pool.query(
+          `SELECT c.child_id, c.first_name, c.last_name, c.barangay
+           FROM children c
+           WHERE c.barangay = ?
+             AND CONCAT_WS(' ', c.first_name, c.middle_initial, c.last_name) = ?
+           LIMIT 2`,
+          [targetBarangay, targetDisplayName.trim()]
+        );
+      } else {
+        return res.status(400).json({ message: 'Child referral requires a valid child or child name and barangay.' });
+      }
+
+      const [children] = childQuery;
+      const child = children[0];
+      if (!child) return res.status(404).json({ message: 'Child not found.' });
+      if (children.length > 1) return res.status(409).json({ message: 'Multiple children match this referral.' });
+
+      resolvedChildId = child.child_id;
+      targetDisplayName = `${child.first_name} ${child.last_name}`;
+      targetBarangay = child.barangay || targetBarangay;
+      targetLabel = targetDisplayName;
+    } else {
+      let motherQuery;
+      if (resolvedMotherId) {
+        motherQuery = await pool.query(
+          `SELECT m.mother_id, m.first_name, m.last_name, m.barangay
+           FROM mothers m
+           WHERE m.mother_id = ?`,
+          [resolvedMotherId]
+        );
+      } else if (targetDisplayName && targetBarangay) {
+        motherQuery = await pool.query(
+          `SELECT m.mother_id, m.first_name, m.last_name, m.barangay
+           FROM mothers m
+           WHERE m.barangay = ?
+             AND CONCAT_WS(' ', m.first_name, m.middle_initial, m.last_name) = ?
+           LIMIT 2`,
+          [targetBarangay, targetDisplayName.trim()]
+        );
+      } else {
+        return res.status(400).json({ message: 'Mother referral requires a valid mother or mother name and barangay.' });
+      }
+
+      const [mothers] = motherQuery;
+      const mother = mothers[0];
+      if (!mother) return res.status(404).json({ message: 'Mother not found.' });
+      if (mothers.length > 1) return res.status(409).json({ message: 'Multiple mothers match this referral.' });
+
+      resolvedMotherId = mother.mother_id;
+      targetDisplayName = `${mother.first_name} ${mother.last_name}`;
+      targetBarangay = mother.barangay || targetBarangay;
+      targetLabel = targetDisplayName;
+    }
 
     const [[referrer]] = await pool.query(
       `SELECT user_id FROM users
        WHERE status = 'active' AND deleted_at IS NULL
          AND (? IS NULL OR barangay = ?)
        ORDER BY user_id ASC LIMIT 1`,
-      [barangay || child.barangay, barangay || child.barangay]
+      [targetBarangay || null, targetBarangay || null]
     );
-    if (!referrer && !referred_by) return res.status(500).json({ message: 'No active referring user is available.' });
+
+    if (!referrer && !referred_by) {
+      return res.status(500).json({ message: 'No active referring user is available.' });
+    }
 
     const referringUserId = referred_by || referrer.user_id;
     const referralNotes = [facility ? `Facility: ${facility}` : '', notes || ''].filter(Boolean).join('\n');
 
-    // Use a transaction so referral + notification are always in sync
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
 
+      const [existing] = await conn.query(
+        `SELECT referral_id
+         FROM referrals
+         WHERE status IN ('pending', 'responded')
+           AND ((? IS NOT NULL AND child_id = ?) OR (? IS NOT NULL AND mother_id = ?))
+           AND reason = ?
+         LIMIT 1`,
+        [resolvedChildId, resolvedChildId, resolvedMotherId, resolvedMotherId, reason]
+      );
+
+      if (existing[0]) {
+        await conn.rollback();
+        conn.release();
+        return res.status(200).json({
+          message: 'Referral already exists for this beneficiary and reason.',
+          referral_id: existing[0].referral_id,
+          duplicate: true,
+        });
+      }
+
+      const insertFields = [];
+      const insertValues = [];
+
+      if (hasChildId && resolvedChildId) {
+        insertFields.push('child_id');
+        insertValues.push(resolvedChildId);
+      }
+
+      if (hasMotherId && resolvedMotherId) {
+        insertFields.push('mother_id');
+        insertValues.push(resolvedMotherId);
+      }
+
+      if (hasBeneficiaryType) {
+        insertFields.push('beneficiary_type');
+        insertValues.push(beneficiaryType);
+      }
+
+      insertFields.push('referred_by', 'referred_to', 'reason', 'severity', 'status', 'notes');
+      insertValues.push(
+        referringUserId,
+        referrer?.user_id || referred_by,
+        reason,
+        severity || 'medium',
+        'pending',
+        referralNotes || null,
+      );
+
       const [result] = await conn.query(
-        `INSERT INTO referrals (child_id, referred_by, referred_to, reason, severity, status, notes)
-         VALUES (?, ?, ?, ?, ?, 'pending', ?)`,
-        [resolvedChildId, referringUserId, referrer?.user_id || referred_by, reason, severity || 'medium', referralNotes || null]
+        `INSERT INTO referrals (${insertFields.join(', ')})
+         VALUES (${insertFields.map(() => '?').join(', ')})`,
+        insertValues
       );
 
       await conn.query(
@@ -64,7 +185,7 @@ exports.createReferral = async (req, res) => {
          VALUES (?, ?, 'referral', FALSE, ?, ?)`,
         [
           'New Referral Submitted',
-          `${child.first_name} ${child.last_name} from ${child.barangay || 'Unknown Barangay'} needs follow-up (${severity || 'medium'} severity).`,
+          `${targetLabel} from ${targetBarangay || 'Unknown Barangay'} needs follow-up (${severity || 'medium'} severity).`,
           result.insertId,
           referringUserId,
         ]
@@ -93,12 +214,30 @@ exports.getReferrals = async (req, res) => {
 
   try {
     const [referrals] = await pool.query(
-      `SELECT
-         r.referral_id, r.reason, r.severity, r.status, r.referred_by, r.referred_to, r.notes AS response_notes, r.created_at,
-         c.child_id, c.first_name AS child_first_name, c.last_name AS child_last_name, c.guardian_name
+      `SELECT DISTINCT
+         r.referral_id,
+         r.beneficiary_type,
+         r.reason,
+         r.severity,
+         r.status,
+         r.referred_by,
+         r.referred_to,
+         r.notes AS response_notes,
+         r.created_at,
+         c.child_id,
+         c.first_name AS child_first_name,
+         c.last_name AS child_last_name,
+         c.guardian_name,
+         m.mother_id,
+         m.first_name AS mother_first_name,
+         m.last_name AS mother_last_name,
+         COALESCE(c.barangay, m.barangay) AS beneficiary_barangay,
+         COALESCE(c.first_name, m.first_name) AS beneficiary_first_name,
+         COALESCE(c.last_name, m.last_name) AS beneficiary_last_name
        FROM referrals r
        LEFT JOIN children c ON c.child_id = r.child_id
-       WHERE c.barangay = ?
+       LEFT JOIN mothers m ON m.mother_id = r.mother_id
+       WHERE COALESCE(c.barangay, m.barangay) = ?
        ORDER BY FIELD(r.status, 'pending', 'responded', 'closed'), r.created_at DESC`,
       [barangay]
     );
@@ -119,7 +258,7 @@ exports.updateReferralStatus = async (req, res) => {
 
   try {
     const [[referral]] = await pool.query(
-      'SELECT child_id FROM referrals WHERE referral_id = ?',
+      'SELECT child_id, mother_id FROM referrals WHERE referral_id = ?',
       [id]
     );
     if (!referral) return res.status(404).json({ message: 'Referral not found.' });
@@ -135,7 +274,8 @@ exports.updateReferralStatus = async (req, res) => {
       feeding: 'Feeding',
       checkup: 'Checkup',
     };
-    if (status === 'responded' && serviceLabels[service_type] && service_date && provided_by) {
+
+    if (status === 'responded' && serviceLabels[service_type] && service_date && provided_by && referral.child_id) {
       await pool.query(
         `INSERT INTO child_services (child_id, service_type, service_date, provided_by)
          VALUES (?, ?, ?, ?)`,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
@@ -9,6 +10,8 @@ class AppTextField extends StatefulWidget {
   final bool isPassword;
   final TextEditingController? controller;
   final int maxLines;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
 
   const AppTextField({
     super.key,
@@ -18,6 +21,8 @@ class AppTextField extends StatefulWidget {
     this.isPassword = false,
     this.controller,
     this.maxLines = 1,
+    this.keyboardType,
+    this.inputFormatters,
   });
 
   @override
@@ -43,6 +48,8 @@ class _AppTextFieldState extends State<AppTextField> {
         TextField(
           controller: widget.controller,
           obscureText: _obscure,
+          keyboardType: widget.keyboardType,
+          inputFormatters: widget.inputFormatters,
           style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
           maxLines: widget.isPassword ? 1 : widget.maxLines,
           decoration: InputDecoration(

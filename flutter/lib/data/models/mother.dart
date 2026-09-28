@@ -34,6 +34,12 @@ class Mother {
 
   int get age => (DateTime.now().difference(birthDate).inDays / 365).floor();
 
+  int? get contactNoAsInt {
+    final digits = contactNo.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return null;
+    return int.tryParse(digits);
+  }
+
   Map<String, dynamic> toMap() => {
     'id': id,
     'fullName': fullName,
