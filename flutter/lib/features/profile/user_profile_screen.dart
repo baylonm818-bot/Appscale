@@ -281,6 +281,39 @@ class UserProfileScreen extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
             onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  title: const Row(
+                    children: [
+                      Icon(Icons.logout, color: Colors.red, size: 22),
+                      SizedBox(width: 8),
+                      Text('Log Out', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  content: const Text(
+                    'Are you sure you want to log out? You will need to sign in again to access your account.',
+                    style: TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed != true) return;
               final settings = SettingsRepository();
               await settings.clearSession();
               if (!context.mounted) return;

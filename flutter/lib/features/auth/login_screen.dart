@@ -184,9 +184,9 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              const SizedBox(height: 24),
-              Image.asset('assets/images/appscale_logo.png', width: 130),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+              Image.asset('assets/images/appscale_logo.png', width: 80),
+              const SizedBox(height: 8),
               Text('BNS Health Monitoring', style: AppTextStyles.h1),
               const SizedBox(height: 4),
               Text(

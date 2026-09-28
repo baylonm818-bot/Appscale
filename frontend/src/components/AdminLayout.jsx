@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from 'framer-motion';
 import logo from '../assets/logo.png';
 import { useAuth } from '../components/AuthContext';
@@ -30,12 +30,13 @@ const menuItems = [
 function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
 
-  const handleLogout = () => {
+  const doLogout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('user');
@@ -43,6 +44,11 @@ function AdminLayout() {
     sessionStorage.removeItem('role');
     sessionStorage.removeItem('user');
     navigate('/login', { replace: true });
+  }, [navigate]);
+
+  const handleLogout = () => {
+    setIsProfileMenuOpen(false);
+    setShowLogoutConfirm(true);
   };
 
   const pageTitles = {
@@ -245,6 +251,42 @@ function AdminLayout() {
           <motion.div key={location.pathname} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.3 }} className="app-route-view"><Outlet /></motion.div>
         </div>
       </div>
+
+      {/* ── Logout Confirmation Modal ── */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 w-full max-w-sm mx-4 p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <LogOut size={18} className="text-red-600" />
+              </div>
+              <div>
+                <p className="font-bold text-gray-900 text-base">Log Out</p>
+                <p className="text-xs text-gray-400">Admin Portal</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-5">
+              Are you sure you want to log out? You will need to sign in again to access the portal.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={doLogout}
+                className="px-5 py-2 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

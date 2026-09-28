@@ -58,6 +58,51 @@ exports.getMedicalRecordsList = async (req, res) => {
   }
 };
 
+exports.getMothersList = async (req, res) => {
+  let { barangay } = req.query;
+  const role = String(req.user?.role || '').toLowerCase();
+
+  if (role !== 'admin') {
+    if (req.user?.barangay) {
+      barangay = req.user.barangay;
+    } else {
+      return res.status(403).json({ message: 'Unauthorized: No assigned barangay.' });
+    }
+  }
+
+  if (!barangay) {
+    return res.status(400).json({ message: 'Barangay is required.' });
+  }
+
+  try {
+    const [mothers] = await pool.query(
+      `SELECT
+         m.mother_id,
+         m.first_name,
+         m.last_name,
+         m.birth_date,
+         m.contact_number,
+         m.purok,
+         m.barangay,
+         m.status,
+         m.created_at,
+         TIMESTAMPDIFF(YEAR, m.birth_date, CURDATE()) AS age_years,
+         COUNT(c.child_id) AS child_count
+       FROM mothers m
+       LEFT JOIN children c ON c.guardian_name = CONCAT(m.first_name, ' ', m.last_name)
+         AND c.barangay = m.barangay AND c.status = 'active'
+       WHERE m.barangay = ? AND m.status = 'active'
+       GROUP BY m.mother_id
+       ORDER BY m.first_name ASC`,
+      [barangay]
+    );
+    return res.status(200).json(mothers);
+  } catch (error) {
+    console.error('Get mothers list error:', error);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
 exports.getChildMedicalHistory = async (req, res) => {
   const { childId } = req.params;
 
