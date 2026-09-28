@@ -1,7 +1,63 @@
 const pool = require('../config/db');
 
+function normalizeNutritionStatus(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+
+  const normalized = raw.toLowerCase().replace(/\s+/g, '_');
+  const aliases = {
+    severely_underweight: 'severely_underweight',
+    underweight: 'underweight',
+    normal: 'normal',
+    severely_stunted: 'severely_stunted',
+    stunted: 'stunted',
+    obese: 'obese',
+    overweight: 'overweight',
+    sam: 'SAM',
+    mam: 'MAM',
+  };
+
+  return aliases[normalized] ?? normalized;
+}
+
+function computeNutritionStatus(weightKg, heightCm, ageMonths, sex) {
+  const w = Number(weightKg);
+  const h = Number(heightCm);
+  const age = Number(ageMonths) || 0;
+
+  let weightStatus = 'normal';
+  let heightStatus = 'normal';
+  let overallStatus = 'normal';
+
+  if (w > 0 && age > 0) {
+    const expectedWeight = (age * 0.5) + 4;
+    if (w < expectedWeight * 0.7) weightStatus = 'severely_underweight';
+    else if (w < expectedWeight * 0.85) weightStatus = 'underweight';
+    else if (w > expectedWeight * 1.3) weightStatus = 'obese';
+    else if (w > expectedWeight * 1.15) weightStatus = 'overweight';
+  }
+
+  if (h > 0 && age > 0) {
+    const expectedHeight = 50 + (age * 1.2);
+    if (h < expectedHeight * 0.85) heightStatus = 'severely_stunted';
+    else if (h < expectedHeight * 0.92) heightStatus = 'stunted';
+  }
+
+  if (weightStatus === 'severely_underweight' || heightStatus === 'severely_stunted') {
+    overallStatus = 'SAM';
+  } else if (weightStatus === 'underweight' || heightStatus === 'stunted') {
+    overallStatus = 'MAM';
+  } else if (weightStatus === 'obese') {
+    overallStatus = 'obese';
+  } else if (weightStatus === 'overweight') {
+    overallStatus = 'overweight';
+  }
+
+  return { weightStatus, heightStatus, overallStatus };
+}
+
 exports.createChildService = async (req, res) => {
-  const { child_id, service_date, service_type, provided_by } = req.body;
+  const { child_id, service_date, service_type, provided_by, weight_kg, height_cm, notes } = req.body;
   const serviceLabels = {
     vitamin_a: 'Vitamin A',
     deworming: 'Deworming',
@@ -14,14 +70,61 @@ exports.createChildService = async (req, res) => {
   }
 
   try {
-    const [[child]] = await pool.query('SELECT child_id FROM children WHERE child_id = ?', [child_id]);
+    const [[child]] = await pool.query(
+      'SELECT child_id, age_in_months, sex FROM children WHERE child_id = ?',
+      [child_id]
+    );
     if (!child) return res.status(404).json({ message: 'Child not found.' });
 
     const [result] = await pool.query(
-      `INSERT INTO child_services (child_id, service_type, service_date, provided_by)
-       VALUES (?, ?, ?, ?)`,
-      [child_id, serviceLabels[service_type], service_date, provided_by]
+      `INSERT INTO child_services (child_id, service_type, service_date, provided_by, notes)
+       VALUES (?, ?, ?, ?, ?)`,
+      [child_id, serviceLabels[service_type], service_date, provided_by, notes || null]
     );
+
+    const hasMeasurement = weight_kg !== undefined && weight_kg !== null && weight_kg !== ''
+      || height_cm !== undefined && height_cm !== null && height_cm !== '';
+
+    if (hasMeasurement) {
+      const safeWeight = Number(weight_kg) || 0;
+      const safeHeight = Number(height_cm) || 0;
+      const calculated = computeNutritionStatus(
+        safeWeight,
+        safeHeight,
+        child.age_in_months || 0,
+        child.sex || 'male'
+      );
+
+      const ws = normalizeNutritionStatus(calculated.weightStatus);
+      const hs = normalizeNutritionStatus(calculated.heightStatus);
+      const os = normalizeNutritionStatus(calculated.overallStatus);
+
+      const [existing] = await pool.query(
+        'SELECT nutrition_record_id FROM nutrition_records WHERE child_id = ? AND record_date = ? LIMIT 1',
+        [child_id, service_date]
+      );
+
+      if (!existing.length) {
+        await pool.query(
+          `INSERT INTO nutrition_records (
+             child_id, record_date, age_in_months, weight_kg, height_cm, muac_cm,
+             weight_status, height_status, overall_status, recorded_by
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            child_id,
+            service_date,
+            child.age_in_months || 0,
+            safeWeight,
+            safeHeight,
+            0,
+            ws,
+            hs,
+            os,
+            provided_by,
+          ]
+        );
+      }
+    }
 
     return res.status(201).json({ message: 'Child service recorded.', service_id: result.insertId });
   } catch (error) {

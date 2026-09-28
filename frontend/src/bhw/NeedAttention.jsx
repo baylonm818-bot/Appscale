@@ -268,7 +268,7 @@ function NeedAttention() {
 
         {/* Filter bar */}
         <div className="p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-1 min-w-[240px] items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 border border-gray-100 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition">
+          <div className="flex flex-1 min-w-60 items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 border border-gray-100 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition">
             <Search size={16} className="text-gray-400 shrink-0" />
             <input
               type="text"
@@ -449,7 +449,7 @@ function NeedAttention() {
       {visitTarget && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setVisitTarget(null)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white">
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white">
               <div>
                 <h3 className="font-bold text-base">Record Health Visit / Service</h3>
                 <p className="text-xs text-white/70 mt-0.5">{visitTarget.first_name} {visitTarget.last_name}</p>
@@ -492,7 +492,7 @@ function NeedAttention() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setVisitTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">Cancel</button>
-                <button type="button" disabled={visitSubmitting} onClick={submitVisit} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-60">
+                <button type="button" disabled={visitSubmitting} onClick={submitVisit} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-60">
                   {visitSubmitting ? 'Saving…' : 'Save Service'}
                 </button>
               </div>
@@ -505,7 +505,7 @@ function NeedAttention() {
       {referTarget && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setReferTarget(null)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-5 flex items-center justify-between text-white">
+            <div className="bg-linear-to-r from-amber-600 to-orange-600 px-6 py-5 flex items-center justify-between text-white">
               <div>
                 <h3 className="font-bold text-base">Refer Child to RHU / Doctor</h3>
                 <p className="text-xs text-white/80 mt-0.5">{referTarget.first_name} {referTarget.last_name}</p>
@@ -534,7 +534,7 @@ function NeedAttention() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setReferTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">Cancel</button>
-                <button type="button" disabled={referSubmitting} onClick={submitReferral} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-60">
+                <button type="button" disabled={referSubmitting} onClick={submitReferral} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-60">
                   {referSubmitting ? 'Submitting…' : 'Submit Referral'}
                 </button>
               </div>

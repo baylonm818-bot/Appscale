@@ -65,6 +65,55 @@ test('mobile nutrition sync normalizes status values to database-safe strings', 
   }
 });
 
+test('BHW visit log with weight and height creates a nutrition record for the growth history', async () => {
+  const pool = require('../config/db');
+  const originalQuery = pool.query;
+  const created = { insertId: 555, values: null };
+
+  pool.query = async (sql, params) => {
+    if (sql.includes('SELECT child_id, age_in_months, sex FROM children WHERE child_id = ?')) {
+      return [[{ child_id: 101, age_in_months: 18, sex: 'male' }]];
+    }
+    if (sql.includes('INSERT INTO child_services')) {
+      return [{ insertId: 222 }];
+    }
+    if (sql.includes('SELECT nutrition_record_id FROM nutrition_records')) {
+      return [[]];
+    }
+    if (sql.includes('INSERT INTO nutrition_records')) {
+      created.values = params;
+      return [created];
+    }
+    return [[{ ok: true }]];
+  };
+
+  try {
+    const controller = require('../controllers/bhwNeedAttentionControllers');
+    const req = {
+      body: {
+        child_id: 101,
+        service_date: '2026-09-29',
+        service_type: 'checkup',
+        provided_by: 7,
+        weight_kg: 10.5,
+        height_cm: 79,
+        notes: 'Follow-up visit',
+      },
+    };
+    const res = makeRes();
+
+    await controller.createChildService(req, res);
+
+    assert.equal(res.statusCode, 201);
+    assert.ok(created.values);
+    assert.equal(created.values[1], '2026-09-29');
+    assert.equal(created.values[3], 10.5);
+    assert.equal(created.values[4], 79);
+  } finally {
+    pool.query = originalQuery;
+  }
+});
+
 test('referral creation falls back to beneficiary name when mobile sends a UUID child id', async () => {
   const pool = require('../config/db');
   const originalQuery = pool.query;
