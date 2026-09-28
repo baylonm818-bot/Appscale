@@ -48,24 +48,36 @@ exports.createReferral = async (req, res) => {
     const referringUserId = referred_by || referrer.user_id;
     const referralNotes = [facility ? `Facility: ${facility}` : '', notes || ''].filter(Boolean).join('\n');
 
-    const [result] = await pool.query(
-      `INSERT INTO referrals (child_id, referred_by, referred_to, reason, severity, status, notes)
-       VALUES (?, ?, ?, ?, ?, 'pending', ?)`,
-      [resolvedChildId, referringUserId, referrer?.user_id || referred_by, reason, severity || 'medium', referralNotes || null]
-    );
+    // Use a transaction so referral + notification are always in sync
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
 
-    await pool.query(
-      `INSERT INTO notifications (title, message, type, is_read, related_id, created_by)
-       VALUES (?, ?, 'referral', FALSE, ?, ?)`,
-      [
-        'New Referral Submitted',
-        `${child.first_name} ${child.last_name} from ${child.barangay || 'Unknown Barangay'} needs follow-up (${severity || 'medium'} severity).`,
-        result.insertId,
-        referringUserId,
-      ]
-    );
+      const [result] = await conn.query(
+        `INSERT INTO referrals (child_id, referred_by, referred_to, reason, severity, status, notes)
+         VALUES (?, ?, ?, ?, ?, 'pending', ?)`,
+        [resolvedChildId, referringUserId, referrer?.user_id || referred_by, reason, severity || 'medium', referralNotes || null]
+      );
 
-    return res.status(201).json({ message: 'Referral submitted successfully.', referral_id: result.insertId });
+      await conn.query(
+        `INSERT INTO notifications (title, message, type, is_read, related_id, created_by)
+         VALUES (?, ?, 'referral', FALSE, ?, ?)`,
+        [
+          'New Referral Submitted',
+          `${child.first_name} ${child.last_name} from ${child.barangay || 'Unknown Barangay'} needs follow-up (${severity || 'medium'} severity).`,
+          result.insertId,
+          referringUserId,
+        ]
+      );
+
+      await conn.commit();
+      conn.release();
+      return res.status(201).json({ message: 'Referral submitted successfully.', referral_id: result.insertId });
+    } catch (txErr) {
+      await conn.rollback();
+      conn.release();
+      throw txErr;
+    }
   } catch (error) {
     console.error('Create referral error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });

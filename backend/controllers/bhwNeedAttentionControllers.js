@@ -85,9 +85,9 @@ exports.getNeedAttention = async (req, res) => {
          ${childScopeClause}
          AND (
            nr.overall_status IN ('MAM', 'SAM')
-           OR nr.weight_status IN ('underweight', 'severly_underweight')
-           OR nr.height_status IN ('stunted', 'severly_stunted')
-           ${hasWasting ? "OR nr.wasting_status IN ('wasted','severly_wasted')" : ''}
+           OR nr.weight_status IN ('underweight', 'severely_underweight', 'severly_underweight')
+           OR nr.height_status IN ('stunted', 'severely_stunted', 'severly_stunted')
+           ${hasWasting ? "OR nr.wasting_status IN ('wasted','severely_wasted','severly_wasted')" : ''}
          )
        ORDER BY
          FIELD(nr.overall_status, 'SAM', 'MAM') ASC,

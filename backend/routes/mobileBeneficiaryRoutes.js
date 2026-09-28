@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const roleCheck = require('../middleware/roleMiddleware');
 const {
   upsertChild,
   upsertMother,
@@ -9,6 +10,9 @@ const {
   getMobileSchedules,
   createMobileSchedule,
 } = require('../controllers/mobileBeneficiaryControllers');
+
+// Mobile app users are BNS/BHW — enforce role
+router.use(roleCheck(['bhw', 'bns']));
 
 router.post('/children', upsertChild);
 router.post('/mothers', upsertMother);

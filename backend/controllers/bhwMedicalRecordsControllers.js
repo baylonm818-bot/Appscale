@@ -105,8 +105,22 @@ exports.getMothersList = async (req, res) => {
 
 exports.getChildMedicalHistory = async (req, res) => {
   const { childId } = req.params;
+  const role = String(req.user?.role || '').toLowerCase();
 
   try {
+    // SECURITY FIX: Verify the child belongs to the requesting user's barangay (IDOR prevention)
+    const [[child]] = await pool.query(
+      'SELECT child_id, barangay FROM children WHERE child_id = ?',
+      [childId]
+    );
+    if (!child) return res.status(404).json({ message: 'Child not found.' });
+
+    if (role !== 'admin') {
+      if (!req.user?.barangay || child.barangay !== req.user.barangay) {
+        return res.status(403).json({ message: 'Forbidden: This child does not belong to your barangay.' });
+      }
+    }
+
     const [nutritionHistory] = await pool.query(
       `SELECT record_id, record_date, age_in_months, weight_kg, height_cm, muac_cm,
               weight_status, height_status, overall_status
