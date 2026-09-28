@@ -115,6 +115,7 @@ app.use('/api/bhw/need-attention', bhwNeedAttentionRoutes);
 app.use('/api/bhw/referrals', bhwReferralsRoutes);
 app.use('/api/bhw/medical-records', bhwMedicalRecordsRoutes);
 app.use('/api/bhw/notification', bhwNotificationRoutes);
+app.use('/api/bhw/notifications', bhwNotificationRoutes);
 app.use('/api/bhw/profile', bhwProfileRoutes);
 app.use('/api/mobile', mobileBeneficiaryRoutes);
 

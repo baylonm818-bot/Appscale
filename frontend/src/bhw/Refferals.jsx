@@ -34,7 +34,13 @@ function Referrals() {
   const [referrals, setReferrals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+
+  let user = {};
+  try {
+    user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+  } catch {
+    user = {};
+  }
 
   // filters
   const [statusFilter, setStatusFilter] = useState('all');
@@ -50,6 +56,12 @@ function Referrals() {
   const [respondError, setRespondError] = useState('');
 
   const fetchData = async () => {
+    if (!user?.barangay) {
+      setError('No barangay is assigned to this account.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await axiosClient.get('/bhw/referrals', {
         params: { barangay: user.barangay },

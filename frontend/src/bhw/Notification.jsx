@@ -76,11 +76,13 @@ function Notifications() {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await axiosClient.get('/notifications');
+      const res = await axiosClient.get('/bhw/notifications');
       setNotifications(res.data.notifications || []);
       setUnreadCount(res.data.unreadCount || 0);
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
@@ -92,7 +94,7 @@ function Notifications() {
 
   const handleMarkAllRead = async () => {
     try {
-      await axiosClient.patch('/notifications/read-all');
+      await axiosClient.patch('/bhw/notifications/read-all');
       fetchNotifications();
     } catch (err) {
       console.error(err);
@@ -101,7 +103,7 @@ function Notifications() {
 
   const handleMarkRead = async (id) => {
     try {
-      await axiosClient.patch(`/notifications/${id}/read`);
+      await axiosClient.patch(`/bhw/notifications/${id}/read`);
       fetchNotifications();
     } catch (err) {
       console.error(err);
