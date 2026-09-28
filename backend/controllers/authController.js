@@ -3,8 +3,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
-const MAX_FAILED_ATTEMPTS = 3;
-const LOGIN_COOLDOWN_MS = 30 * 1000;
+const MAX_FAILED_ATTEMPTS = 5;   // Lock account after 5 consecutive wrong passwords
+const LOGIN_COOLDOWN_MS = 30 * 1000; // 30s per-attempt cooldown (prevents rapid brute force)
 const passwordResetTokens = new Map();
 const loginCooldowns = new Map();
 
@@ -220,7 +220,7 @@ exports.login = async (req, res) => {
     console.log('DB returned rows:', rows && rows.length);
 
     if (rows.length === 0) {
-      loginCooldowns.set(normalizedLoginEmail, Date.now() + LOGIN_COOLDOWN_MS);
+      // Don't set cooldown for unknown emails — just return generic message
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
