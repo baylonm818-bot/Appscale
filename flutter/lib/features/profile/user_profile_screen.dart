@@ -5,6 +5,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/mother_repository.dart';
+import '../../shared/utils/app_user_identity.dart';
 import '../auth/login_screen.dart';
 
 class UserProfileScreen extends StatelessWidget {
@@ -20,17 +21,22 @@ class UserProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = SettingsRepository();
-    final resolvedName = (bnsName.isNotEmpty
-            ? bnsName
-            : settings.authUser?['full_name'] ??
-                settings.authUser?['name'] ??
-                settings.authUser?['username'] ??
-                'Worker')
-        .toString();
-    final resolvedBarangay = (barangay.isNotEmpty
-            ? barangay
-            : settings.authUser?['barangay'] ?? 'Tiguion')
-        .toString();
+    final resolvedName = bnsName.isNotEmpty
+        ? bnsName
+        : AppUserIdentity.resolveDisplayName(settings.authUser);
+    final resolvedBarangay = barangay.isNotEmpty
+        ? barangay
+        : AppUserIdentity.resolveBarangay(settings.authUser);
+    final profileImageUrl = settings.authUser?['profile_picture']?.toString();
+    final normalizedProfileImageUrl = profileImageUrl == null || profileImageUrl.trim().isEmpty
+        ? null
+        : profileImageUrl.trim().startsWith('http') || profileImageUrl.trim().startsWith('data:')
+            ? profileImageUrl.trim()
+            : profileImageUrl.trim().startsWith('/')
+                ? 'https://appscale-1.onrender.com${profileImageUrl.trim()}'
+                : profileImageUrl.trim().startsWith('uploads/')
+                    ? 'https://appscale-1.onrender.com/${profileImageUrl.trim()}'
+                    : profileImageUrl.trim();
     final barangayLabel = resolvedBarangay.trim().isEmpty
         ? 'Barangay Tiguion'
         : resolvedBarangay.toLowerCase().startsWith('barangay ')
@@ -110,18 +116,39 @@ class UserProfileScreen extends StatelessWidget {
                   },
                   child: Stack(
                     children: [
-                      CircleAvatar(
-                        radius: 36,
-                        backgroundColor: Colors.white,
-                        child: Text(
-                          bnsName.isNotEmpty ? bnsName[0] : 'B',
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.darkGreen,
-                          ),
-                        ),
-                      ),
+                      normalizedProfileImageUrl != null
+                          ? ClipOval(
+                              child: Image.network(
+                                normalizedProfileImageUrl,
+                                width: 72,
+                                height: 72,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => CircleAvatar(
+                                  radius: 36,
+                                  backgroundColor: Colors.white,
+                                  child: Text(
+                                    resolvedName.isNotEmpty ? resolvedName[0].toUpperCase() : 'B',
+                                    style: const TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.darkGreen,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : CircleAvatar(
+                              radius: 36,
+                              backgroundColor: Colors.white,
+                              child: Text(
+                                resolvedName.isNotEmpty ? resolvedName[0].toUpperCase() : 'B',
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.darkGreen,
+                                ),
+                              ),
+                            ),
                       Positioned(
                         right: 0,
                         bottom: 0,

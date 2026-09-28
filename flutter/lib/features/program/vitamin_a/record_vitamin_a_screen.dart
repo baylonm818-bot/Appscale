@@ -6,6 +6,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../data/local/child_repository.dart';
 import '../../../data/local/hive_boxes.dart';
 import '../../../data/local/vitamin_a_repository.dart';
+import '../../../shared/utils/app_user_identity.dart';
 import '../../../data/models/child.dart';
 import '../../../data/models/vitamin_a_record.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -31,12 +32,7 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
   DateTime _dateGiven = DateTime.now();
   String _dosage = '100,000 IU (Blue)';
   String _doseType = 'Routine (6-11 mos)';
-  String get _defaultAdminName =>
-      (_settings.authUser?['full_name'] ??
-              _settings.authUser?['name'] ??
-              _settings.authUser?['username'] ??
-              'Worker')
-          .toString();
+  String get _defaultAdminName => AppUserIdentity.resolveDisplayName(_settings.authUser);
   late final TextEditingController _adminByCtrl =
       TextEditingController(text: _defaultAdminName);
   final _remarksCtrl = TextEditingController();

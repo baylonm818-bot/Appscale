@@ -15,6 +15,7 @@ import '../../data/local/mother_repository.dart';
 import '../referrals/referrals_overview_screen.dart';
 import '../reports/sync_status_screen.dart';
 import '../../shared/utils/app_page_route.dart';
+import '../../shared/utils/app_user_identity.dart';
 
 import '../../data/local/notification_repository.dart';
 import '../../data/local/program_schedule_repository.dart';
@@ -44,12 +45,7 @@ class _DashboardBodyState extends State<DashboardBody> {
 
   String get _currentBarangay =>
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
-  String get _bnsName =>
-      (_settings.authUser?['full_name'] ??
-              _settings.authUser?['name'] ??
-              _settings.authUser?['username'] ??
-              'Worker')
-          .toString();
+  String get _bnsName => AppUserIdentity.resolveDisplayName(_settings.authUser);
 
   @override
   void initState() {
@@ -80,6 +76,7 @@ class _DashboardBodyState extends State<DashboardBody> {
                 barangayName: 'Barangay $_currentBarangay',
                 pendingSyncCount: _childRepo.pendingCount + _motherRepo.pendingCount,
                 unreadNotificationCount: unreadNotifs,
+                profileImageUrl: _settings.authUser?['profile_picture']?.toString(),
                 onSyncTap: () => Navigator.push(
                   context,
                   appPageRoute(const SyncStatusScreen()),

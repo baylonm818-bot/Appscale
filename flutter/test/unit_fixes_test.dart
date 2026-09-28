@@ -9,6 +9,7 @@ import 'package:appscalev3/data/models/deworming_record.dart';
 import 'package:appscalev3/data/models/program_schedule.dart';
 import 'package:appscalev3/data/local/vitamin_a_repository.dart';
 import 'package:appscalev3/data/local/deworming_repository.dart';
+import 'package:appscalev3/shared/utils/app_user_identity.dart';
 
 void main() {
   group('Item 4: GrowthClassifier Tests', () {
@@ -199,6 +200,25 @@ void main() {
       expect(restored.dosage, equals('100,000 IU (Blue)'));
       expect(restored.administeredBy, equals('Nutrition Staff'));
       expect(restored.nextDueDate, isNotNull);
+    });
+  });
+
+  group('User identity normalization', () {
+    test('resolves the logged-in user name without default placeholders', () {
+      final user = {
+        'full_name': 'Maria Santos',
+        'first_name': 'Maria',
+        'last_name': 'Santos',
+      };
+
+      expect(AppUserIdentity.resolveDisplayName(user), equals('Maria Santos'));
+      expect(AppUserIdentity.resolveBarangay(user), equals('Tiguion'));
+    });
+
+    test('sanitizes mobile numbers to digits only', () {
+      expect(AppUserIdentity.sanitizeMobileNumber('+63 912-345-6789'), equals('639123456789'));
+      expect(AppUserIdentity.sanitizeMobileNumber('09ABC12345X'), equals('0912345'));
+      expect(AppUserIdentity.sanitizeMobileNumber('   '), isEmpty);
     });
   });
 

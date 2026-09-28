@@ -7,6 +7,7 @@ import '../../data/models/report_signatory.dart';
 import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/form_action_buttons.dart';
 import '../../data/local/hive_boxes.dart';
+import '../../shared/utils/app_user_identity.dart';
 
 class ReportSignatoriesScreen extends StatefulWidget {
   const ReportSignatoriesScreen({super.key});
@@ -29,11 +30,9 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
   void initState() {
     super.initState();
     final user = _settings.authUser;
-    if (user != null) {
-      _currentBarangay = user['barangay']?.toString() ?? '';
-      _currentBnsName = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'
-          .trim();
-    }
+    _currentBarangay = AppUserIdentity.resolveBarangay(user);
+    _currentBnsName = AppUserIdentity.resolveDisplayName(user);
+
     final existing = ReportSignatoryRepository().get(_currentBarangay);
     if (existing != null) {
       _punongBarangayController.text = existing.punongBarangayName;

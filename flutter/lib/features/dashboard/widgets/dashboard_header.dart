@@ -8,6 +8,7 @@ class DashboardHeader extends StatelessWidget {
   final String barangayName;
   final int pendingSyncCount;
   final int unreadNotificationCount;
+  final String? profileImageUrl;
   final VoidCallback onNotificationTap;
   final VoidCallback onSyncTap;
   final VoidCallback? onProfileTap;
@@ -18,13 +19,32 @@ class DashboardHeader extends StatelessWidget {
     required this.barangayName,
     required this.pendingSyncCount,
     this.unreadNotificationCount = 0,
+    this.profileImageUrl,
     required this.onNotificationTap,
     required this.onSyncTap,
     this.onProfileTap,
   });
 
+  static String? normalizeProfileImageUrl(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final raw = value.trim();
+    if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) {
+      return raw;
+    }
+    if (raw.startsWith('/')) {
+      return 'https://appscale-1.onrender.com$raw';
+    }
+    if (raw.startsWith('uploads/')) {
+      return 'https://appscale-1.onrender.com/$raw';
+    }
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final resolvedProfileImageUrl = normalizeProfileImageUrl(profileImageUrl);
+    final initials = bnsName.trim().isNotEmpty ? bnsName.trim()[0].toUpperCase() : 'B';
+
     return AppGradientHeader(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,17 +153,37 @@ class DashboardHeader extends StatelessWidget {
           const SizedBox(width: 8),
           GestureDetector(
             onTap: onProfileTap,
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.white,
-              child: Text(
-                bnsName.isNotEmpty ? bnsName[0] : 'B',
-                style: const TextStyle(
-                  color: AppColors.darkGreen,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+            child: resolvedProfileImageUrl != null
+                ? ClipOval(
+                    child: Image.network(
+                      resolvedProfileImageUrl,
+                      width: 36,
+                      height: 36,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.white,
+                        child: Text(
+                          initials,
+                          style: const TextStyle(
+                            color: AppColors.darkGreen,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.white,
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        color: AppColors.darkGreen,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),

@@ -186,7 +186,7 @@ exports.upsertChild = async (req, res) => {
         resolvedGender,
         birth_date,
         birth_date,
-        barangay,
+        resolvedBarangay,
         purok || address || 'Purok 1',
         guardian_name || null,
         guardian_contact || null,

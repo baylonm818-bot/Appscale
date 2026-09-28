@@ -16,6 +16,7 @@ import '../../shared/widgets/app_yes_no_toggle.dart';
 import '../../shared/widgets/form_action_buttons.dart';
 import '../../shared/widgets/form_section_card.dart';
 import '../../data/local/hive_boxes.dart';
+import '../../shared/utils/app_user_identity.dart';
 import 'widgets/mother_picker_field.dart';
 
 class AddChildScreen extends StatefulWidget {
@@ -50,7 +51,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
   final _settings = SettingsRepository();
 
   late final String _currentBarangay =
-      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+      AppUserIdentity.resolveBarangay(_settings.authUser).isNotEmpty
+          ? AppUserIdentity.resolveBarangay(_settings.authUser)
+          : 'Tiguion';
   late final String _currentBarangayCode = _currentBarangay.isNotEmpty
       ? _currentBarangay.substring(0, 3).toUpperCase()
       : 'TIG';
@@ -119,6 +122,17 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
     setState(() => _isSaving = true);
 
+    final sanitizedGuardianContact = AppUserIdentity.sanitizeMobileNumber(
+      _guardianContactController.text,
+    );
+    if (sanitizedGuardianContact.isNotEmpty && sanitizedGuardianContact.length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid guardian mobile number.')),
+      );
+      setState(() => _isSaving = false);
+      return;
+    }
+
     final child = Child(
       id: widget.existingChild?.id ?? ChildRepository.generateId(),
       sequenceNo: _sequenceNo,
@@ -134,7 +148,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       guardian: Guardian(
         fullName: _guardianNameController.text.trim(),
         relationship: _relationship,
-        contactNo: _guardianContactController.text.trim(),
+        contactNo: sanitizedGuardianContact,
         linkedMotherId: _guardianIsMonitoredMother ? _linkedMother?.id : null,
       ),
       createdAt: widget.existingChild?.createdAt ?? DateTime.now(),

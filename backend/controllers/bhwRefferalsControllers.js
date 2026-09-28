@@ -130,10 +130,21 @@ exports.createReferral = async (req, res) => {
         `SELECT referral_id
          FROM referrals
          WHERE status IN ('pending', 'responded')
-           AND ((? IS NOT NULL AND child_id = ?) OR (? IS NOT NULL AND mother_id = ?))
-           AND reason = ?
+           AND (
+             (? IS NOT NULL AND child_id = ?)
+             OR (? IS NOT NULL AND mother_id = ?)
+           )
+           AND COALESCE(beneficiary_type, CASE WHEN child_id IS NOT NULL THEN 'child' ELSE 'mother' END) = ?
+           AND LOWER(TRIM(reason)) = LOWER(TRIM(?))
          LIMIT 1`,
-        [resolvedChildId, resolvedChildId, resolvedMotherId, resolvedMotherId, reason]
+        [
+          resolvedChildId,
+          resolvedChildId,
+          resolvedMotherId,
+          resolvedMotherId,
+          beneficiaryType,
+          reason,
+        ]
       );
 
       if (existing[0]) {

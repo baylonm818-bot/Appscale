@@ -18,6 +18,7 @@ import '../../shared/widgets/form_action_buttons.dart';
 import '../../shared/widgets/form_section_card.dart';
 import 'widgets/child_picker_field.dart';
 import '../../data/local/mother_visit_repository.dart';
+import '../../shared/utils/app_user_identity.dart';
 
 class AddMotherScreen extends StatefulWidget {
   final Mother? existingMother;
@@ -50,7 +51,9 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
   final _settings = SettingsRepository();
 
   String get _currentBarangay =>
-      _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+      AppUserIdentity.resolveBarangay(_settings.authUser).isNotEmpty
+          ? AppUserIdentity.resolveBarangay(_settings.authUser)
+          : 'Tiguion';
 
   late final _fullNameController = TextEditingController(
     text: widget.existingMother?.fullName ?? widget.prefillFullName,
@@ -105,8 +108,16 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
 
     setState(() => _isSaving = true);
 
-    final sanitizedContact = _contactController.text
-        .replaceAll(RegExp(r'\D'), '');
+    final sanitizedContact = AppUserIdentity.sanitizeMobileNumber(
+      _contactController.text,
+    );
+    if (sanitizedContact.length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid mobile number.')),
+      );
+      setState(() => _isSaving = false);
+      return;
+    }
 
     final mother = Mother(
       id: widget.existingMother?.id ?? MotherRepository.generateId(),

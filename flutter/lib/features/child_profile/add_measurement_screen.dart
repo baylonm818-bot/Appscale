@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -84,25 +85,67 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
   }
 
   bool get _isFormValid =>
-      double.tryParse(_weightController.text) != null &&
-      double.tryParse(_heightController.text) != null &&
-      (!_isMuacEligible || double.tryParse(_muacController.text) != null);
+      double.tryParse(_weightController.text.trim()) != null &&
+      double.tryParse(_heightController.text.trim()) != null &&
+      (!_isMuacEligible || double.tryParse(_muacController.text.trim()) != null);
 
   Future<void> _handleSave() async {
     if (!_isFormValid) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in weight, height, and MUAC'),
+          content: Text('Please enter valid numeric values for weight, height, and MUAC.'),
         ),
       );
       return;
     }
 
+    final previewWeight = double.parse(_weightController.text.trim());
+    final previewHeight = double.parse(_heightController.text.trim());
+    final previewMuac = _isMuacEligible
+        ? double.parse(_muacController.text.trim())
+        : null;
+    final previewStatus = _liveResult;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Review measurement before saving'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Weight: ${previewWeight.toStringAsFixed(1)} kg'),
+            Text('Height: ${previewHeight.toStringAsFixed(1)} cm'),
+            if (previewMuac != null) Text('MUAC: ${previewMuac.toStringAsFixed(1)} cm'),
+            const SizedBox(height: 8),
+            const Text('Auto-computed nutritional status:'),
+            if (previewStatus != null) ...[
+              Text('Weight-for-age: ${previewStatus.weight}'),
+              Text('Height-for-age: ${previewStatus.height}'),
+              Text('Wasting: ${previewStatus.wasting}'),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Edit'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     setState(() => _isSaving = true);
 
-    final w = double.parse(_weightController.text);
-    final h = double.parse(_heightController.text);
-    final muac = _isMuacEligible ? double.parse(_muacController.text) : null;
+    final w = previewWeight;
+    final h = previewHeight;
+    final muac = previewMuac;
 
     final weightStatus = GrowthClassifier.classifyWeightForAge(
       weightKg: w,
@@ -302,6 +345,10 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                                 hint: 'e.g. 12.5',
                                 icon: Icons.monitor_weight_outlined,
                                 controller: _weightController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                                ],
                               ),
                             ),
                             const SizedBox(width: AppSpacing.md),
@@ -311,6 +358,10 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                                 hint: 'e.g. 85',
                                 icon: Icons.straighten_outlined,
                                 controller: _heightController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                                ],
                               ),
                             ),
                           ],
@@ -321,6 +372,10 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                             hint: 'Mid-upper arm circumference',
                             icon: Icons.favorite_outline,
                             controller: _muacController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                            ],
                           ),
                           Text(
                             'Supporting measurement, used for wasting screening ages 6–59 months',
