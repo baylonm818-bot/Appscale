@@ -23,6 +23,9 @@ const mobileBeneficiaryRoutes = require('./routes/mobileBeneficiaryRoutes');
 
 const app = express();
 
+// Trust Render's reverse proxy so rate limiters use real client IP, not proxy IP
+app.set('trust proxy', 1);
+
 // security middleware
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
