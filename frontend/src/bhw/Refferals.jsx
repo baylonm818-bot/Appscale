@@ -249,7 +249,7 @@ function Referrals() {
                   className="p-5 rounded-2xl bg-white border border-gray-100 hover:border-green-200 hover:bg-green-50/20 transition-all shadow-xs"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-1.5 flex-1 min-w-[260px]">
+                    <div className="space-y-1.5 flex-1 min-w-65">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-bold text-gray-900 text-sm">
                           {beneficiaryDisplay || 'Unnamed beneficiary'}
@@ -294,7 +294,7 @@ function Referrals() {
                           <button
                             type="button"
                             onClick={() => openRespondModal(r)}
-                            className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs"
+                            className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs"
                           >
                             Log Response
                           </button>
@@ -321,7 +321,7 @@ function Referrals() {
       {respondTarget && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setRespondTarget(null)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white">
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white">
               <div>
                 <h3 className="font-bold text-base">Respond to Referral</h3>
                 <p className="text-xs text-white/80 mt-0.5">
@@ -357,7 +357,7 @@ function Referrals() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setRespondTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">Cancel</button>
-                <button type="button" disabled={respondSubmitting || !responseNotes.trim()} onClick={submitResponse} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-60">
+                <button type="button" disabled={respondSubmitting || !responseNotes.trim()} onClick={submitResponse} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-60">
                   {respondSubmitting ? 'Saving…' : 'Submit Response'}
                 </button>
               </div>
