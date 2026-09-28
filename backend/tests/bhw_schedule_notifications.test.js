@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const bhwScheduleController = require('../controllers/bhwScheduleControllers');
+const bhwNotificationController = require('../controllers/bhwNotificationControllers');
 const pool = require('../config/db');
 
 function makeRes() {
@@ -86,6 +87,47 @@ test('updating a BHW schedule status to done creates an admin notification', asy
 
     assert.equal(res.statusCode, 200);
     assert.ok(calls.some((call) => call.sql.includes('INSERT INTO notifications')));
+  } finally {
+    pool.query = originalQuery;
+  }
+});
+
+test('BHW notifications are filtered to the logged-in barangay', async () => {
+  const originalQuery = pool.query;
+  const calls = [];
+
+  pool.query = async (sql, params) => {
+    calls.push({ sql, params });
+
+    if (sql.includes('SELECT notification_id, title, message, type, is_read, created_at')) {
+      return [[{
+        notification_id: 101,
+        title: 'Barangay 1 update',
+        message: 'Test for Barangay 1',
+        type: 'schedule',
+        is_read: false,
+        created_at: '2026-09-29T00:00:00Z'
+      }]];
+    }
+
+    if (sql.includes('COUNT(*) AS unreadCount')) {
+      return [[{ unreadCount: 1 }]];
+    }
+
+    return [[{ ok: true }]];
+  };
+
+  try {
+    const req = {
+      user: { role: 'bhw', barangay: 'Barangay 1' }
+    };
+    const res = makeRes();
+
+    await bhwNotificationController.getNotifications(req, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.payload.notifications.length, 1);
+    assert.ok(calls.some((call) => call.sql.toLowerCase().includes('barangay') && call.params && call.params.includes('Barangay 1')));
   } finally {
     pool.query = originalQuery;
   }
