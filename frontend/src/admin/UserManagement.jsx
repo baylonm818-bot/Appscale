@@ -257,7 +257,7 @@ function UserManagement() {
 
         {/* Search & Action Bar */}
         <div className="p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-1 min-w-[260px] items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 border border-gray-100 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition">
+          <div className="flex flex-1 min-w-65 items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 border border-gray-100 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition">
             <Search size={16} className="text-gray-400 shrink-0" />
             <input
               type="text"
@@ -304,7 +304,7 @@ function UserManagement() {
             <button
               type="button"
               onClick={() => openAddModal(activeTab === 'bns' ? 'bns' : 'bhw')}
-              className="flex items-center gap-2 bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm"
+              className="flex items-center gap-2 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm"
             >
               <Plus size={16} /> Add User
             </button>
@@ -440,7 +440,7 @@ function UserManagement() {
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
 
             {/* Header */}
-            <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
               <div>
                 <h2 className="text-base font-bold text-white">
                   {editingUser ? (viewOnly ? 'User Account Profile' : 'Edit User Account') : `Add New ${form.role.toUpperCase()}`}
@@ -507,9 +507,19 @@ function UserManagement() {
                 {!viewOnly && (
                   <div>
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
-                      {editingUser ? 'New Password (leave blank to keep current)' : 'Password *'}
+                      {editingUser ? 'Reset Password (leave blank to keep current)' : 'Password *'}
                     </label>
-                    <input name="password" type="password" placeholder="••••••••" value={form.password} onChange={handleChange} className={inputCls} />
+                    <input
+                      name="password"
+                      type="password"
+                      placeholder={editingUser ? 'Enter new password only' : '••••••••'}
+                      value={form.password}
+                      onChange={handleChange}
+                      className={inputCls}
+                    />
+                    {editingUser && (
+                      <p className="mt-1 text-[10px] text-gray-500">The current password is not shown and cannot be viewed.</p>
+                    )}
                   </div>
                 )}
 
@@ -555,7 +565,7 @@ function UserManagement() {
                 <button
                   type="button"
                   onClick={() => setViewOnly(false)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-sm"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-sm"
                 >
                   Edit Profile
                 </button>
@@ -564,7 +574,7 @@ function UserManagement() {
                   type="submit"
                   form="userForm"
                   disabled={saving}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-sm disabled:opacity-60"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-sm disabled:opacity-60"
                 >
                   {saving ? 'Saving…' : (editingUser ? 'Save Changes' : 'Create Account')}
                 </button>
