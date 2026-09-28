@@ -32,7 +32,7 @@ const DownloadApp = () => {
           </h1>
           
           <p className="text-green-50 text-base md:text-lg mb-10 leading-relaxed max-w-md">
-            AppScale helps barangay health workers and nutrition scholars connect with communities, record vitals, and monitor child nutrition securely on the go.
+            AppScale helps Barangay Nutrition Scholars (BNS) connect with communities, record vitals, and monitor child nutrition securely on the go.
           </p>
 
           <button 
