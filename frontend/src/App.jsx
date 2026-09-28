@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate} from 'react-router-dom';
 import Login from './pages/Login';
+import DownloadApp from './pages/DownloadApp';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/AdminLayout';
 import Dashboard from './admin/Dashboard';
@@ -18,9 +19,6 @@ import BHWMedicalRecords from './bhw/MedicalRecords';
 import BHWNotifications from './bhw/Notification';
 import BHWProfile from './bhw/Profile';
 
-
-
-
 function App() {
   localStorage.removeItem('appscale-theme');
   document.documentElement.removeAttribute('data-theme');
@@ -31,6 +29,7 @@ function App() {
     <Routes>
       <Route path ="/" element ={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/download" element={<DownloadApp />} />
 
 
       <Route path="/admin" element ={

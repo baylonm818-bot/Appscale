@@ -82,6 +82,17 @@ app.use(limiter);
 // Public/auth routes
 app.use('/api/auth', authRoutes);
 
+// Public APK Download route
+app.get('/api/download-apk', (req, res) => {
+    const fs = require('fs');
+    const apkPath = path.join(__dirname, 'uploads', 'appscale.apk');
+    if (fs.existsSync(apkPath)) {
+        res.download(apkPath, 'AppScale.apk');
+    } else {
+        res.status(404).send('APK file not found on the server. Please upload appscale.apk to the uploads folder.');
+    }
+});
+
 // JWT middleware will protect routes below (added dynamically)
 const jwtMiddleware = require('./middleware/jwtMiddleware');
 

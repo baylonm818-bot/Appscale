@@ -94,12 +94,11 @@ class _ReportsHomeScreenState extends State<ReportsHomeScreen> {
               children: [
                 FormSectionCard(
                   title: 'Report Configuration',
-                  icon: Icons.assignment_outlined,
                   children: [
                     AppDropdownField(
                       label: 'Report Category',
                       value: _selectedCategory,
-                      items: _categories,
+                      options: _categories,
                       onChanged: (val) {
                         if (val != null) {
                           setState(() {
@@ -112,14 +111,12 @@ class _ReportsHomeScreenState extends State<ReportsHomeScreen> {
                     const SizedBox(height: 16),
                     AppDropdownField(
                       label: 'Specific Report Form',
-                      value: _selectedReport.id,
-                      items: _currentReportOptions.map((e) => e.id).toList(),
-                      itemLabelBuilder: (id) =>
-                          _currentReportOptions.firstWhere((e) => e.id == id).title,
+                      value: _selectedReport.title,
+                      options: _currentReportOptions.map((e) => e.title).toList(),
                       onChanged: (val) {
                         if (val != null) {
                           setState(() {
-                            _selectedReport = _currentReportOptions.firstWhere((e) => e.id == val);
+                            _selectedReport = _currentReportOptions.firstWhere((e) => e.title == val);
                           });
                         }
                       },
@@ -152,7 +149,6 @@ class _ReportsHomeScreenState extends State<ReportsHomeScreen> {
                 
                 AppButton(
                   label: 'Generate & Preview Report',
-                  icon: Icons.picture_as_pdf,
                   onPressed: () => Navigator.push(
                     context,
                     appPageRoute(ReportPreviewScreen(reportType: _selectedReport)),
