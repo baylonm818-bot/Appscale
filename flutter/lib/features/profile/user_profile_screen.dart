@@ -9,6 +9,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/mother_repository.dart';
+import '../../data/remote/beneficiary_api.dart';
 import '../../shared/utils/app_user_identity.dart';
 import '../auth/login_screen.dart';
 
@@ -476,8 +477,156 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               );
             },
           ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red[700],
+            ),
+            icon: const Icon(Icons.security, size: 16),
+            label: const Text(
+              'Deactivate Account',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+            onPressed: () => _showDeactivateDialog(context),
+          ),
           const SizedBox(height: 32),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showDeactivateDialog(BuildContext context) async {
+    final settings = SettingsRepository();
+    final userIdStr = settings.authUser?['user_id']?.toString();
+    final userId = int.tryParse(userIdStr ?? '');
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot identify user session.')),
+      );
+      return;
+    }
+
+    final passwordCtrl = TextEditingController();
+    final reasonCtrl = TextEditingController();
+    bool isSubmitting = false;
+    String? errorText;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+              SizedBox(width: 8),
+              Text(
+                'Deactivate Account',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Are you sure you want to deactivate your account? To ensure system security, your login access will be revoked immediately and only an administrator can reactivate it.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                const SizedBox(height: 16),
+                if (errorText != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      errorText!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                TextField(
+                  controller: passwordCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Current Password *',
+                    hintText: 'Enter your password to confirm',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Reason for deactivation (optional)',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      final pwd = passwordCtrl.text.trim();
+                      if (pwd.isEmpty) {
+                        setModalState(() {
+                          errorText = 'Please enter your password.';
+                        });
+                        return;
+                      }
+                      setModalState(() {
+                        isSubmitting = true;
+                        errorText = null;
+                      });
+                      try {
+                        await BeneficiaryApi.deactivateAccount(
+                          userId,
+                          pwd,
+                          reasonCtrl.text.trim(),
+                        );
+                        await settings.clearSession();
+                        if (!ctx.mounted) return;
+                        Navigator.pop(ctx);
+                        if (!context.mounted) return;
+                        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          (_) => false,
+                        );
+                      } catch (err) {
+                        setModalState(() {
+                          isSubmitting = false;
+                          errorText = err.toString().replaceFirst('Exception: ', '');
+                        });
+                      }
+                    },
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Deactivate'),
+            ),
+          ],
+        ),
       ),
     );
   }

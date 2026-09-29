@@ -46,15 +46,21 @@ class ReportTypes {
     category: ReportCategory.consolidation,
     formats: [ExportFormat.pdf],
   );
+  static const monthlyWeightRecord = ReportTypeInfo(
+    id: 'monthly_weight_record',
+    title: 'Monthly Weight Record',
+    category: ReportCategory.individualRecord,
+    formats: [ExportFormat.excel],
+  );
   static const quarterlyWeighing = ReportTypeInfo(
     id: 'quarterly_weighing',
-    title: 'Quarterly full weighing record',
+    title: 'Quarterly Full Weighing Record',
     category: ReportCategory.individualRecord,
     formats: [ExportFormat.excel],
   );
   static const optPlus = ReportTypeInfo(
     id: 'opt_plus',
-    title: 'OPT Plus report',
+    title: 'OPT Plus Report',
     category: ReportCategory.individualRecord,
     formats: [ExportFormat.excel],
   );
@@ -77,7 +83,11 @@ class ReportTypes {
     underweightSuw,
     stuntedSst,
   ];
-  static const recordTypes = [quarterlyWeighing, optPlus];
+  static const recordTypes = [
+    monthlyWeightRecord,
+    quarterlyWeighing,
+    optPlus,
+  ];
   static const masterlistTypes = [childrenMasterlist, mothersMasterlist];
   static const all = [
     ...consolidationTypes,

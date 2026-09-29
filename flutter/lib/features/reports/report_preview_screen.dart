@@ -98,6 +98,44 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     final childRepo = ChildRepository();
     final measurementRepo = MeasurementRepository();
 
+    if (reportTypeId == 'monthly_weight_record') {
+      final children = childRepo
+          .getByBarangay(_currentBarangay)
+          .where((c) => c.isActive)
+          .toList();
+      final rows = children.map((c) {
+        final m = measurementRepo.getForChild(c.id);
+        final latest = m.isNotEmpty ? m.first : null;
+        return [
+          c.sequenceNo,
+          c.fullName,
+          c.gender,
+          _fmtDate(c.birthDate),
+          '${c.ageInMonths}',
+          latest?.weightKg.toString() ?? '—',
+          latest?.heightCm.toString() ?? '—',
+          latest != null ? latest.bmi.toStringAsFixed(2) : '—',
+          latest?.bmiStatus ?? c.nutritionStatus,
+          latest != null ? _fmtDate(latest.date) : '—',
+        ];
+      }).toList();
+      return ExcelTableData(
+        headers: [
+          'Seq No',
+          'Name',
+          'Sex',
+          'DOB',
+          'Age (mo)',
+          'Weight (kg)',
+          'Height (cm)',
+          'Computed BMI',
+          'Nutritional Status',
+          'Date Weighed',
+        ],
+        rows: rows,
+      );
+    }
+
     if (reportTypeId == 'quarterly_weighing') {
       final children = childRepo
           .getByBarangay(_currentBarangay)

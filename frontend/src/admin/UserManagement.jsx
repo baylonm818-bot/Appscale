@@ -599,16 +599,16 @@ function UserManagement() {
               </div>
               <div>
                 <h3 className="text-base font-bold text-gray-900">
-                  {statusConfirm.action === 'lock' ? 'Lock User Account' : 'Unlock User Account'}
+                  {statusConfirm.action === 'lock' ? 'Deactivate / Lock User Account' : 'Activate / Unlock User Account'}
                 </h3>
                 <p className="text-xs text-gray-500">
-                  Action confirmation
+                  Account status management
                 </p>
               </div>
             </div>
 
             <p className="text-sm text-gray-600 mb-5 leading-relaxed">
-              Are you sure you want to <strong className="text-gray-900">{statusConfirm.action}</strong> the account of{' '}
+              Are you sure you want to <strong className="text-gray-900">{statusConfirm.action === 'lock' ? 'deactivate' : 'activate'}</strong> the account of{' '}
               <strong className="text-gray-900">{statusConfirm.user.first_name} {statusConfirm.user.last_name}</strong>{' '}
               ({(statusConfirm.user.role || '').toUpperCase()})?
             </p>
@@ -616,12 +616,12 @@ function UserManagement() {
             {statusConfirm.action === 'lock' ? (
               <div className="mb-6 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
                 <span className="shrink-0 text-base">⚠️</span>
-                <span>The user will be immediately prevented from logging into AppScale until unlocked by an administrator.</span>
+                <span>The user account will be deactivated and prevented from logging into AppScale until reactivated by an administrator.</span>
               </div>
             ) : (
               <div className="mb-6 p-3 bg-green-50 rounded-xl border border-green-200 text-xs text-green-800 flex items-start gap-2">
                 <span className="shrink-0 text-base">✓</span>
-                <span>The user's failed login counter will be reset and they will be allowed to log in again.</span>
+                <span>The user account will be activated and allowed to log into AppScale.</span>
               </div>
             )}
 
@@ -646,7 +646,7 @@ function UserManagement() {
                     : 'bg-green-700 hover:bg-green-800'
                 }`}
               >
-                Yes, {statusConfirm.action === 'lock' ? 'Lock Account' : 'Unlock Account'}
+                Yes, {statusConfirm.action === 'lock' ? 'Deactivate Account' : 'Activate Account'}
               </button>
             </div>
           </div>

@@ -8,6 +8,7 @@ import '../../data/local/program_schedule_repository.dart';
 import '../../data/models/program_schedule.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../referrals/referrals_overview_screen.dart';
+import 'counseling/lactating_mothers_counseling_screen.dart';
 import 'deworming/deworming_screen.dart';
 import 'feeding/feeding_program_screen.dart';
 import 'schedule/add_program_schedule_screen.dart';
@@ -190,6 +191,19 @@ class _ProgramScreenState extends State<ProgramScreen> {
           onTap: () => Navigator.push(
             context,
             appPageRoute(DewormingScreen(barangay: widget.barangay)),
+          ),
+        ),
+        const Divider(color: AppColors.border),
+        ProgramTile(
+          icon: Icons.pregnant_woman_outlined,
+          iconColor: const Color(0xFF6C5CE7),
+          title: 'Maternal Counseling for Lactating Mothers',
+          subtitle: 'Monitor counseling sessions and nutrition support for mothers.',
+          onTap: () => Navigator.push(
+            context,
+            appPageRoute(
+              LactatingMothersCounselingScreen(barangay: _currentBarangay),
+            ),
           ),
         ),
       ],

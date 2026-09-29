@@ -211,7 +211,7 @@ exports.createReferral = async (req, res) => {
         referrer?.user_id || referred_by,
         reason,
         severity || 'medium',
-        'pending',
+        'Pending',
         referralNotes || null,
       );
 
@@ -284,11 +284,21 @@ exports.getReferrals = async (req, res) => {
        LEFT JOIN children c ON c.child_id = r.child_id
        LEFT JOIN mothers m ON m.mother_id = r.mother_id
        WHERE COALESCE(c.barangay, m.barangay) = ?
-       ORDER BY FIELD(r.status, 'pending', 'responded', 'closed'), r.created_at DESC`,
+       ORDER BY FIELD(LOWER(r.status), 'pending', 'ongoing', 'responded', 'cancelled', 'completed', 'closed'), r.created_at DESC`,
       [user.barangay]
     );
 
-    const allowedReferrals = referrals.filter((referral) => canAccessReferral(user, referral));
+    const allowedReferrals = referrals.map((ref) => {
+      // Normalize status labels for display
+      let normalizedStatus = ref.status;
+      const lower = String(ref.status || '').toLowerCase();
+      if (lower === 'pending') normalizedStatus = 'Pending';
+      else if (lower === 'ongoing' || lower === 'responded') normalizedStatus = 'Ongoing';
+      else if (lower === 'cancelled') normalizedStatus = 'Cancelled';
+      else if (lower === 'completed' || lower === 'closed') normalizedStatus = 'Completed';
+      return { ...ref, status: normalizedStatus };
+    }).filter((referral) => canAccessReferral(user, referral));
+
     return res.status(200).json(allowedReferrals);
   } catch (error) {
     console.error('Get referrals error:', error);
@@ -300,8 +310,20 @@ exports.updateReferralStatus = async (req, res) => {
   const { id } = req.params;
   const { status, response_notes, service_type, service_date, provided_by } = req.body;
 
-  if (!['pending', 'responded', 'closed'].includes(status)) {
-    return res.status(400).json({ message: 'Invalid status value.' });
+  // Module 4 Requirement: "The system shall allow BHW to update referral status (Pending, Ongoing, Cancelled, Completed)."
+  const statusMap = {
+    pending: 'Pending',
+    ongoing: 'Ongoing',
+    responded: 'Ongoing',
+    cancelled: 'Cancelled',
+    completed: 'Completed',
+    closed: 'Completed',
+  };
+
+  const normalizedStatus = statusMap[String(status || '').toLowerCase()];
+
+  if (!normalizedStatus) {
+    return res.status(400).json({ message: 'Invalid status value. Allowed: Pending, Ongoing, Cancelled, Completed.' });
   }
 
   try {
@@ -313,7 +335,7 @@ exports.updateReferralStatus = async (req, res) => {
 
     await pool.query(
       'UPDATE referrals SET status = ?, notes = ? WHERE referral_id = ?',
-      [status, response_notes || null, id]
+      [normalizedStatus, response_notes || null, id]
     );
 
     const serviceLabels = {
@@ -323,7 +345,7 @@ exports.updateReferralStatus = async (req, res) => {
       checkup: 'Checkup',
     };
 
-    if (status === 'responded' && serviceLabels[service_type] && service_date && provided_by && referral.child_id) {
+    if (normalizedStatus === 'Ongoing' && serviceLabels[service_type] && service_date && provided_by && referral.child_id) {
       await pool.query(
         `INSERT INTO child_services (child_id, service_type, service_date, provided_by)
          VALUES (?, ?, ?, ?)`,
@@ -331,7 +353,7 @@ exports.updateReferralStatus = async (req, res) => {
       );
     }
 
-    return res.status(200).json({ message: 'Referral status updated.' });
+    return res.status(200).json({ message: 'Referral status updated.', status: normalizedStatus });
   } catch (error) {
     console.error('Update referral status error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });

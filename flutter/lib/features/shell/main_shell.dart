@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../shared/widgets/main_scaffold.dart';
 import '../beneficiary/add_profile_sheet.dart';
@@ -7,6 +8,7 @@ import '../program/program_screen.dart';
 import '../reports/reports_home_screen.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
+import '../../data/local/measurement_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/app_data_bus.dart';
 import '../auth/login_screen.dart';
@@ -27,7 +29,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   final _masterlistKey = GlobalKey<MasterlistScreenState>();
   final _childRepo = ChildRepository();
   final _motherRepo = MotherRepository();
+  final _measurementRepo = MeasurementRepository();
   final _settings = SettingsRepository();
+  Timer? _autoSyncTimer;
 
   void _navigateToMasterlist(MasterlistCategory category) {
     setState(() => _navIndex = 1);
@@ -56,11 +60,16 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Automatically synchronize locally stored data when internet connection is available
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+      _autoSyncPending();
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _autoSyncTimer?.cancel();
     super.dispose();
   }
 
@@ -73,6 +82,27 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   }
 
   bool _isHandlingResume = false;
+  bool _isAutoSyncing = false;
+
+  Future<void> _autoSyncPending() async {
+    if (_isAutoSyncing || !_settings.hasValidSession) return;
+    final totalPending = _childRepo.pendingCount +
+        _motherRepo.pendingCount +
+        _measurementRepo.pendingCount;
+    if (totalPending == 0) return;
+
+    _isAutoSyncing = true;
+    try {
+      await _childRepo.syncPending();
+      await _motherRepo.syncPending();
+      await _measurementRepo.syncPending();
+      AppDataBus.notifyChanged();
+    } catch (e) {
+      debugPrint('Auto sync periodic attempt: $e');
+    } finally {
+      _isAutoSyncing = false;
+    }
+  }
 
   Future<void> _handleResume() async {
     if (_isHandlingResume) return;
@@ -96,6 +126,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       try {
         await _childRepo.syncPending();
         await _motherRepo.syncPending();
+        await _measurementRepo.syncPending();
         // Refresh again after sync completes in case counts changed.
         AppDataBus.notifyChanged();
       } catch (syncErr) {

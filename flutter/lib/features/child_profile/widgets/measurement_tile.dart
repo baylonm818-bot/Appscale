@@ -98,6 +98,14 @@ class MeasurementTile extends StatelessWidget {
                           ),
                         ),
                         StatusBadge(
+                          label: 'BMI: ${measurement.bmi} (${measurement.bmiStatus})',
+                          color: measurement.bmiStatus == 'Normal'
+                              ? AppColors.primaryGreen
+                              : measurement.bmiStatus == 'Underweight'
+                                  ? AppColors.statOrange
+                                  : AppColors.statRed,
+                        ),
+                        StatusBadge(
                           label: wastingLabel,
                           color: ChildStatusMeta.colorFor(wastingLabel),
                         ),
@@ -124,6 +132,12 @@ class MeasurementTile extends StatelessWidget {
                           iconColor: AppColors.statOrange,
                           label: 'Height',
                           value: '${measurement.heightCm} cm',
+                        ),
+                        _MetricItem(
+                          icon: Icons.calculate_outlined,
+                          iconColor: AppColors.primaryGreen,
+                          label: 'BMI',
+                          value: '${measurement.bmi}',
                         ),
                         _MetricItem(
                           icon: Icons.favorite_outline,

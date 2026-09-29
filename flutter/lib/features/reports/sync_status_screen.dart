@@ -5,6 +5,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
+import '../../data/local/measurement_repository.dart';
 import '../../data/local/referral_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/app_data_bus.dart';
@@ -20,6 +21,7 @@ class SyncStatusScreen extends StatefulWidget {
 class _SyncStatusScreenState extends State<SyncStatusScreen> {
   final _children = ChildRepository();
   final _mothers = MotherRepository();
+  final _measurements = MeasurementRepository();
   final _settings = SettingsRepository();
   bool _isSyncing = false;
   String? _message;
@@ -42,8 +44,12 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       _message = null;
     });
     try {
-      // 1. Push pending local records to server
-      await Future.wait([_children.syncPending(), _mothers.syncPending()]);
+      // 1. Push pending local records to server (children, mothers, measurements)
+      await Future.wait([
+        _children.syncPending(),
+        _mothers.syncPending(),
+        _measurements.syncPending(),
+      ]);
 
       // 2. Pull fresh data from server for this barangay (re-seed)
       final token = _settings.authToken;
@@ -142,7 +148,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       }
 
       if (!mounted) return;
-      final remaining = _children.pendingCount + _mothers.pendingCount;
+      final remaining = _children.pendingCount + _mothers.pendingCount + _measurements.pendingCount;
       setState(() {
         _isSyncing = false;
         _message = remaining == 0
@@ -167,7 +173,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         .where((m) => m.barangay == current)
         .length;
     final referralCount = ReferralRepository().getForBarangay(current).length;
-    final pendingCount = _children.pendingCount + _mothers.pendingCount;
+    final pendingCount = _children.pendingCount + _mothers.pendingCount + _measurements.pendingCount;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -256,6 +262,8 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                         synced: childCount - _children.pendingCount),
                     _row('Mothers', motherCount,
                         synced: motherCount - _mothers.pendingCount),
+                    _row('Measurements', _measurements.totalCount,
+                        synced: _measurements.totalCount - _measurements.pendingCount),
                     _row('Referrals', referralCount, synced: referralCount),
                     const SizedBox(height: AppSpacing.lg),
                     SizedBox(

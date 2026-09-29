@@ -80,6 +80,13 @@ function Profile() {
   const [picError, setPicError]         = useState('');
   const [profileImageSrc, setProfileImageSrc] = useState(null);
 
+  // Deactivation state (Module 1)
+  const [deactivateModal, setDeactivateModal] = useState(false);
+  const [deactivatePassword, setDeactivatePassword] = useState('');
+  const [deactivateReason, setDeactivateReason] = useState('');
+  const [deactivateError, setDeactivateError] = useState('');
+  const [deactivating, setDeactivating] = useState(false);
+
   const fetchProfile = async () => {
     try {
       const res = await axiosClient.get(`/profile/${storedUser.user_id}`);
@@ -321,10 +328,98 @@ function Profile() {
                 </div>
               ))}
             </div>
+
+            {/* Module 1: The system must allow users to activate or deactivate their accounts, to ensure overall system security. */}
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              <div className="bg-red-50/60 border border-red-200 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-sm font-bold text-red-900">Deactivate Account</h4>
+                  <p className="text-xs text-red-700/80 mt-1 max-w-lg">
+                    Temporarily deactivate your BHW account to prevent unauthorized access. You will be logged out immediately. Only an administrator can reactivate your account.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setDeactivateModal(true); setDeactivatePassword(''); setDeactivateReason(''); setDeactivateError(''); }}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition shadow-sm"
+                >
+                  Deactivate My Account
+                </button>
+              </div>
+            </div>
           </>
         )}
 
       </div>
+
+      {/* Deactivate Confirmation Modal */}
+      {deactivateModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setDeactivateModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-red-600 px-6 py-5 text-white">
+              <h3 className="font-bold text-base">Deactivate Your Account?</h3>
+              <p className="text-xs text-red-100 mt-0.5">Please confirm with your current password to proceed.</p>
+            </div>
+            <div className="p-6 space-y-4">
+              {deactivateError && <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl font-medium border border-red-200">{deactivateError}</div>}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Current Password *</label>
+                <input
+                  type="password"
+                  placeholder="Enter your current password"
+                  value={deactivatePassword}
+                  onChange={(e) => setDeactivatePassword(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Reason for Deactivation (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g., Leave of absence, transferred to another facility"
+                  value={deactivateReason}
+                  onChange={(e) => setDeactivateReason(e.target.value)}
+                  className={`${inputCls} resize-none`}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeactivateModal(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={deactivating || !deactivatePassword}
+                  onClick={async () => {
+                    setDeactivating(true);
+                    setDeactivateError('');
+                    try {
+                      await axiosClient.post(`/profile/${storedUser.user_id}/deactivate`, {
+                        password: deactivatePassword,
+                        reason: deactivateReason,
+                      });
+                      alert('Account successfully deactivated. You will now be redirected to the login page.');
+                      localStorage.clear();
+                      sessionStorage.clear();
+                      window.location.href = '/login';
+                    } catch (err) {
+                      setDeactivateError(err.response?.data?.message || 'Failed to deactivate account.');
+                    } finally {
+                      setDeactivating(false);
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition"
+                >
+                  {deactivating ? 'Deactivating…' : 'Yes, Deactivate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

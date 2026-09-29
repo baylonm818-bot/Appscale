@@ -180,3 +180,57 @@ exports.uploadProfilePicture = async (req, res) => {
     return res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };
+
+/**
+ * Module 1 Requirement: "The system must allow users to activate or deactivate their accounts, to ensure overall system security."
+ */
+exports.deactivateAccount = async (req, res) => {
+  const { id } = req.params;
+  const requesterId = Number(req.user?.user_id);
+  const role = String(req.user?.role || '').toLowerCase();
+
+  if (role !== 'admin' && requesterId !== Number(id)) {
+    return res.status(403).json({ message: 'Forbidden. You can only deactivate your own account.' });
+  }
+
+  const { password, reason } = req.body;
+  if (!password) {
+    return res.status(400).json({ message: 'Password confirmation is required to deactivate your account.' });
+  }
+
+  try {
+    const [rows] = await pool.query('SELECT password_hash, first_name, last_name, role FROM users WHERE user_id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const user = rows[0];
+    const match = await bcrypt.compare(password, user.password_hash);
+    if (!match) {
+      return res.status(401).json({ message: 'Incorrect password. Deactivation cancelled.' });
+    }
+
+    await pool.query(
+      'UPDATE users SET status = ?, deactivation_reason = ? WHERE user_id = ?',
+      ['inactive', reason || 'Self-deactivated by user', id]
+    );
+
+    // Notify administrators of deactivation
+    try {
+      await pool.query(
+        `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
+         VALUES (?, ?, 'account', FALSE, ?, NOW())`,
+        [
+          `Account Deactivated: ${user.first_name} ${user.last_name}`,
+          `${user.first_name} ${user.last_name} (${(user.role || '').toUpperCase()}) has deactivated their account. Reason: ${reason || 'Not specified'}`,
+          id,
+        ]
+      );
+    } catch (_) {}
+
+    return res.status(200).json({ message: 'Account deactivated successfully.' });
+  } catch (error) {
+    console.error('Deactivate account error:', error);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};

@@ -21,15 +21,74 @@ class MeasurementRepository {
   List<Measurement> getForChildAscending(String childId) =>
       getForChild(childId).reversed.toList();
 
+  int get totalCount {
+    int count = 0;
+    for (final raw in _box.values) {
+      if (raw is List) count += raw.length;
+    }
+    return count;
+  }
+
+  int get pendingCount {
+    int count = 0;
+    for (final raw in _box.values) {
+      if (raw is List) {
+        for (final item in raw) {
+          if (item is Map && item['_syncStatus'] != 'synced') {
+            count++;
+          }
+        }
+      }
+    }
+    return count;
+  }
+
+  Future<void> syncPending() async {
+    for (final key in _box.keys) {
+      final childId = key.toString();
+      final list = (_box.get(childId) as List?) ?? [];
+      bool modified = false;
+      final updatedList = [];
+      for (final raw in list) {
+        final map = Map<String, dynamic>.from(raw as Map);
+        if (map['_syncStatus'] != 'synced') {
+          try {
+            final m = Measurement.fromMap(map);
+            await BeneficiaryApi.syncNutritionRecord(childId, m);
+            map['_syncStatus'] = 'synced';
+            modified = true;
+          } catch (_) {
+            // Keep pending until next retry
+          }
+        }
+        updatedList.add(map);
+      }
+      if (modified) {
+        await _box.put(childId, updatedList);
+      }
+    }
+  }
+
   Future<void> addMeasurement(String childId, Measurement measurement) async {
     final current = (_box.get(childId) as List?) ?? [];
-    await _box.put(childId, [...current, measurement.toMap()]);
+    final map = measurement.toMap()..['_syncStatus'] = 'pending';
+    await _box.put(childId, [...current, map]);
     AppDataBus.notifyChanged();
 
     try {
       await BeneficiaryApi.syncNutritionRecord(childId, measurement);
+      final currentAfterSync = (_box.get(childId) as List?) ?? [];
+      final syncedList = currentAfterSync.map((item) {
+        final itemMap = Map<String, dynamic>.from(item as Map);
+        if (itemMap['date'] == map['date']) {
+          itemMap['_syncStatus'] = 'synced';
+        }
+        return itemMap;
+      }).toList();
+      await _box.put(childId, syncedList);
+      AppDataBus.notifyChanged();
     } catch (e) {
-      debugPrint('Offline measurement sync failed: $e');
+      debugPrint('Offline measurement saved locally; queued for synchronization: $e');
     }
   }
 }

@@ -7,6 +7,8 @@ import '../../data/growth_standards/growth_classifier.dart';
 import '../../data/local/activity_log_repository.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/measurement_repository.dart';
+import '../../data/local/notification_repository.dart';
+import '../../data/models/app_notification.dart';
 import '../../data/models/child.dart';
 import '../../data/models/measurement.dart';
 import '../../shared/utils/app_pickers.dart';
@@ -57,10 +59,11 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
   // Computed live as the BNS types — this is what feeds the preview card,
   // matching the wireframe's "Auto-computed Nutritional Status" behavior.
-  ({String weight, String height, String wasting})? get _liveResult {
+  // Module 3: Automatically identify nutritional status based on result of computed BMI & WHO standards.
+  ({String weight, String height, String wasting, double bmi, String bmiStatus})? get _liveResult {
     final w = double.tryParse(_weightController.text);
     final h = double.tryParse(_heightController.text);
-    if (w == null || h == null) return null;
+    if (w == null || h == null || h <= 0) return null;
 
     final weightStatus = GrowthClassifier.classifyWeightForAge(
       weightKg: w,
@@ -77,33 +80,76 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       heightCm: h,
       gender: widget.child.gender,
     );
+
+    final hMeters = h / 100;
+    final bmiVal = double.parse((w / (hMeters * hMeters)).toStringAsFixed(2));
+    String bmiStatus = 'Normal';
+    if (bmiVal < 18.5) {
+      bmiStatus = 'Underweight';
+    } else if (bmiVal < 25.0) {
+      bmiStatus = 'Normal';
+    } else if (bmiVal < 30.0) {
+      bmiStatus = 'Overweight';
+    } else {
+      bmiStatus = 'Obese';
+    }
+
     return (
       weight: weightStatus,
       height: heightStatus,
       wasting: _edema ? 'SAM' : wastingStatus,
+      bmi: bmiVal,
+      bmiStatus: bmiStatus,
     );
   }
 
-  bool get _isFormValid =>
-      double.tryParse(_weightController.text.trim()) != null &&
-      double.tryParse(_heightController.text.trim()) != null &&
-      (!_isMuacEligible || double.tryParse(_muacController.text.trim()) != null);
+  // Module 3 Requirement: "The system shall validate input data (e.g., height, weight, age) to prevent incorrect or unrealistic entries."
+  bool get _isFormValid {
+    final w = double.tryParse(_weightController.text.trim());
+    final h = double.tryParse(_heightController.text.trim());
+    final m = _isMuacEligible ? double.tryParse(_muacController.text.trim()) : null;
+
+    if (w == null || h == null || (_isMuacEligible && m == null)) return false;
+    if (w < 1.0 || w > 50.0) return false;
+    if (h < 35.0 || h > 140.0) return false;
+    if (_isMuacEligible && (m! < 7.0 || m > 30.0)) return false;
+    return true;
+  }
 
   Future<void> _handleSave() async {
-    if (!_isFormValid) {
+    final rawW = double.tryParse(_weightController.text.trim());
+    final rawH = double.tryParse(_heightController.text.trim());
+    final rawM = _isMuacEligible ? double.tryParse(_muacController.text.trim()) : null;
+
+    if (rawW == null || rawH == null || (_isMuacEligible && rawM == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter valid numeric values for weight, height, and MUAC.'),
-        ),
+        const SnackBar(content: Text('Please enter valid numeric values for weight, height, and MUAC.')),
       );
       return;
     }
 
-    final previewWeight = double.parse(_weightController.text.trim());
-    final previewHeight = double.parse(_heightController.text.trim());
-    final previewMuac = _isMuacEligible
-        ? double.parse(_muacController.text.trim())
-        : null;
+    if (rawW < 1.0 || rawW > 50.0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unrealistic weight entry. Weight must be between 1.0 kg and 50.0 kg.')),
+      );
+      return;
+    }
+    if (rawH < 35.0 || rawH > 140.0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unrealistic height entry. Height must be between 35.0 cm and 140.0 cm.')),
+      );
+      return;
+    }
+    if (_isMuacEligible && (rawM! < 7.0 || rawM > 30.0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unrealistic MUAC entry. MUAC must be between 7.0 cm and 30.0 cm.')),
+      );
+      return;
+    }
+
+    final previewWeight = rawW;
+    final previewHeight = rawH;
+    final previewMuac = rawM;
     final previewStatus = _liveResult;
 
     final confirmed = await showDialog<bool>(
@@ -120,6 +166,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             const SizedBox(height: 8),
             const Text('Auto-computed nutritional status:'),
             if (previewStatus != null) ...[
+              Text('Computed BMI: ${previewStatus.bmi} kg/m² (${previewStatus.bmiStatus})'),
               Text('Weight-for-age: ${previewStatus.weight}'),
               Text('Height-for-age: ${previewStatus.height}'),
               Text('Wasting: ${previewStatus.wasting}'),
@@ -172,6 +219,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       weightForAgeStatus: weightStatus,
       heightForAgeStatus: heightStatus,
       weightForLengthStatus: wastingStatus,
+      customBmi: previewStatus?.bmi,
+      customBmiStatus: previewStatus?.bmiStatus,
     );
 
     await _measurementRepo.addMeasurement(widget.child.id, measurement);
@@ -187,8 +236,24 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
     await _activityRepo.logActivity(
       type: 'measurement_recorded',
-      title: 'Recorded measurement for ${widget.child.fullName}',
+      title: 'Recorded measurement for ${widget.child.fullName} (BMI: ${measurement.bmi} - ${measurement.bmiStatus})',
     );
+
+    // Module 3: Notify BNS if there are beneficiaries at high risk of nutritional concerns
+    if (measurement.isSevere || measurement.bmiStatus == 'Obese') {
+      final severeReason = _buildSevereReason(measurement);
+      await NotificationRepository().add(
+        AppNotification(
+          id: NotificationRepository.generateId(),
+          title: 'High Risk Alert: ${widget.child.fullName}',
+          message: '${widget.child.fullName} is at high risk of nutritional concerns: $severeReason (Computed BMI: ${measurement.bmi} kg/m²). Referral to BHW recommended.',
+          timestamp: DateTime.now(),
+          isRead: false,
+          relatedId: widget.child.id,
+          type: 'urgent',
+        ),
+      );
+    }
 
     if (!mounted) return;
     setState(() => _isSaving = false);
@@ -442,6 +507,14 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                               spacing: 8,
                               runSpacing: 6,
                               children: [
+                                StatusBadge(
+                                  label: 'BMI: ${result.bmi} (${result.bmiStatus})',
+                                  color: result.bmiStatus == 'Normal'
+                                      ? AppColors.primaryGreen
+                                      : result.bmiStatus == 'Underweight'
+                                          ? AppColors.statOrange
+                                          : AppColors.statRed,
+                                ),
                                 StatusBadge(
                                   label: result.weight,
                                   color: ChildStatusMeta.colorFor(

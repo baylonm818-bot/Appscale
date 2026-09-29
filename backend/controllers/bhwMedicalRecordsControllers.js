@@ -24,7 +24,7 @@ exports.getMedicalRecordsList = async (req, res) => {
     if (role === 'bns') {
       const [[{ cnt }]] = await pool.query(
         `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-        [process.env.DB_DATABASE || process.env.DB_NAME || 'appscale_db', 'children', 'encoded_by']
+        [process.env.DB_DATABASE || process.env.DB_NAME || 'test', 'children', 'encoded_by']
       );
 
       if (Number(cnt) > 0) {
@@ -36,7 +36,7 @@ exports.getMedicalRecordsList = async (req, res) => {
     const [children] = await pool.query(
       `SELECT
          c.child_id, c.first_name, c.last_name, c.sex, c.age_in_months, c.guardian_name,
-         nr.overall_status, nr.record_date AS last_visit
+         nr.overall_status, nr.record_date AS last_visit, nr.weight_kg, nr.height_cm, nr.bmi, nr.bmi_status
        FROM children c
        LEFT JOIN (
          SELECT nr1.*
@@ -108,9 +108,8 @@ exports.getChildMedicalHistory = async (req, res) => {
   const role = String(req.user?.role || '').toLowerCase();
 
   try {
-    // SECURITY FIX: Verify the child belongs to the requesting user's barangay (IDOR prevention)
     const [[child]] = await pool.query(
-      'SELECT child_id, barangay FROM children WHERE child_id = ?',
+      'SELECT child_id, first_name, last_name, barangay, age_in_months, sex FROM children WHERE child_id = ?',
       [childId]
     );
     if (!child) return res.status(404).json({ message: 'Child not found.' });
@@ -123,39 +122,187 @@ exports.getChildMedicalHistory = async (req, res) => {
 
     const [nutritionHistory] = await pool.query(
       `SELECT record_id, record_date, age_in_months, weight_kg, height_cm, muac_cm,
-              weight_status, height_status, overall_status
+              weight_status, height_status, overall_status, bmi, bmi_status
        FROM nutrition_records
        WHERE child_id = ?
        ORDER BY record_date DESC`,
       [childId]
     );
 
-    const [[serviceTypesRow]] = await pool.query(
-      `SELECT COUNT(*) AS cnt
-       FROM INFORMATION_SCHEMA.TABLES
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
-      ['service_types']
-    );
-
-    const hasServiceTypesTable = Number(serviceTypesRow?.cnt || 0) > 0;
-
     const [servicesHistory] = await pool.query(
-      hasServiceTypesTable
-        ? `SELECT cs.service_id, cs.service_date, cs.next_schedule, cs.provided_by, st.type_name
-            FROM child_services cs
-            LEFT JOIN service_types st ON st.type_name = cs.service_type
-            WHERE cs.child_id = ?
-            ORDER BY cs.service_date DESC`
-        : `SELECT cs.service_id, cs.service_date, cs.next_schedule, cs.provided_by, cs.service_type AS type_name
-            FROM child_services cs
-            WHERE cs.child_id = ?
-            ORDER BY cs.service_date DESC`,
+      `SELECT cs.service_id, cs.service_date, cs.service_type, cs.service_name, cs.dosage,
+              cs.next_schedule, cs.provided_by, cs.notes
+       FROM child_services cs
+       WHERE cs.child_id = ?
+       ORDER BY cs.service_date DESC, cs.service_id DESC`,
       [childId]
     );
 
-    return res.status(200).json({ nutritionHistory, servicesHistory });
+    const [referrals] = await pool.query(
+      `SELECT referral_id, reason, severity, status, notes, created_at
+       FROM referrals
+       WHERE child_id = ?
+       ORDER BY created_at DESC`,
+      [childId]
+    );
+
+    return res.status(200).json({ child, nutritionHistory, servicesHistory, referrals });
   } catch (error) {
     console.error('Get child medical history error:', error);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+exports.getMotherMedicalHistory = async (req, res) => {
+  const { motherId } = req.params;
+  const role = String(req.user?.role || '').toLowerCase();
+
+  try {
+    const [[mother]] = await pool.query(
+      'SELECT mother_id, first_name, last_name, birth_date, contact_number, purok, barangay, status FROM mothers WHERE mother_id = ?',
+      [motherId]
+    );
+    if (!mother) return res.status(404).json({ message: 'Mother not found.' });
+
+    if (role !== 'admin') {
+      if (!req.user?.barangay || mother.barangay !== req.user.barangay) {
+        return res.status(403).json({ message: 'Forbidden: This mother does not belong to your barangay.' });
+      }
+    }
+
+    const [servicesHistory] = await pool.query(
+      `SELECT service_id, service_date, service_type, service_name, dosage,
+              next_schedule, provided_by, notes, created_at
+       FROM mother_services
+       WHERE mother_id = ?
+       ORDER BY service_date DESC, service_id DESC`,
+      [motherId]
+    );
+
+    const [referrals] = await pool.query(
+      `SELECT referral_id, reason, severity, status, notes, created_at
+       FROM referrals
+       WHERE mother_id = ?
+       ORDER BY created_at DESC`,
+      [motherId]
+    );
+
+    const [children] = await pool.query(
+      `SELECT child_id, first_name, last_name, age_in_months, sex, status
+       FROM children
+       WHERE guardian_name = CONCAT(?, ' ', ?) OR mother_id = ?`,
+      [mother.first_name, mother.last_name, motherId]
+    );
+
+    return res.status(200).json({ mother, servicesHistory, referrals, children });
+  } catch (error) {
+    console.error('Get mother medical history error:', error);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+/**
+ * Record medication, supplement, or health intervention for Child
+ * Module 4 Requirement: "The system shall enable BHW to record and monitor medications, supplements, and health interventions provided to children and lactating mothers."
+ * Module 4 Requirement: "The system shall maintain an audit trail to track all modifications made to medical records, including the user and timestamp."
+ */
+exports.createChildMedicalRecord = async (req, res) => {
+  const { child_id, service_type, service_name, dosage, service_date, next_schedule, notes } = req.body;
+  const userId = req.user?.user_id;
+  const userName = `${req.user?.first_name || ''} ${req.user?.last_name || ''}`.trim() || 'BHW User';
+
+  if (!child_id || !service_type || !service_date) {
+    return res.status(400).json({ message: 'Child ID, service type, and service date are required.' });
+  }
+
+  try {
+    const [[child]] = await pool.query('SELECT child_id, first_name, last_name, barangay FROM children WHERE child_id = ?', [child_id]);
+    if (!child) return res.status(404).json({ message: 'Child not found.' });
+
+    const [result] = await pool.query(
+      `INSERT INTO child_services (child_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [child_id, service_type, service_name || null, dosage || null, service_date, next_schedule || null, userName, notes || null]
+    );
+
+    // Audit trail logging
+    const actionDetails = `Recorded ${service_type}${service_name ? ': ' + service_name : ''} (Dosage: ${dosage || 'N/A'}, Date: ${service_date})`;
+    await pool.query(
+      `INSERT INTO medical_records_audit_trail (record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name, action, action_details, modified_by, modifier_name, timestamp)
+       VALUES ('child_services', ?, 'child', ?, ?, 'CREATE', ?, ?, ?, NOW())`,
+      [result.insertId, child_id, `${child.first_name} ${child.last_name}`, actionDetails, userId, userName]
+    );
+
+    return res.status(201).json({ message: 'Medical intervention recorded successfully.', service_id: result.insertId });
+  } catch (error) {
+    console.error('Create child medical record error:', error);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+/**
+ * Record medication, supplement, or health intervention for Lactating Mother
+ */
+exports.createMotherMedicalRecord = async (req, res) => {
+  const { mother_id, service_type, service_name, dosage, service_date, next_schedule, notes } = req.body;
+  const userId = req.user?.user_id;
+  const userName = `${req.user?.first_name || ''} ${req.user?.last_name || ''}`.trim() || 'BHW User';
+
+  if (!mother_id || !service_type || !service_date) {
+    return res.status(400).json({ message: 'Mother ID, service type, and service date are required.' });
+  }
+
+  try {
+    const [[mother]] = await pool.query('SELECT mother_id, first_name, last_name, barangay FROM mothers WHERE mother_id = ?', [mother_id]);
+    if (!mother) return res.status(404).json({ message: 'Mother not found.' });
+
+    const [result] = await pool.query(
+      `INSERT INTO mother_services (mother_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [mother_id, service_type, service_name || null, dosage || null, service_date, next_schedule || null, userName, notes || null]
+    );
+
+    // Audit trail logging
+    const actionDetails = `Recorded ${service_type}${service_name ? ': ' + service_name : ''} (Dosage: ${dosage || 'N/A'}, Date: ${service_date})`;
+    await pool.query(
+      `INSERT INTO medical_records_audit_trail (record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name, action, action_details, modified_by, modifier_name, timestamp)
+       VALUES ('mother_services', ?, 'mother', ?, ?, 'CREATE', ?, ?, ?, NOW())`,
+      [result.insertId, mother_id, `${mother.first_name} ${mother.last_name}`, actionDetails, userId, userName]
+    );
+
+    return res.status(201).json({ message: 'Medical intervention recorded successfully.', service_id: result.insertId });
+  } catch (error) {
+    console.error('Create mother medical record error:', error);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+/**
+ * Get Audit Trail
+ * Module 4 Requirement: "The system shall maintain an audit trail to track all modifications made to medical records, including the user and timestamp."
+ */
+exports.getMedicalRecordsAuditTrail = async (req, res) => {
+  const { beneficiaryType, beneficiaryId } = req.query;
+
+  try {
+    let query = `
+      SELECT audit_id, record_type, record_id, beneficiary_type, beneficiary_id,
+             beneficiary_name, action, action_details, modified_by, modifier_name, timestamp
+      FROM medical_records_audit_trail
+    `;
+    const params = [];
+
+    if (beneficiaryType && beneficiaryId) {
+      query += ` WHERE beneficiary_type = ? AND beneficiary_id = ?`;
+      params.push(beneficiaryType, beneficiaryId);
+    }
+
+    query += ` ORDER BY timestamp DESC LIMIT 100`;
+
+    const [logs] = await pool.query(query, params);
+    return res.status(200).json(logs);
+  } catch (error) {
+    console.error('Get medical records audit trail error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };

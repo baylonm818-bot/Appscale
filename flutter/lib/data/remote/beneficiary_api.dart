@@ -100,6 +100,14 @@ class BeneficiaryApi {
     throw Exception('Failed to fetch mothers for barangay');
   }
 
+  static Future<void> deactivateAccount(int userId, String password, String reason) async {
+    final settings = SettingsRepository();
+    await _post('/profile/$userId/deactivate', {
+      'password': password,
+      'reason': reason,
+    }, settings.authToken);
+  }
+
   static Future<void> _post(
     String path,
     Map<String, dynamic> payload,

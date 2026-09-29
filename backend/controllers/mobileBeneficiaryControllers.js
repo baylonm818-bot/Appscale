@@ -418,13 +418,25 @@ exports.syncNutritionRecord = async (req, res) => {
       });
     }
 
+    // Module 3 Requirement: "The system will automatically identify the nutritional status (obese, normal, underweight, etc.) based on the result of beneficiaries computed BMI."
+    let computedBmi = null;
+    let bmiStatus = null;
+    if (safeHeight > 0 && safeWeight > 0) {
+      const heightInMeters = safeHeight / 100;
+      computedBmi = Number((safeWeight / (heightInMeters * heightInMeters)).toFixed(2));
+      if (computedBmi < 18.5) bmiStatus = 'Underweight';
+      else if (computedBmi < 25.0) bmiStatus = 'Normal';
+      else if (computedBmi < 30.0) bmiStatus = 'Overweight';
+      else bmiStatus = 'Obese';
+    }
+
     const [result] = await pool.query(
       `INSERT INTO nutrition_records (
          child_id, record_date, age_in_months, weight_kg, height_cm, muac_cm,
-         weight_status, height_status, overall_status, recorded_by
+         weight_status, height_status, overall_status, recorded_by, bmi, bmi_status
        ) VALUES (
          ?, ?, ?, ?, ?, ?,
-         ?, ?, ?, ?
+         ?, ?, ?, ?, ?, ?
        )`,
       [
         resolvedChildId,
@@ -437,6 +449,8 @@ exports.syncNutritionRecord = async (req, res) => {
         hs,
         os,
         recBy,
+        computedBmi,
+        bmiStatus,
       ]
     );
 
