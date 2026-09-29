@@ -6,7 +6,6 @@ import '../../../data/local/app_data_bus.dart';
 import '../../../data/local/hive_boxes.dart';
 import '../../../data/local/mother_repository.dart';
 import '../../../data/local/mother_visit_repository.dart';
-import '../../../data/models/mother.dart';
 import '../../../shared/utils/app_page_route.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../mother_profile/add_counseling_visit_screen.dart';
@@ -207,7 +206,7 @@ class _LactatingMothersCounselingScreenState
                       : ListView.separated(
                           padding: const EdgeInsets.all(AppSpacing.md),
                           itemCount: filtered.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               const SizedBox(height: 10),
                           itemBuilder: (context, index) {
                             final mother = filtered[index];

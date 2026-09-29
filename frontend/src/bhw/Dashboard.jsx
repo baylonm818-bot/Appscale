@@ -12,7 +12,7 @@ function StatCard({ icon: Icon, label, value, sublabel, to, accent }) {
         <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-xs ${
           accent === 'red' ? 'bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white' :
           accent === 'amber' ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white' :
-          'bg-green-50 text-[#2e7d32] group-hover:bg-linear-to-br group-hover:from-[#1b5e20] group-hover:to-[#2e7d32] group-hover:text-white'
+          'bg-green-50 text-[#2e7d32] group-hover:bg-linear-to-r group-hover:from-[#1b5e20] group-hover:to-[#2e7d32] group-hover:text-white'
         }`}>
           <Icon size={18} />
         </div>
