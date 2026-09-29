@@ -24,7 +24,6 @@ const menuItems = [
   { name: 'Referrals & Action Needed', path: '/bhw/referrals', icon: AlertCircle },
   { name: 'Medical Records', path: '/bhw/medical-records', icon: FileText },
   { name: 'Schedule', path: '/bhw/schedule', icon: Calendar },
-  { name: 'Notification', path: '/bhw/notifications', icon: Bell },
   { name: 'My Profile', path: '/bhw/profile', icon: UserCircle },
 ];
 
@@ -227,7 +226,15 @@ function BHWLayout() {
           </div>
 
           <div className="relative flex items-center gap-3">
-
+            <button
+              type="button"
+              aria-label="View notifications"
+              onClick={() => navigate('/bhw/notifications')}
+              className="relative flex h-10 w-10 items-center justify-center rounded-full text-green-800 transition hover:bg-green-50"
+            >
+              <Bell size={19} />
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">3</span>
+            </button>
 
             <button
               type="button"

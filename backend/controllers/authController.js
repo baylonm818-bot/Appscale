@@ -3,19 +3,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
-const MAX_FAILED_ATTEMPTS = 5;   // Lock account after 5 consecutive wrong passwords
-const LOGIN_COOLDOWN_MS = 30 * 1000; // 30s per-attempt cooldown (prevents rapid brute force)
+const MAX_FAILED_ATTEMPTS = 3;
 const passwordResetTokens = new Map();
-const loginCooldowns = new Map();
-
-function cleanupExpiredLoginCooldowns() {
-  const now = Date.now();
-  for (const [email, cooldownUntil] of loginCooldowns.entries()) {
-    if (now > cooldownUntil) {
-      loginCooldowns.delete(email);
-    }
-  }
-}
 
 function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -193,20 +182,9 @@ exports.verifyOtp = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   const loginEmail = (email || '').trim();
-  const normalizedLoginEmail = loginEmail.toLowerCase();
 
   if (!loginEmail || !password) {
     return res.status(400).json({ message: 'Email and password are required.' });
-  }
-
-  cleanupExpiredLoginCooldowns();
-
-  const cooldownUntil = loginCooldowns.get(normalizedLoginEmail);
-  if (cooldownUntil && Date.now() < cooldownUntil) {
-    const remainingSeconds = Math.ceil((cooldownUntil - Date.now()) / 1000);
-    return res.status(429).json({
-      message: `Too many failed login attempts. Please wait ${remainingSeconds} second(s) before trying again.`,
-    });
   }
 
   console.log('Login attempt for:', loginEmail);
@@ -220,13 +198,13 @@ exports.login = async (req, res) => {
     console.log('DB returned rows:', rows && rows.length);
 
     if (rows.length === 0) {
-      // Don't set cooldown for unknown emails — just return generic message
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
     const user = rows[0];
     const userRole = String(user.role).toLowerCase();
-    const usesLoginAttemptLock = ['admin', 'bhw', 'bns'].includes(userRole);
+    const isAdmin = userRole === 'admin';
+    const usesLoginAttemptLock = ['bhw', 'bns'].includes(userRole);
 
     if (usesLoginAttemptLock && user.status === 'locked') {
       return res.status(403).json({ message: 'Account is locked. Please contact the administrator.' });
@@ -238,8 +216,12 @@ exports.login = async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
     if (!passwordMatch) {
+      if (isAdmin) {
+        // Admin accounts are never locked — just return a generic invalid credentials message.
+        return res.status(401).json({ message: 'Invalid email or password.' });
+      }
+
       const newFailedAttempts = Number(user.failed_attempts || 0) + 1;
-      loginCooldowns.set(normalizedLoginEmail, Date.now() + LOGIN_COOLDOWN_MS);
 
       if (newFailedAttempts >= MAX_FAILED_ATTEMPTS) {
         await pool.query(
@@ -258,8 +240,6 @@ exports.login = async (req, res) => {
       }
     }
 
-    loginCooldowns.delete(normalizedLoginEmail);
-
     if (usesLoginAttemptLock) {
       await pool.query('UPDATE users SET failed_attempts = 0 WHERE user_id = ?', [user.user_id]);
     }
@@ -270,9 +250,6 @@ exports.login = async (req, res) => {
         username: user.username,
         role: user.role,
         full_name: `${user.first_name} ${user.last_name}`,
-        barangay: user.barangay,
-        municipality: user.municipality,
-        email: user.email,
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN }
@@ -326,4 +303,4 @@ exports.devLogin = async (req, res) => {
     console.error('Dev login error:', err && (err.stack || err.message));
     return res.status(500).json({ message: 'Server error' });
   }
-}; 
+};
