@@ -434,10 +434,10 @@ function UserManagement() {
       {/* ── User Modal ── */}
       {showModal && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] flex flex-col my-6">
 
             {/* Header */}
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
@@ -587,10 +587,10 @@ function UserManagement() {
       {/* ── Status Change Confirmation Modal (Are you sure?) ── */}
       {statusConfirm && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto"
           onClick={(e) => { if (e.target === e.currentTarget) setStatusConfirm(null); }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[90vh] my-6 overflow-y-auto">
             <div className="flex items-center gap-3 mb-4">
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
                 statusConfirm.action === 'lock' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-700'

@@ -447,8 +447,8 @@ function NeedAttention() {
 
       {/* ── Log Visit Modal ── */}
       {visitTarget && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setVisitTarget(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setVisitTarget(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] my-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white">
               <div>
                 <h3 className="font-bold text-base">Record Health Visit / Service</h3>
@@ -503,8 +503,8 @@ function NeedAttention() {
 
       {/* ── Refer Modal ── */}
       {referTarget && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setReferTarget(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setReferTarget(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] my-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="bg-linear-to-r from-amber-600 to-orange-600 px-6 py-5 flex items-center justify-between text-white">
               <div>
                 <h3 className="font-bold text-base">Refer Child to RHU / Doctor</h3>

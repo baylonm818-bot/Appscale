@@ -354,8 +354,8 @@ function Profile() {
 
       {/* Deactivate Confirmation Modal */}
       {deactivateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setDeactivateModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setDeactivateModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] my-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="bg-red-600 px-6 py-5 text-white">
               <h3 className="font-bold text-base">Deactivate Your Account?</h3>
               <p className="text-xs text-red-100 mt-0.5">Please confirm with your current password to proceed.</p>
