@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
+import axiosClient from '../api/axiosClient';
 import { useAuth } from './AuthContext';
 import {
   LayoutDashboard,
@@ -31,12 +32,38 @@ function BHWLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   
   const navigate = useNavigate();
   const location = useLocation();
   const { user: authUser } = useAuth();
   const user = authUser || JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
   const [profileImageSrc, setProfileImageSrc] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await axiosClient.get('/bhw/notifications');
+        if (!cancelled) {
+          setUnreadNotifications(Number(response.data?.unreadCount || 0));
+        }
+      } catch {
+        if (!cancelled) {
+          setUnreadNotifications(0);
+        }
+      }
+    };
+
+    fetchUnreadCount();
+    const poll = window.setInterval(fetchUnreadCount, 15000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(poll);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     let cancelled = false;
@@ -233,7 +260,11 @@ function BHWLayout() {
               className="relative flex h-10 w-10 items-center justify-center rounded-full text-green-800 transition hover:bg-green-50"
             >
               <Bell size={19} />
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">3</span>
+              {unreadNotifications > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                </span>
+              )}
             </button>
 
             <button
