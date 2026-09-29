@@ -22,6 +22,7 @@ const bhwProfileRoutes = require('./routes/bhwProfileRoutes');
 const mobileBeneficiaryRoutes = require('./routes/mobileBeneficiaryRoutes');
 
 const app = express();
+const { ensureMedicalRecordTables } = require('./utils/medicalSchema');
 
 // Trust Render's reverse proxy so rate limiters use real client IP, not proxy IP
 app.set('trust proxy', 1);
@@ -153,9 +154,18 @@ app.get('/', (req, res)=>{
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(PORT, HOST, () => {
-    console.log(`AppScale Backend running on http://${HOST}:${PORT} (Mobile & Web connectivity ready)`);
-});
+(async () => {
+    try {
+        await ensureMedicalRecordTables(require('./config/db'));
+        console.log('Medical record schema checks completed successfully.');
+    } catch (error) {
+        console.error('Medical record schema initialization failed:', error && error.message ? error.message : error);
+    }
+
+    app.listen(PORT, HOST, () => {
+        console.log(`AppScale Backend running on http://${HOST}:${PORT} (Mobile & Web connectivity ready)`);
+    });
+})();
 
 // global error handler (catch unhandled async errors)
 app.use((err, req, res, next) => {

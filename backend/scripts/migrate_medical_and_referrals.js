@@ -8,6 +8,22 @@ async function migrate() {
     await pool.query("UPDATE referrals SET status = 'Ongoing' WHERE status = 'responded'");
     await pool.query("UPDATE referrals SET status = 'Completed' WHERE status = 'closed'");
     
+    console.log('Creating child_services table...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS child_services (
+        service_id INT AUTO_INCREMENT PRIMARY KEY,
+        child_id INT NOT NULL,
+        service_type VARCHAR(100) NOT NULL,
+        service_name VARCHAR(150),
+        dosage VARCHAR(100),
+        service_date DATE NOT NULL,
+        next_schedule DATE,
+        provided_by VARCHAR(100),
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('Creating mother_services table...');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS mother_services (
@@ -18,7 +34,7 @@ async function migrate() {
         dosage VARCHAR(100),
         service_date DATE NOT NULL,
         next_schedule DATE,
-        provided_by VARCHAR(100) NOT NULL,
+        provided_by VARCHAR(100),
         notes TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
@@ -42,17 +58,33 @@ async function migrate() {
     `);
 
     console.log('Checking child_services columns...');
-    const [colsNotes] = await pool.query("SHOW COLUMNS FROM child_services LIKE 'notes'");
-    if (colsNotes.length === 0) {
-      await pool.query('ALTER TABLE child_services ADD COLUMN notes TEXT');
+    const childChecks = [
+      ['notes', 'TEXT'],
+      ['dosage', 'VARCHAR(100)'],
+      ['service_name', 'VARCHAR(150)'],
+      ['next_schedule', 'DATE'],
+      ['provided_by', 'VARCHAR(100)'],
+    ];
+    for (const [columnName, columnType] of childChecks) {
+      const [cols] = await pool.query("SHOW COLUMNS FROM child_services LIKE ?", [columnName]);
+      if (cols.length === 0) {
+        await pool.query(`ALTER TABLE child_services ADD COLUMN ${columnName} ${columnType}`);
+      }
     }
-    const [colsDosage] = await pool.query("SHOW COLUMNS FROM child_services LIKE 'dosage'");
-    if (colsDosage.length === 0) {
-      await pool.query('ALTER TABLE child_services ADD COLUMN dosage VARCHAR(100)');
-    }
-    const [colsName] = await pool.query("SHOW COLUMNS FROM child_services LIKE 'service_name'");
-    if (colsName.length === 0) {
-      await pool.query('ALTER TABLE child_services ADD COLUMN service_name VARCHAR(150)');
+
+    console.log('Checking mother_services columns...');
+    const motherChecks = [
+      ['notes', 'TEXT'],
+      ['dosage', 'VARCHAR(100)'],
+      ['service_name', 'VARCHAR(150)'],
+      ['next_schedule', 'DATE'],
+      ['provided_by', 'VARCHAR(100)'],
+    ];
+    for (const [columnName, columnType] of motherChecks) {
+      const [cols] = await pool.query("SHOW COLUMNS FROM mother_services LIKE ?", [columnName]);
+      if (cols.length === 0) {
+        await pool.query(`ALTER TABLE mother_services ADD COLUMN ${columnName} ${columnType}`);
+      }
     }
 
     console.log('Checking nutrition_records bmi columns...');

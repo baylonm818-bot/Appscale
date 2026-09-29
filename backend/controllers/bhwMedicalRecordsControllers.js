@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { ensureMedicalRecordTables, buildChildServiceInsert, buildMotherServiceInsert } = require('../utils/medicalSchema');
 
 exports.getMedicalRecordsList = async (req, res) => {
   let { barangay } = req.query;
@@ -216,14 +217,25 @@ exports.createChildMedicalRecord = async (req, res) => {
   }
 
   try {
+    await ensureMedicalRecordTables(pool);
+
     const [[child]] = await pool.query('SELECT child_id, first_name, last_name, barangay FROM children WHERE child_id = ?', [child_id]);
     if (!child) return res.status(404).json({ message: 'Child not found.' });
 
-    const [result] = await pool.query(
-      `INSERT INTO child_services (child_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [child_id, service_type, service_name || null, dosage || null, service_date, next_schedule || null, userName, notes || null]
-    );
+    const [columns] = await pool.query('SHOW COLUMNS FROM child_services');
+    const availableColumns = columns.map((column) => column.Field);
+    const insertConfig = buildChildServiceInsert({
+      child_id,
+      service_type,
+      service_name: service_name || null,
+      dosage: dosage || null,
+      service_date,
+      next_schedule: next_schedule || null,
+      provided_by: userName,
+      notes: notes || null,
+    }, availableColumns);
+
+    const [result] = await pool.query(insertConfig.sql, insertConfig.values);
 
     // Audit trail logging
     const actionDetails = `Recorded ${service_type}${service_name ? ': ' + service_name : ''} (Dosage: ${dosage || 'N/A'}, Date: ${service_date})`;
@@ -253,14 +265,25 @@ exports.createMotherMedicalRecord = async (req, res) => {
   }
 
   try {
+    await ensureMedicalRecordTables(pool);
+
     const [[mother]] = await pool.query('SELECT mother_id, first_name, last_name, barangay FROM mothers WHERE mother_id = ?', [mother_id]);
     if (!mother) return res.status(404).json({ message: 'Mother not found.' });
 
-    const [result] = await pool.query(
-      `INSERT INTO mother_services (mother_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [mother_id, service_type, service_name || null, dosage || null, service_date, next_schedule || null, userName, notes || null]
-    );
+    const [columns] = await pool.query('SHOW COLUMNS FROM mother_services');
+    const availableColumns = columns.map((column) => column.Field);
+    const insertConfig = buildMotherServiceInsert({
+      mother_id,
+      service_type,
+      service_name: service_name || null,
+      dosage: dosage || null,
+      service_date,
+      next_schedule: next_schedule || null,
+      provided_by: userName,
+      notes: notes || null,
+    }, availableColumns);
+
+    const [result] = await pool.query(insertConfig.sql, insertConfig.values);
 
     // Audit trail logging
     const actionDetails = `Recorded ${service_type}${service_name ? ': ' + service_name : ''} (Dosage: ${dosage || 'N/A'}, Date: ${service_date})`;
