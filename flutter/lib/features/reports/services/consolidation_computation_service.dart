@@ -1,12 +1,38 @@
 import '../../../data/local/child_repository.dart';
+import '../../../data/local/measurement_repository.dart';
 import '../../../data/models/child.dart';
 
-/// Computes the "New" (current, live) counts for each consolidation
-/// report type, straight from active Child records. There is no fake
-/// historical calculation here — "Old" comes separately from the last
-/// saved ReportSnapshot, never invented.
+class ConsolidationRowData {
+  final String label;
+  final List<int> values;
+  const ConsolidationRowData({required this.label, required this.values});
+}
+
+class ConsolidationMatrixData {
+  final String reportTypeId;
+  final String title;
+  final String barangay;
+  final int year;
+  final List<String> mainHeaders;
+  final List<String> subHeaders;
+  final List<ConsolidationRowData> rows;
+
+  const ConsolidationMatrixData({
+    required this.reportTypeId,
+    required this.title,
+    required this.barangay,
+    required this.year,
+    required this.mainHeaders,
+    required this.subHeaders,
+    required this.rows,
+  });
+}
+
+/// Computes multi-month (12-month Jan-Dec) and quarterly (Q1-Q4 Boys/Girls/Total)
+/// consolidation matrices matching official DOH/NNC forms (FORMS-WEIGHING-0-23-MOS).
 class ConsolidationComputationService {
   final _childRepo = ChildRepository();
+  final _measurementRepo = MeasurementRepository();
 
   Map<String, int> compute(String reportTypeId, String barangay) {
     switch (reportTypeId) {
@@ -23,6 +49,341 @@ class ConsolidationComputationService {
       default:
         return {};
     }
+  }
+
+  ConsolidationMatrixData computeMatrix(
+    String reportTypeId,
+    String barangay, {
+    int? year,
+  }) {
+    final targetYear = year ?? DateTime.now().year;
+
+    if (reportTypeId == 'consolidation_24_59') {
+      return _compute24to59Matrix(barangay, targetYear);
+    }
+    if (reportTypeId == 'stunted_sst') {
+      return _computeStuntedMatrix(barangay, targetYear);
+    }
+    if (reportTypeId == 'uw_suw') {
+      return _computeUwMatrix(barangay, targetYear);
+    }
+
+    // Default: consolidation_0_23
+    return _compute0to23Matrix(barangay, targetYear);
+  }
+
+  ConsolidationMatrixData _compute0to23Matrix(String barangay, int year) {
+    final children = _childRepo.getByBarangay(barangay);
+    final months = [
+      'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+      'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+    ];
+    final subHeaders = List.generate(24, (i) => i.isEven ? 'OLD' : 'NEW');
+
+    List<int> rowNormal = List.filled(24, 0);
+    List<int> rowUw = List.filled(24, 0);
+    List<int> rowSuw = List.filled(24, 0);
+    List<int> rowSubTotal = List.filled(24, 0);
+    List<int> rowNotWeighed = List.filled(24, 0);
+    List<int> rowOverAge = List.filled(24, 0);
+    List<int> rowMovedOut = List.filled(24, 0);
+    List<int> rowDeceased = List.filled(24, 0);
+    List<int> rowGrandTotal = List.filled(24, 0);
+
+    for (int m = 1; m <= 12; m++) {
+      final oldIdx = (m - 1) * 2;
+      final newIdx = oldIdx + 1;
+
+      for (final child in children) {
+        final age = (year - child.birthDate.year) * 12 + (m - child.birthDate.month);
+        
+        if (!child.isActive) {
+          if (child.inactiveReason == 'Transferred') {
+            rowMovedOut[newIdx]++;
+            rowMovedOut[oldIdx]++;
+          } else if (child.inactiveReason == 'Deceased') {
+            rowDeceased[newIdx]++;
+            rowDeceased[oldIdx]++;
+          } else {
+            rowOverAge[newIdx]++;
+            rowOverAge[oldIdx]++;
+          }
+          continue;
+        }
+
+        if (age < 0) continue; // Not born yet
+
+        if (age >= 24) {
+          rowOverAge[newIdx]++;
+          rowOverAge[oldIdx]++;
+          continue;
+        }
+
+        // Active child 0-23 months
+        final measurements = _measurementRepo.getForChild(child.id);
+        final thisMonthMs = measurements.where((mRec) => mRec.date.year == year && mRec.date.month == m).toList();
+        final prevMs = measurements.where((mRec) => mRec.date.year < year || (mRec.date.year == year && mRec.date.month < m)).toList();
+
+        final statusNew = thisMonthMs.isNotEmpty ? thisMonthMs.first.bmiStatus : child.nutritionStatus;
+        final statusOld = prevMs.isNotEmpty ? prevMs.first.bmiStatus : 'Normal';
+
+        // Fill OLD column
+        if (statusOld == 'Underweight') {
+          rowUw[oldIdx]++;
+        } else if (statusOld == 'Severely Underweight') {
+          rowSuw[oldIdx]++;
+        } else {
+          rowNormal[oldIdx]++;
+        }
+
+        // Fill NEW column
+        if (thisMonthMs.isEmpty) {
+          rowNotWeighed[newIdx]++;
+          if (statusNew == 'Underweight') {
+            rowUw[newIdx]++;
+          } else if (statusNew == 'Severely Underweight') {
+            rowSuw[newIdx]++;
+          } else {
+            rowNormal[newIdx]++;
+          }
+        } else {
+          if (statusNew == 'Underweight') {
+            rowUw[newIdx]++;
+          } else if (statusNew == 'Severely Underweight') {
+            rowSuw[newIdx]++;
+          } else {
+            rowNormal[newIdx]++;
+          }
+        }
+      }
+
+      rowSubTotal[oldIdx] = rowNormal[oldIdx] + rowUw[oldIdx] + rowSuw[oldIdx];
+      rowSubTotal[newIdx] = rowNormal[newIdx] + rowUw[newIdx] + rowSuw[newIdx];
+
+      rowGrandTotal[oldIdx] = rowSubTotal[oldIdx] + rowNotWeighed[oldIdx] + rowOverAge[oldIdx] + rowMovedOut[oldIdx] + rowDeceased[oldIdx];
+      rowGrandTotal[newIdx] = rowSubTotal[newIdx] + rowNotWeighed[newIdx] + rowOverAge[newIdx] + rowMovedOut[newIdx] + rowDeceased[newIdx];
+    }
+
+    return ConsolidationMatrixData(
+      reportTypeId: 'consolidation_0_23',
+      title: 'CONSOLIDATION 0 - 23 MONTHS',
+      barangay: barangay,
+      year: year,
+      mainHeaders: months,
+      subHeaders: subHeaders,
+      rows: [
+        ConsolidationRowData(label: 'NO. of NORMAL', values: rowNormal),
+        ConsolidationRowData(label: 'NO. of UNDERWEIGHT', values: rowUw),
+        ConsolidationRowData(label: 'NO. of SEVERELY UNDERWEIGHT', values: rowSuw),
+        ConsolidationRowData(label: 'TOTAL', values: rowSubTotal),
+        ConsolidationRowData(label: 'Hindi natimbang:', values: rowNotWeighed),
+        ConsolidationRowData(label: 'Sobra sa Edad', values: rowOverAge),
+        ConsolidationRowData(label: 'Lumipat ng Tirahan', values: rowMovedOut),
+        ConsolidationRowData(label: 'Namatay', values: rowDeceased),
+        ConsolidationRowData(label: 'TOTAL', values: rowGrandTotal),
+      ],
+    );
+  }
+
+  ConsolidationMatrixData _compute24to59Matrix(String barangay, int year) {
+    final children = _childRepo.getByBarangay(barangay);
+    final mainHeaders = ['BOYS', 'GIRLS', 'TOTAL'];
+    final subHeaders = [
+      '1ST. QTR.', '2ND. QTR.', '3RD.QTR.', '4TH.QTR.',
+      '1ST. QTR.', '2ND. QTR.', '3RD.QTR.', '4TH.QTR.',
+      '1ST. QTR.', '2ND. QTR.', '3RD.QTR.', '4TH.QTR.'
+    ];
+
+    List<int> rowNormal = List.filled(12, 0);
+    List<int> rowUw = List.filled(12, 0);
+    List<int> rowSuw = List.filled(12, 0);
+    List<int> rowOw = List.filled(12, 0);
+    List<int> rowSubTotal = List.filled(12, 0);
+    List<int> rowNotWeighed = List.filled(12, 0);
+    List<int> rowOverAge = List.filled(12, 0);
+    List<int> rowMovedOut = List.filled(12, 0);
+    List<int> rowDeceased = List.filled(12, 0);
+    List<int> rowGrandTotal = List.filled(12, 0);
+
+    for (int q = 1; q <= 4; q++) {
+      final qEndMonth = q * 3;
+      final boysIdx = q - 1;       // 0,1,2,3
+      final girlsIdx = q + 3;      // 4,5,6,7
+      final totalIdx = q + 7;      // 8,9,10,11
+
+      for (final child in children) {
+        final age = (year - child.birthDate.year) * 12 + (qEndMonth - child.birthDate.month);
+        final isBoy = child.gender == 'Male';
+        final targetIdx = isBoy ? boysIdx : girlsIdx;
+
+        if (!child.isActive) {
+          if (child.inactiveReason == 'Transferred') {
+            rowMovedOut[targetIdx]++;
+            rowMovedOut[totalIdx]++;
+          } else if (child.inactiveReason == 'Deceased') {
+            rowDeceased[targetIdx]++;
+            rowDeceased[totalIdx]++;
+          } else {
+            rowOverAge[targetIdx]++;
+            rowOverAge[totalIdx]++;
+          }
+          continue;
+        }
+
+        if (age < 24) continue;
+
+        if (age >= 60) {
+          rowOverAge[targetIdx]++;
+          rowOverAge[totalIdx]++;
+          continue;
+        }
+
+        final status = child.nutritionStatus;
+        if (status == 'Underweight') {
+          rowUw[targetIdx]++;
+          rowUw[totalIdx]++;
+        } else if (status == 'Severely Underweight') {
+          rowSuw[targetIdx]++;
+          rowSuw[totalIdx]++;
+        } else if (status == 'Overweight' || child.wastingStatus == 'Overweight') {
+          rowOw[targetIdx]++;
+          rowOw[totalIdx]++;
+        } else {
+          rowNormal[targetIdx]++;
+          rowNormal[totalIdx]++;
+        }
+      }
+
+      rowSubTotal[boysIdx] = rowNormal[boysIdx] + rowUw[boysIdx] + rowSuw[boysIdx] + rowOw[boysIdx];
+      rowSubTotal[girlsIdx] = rowNormal[girlsIdx] + rowUw[girlsIdx] + rowSuw[girlsIdx] + rowOw[girlsIdx];
+      rowSubTotal[totalIdx] = rowSubTotal[boysIdx] + rowSubTotal[girlsIdx];
+
+      rowGrandTotal[boysIdx] = rowSubTotal[boysIdx] + rowNotWeighed[boysIdx] + rowOverAge[boysIdx] + rowMovedOut[boysIdx] + rowDeceased[boysIdx];
+      rowGrandTotal[girlsIdx] = rowSubTotal[girlsIdx] + rowNotWeighed[girlsIdx] + rowOverAge[girlsIdx] + rowMovedOut[girlsIdx] + rowDeceased[girlsIdx];
+      rowGrandTotal[totalIdx] = rowGrandTotal[boysIdx] + rowGrandTotal[girlsIdx];
+    }
+
+    return ConsolidationMatrixData(
+      reportTypeId: 'consolidation_24_59',
+      title: 'CONSOLIDATION 24 - 59 MONTHS',
+      barangay: barangay,
+      year: year,
+      mainHeaders: mainHeaders,
+      subHeaders: subHeaders,
+      rows: [
+        ConsolidationRowData(label: 'NORMAL', values: rowNormal),
+        ConsolidationRowData(label: 'UNDERWEIGHT', values: rowUw),
+        ConsolidationRowData(label: 'SEVERELY UNDERWEIGHT', values: rowSuw),
+        ConsolidationRowData(label: 'OVERWEIGHT', values: rowOw),
+        ConsolidationRowData(label: 'TOTAL', values: rowSubTotal),
+        ConsolidationRowData(label: 'Hindi natimbang:', values: rowNotWeighed),
+        ConsolidationRowData(label: 'Sobra sa Edad', values: rowOverAge),
+        ConsolidationRowData(label: 'Lumipat ng Tirahan', values: rowMovedOut),
+        ConsolidationRowData(label: 'Namatay', values: rowDeceased),
+        ConsolidationRowData(label: 'TOTAL', values: rowGrandTotal),
+      ],
+    );
+  }
+
+  ConsolidationMatrixData _computeUwMatrix(String barangay, int year) {
+    final matrix = _compute0to23Matrix(barangay, year);
+    return ConsolidationMatrixData(
+      reportTypeId: 'uw_suw',
+      title: 'CONSOLIDATION UNDERWEIGHT / SEVERELY UNDERWEIGHT',
+      barangay: barangay,
+      year: year,
+      mainHeaders: matrix.mainHeaders,
+      subHeaders: matrix.subHeaders,
+      rows: matrix.rows,
+    );
+  }
+
+  ConsolidationMatrixData _computeStuntedMatrix(String barangay, int year) {
+    final children = _childRepo.getByBarangay(barangay);
+    final months = [
+      'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+      'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+    ];
+    final subHeaders = List.generate(24, (i) => i.isEven ? 'OLD' : 'NEW');
+
+    List<int> rowNormal = List.filled(24, 0);
+    List<int> rowStunted = List.filled(24, 0);
+    List<int> rowSeverelyStunted = List.filled(24, 0);
+    List<int> rowSubTotal = List.filled(24, 0);
+    List<int> rowNotWeighed = List.filled(24, 0);
+    List<int> rowOverAge = List.filled(24, 0);
+    List<int> rowMovedOut = List.filled(24, 0);
+    List<int> rowDeceased = List.filled(24, 0);
+    List<int> rowGrandTotal = List.filled(24, 0);
+
+    for (int m = 1; m <= 12; m++) {
+      final oldIdx = (m - 1) * 2;
+      final newIdx = oldIdx + 1;
+
+      for (final child in children) {
+        final age = (year - child.birthDate.year) * 12 + (m - child.birthDate.month);
+        
+        if (!child.isActive) {
+          if (child.inactiveReason == 'Transferred') {
+            rowMovedOut[newIdx]++;
+            rowMovedOut[oldIdx]++;
+          } else if (child.inactiveReason == 'Deceased') {
+            rowDeceased[newIdx]++;
+            rowDeceased[oldIdx]++;
+          } else {
+            rowOverAge[newIdx]++;
+            rowOverAge[oldIdx]++;
+          }
+          continue;
+        }
+
+        if (age < 0 || age >= 60) {
+          if (age >= 60) {
+            rowOverAge[newIdx]++;
+            rowOverAge[oldIdx]++;
+          }
+          continue;
+        }
+
+        final status = child.stuntingStatus;
+        if (status == 'Stunted') {
+          rowStunted[newIdx]++;
+          rowStunted[oldIdx]++;
+        } else if (status == 'Severely Stunted') {
+          rowSeverelyStunted[newIdx]++;
+          rowSeverelyStunted[oldIdx]++;
+        } else {
+          rowNormal[newIdx]++;
+          rowNormal[oldIdx]++;
+        }
+      }
+
+      rowSubTotal[oldIdx] = rowNormal[oldIdx] + rowStunted[oldIdx] + rowSeverelyStunted[oldIdx];
+      rowSubTotal[newIdx] = rowNormal[newIdx] + rowStunted[newIdx] + rowSeverelyStunted[newIdx];
+
+      rowGrandTotal[oldIdx] = rowSubTotal[oldIdx] + rowNotWeighed[oldIdx] + rowOverAge[oldIdx] + rowMovedOut[oldIdx] + rowDeceased[oldIdx];
+      rowGrandTotal[newIdx] = rowSubTotal[newIdx] + rowNotWeighed[newIdx] + rowOverAge[newIdx] + rowMovedOut[newIdx] + rowDeceased[newIdx];
+    }
+
+    return ConsolidationMatrixData(
+      reportTypeId: 'stunted_sst',
+      title: 'CONSOLIDATION STUNTED / SEVERELY STUNTED',
+      barangay: barangay,
+      year: year,
+      mainHeaders: months,
+      subHeaders: subHeaders,
+      rows: [
+        ConsolidationRowData(label: 'NO. of NORMAL', values: rowNormal),
+        ConsolidationRowData(label: 'NO. of STUNTED', values: rowStunted),
+        ConsolidationRowData(label: 'NO. of SEVERELY STUNTED', values: rowSeverelyStunted),
+        ConsolidationRowData(label: 'TOTAL', values: rowSubTotal),
+        ConsolidationRowData(label: 'Hindi natimbang:', values: rowNotWeighed),
+        ConsolidationRowData(label: 'Sobra sa Edad', values: rowOverAge),
+        ConsolidationRowData(label: 'Lumipat ng Tirahan', values: rowMovedOut),
+        ConsolidationRowData(label: 'Namatay', values: rowDeceased),
+        ConsolidationRowData(label: 'TOTAL', values: rowGrandTotal),
+      ],
+    );
   }
 
   List<Child> _children(String barangay, {int? minAge, int? maxAgeExclusive}) {

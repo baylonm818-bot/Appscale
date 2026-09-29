@@ -26,25 +26,25 @@ class ReportTypes {
     id: 'consolidation_0_23',
     title: 'Consolidation, 0–23 months',
     category: ReportCategory.consolidation,
-    formats: [ExportFormat.pdf],
+    formats: [ExportFormat.pdf, ExportFormat.excel],
   );
   static const consolidation24to59 = ReportTypeInfo(
     id: 'consolidation_24_59',
     title: 'Consolidation, 24–59 months',
     category: ReportCategory.consolidation,
-    formats: [ExportFormat.pdf],
+    formats: [ExportFormat.pdf, ExportFormat.excel],
   );
   static const underweightSuw = ReportTypeInfo(
     id: 'uw_suw',
     title: 'Underweight / severely underweight',
     category: ReportCategory.consolidation,
-    formats: [ExportFormat.pdf],
+    formats: [ExportFormat.pdf, ExportFormat.excel],
   );
   static const stuntedSst = ReportTypeInfo(
     id: 'stunted_sst',
     title: 'Stunted / severely stunted',
     category: ReportCategory.consolidation,
-    formats: [ExportFormat.pdf],
+    formats: [ExportFormat.pdf, ExportFormat.excel],
   );
   static const monthlyWeightRecord = ReportTypeInfo(
     id: 'monthly_weight_record',

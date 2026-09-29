@@ -7,8 +7,6 @@ import '../../data/local/hive_boxes.dart';
 import '../../data/local/measurement_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/report_signatory_repository.dart';
-import '../../data/local/report_snapshot_repository.dart';
-import '../../data/models/report_snapshot.dart';
 import '../../shared/utils/app_pickers.dart';
 import 'report_types.dart';
 import 'services/consolidation_computation_service.dart';
@@ -31,8 +29,6 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   String get _currentBarangay =>
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
-  String get _periodLabel =>
-      '${_period.year}-${_period.month.toString().padLeft(2, '0')}';
 
   Future<void> _pickPeriod() async {
     final picked = await showAppDatePicker(
@@ -48,35 +44,35 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   Future<void> _exportConsolidationPdf() async {
     setState(() => _isExporting = true);
-    final counts = ConsolidationComputationService().compute(
+    final matrix = ConsolidationComputationService().computeMatrix(
       widget.reportType.id,
       _currentBarangay,
-    );
-    final old = ReportSnapshotRepository().getMostRecent(
-      widget.reportType.id,
-      _currentBarangay,
+      year: _period.year,
     );
     final signatory = ReportSignatoryRepository().get(_currentBarangay);
 
-    await ReportPdfService().exportAndShare(
-      fileTitle: '${widget.reportType.id}_${_periodLabel}_$_currentBarangay',
-      title: widget.reportType.title,
-      barangay: _currentBarangay,
-      period: _periodLabel,
-      newCounts: counts,
-      oldCounts: old?.counts,
+    await ReportPdfService().exportMatrixAndShare(
+      fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
+      matrix: matrix,
       signatory: signatory,
     );
 
-    await ReportSnapshotRepository().save(
-      ReportSnapshot(
-        id: ReportSnapshotRepository.generateId(),
-        reportTypeId: widget.reportType.id,
-        barangay: _currentBarangay,
-        period: _periodLabel,
-        counts: counts,
-        generatedAt: DateTime.now(),
-      ),
+    if (mounted) setState(() => _isExporting = false);
+  }
+
+  Future<void> _exportConsolidationExcel() async {
+    setState(() => _isExporting = true);
+    final matrix = ConsolidationComputationService().computeMatrix(
+      widget.reportType.id,
+      _currentBarangay,
+      year: _period.year,
+    );
+    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+
+    await ReportExcelService().exportConsolidationMatrixAndShare(
+      fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
+      matrix: matrix,
+      signatory: signatory,
     );
 
     if (mounted) setState(() => _isExporting = false);
@@ -345,7 +341,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'Period: $_periodLabel',
+                                'Year: ${_period.year}',
                                 style: AppTextStyles.label.copyWith(
                                   fontSize: 13,
                                 ),
@@ -357,10 +353,24 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                       const SizedBox(height: AppSpacing.md),
                       _buildConsolidationPreview(),
                       const SizedBox(height: AppSpacing.lg),
-                      _exportButton(
-                        'Export PDF',
-                        _exportConsolidationPdf,
-                        Icons.picture_as_pdf_outlined,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _exportButton(
+                              'Export PDF',
+                              _exportConsolidationPdf,
+                              Icons.picture_as_pdf_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _exportButton(
+                              'Export Excel',
+                              _exportConsolidationExcel,
+                              Icons.grid_on_outlined,
+                            ),
+                          ),
+                        ],
                       ),
                     ] else ...[
                       Container(
@@ -397,14 +407,12 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   }
 
   Widget _buildConsolidationPreview() {
-    final counts = ConsolidationComputationService().compute(
+    final matrix = ConsolidationComputationService().computeMatrix(
       widget.reportType.id,
       _currentBarangay,
+      year: _period.year,
     );
-    final old = ReportSnapshotRepository().getMostRecent(
-      widget.reportType.id,
-      _currentBarangay,
-    );
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -412,28 +420,48 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      child: Table(
-        border: TableBorder.all(color: AppColors.border, width: 0.5),
-        columnWidths: const {
-          0: FlexColumnWidth(3),
-          1: FlexColumnWidth(1),
-          2: FlexColumnWidth(1),
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TableRow(
-            decoration: BoxDecoration(color: AppColors.background),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _cell('', bold: true),
-              _cell('Old', bold: true),
-              _cell('New', bold: true),
+              Text(
+                matrix.title,
+                style: AppTextStyles.label.copyWith(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'Barangay: ${matrix.barangay}',
+                style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+              ),
             ],
           ),
-          ...counts.entries.map(
-            (e) => TableRow(
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Table(
+              defaultColumnWidth: const IntrinsicColumnWidth(),
+              border: TableBorder.all(color: AppColors.border, width: 0.5),
               children: [
-                _cell(e.key),
-                _cell(old?.counts[e.key]?.toString() ?? '—'),
-                _cell(e.value.toString()),
+                TableRow(
+                  decoration: BoxDecoration(color: AppColors.background),
+                  children: [
+                    _cell('NUTRITIONAL STATUS', bold: true),
+                    ...matrix.subHeaders.map((sh) => _cell(sh, bold: true)),
+                  ],
+                ),
+                ...matrix.rows.map(
+                  (r) {
+                    final isTotal = r.label.contains('TOTAL');
+                    return TableRow(
+                      decoration: isTotal ? BoxDecoration(color: AppColors.background.withValues(alpha: 0.5)) : null,
+                      children: [
+                        _cell(r.label, bold: isTotal),
+                        ...r.values.map((v) => _cell(v.toString(), bold: isTotal)),
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -494,11 +522,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   }
 
   Widget _cell(String text, {bool bold = false}) => Padding(
-    padding: const EdgeInsets.all(8),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
     child: Text(
       text,
       style: AppTextStyles.body.copyWith(
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
       ),
     ),
@@ -510,8 +538,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     IconData icon,
   ) {
     return SizedBox(
-      width: double.infinity,
-      height: 52,
+      height: 48,
       child: FilledButton.icon(
         onPressed: _isExporting ? null : onTap,
         icon: _isExporting
@@ -524,7 +551,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                 ),
               )
             : Icon(icon, size: 18),
-        label: Text(_isExporting ? 'Preparing...' : label),
+        label: Text(_isExporting ? 'Preparing...' : label, style: const TextStyle(fontSize: 13)),
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primaryGreen,
           shape: RoundedRectangleBorder(

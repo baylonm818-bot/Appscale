@@ -2,11 +2,11 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../data/models/report_signatory.dart';
+import 'consolidation_computation_service.dart';
 
-/// Builds the consolidation report exactly as the paper form is laid
-/// out — title, barangay/period header, an Old/New table, and the
-/// four-signature block — as a real PDF, then opens the native
-/// share/print/save sheet.
+/// Builds the consolidation report as a real PDF.
+/// Supports both single-period summary and official multi-month / quarterly
+/// matrix tables matching DOH/NNC form standards.
 class ReportPdfService {
   Future<void> exportAndShare({
     required String fileTitle,
@@ -56,6 +56,162 @@ class ReportPdfService {
     await Printing.sharePdf(
       bytes: await doc.save(),
       filename: '$fileTitle.pdf',
+    );
+  }
+
+  Future<void> exportMatrixAndShare({
+    required String fileTitle,
+    required ConsolidationMatrixData matrix,
+    required ReportSignatory? signatory,
+  }) async {
+    final doc = pw.Document();
+
+    doc.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(20),
+        build: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Center(
+              child: pw.Text(
+                'CONSOLIDATION',
+                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+              ),
+            ),
+            pw.Center(
+              child: pw.Text(matrix.title, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('BARANGAY: ${matrix.barangay.toUpperCase()}', style: const pw.TextStyle(fontSize: 9)),
+                pw.Text('YEAR: ${matrix.year}', style: const pw.TextStyle(fontSize: 9)),
+              ],
+            ),
+            pw.SizedBox(height: 10),
+            _buildMatrixTable(matrix),
+            pw.SizedBox(height: 20),
+            _buildFourSignatoryBlock(signatory),
+          ],
+        ),
+      ),
+    );
+
+    await Printing.sharePdf(
+      bytes: await doc.save(),
+      filename: '$fileTitle.pdf',
+    );
+  }
+
+  pw.Widget _buildMatrixTable(ConsolidationMatrixData matrix) {
+    final is2459 = matrix.reportTypeId == 'consolidation_24_59';
+
+    final headerRows = <pw.TableRow>[];
+    
+    if (is2459) {
+      headerRows.add(
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+          children: [
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(3),
+              child: pw.Text('NUTRITIONAL STATUS', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
+            ),
+            ...['BOYS (Q1-Q4)', 'GIRLS (Q1-Q4)', 'TOTAL (Q1-Q4)'].map(
+              (h) => pw.Padding(
+                padding: const pw.EdgeInsets.all(3),
+                child: pw.Text(h, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      headerRows.add(
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+          children: [
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(3),
+              child: pw.Text('STATUS', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
+            ),
+            ...matrix.subHeaders.map(
+              (h) => pw.Padding(
+                padding: const pw.EdgeInsets.all(2),
+                child: pw.Text(h, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final dataRows = matrix.rows.map((r) {
+      final isBoldRow = r.label.contains('TOTAL');
+      return pw.TableRow(
+        decoration: isBoldRow ? const pw.BoxDecoration(color: PdfColors.grey100) : null,
+        children: [
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(3),
+            child: pw.Text(
+              r.label,
+              style: pw.TextStyle(fontSize: 6.5, fontWeight: isBoldRow ? pw.FontWeight.bold : pw.FontWeight.normal),
+            ),
+          ),
+          ...r.values.map(
+            (v) => pw.Padding(
+              padding: const pw.EdgeInsets.all(2),
+              child: pw.Text(
+                v.toString(),
+                textAlign: pw.TextAlign.center,
+                style: pw.TextStyle(fontSize: 6.5, fontWeight: isBoldRow ? pw.FontWeight.bold : pw.FontWeight.normal),
+              ),
+            ),
+          ),
+        ],
+      );
+    }).toList();
+
+    return pw.Table(
+      border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+      children: [...headerRows, ...dataRows],
+    );
+  }
+
+  pw.Widget _buildFourSignatoryBlock(ReportSignatory? s) {
+    final bns = s?.bnsName ?? 'LORNA D. TAPAR/DAISY J. MALINAO';
+    final pb = s?.punongBarangayName ?? 'FELIX S. NAMBIO JR.';
+    final mnao = s?.mnaoAdminAideName ?? 'MA. THERESA F. LAUDIT';
+    final dnpc = s?.dnpcName ?? 'MAUREEN F. LEYCO';
+
+    return pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        _sigCol('SUBMITTED BY:', bns, 'BNS'),
+        _sigCol('NOTED BY:', pb, 'PUNONG BARANGAY'),
+        _sigCol('APPROVED BY:', mnao, 'ADMIN AIDE IV- MNAO OIC'),
+        _sigCol('APPROVED BY:', dnpc, 'DNPC'),
+      ],
+    );
+  }
+
+  pw.Widget _sigCol(String title, String name, String role) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(title, style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 12),
+        pw.Text(name, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+        pw.Container(
+          width: 140,
+          decoration: const pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(width: 0.5))),
+          padding: const pw.EdgeInsets.only(top: 2),
+          child: pw.Text(role, style: const pw.TextStyle(fontSize: 6.5)),
+        ),
+      ],
     );
   }
 
