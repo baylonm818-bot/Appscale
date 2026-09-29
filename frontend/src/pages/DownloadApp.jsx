@@ -13,7 +13,7 @@ const DownloadApp = () => {
     <div className="min-h-screen bg-gray-900 text-white font-sans flex flex-col md:flex-row overflow-x-hidden">
       
       {/* LEFT COLUMN: Hero Section */}
-      <div className="flex-1 bg-gradient-to-br from-[#0c2a12] via-[#1b5e20] to-[#2e7d32] relative flex flex-col justify-center px-8 md:px-16 py-12 md:py-0">
+      <div className="flex-1 bg-linear-to-br from-[#0c2a12] via-[#1b5e20] to-[#2e7d32] relative flex flex-col justify-center px-8 md:px-16 py-12 md:py-0">
         
         {/* Background grid pattern (subtle) */}
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>

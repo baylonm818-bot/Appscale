@@ -198,7 +198,7 @@ function Profile() {
       {/* ── Profile Hero Card ── */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {/* Cover banner */}
-        <div className="h-28 bg-gradient-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-500" />
+        <div className="h-28 bg-linear-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-500" />
 
         <div className="px-6 pb-6">
           <div className="flex items-end justify-between -mt-12 mb-4">
@@ -255,7 +255,7 @@ function Profile() {
           <button key={key} onClick={() => setActiveTab(key)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex-1 justify-center
               ${activeTab === key
-                ? 'bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] text-white shadow-sm'
+                ? 'bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white shadow-sm'
                 : 'text-gray-500 hover:bg-gray-50'
               }`}>
             <Icon size={15} />
@@ -316,7 +316,7 @@ function Profile() {
                 </div>
               ))}
               <button type="submit" disabled={savingPassword}
-                className="w-full sm:w-auto px-8 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition disabled:opacity-60 shadow-sm">
+                className="w-full sm:w-auto px-8 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition disabled:opacity-60 shadow-sm">
                 {savingPassword ? 'Saving…' : 'Change Password'}
               </button>
             </form>

@@ -423,7 +423,7 @@ function Masterlist() {
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
 
             {/* Modal header */}
-            <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between">
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-lg">
                   {(selectedPerson.first_name ?? '?').charAt(0).toUpperCase()}

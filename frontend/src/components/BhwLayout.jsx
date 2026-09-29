@@ -22,7 +22,7 @@ import {
 
 const menuItems = [
   { name: 'Dashboard', path: '/bhw/dashboard', icon: LayoutDashboard },
-  { name: 'Referrals & Action Needed', path: '/bhw/referrals', icon: AlertCircle },
+  { name: 'Referrals', path: '/bhw/referrals', icon: AlertCircle },
   { name: 'Medical Records', path: '/bhw/medical-records', icon: FileText },
   { name: 'Schedule', path: '/bhw/schedule', icon: Calendar },
   { name: 'My Profile', path: '/bhw/profile', icon: UserCircle },
@@ -135,7 +135,7 @@ function BHWLayout() {
     ),
     '/bhw/referrals': (
       <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Referrals & Action Needed</h2>
+        <h2 className="text-xl font-bold text-gray-800">Referrals</h2>
         <p className="text-xs text-gray-400">Manage BNS referrals, provide medicine/services, and evaluate health cases</p>
       </div>
     ),
