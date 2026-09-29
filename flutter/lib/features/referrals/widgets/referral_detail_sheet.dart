@@ -35,8 +35,6 @@ class ReferralDetailSheet extends StatelessWidget {
         return AppColors.statBlue;
       case 'Completed':
         return AppColors.primaryGreen;
-      case 'Cancelled':
-        return AppColors.statRed;
       default:
         return AppColors.textMuted;
     }

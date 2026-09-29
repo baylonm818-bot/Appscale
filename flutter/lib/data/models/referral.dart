@@ -7,7 +7,7 @@ class Referral {
   final String reason;
   final String facility;
   final String notes;
-  final String status; // 'Pending', 'In Progress', 'Completed', 'Cancelled'
+  final String status; // 'Pending', 'In Progress', 'Completed'
   final DateTime createdAt;
 
   const Referral({

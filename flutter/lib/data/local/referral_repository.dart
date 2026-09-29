@@ -115,13 +115,14 @@ class ReferralRepository {
   /// in-progress cases surface first, since those are what a BNS
   /// actually needs to act on.
   List<Referral> getForBarangay(String barangay) {
-    final list = getAll().where((r) => r.barangay == barangay).toList();
+    final list = getAll()
+        .where((r) => r.barangay == barangay && r.status != 'Cancelled')
+        .toList();
     list.sort((a, b) {
       const order = {
         'Pending': 0,
         'In Progress': 1,
         'Completed': 2,
-        'Cancelled': 3,
       };
       final statusCompare = (order[a.status] ?? 9).compareTo(
         order[b.status] ?? 9,
