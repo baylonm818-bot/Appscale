@@ -67,7 +67,7 @@ const DownloadApp = () => {
             
             {/* Step 1 */}
             <div className="relative">
-              <div className="absolute left-[-2rem] top-1 text-gray-700 font-black text-6xl opacity-30 select-none">01</div>
+              <div className="absolute -left-8 top-1 text-gray-700 font-black text-6xl opacity-30 select-none">01</div>
               <div className="relative z-10 pl-6">
                 <h3 className="text-2xl font-bold text-white mb-2">Download the APK</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
@@ -78,7 +78,7 @@ const DownloadApp = () => {
 
             {/* Step 2 */}
             <div className="relative">
-              <div className="absolute left-[-2rem] top-1 text-gray-700 font-black text-6xl opacity-30 select-none">02</div>
+              <div className="absolute -left-8 top-1 text-gray-700 font-black text-6xl opacity-30 select-none">02</div>
               <div className="relative z-10 pl-6">
                 <h3 className="text-2xl font-bold text-white mb-2">Confirm Security Prompt</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
@@ -89,7 +89,7 @@ const DownloadApp = () => {
 
             {/* Step 3 */}
             <div className="relative">
-              <div className="absolute left-[-2rem] top-1 text-gray-700 font-black text-6xl opacity-30 select-none">03</div>
+              <div className="absolute -left-8 top-1 text-gray-700 font-black text-6xl opacity-30 select-none">03</div>
               <div className="relative z-10 pl-6">
                 <h3 className="text-2xl font-bold text-white mb-2">Install App</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">
