@@ -11,12 +11,35 @@ class ReferralRepository {
   Box get _box => Hive.box(HiveBoxes.referrals);
 
   Future<Referral> add(Referral referral) async {
-    await _box.put(referral.id, referral.toMap());
+    final map = referral.toMap()..['_syncStatus'] = 'pending';
+    await _box.put(referral.id, map);
     AppDataBus.notifyChanged();
     return referral;
   }
 
-  Future<void> syncToWeb(Referral referral) => ReferralApi.submit(referral);
+  int get pendingCount => _box.values
+      .where((raw) => (raw as Map?)?['_syncStatus'] != 'synced')
+      .length;
+
+  Future<void> syncPending() async {
+    for (final raw in _box.values) {
+      final map = Map<String, dynamic>.from(raw as Map);
+      if (map['_syncStatus'] == 'synced') continue;
+
+      try {
+        final referral = Referral.fromMap(map);
+        await ReferralApi.submit(referral);
+        await _box.put(referral.id, {...referral.toMap(), '_syncStatus': 'synced'});
+      } catch (_) {
+        // Keep the local referral as the source of truth until the next retry.
+      }
+    }
+  }
+
+  Future<void> syncToWeb(Referral referral) async {
+    await ReferralApi.submit(referral);
+    await _box.put(referral.id, {...referral.toMap(), '_syncStatus': 'synced'});
+  }
 
   Future<void> update(Referral referral) async {
     await _box.put(referral.id, referral.toMap());

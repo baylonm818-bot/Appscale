@@ -7,6 +7,7 @@ import '../../../data/local/hive_boxes.dart';
 import '../../../data/models/feeding_schedule.dart';
 import '../../../shared/widgets/app_date_field.dart';
 import '../../../shared/widgets/app_text_field.dart';
+import '../../../shared/widgets/app_time_field.dart';
 import '../../../shared/widgets/app_yes_no_toggle.dart';
 import '../../../shared/widgets/form_action_buttons.dart';
 import '../../../shared/widgets/form_section_card.dart';
@@ -63,6 +64,28 @@ class _SetFeedingScheduleScreenState extends State<SetFeedingScheduleScreen> {
       _selectedDays.isNotEmpty &&
       _startDate != null &&
       _locationController.text.trim().isNotEmpty;
+
+  TimeOfDay? _parseTime(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+    final match = RegExp(r'^(\d{1,2}):(\d{2})\s*(AM|PM)$', caseSensitive: false)
+        .firstMatch(trimmed);
+    if (match == null) return null;
+    final hour = int.parse(match.group(1)!);
+    final minute = int.parse(match.group(2)!);
+    final period = match.group(3)!.toUpperCase();
+    var parsedHour = hour;
+    if (period == 'AM' && parsedHour == 12) parsedHour = 0;
+    if (period == 'PM' && parsedHour != 12) parsedHour += 12;
+    return TimeOfDay(hour: parsedHour, minute: minute);
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute $period';
+  }
 
   Future<void> _save() async {
     if (!_isFormValid) {
@@ -175,20 +198,26 @@ class _SetFeedingScheduleScreenState extends State<SetFeedingScheduleScreen> {
                         Row(
                           children: [
                             Expanded(
-                              child: AppTextField(
+                              child: AppTimeField(
                                 label: 'Start time',
-                                hint: '8:00 AM',
-                                icon: Icons.schedule_outlined,
-                                controller: _startTimeController,
+                                value: _parseTime(_startTimeController.text),
+                                onChanged: (time) {
+                                  setState(() {
+                                    _startTimeController.text = _formatTime(time);
+                                  });
+                                },
                               ),
                             ),
                             const SizedBox(width: AppSpacing.md),
                             Expanded(
-                              child: AppTextField(
+                              child: AppTimeField(
                                 label: 'End time',
-                                hint: '10:00 AM',
-                                icon: Icons.schedule_outlined,
-                                controller: _endTimeController,
+                                value: _parseTime(_endTimeController.text),
+                                onChanged: (time) {
+                                  setState(() {
+                                    _endTimeController.text = _formatTime(time);
+                                  });
+                                },
                               ),
                             ),
                           ],

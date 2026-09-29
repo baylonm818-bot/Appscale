@@ -9,6 +9,7 @@ import '../reports/reports_home_screen.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/measurement_repository.dart';
+import '../../data/local/referral_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/app_data_bus.dart';
 import '../auth/login_screen.dart';
@@ -30,6 +31,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   final _childRepo = ChildRepository();
   final _motherRepo = MotherRepository();
   final _measurementRepo = MeasurementRepository();
+  final _referralRepo = ReferralRepository();
   final _settings = SettingsRepository();
   Timer? _autoSyncTimer;
 
@@ -90,7 +92,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     if (_isAutoSyncing || !_settings.hasValidSession) return;
     final totalPending = _childRepo.pendingCount +
         _motherRepo.pendingCount +
-        _measurementRepo.pendingCount;
+        _measurementRepo.pendingCount +
+        _referralRepo.pendingCount;
     if (totalPending == 0) return;
 
     _isAutoSyncing = true;
@@ -98,6 +101,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       await _childRepo.syncPending();
       await _motherRepo.syncPending();
       await _measurementRepo.syncPending();
+      await _referralRepo.syncPending();
       AppDataBus.notifyChanged();
     } catch (e) {
       debugPrint('Auto sync periodic attempt: $e');
@@ -129,6 +133,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         await _childRepo.syncPending();
         await _motherRepo.syncPending();
         await _measurementRepo.syncPending();
+        await _referralRepo.syncPending();
         // Refresh again after sync completes in case counts changed.
         AppDataBus.notifyChanged();
       } catch (syncErr) {

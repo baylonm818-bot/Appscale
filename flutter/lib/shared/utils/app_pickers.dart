@@ -35,3 +35,22 @@ Future<DateTime?> showAppDatePicker({
     },
   );
 }
+
+Future<TimeOfDay?> showAppTimePicker({
+  required BuildContext context,
+  required TimeOfDay initialTime,
+}) {
+  return showTimePicker(
+    context: context,
+    initialTime: initialTime,
+    builder: (context, child) {
+      final safeScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+      return MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(safeScale.clamp(0.9, 1.25))),
+        child: child!,
+      );
+    },
+  );
+}

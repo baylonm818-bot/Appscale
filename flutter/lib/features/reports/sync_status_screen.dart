@@ -172,8 +172,13 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         .getAll()
         .where((m) => m.barangay == current)
         .length;
-    final referralCount = ReferralRepository().getForBarangay(current).length;
-    final pendingCount = _children.pendingCount + _mothers.pendingCount + _measurements.pendingCount;
+    final referralRepo = ReferralRepository();
+    final referralCount = referralRepo.getForBarangay(current).length;
+    final referralPending = referralRepo.pendingCount;
+    final pendingCount = _children.pendingCount +
+        _mothers.pendingCount +
+        _measurements.pendingCount +
+        referralPending;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -264,7 +269,8 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                         synced: motherCount - _mothers.pendingCount),
                     _row('Measurements', _measurements.totalCount,
                         synced: _measurements.totalCount - _measurements.pendingCount),
-                    _row('Referrals', referralCount, synced: referralCount),
+                    _row('Referrals', referralCount,
+                        synced: referralCount - referralPending),
                     const SizedBox(height: AppSpacing.lg),
                     SizedBox(
                       width: double.infinity,
