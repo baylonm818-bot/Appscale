@@ -5,6 +5,10 @@ import '../remote/beneficiary_api.dart';
 import 'app_data_bus.dart';
 import 'hive_boxes.dart';
 
+/// Module 7: Offline Data Recording and Synchronization
+/// - Records measurements offline to Hive local storage immediately
+/// - Automatically synchronizes locally stored data to server when internet is available
+/// - Retries pending records on next sync call
 class MeasurementRepository {
   Box get _box => Hive.box(HiveBoxes.measurements);
 
@@ -34,21 +38,22 @@ class MeasurementRepository {
     for (final raw in _box.values) {
       if (raw is List) {
         for (final item in raw) {
-          if (item is Map && item['_syncStatus'] != 'synced') {
-            count++;
-          }
+          if (item is Map && item['_syncStatus'] != 'synced') count++;
         }
       }
     }
     return count;
   }
 
+  /// Attempts to sync all pending measurements to the server.
+  /// Called automatically by [MainShell] timer and on app resume.
   Future<void> syncPending() async {
     for (final key in _box.keys) {
       final childId = key.toString();
       final list = (_box.get(childId) as List?) ?? [];
-      bool modified = false;
-      final updatedList = [];
+      bool anyUpdated = false;
+      final updated = <dynamic>[];
+
       for (final raw in list) {
         final map = Map<String, dynamic>.from(raw as Map);
         if (map['_syncStatus'] != 'synced') {
@@ -56,39 +61,66 @@ class MeasurementRepository {
             final m = Measurement.fromMap(map);
             await BeneficiaryApi.syncNutritionRecord(childId, m);
             map['_syncStatus'] = 'synced';
-            modified = true;
+            anyUpdated = true;
           } catch (_) {
-            // Keep pending until next retry
+            // No internet or server error — keep as pending, retry next time
           }
         }
-        updatedList.add(map);
+        updated.add(map);
       }
-      if (modified) {
-        await _box.put(childId, updatedList);
+
+      if (anyUpdated) {
+        await _box.put(childId, updated);
       }
     }
   }
 
+  /// Saves the measurement to local Hive storage immediately (offline-safe),
+  /// then tries to sync to the server in the background.
+  /// If sync fails (no internet), the record stays as 'pending' and will
+  /// be automatically synced by the next [syncPending] call.
   Future<void> addMeasurement(String childId, Measurement measurement) async {
+    // Step 1: Save locally first — always succeeds regardless of internet
     final current = (_box.get(childId) as List?) ?? [];
-    final map = measurement.toMap()..['_syncStatus'] = 'pending';
+    final recordDate = measurement.date.toIso8601String();
+    final map = measurement.toMap()
+      ..['_syncStatus'] = 'pending'
+      ..['_localId'] = recordDate;
+
     await _box.put(childId, [...current, map]);
     AppDataBus.notifyChanged();
 
-    try {
-      await BeneficiaryApi.syncNutritionRecord(childId, measurement);
-      final currentAfterSync = (_box.get(childId) as List?) ?? [];
-      final syncedList = currentAfterSync.map((item) {
-        final itemMap = Map<String, dynamic>.from(item as Map);
-        if (itemMap['date'] == map['date']) {
-          itemMap['_syncStatus'] = 'synced';
+    // Step 2: Try to sync immediately in the background
+    _trySyncSingle(childId, recordDate, measurement);
+  }
+
+  /// Background sync attempt for a single record.
+  /// Does not throw — failure is silent and will be retried by the auto-sync timer.
+  void _trySyncSingle(String childId, String recordDate, Measurement measurement) {
+    Future(() async {
+      try {
+        await BeneficiaryApi.syncNutritionRecord(childId, measurement);
+        // Mark this specific record as synced in Hive
+        final list = (_box.get(childId) as List?) ?? [];
+        bool updated = false;
+        final newList = list.map((raw) {
+          final m = Map<String, dynamic>.from(raw as Map);
+          if (m['_localId'] == recordDate || m['date'] == recordDate) {
+            m['_syncStatus'] = 'synced';
+            updated = true;
+          }
+          return m;
+        }).toList();
+
+        if (updated) {
+          await _box.put(childId, newList);
+          AppDataBus.notifyChanged();
+          debugPrint('[Sync] Measurement synced to server: $recordDate');
         }
-        return itemMap;
-      }).toList();
-      await _box.put(childId, syncedList);
-      AppDataBus.notifyChanged();
-    } catch (e) {
-      debugPrint('Offline measurement saved locally; queued for synchronization: $e');
-    }
+      } catch (e) {
+        // No internet — record stays as 'pending', auto-sync timer will retry
+        debugPrint('[Sync] No internet, measurement queued locally: $e');
+      }
+    });
   }
 }

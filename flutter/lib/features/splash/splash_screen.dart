@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/child_repository.dart';
+import '../../data/local/measurement_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../auth/login_screen.dart';
 import '../onboarding/onboarding_screen.dart';
@@ -41,10 +42,12 @@ class _SplashScreenState extends State<SplashScreen>
 
       final navigator = Navigator.of(context);
 
+      // Sync all pending local records to server on app launch
       try {
         await Future.wait([
           ChildRepository().syncPending(),
           MotherRepository().syncPending(),
+          MeasurementRepository().syncPending(),
         ]);
       } catch (e) {
         debugPrint('Sync pending failed on splash: $e');

@@ -60,8 +60,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Automatically synchronize locally stored data when internet connection is available
-    _autoSyncTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+    // Automatically synchronize locally stored data when internet is available
+    // Fires immediately on launch, then every 30 seconds
+    Future.microtask(() => _autoSyncPending());
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _autoSyncPending();
     });
   }
