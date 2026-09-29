@@ -250,6 +250,8 @@ exports.login = async (req, res) => {
         username: user.username,
         role: user.role,
         full_name: `${user.first_name} ${user.last_name}`,
+        barangay: user.barangay,
+        municipality: user.municipality,
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN }
@@ -297,7 +299,18 @@ exports.devLogin = async (req, res) => {
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
 
-    const token = jwt.sign({ user_id: user.user_id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+    const token = jwt.sign(
+      {
+        user_id: user.user_id,
+        username: user.username,
+        role: user.role,
+        full_name: `${user.first_name} ${user.last_name}`,
+        barangay: user.barangay,
+        municipality: user.municipality,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
     return res.status(200).json({ message: 'Login successful', token });
   } catch (err) {
     console.error('Dev login error:', err && (err.stack || err.message));

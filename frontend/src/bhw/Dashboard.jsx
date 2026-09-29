@@ -106,7 +106,7 @@ function Dashboard() {
     <div className="space-y-6">
 
       {/* ── Welcome Banner ── */}
-      <div className="relative rounded-2xl overflow-hidden shadow-sm bg-gradient-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-600 p-6 sm:p-8 text-white">
+      <div className="relative rounded-2xl overflow-hidden shadow-sm bg-linear-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-600 p-6 sm:p-8 text-white">
         <div className="relative z-10 max-w-2xl">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-emerald-100 backdrop-blur-xs mb-3">
             <CheckCircle2 size={13} /> {user.role ? user.role.toUpperCase() : 'BHW'} Monitoring Portal

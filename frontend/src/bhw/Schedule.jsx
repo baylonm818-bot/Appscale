@@ -74,7 +74,7 @@ function ActivityRow({ activity, onComplete, onArchive }) {
           </span>
           <StatusBadge status={status} />
         </div>
-        <p className="text-xs text-gray-400 mt-1 break-words">
+        <p className="text-xs text-gray-400 mt-1 wrap-break-word">
           {activity.barangay || 'Barangay Activity'}
           {activity.venue && ` · ${activity.venue}`}
           {activity.facilitator && ` · ${activity.facilitator}`}
