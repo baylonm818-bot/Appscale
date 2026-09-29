@@ -145,6 +145,7 @@ function Notifications() {
       );
       setNotifications(fetched);
       setUnreadCount(res.data.unreadCount || 0);
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
     } finally {
@@ -160,6 +161,7 @@ function Notifications() {
     try {
       await axiosClient.patch("/notifications/read-all");
       fetchNotifications();
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
     } catch (err) {
       console.error(err);
     }
@@ -172,6 +174,7 @@ function Notifications() {
         prev.map((n) => (n.notification_id === id ? { ...n, is_read: true } : n))
       );
       setUnreadCount((c) => Math.max(0, c - 1));
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
     } catch (err) {
       console.error(err);
     }

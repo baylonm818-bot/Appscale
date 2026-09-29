@@ -79,10 +79,12 @@ function Notifications() {
       const res = await axiosClient.get('/bhw/notifications');
       setNotifications(res.data.notifications || []);
       setUnreadCount(res.data.unreadCount || 0);
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
       setNotifications([]);
       setUnreadCount(0);
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
     } finally {
       setLoading(false);
     }
@@ -96,6 +98,7 @@ function Notifications() {
     try {
       await axiosClient.patch('/bhw/notifications/read-all');
       fetchNotifications();
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
     } catch (err) {
       console.error(err);
     }
@@ -105,6 +108,7 @@ function Notifications() {
     try {
       await axiosClient.patch(`/bhw/notifications/${id}/read`);
       fetchNotifications();
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
     } catch (err) {
       console.error(err);
     }

@@ -37,30 +37,30 @@ function AdminLayout() {
   const location = useLocation();
   const { user } = useAuth();
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const response = await axiosClient.get('/notifications');
+      setUnreadNotifications(Number(response.data?.unreadCount || 0));
+    } catch {
+      setUnreadNotifications(0);
+    }
+  }, []);
 
-    const fetchUnreadCount = async () => {
-      try {
-        const response = await axiosClient.get('/notifications');
-        if (!cancelled) {
-          setUnreadNotifications(Number(response.data?.unreadCount || 0));
-        }
-      } catch {
-        if (!cancelled) {
-          setUnreadNotifications(0);
-        }
-      }
+  useEffect(() => {
+    fetchUnreadCount();
+
+    const handleNotificationsUpdated = () => {
+      fetchUnreadCount();
     };
 
-    fetchUnreadCount();
+    window.addEventListener('notifications:updated', handleNotificationsUpdated);
     const poll = window.setInterval(fetchUnreadCount, 15000);
 
     return () => {
-      cancelled = true;
+      window.removeEventListener('notifications:updated', handleNotificationsUpdated);
       window.clearInterval(poll);
     };
-  }, [location.pathname]);
+  }, [fetchUnreadCount, location.pathname]);
 
   const doLogout = useCallback(() => {
     localStorage.removeItem('token');
