@@ -152,6 +152,16 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     final previewMuac = rawM;
     final previewStatus = _liveResult;
 
+    if (!_isFormValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please ensure all entries are realistic (Weight: 1-50kg, Height: 35-140cm, MUAC: 7-30cm).'),
+          backgroundColor: AppColors.statRed,
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
