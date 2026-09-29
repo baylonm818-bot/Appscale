@@ -22,6 +22,7 @@ import {
 
 const menuItems = [
   { name: 'Dashboard', path: '/bhw/dashboard', icon: LayoutDashboard },
+  { name: 'Need Attention', path: '/bhw/need-attention', icon: AlertCircle },
   { name: 'Referrals', path: '/bhw/referrals', icon: AlertCircle },
   { name: 'Medical Records', path: '/bhw/medical-records', icon: FileText },
   { name: 'Schedule', path: '/bhw/schedule', icon: Calendar },
@@ -407,8 +408,8 @@ function BHWLayout() {
 
       {/* ── Logout Confirmation Modal ── */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 w-full max-w-sm mx-auto my-8 p-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 w-full max-w-sm mx-auto my-auto p-6 max-h-[90vh] flex flex-col overflow-y-auto">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                 <LogOut size={18} className="text-red-600" />

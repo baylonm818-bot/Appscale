@@ -111,21 +111,30 @@ function UserManagement() {
     setSaving(true);
     try {
       const normalizedBarangay = (form.barangay || '').trim().toLowerCase();
-      const hasBnsInBarangay = users.some((u) =>
+      const hasActiveBnsInBarangay = users.some((u) =>
         u.role === 'bns' &&
+        u.status === 'active' &&
         !u.deleted_at &&
         u.user_id !== editingUser?.user_id &&
         (u.barangay || '').trim().toLowerCase() === normalizedBarangay
       );
 
-      if (form.role === 'bns' && hasBnsInBarangay && !editingUser) {
-        setFormError('This barangay already has an active BNS. Archive the existing BNS before assigning a replacement.');
+      const hasActiveBhwInBarangay = users.some((u) =>
+        u.role === 'bhw' &&
+        u.status === 'active' &&
+        !u.deleted_at &&
+        u.user_id !== editingUser?.user_id &&
+        (u.barangay || '').trim().toLowerCase() === normalizedBarangay
+      );
+
+      if (form.role === 'bns' && hasActiveBnsInBarangay) {
+        setFormError('This barangay already has an active BNS. Deactivate or lock the existing BNS before assigning a replacement.');
         setSaving(false);
         return;
       }
 
-      if (form.role === 'bhw' && normalizedBarangay && !hasBnsInBarangay && !editingUser) {
-        setFormError('This barangay has no active BNS assigned yet. Assign a BNS first before adding a BHW.');
+      if (form.role === 'bhw' && hasActiveBhwInBarangay) {
+        setFormError('This barangay already has an active BHW. Deactivate or lock the existing BHW before assigning a replacement.');
         setSaving(false);
         return;
       }
@@ -197,6 +206,7 @@ function UserManagement() {
     totalBNS: 0,
     totalBHW: 0,
     activeUsers: 0,
+    lockedUsers: 0,
   };
 
   const filteredUsers = users
@@ -243,12 +253,12 @@ function UserManagement() {
           onClick={() => { setActiveTab('bhw'); setShowArchive(false); setStatusFilter('all'); }}
         />
         <StatCard
-          icon={CheckCircle2}
-          label="Active Users"
-          value={safeStats.activeUsers}
-          sublabel="Currently verified active"
-          isActive={statusFilter === 'active'}
-          onClick={() => { setStatusFilter(statusFilter === 'active' ? 'all' : 'active'); setShowArchive(false); }}
+          icon={Lock}
+          label="Lock Users"
+          value={safeStats.lockedUsers ?? users.filter((u) => u.status === 'locked' && !u.deleted_at).length}
+          sublabel="Locked accounts"
+          isActive={statusFilter === 'locked'}
+          onClick={() => { setStatusFilter(statusFilter === 'locked' ? 'all' : 'locked'); setShowArchive(false); }}
         />
       </div>
 
@@ -320,14 +330,14 @@ function UserManagement() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed">
+          <table className="w-full text-sm">
             <colgroup>
-              <col className="w-[30%]" />
-              <col className="w-[18%]" />
-              <col className="w-[16%]" />
-              <col className="w-[12%]" />
+              <col className="w-[24%]" />
+              <col className="w-[15%]" />
+              <col className="w-[15%]" />
               <col className="w-[10%]" />
-              <col className="w-[14%]" />
+              <col className="w-[12%]" />
+              <col className="w-[24%]" />
             </colgroup>
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80 border-b border-gray-100">
@@ -379,11 +389,11 @@ function UserManagement() {
                       </span>
                     </td>
                     <td className="px-4 py-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
+                      <div className="flex items-center justify-center gap-2 flex-wrap">
                         <button
                           type="button"
                           onClick={() => openEditModal(u)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition"
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition shadow-2xs"
                         >
                           View
                         </button>
@@ -392,7 +402,7 @@ function UserManagement() {
                           <button
                             type="button"
                             onClick={() => restoreUser(u)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-700 border border-emerald-300 hover:bg-emerald-50 transition"
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 border border-emerald-300 hover:bg-emerald-50 transition shadow-2xs"
                           >
                             Restore
                           </button>
@@ -402,21 +412,23 @@ function UserManagement() {
                               type="button"
                               onClick={() => setStatusConfirm({ user: u, action: u.status === 'active' ? 'lock' : 'unlock' })}
                               title={u.status === 'active' ? 'Lock Account' : 'Unlock Account'}
-                              className={`p-1.5 rounded-lg text-xs font-semibold transition ${
+                              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-2xs ${
                                 u.status === 'active'
-                                  ? 'text-amber-600 hover:bg-amber-50'
-                                  : 'text-green-600 hover:bg-green-50'
+                                  ? 'text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100'
+                                  : 'text-green-700 border border-green-200 bg-green-50 hover:bg-green-100'
                               }`}
                             >
-                              {u.status === 'active' ? <Lock size={14} /> : <Unlock size={14} />}
+                              {u.status === 'active' ? <Lock size={13} /> : <Unlock size={13} />}
+                              <span>{u.status === 'active' ? 'Lock' : 'Unlock'}</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => archiveUser(u)}
                               title="Archive Account"
-                              className="p-1.5 rounded-lg text-xs text-red-600 hover:bg-red-50 transition"
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 transition shadow-2xs"
                             >
-                              <Archive size={14} />
+                              <Archive size={13} />
+                              <span>Archive</span>
                             </button>
                           </>
                         )}
@@ -434,10 +446,10 @@ function UserManagement() {
       {/* ── User Modal ── */}
       {showModal && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] flex flex-col my-6">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] flex flex-col my-auto">
 
             {/* Header */}
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
@@ -587,10 +599,10 @@ function UserManagement() {
       {/* ── Status Change Confirmation Modal (Are you sure?) ── */}
       {statusConfirm && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setStatusConfirm(null); }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[90vh] my-6 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[90vh] flex flex-col my-auto overflow-y-auto">
             <div className="flex items-center gap-3 mb-4">
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
                 statusConfirm.action === 'lock' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-700'

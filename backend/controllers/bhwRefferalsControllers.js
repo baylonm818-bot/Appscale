@@ -310,12 +310,10 @@ exports.updateReferralStatus = async (req, res) => {
   const { id } = req.params;
   const { status, response_notes, service_type, service_date, provided_by } = req.body;
 
-  // Module 4 Requirement: "The system shall allow BHW to update referral status (Pending, Ongoing, Cancelled, Completed)."
   const statusMap = {
     pending: 'Pending',
     ongoing: 'Ongoing',
     responded: 'Ongoing',
-    cancelled: 'Cancelled',
     completed: 'Completed',
     closed: 'Completed',
   };
@@ -323,7 +321,7 @@ exports.updateReferralStatus = async (req, res) => {
   const normalizedStatus = statusMap[String(status || '').toLowerCase()];
 
   if (!normalizedStatus) {
-    return res.status(400).json({ message: 'Invalid status value. Allowed: Pending, Ongoing, Cancelled, Completed.' });
+    return res.status(400).json({ message: 'Invalid status value. Allowed: Pending, Ongoing, Completed.' });
   }
 
   try {

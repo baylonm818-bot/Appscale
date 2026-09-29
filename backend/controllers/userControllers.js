@@ -50,6 +50,7 @@ exports.getUserStats = async (req, res) => {
         COALESCE(SUM(CASE WHEN role = 'bns' THEN 1 ELSE 0 END), 0) AS totalBNS,
         COALESCE(SUM(CASE WHEN role = 'bhw' THEN 1 ELSE 0 END), 0) AS totalBHW,
         COALESCE(SUM(CASE WHEN role IN ('bhw', 'bns') AND status = 'active' THEN 1 ELSE 0 END), 0) AS activeUsers,
+        COALESCE(SUM(CASE WHEN role IN ('bhw', 'bns') AND status IN ('locked', 'inactive') THEN 1 ELSE 0 END), 0) AS lockedUsers,
         COALESCE(SUM(CASE WHEN role = 'bns' AND status = 'active' THEN 1 ELSE 0 END), 0) AS activeBNS,
         COALESCE(SUM(CASE WHEN role = 'bhw' AND status = 'active' THEN 1 ELSE 0 END), 0) AS activeBHW
       FROM users
@@ -76,24 +77,24 @@ exports.getUserStats = async (req, res) => {
                     `SELECT COUNT(*) AS count
                      FROM users
                      WHERE role = 'bns' AND LOWER(TRIM(barangay)) = LOWER(TRIM(?))
-                       AND deleted_at IS NULL`,
+                       AND status = 'active' AND deleted_at IS NULL`,
                     [barangay]
                 );
                 if (existingBarangayBns.count > 0) {
-                    return res.status(409).json({ message: 'This barangay already has a BNS. Archive the existing BNS before adding a replacement.' });
+                    return res.status(409).json({ message: 'This barangay already has an active BNS. Deactivate or lock the existing BNS before adding a replacement.' });
                 }
             }
 
             if (role === 'bhw') {
-                const [[existingBarangayBns]] = await pool.query(
+                const [[existingBarangayBhw]] = await pool.query(
                     `SELECT COUNT(*) AS count
                      FROM users
-                     WHERE role = 'bns' AND LOWER(TRIM(barangay)) = LOWER(TRIM(?))
+                     WHERE role = 'bhw' AND LOWER(TRIM(barangay)) = LOWER(TRIM(?))
                        AND status = 'active' AND deleted_at IS NULL`,
                     [barangay]
                 );
-                if (existingBarangayBns.count === 0) {
-                    return res.status(409).json({ message: 'This barangay has no active BNS assigned yet. Create or restore the BNS for this barangay first.' });
+                if (existingBarangayBhw.count > 0) {
+                    return res.status(409).json({ message: 'This barangay already has an active BHW. Deactivate or lock the existing BHW before adding a replacement.' });
                 }
             }
 
@@ -139,24 +140,24 @@ exports.updateUser = async (req, res) => {
         `SELECT COUNT(*) AS count
          FROM users
          WHERE role = 'bns' AND LOWER(TRIM(barangay)) = LOWER(TRIM(?))
-           AND deleted_at IS NULL AND user_id <> ?`,
+           AND status = 'active' AND deleted_at IS NULL AND user_id <> ?`,
         [barangay, user_id]
       );
       if (existingBarangayBns.count > 0) {
-        return res.status(409).json({ message: 'This barangay already has a BNS. Archive the existing BNS before assigning another one.' });
+        return res.status(409).json({ message: 'This barangay already has an active BNS. Deactivate or lock the existing BNS before assigning another one.' });
       }
     }
 
     if (role === 'bhw') {
-      const [[existingBarangayBns]] = await pool.query(
+      const [[existingBarangayBhw]] = await pool.query(
         `SELECT COUNT(*) AS count
          FROM users
-         WHERE role = 'bns' AND LOWER(TRIM(barangay)) = LOWER(TRIM(?))
+         WHERE role = 'bhw' AND LOWER(TRIM(barangay)) = LOWER(TRIM(?))
            AND status = 'active' AND deleted_at IS NULL AND user_id <> ?`,
         [barangay, user_id]
       );
-      if (existingBarangayBns.count === 0) {
-        return res.status(409).json({ message: 'This barangay has no active BNS assigned yet. Assign the BNS first before adding a BHW.' });
+      if (existingBarangayBhw.count > 0) {
+        return res.status(409).json({ message: 'This barangay already has an active BHW. Deactivate or lock the existing BHW before assigning another one.' });
       }
     }
 

@@ -173,7 +173,6 @@ function Referrals() {
   const ongoingCount = referrals.filter((r) => normalizeStatus(r.status) === 'Ongoing').length;
   const highSevCount = referrals.filter((r) => r.severity === 'high').length;
   const completedCount = referrals.filter((r) => normalizeStatus(r.status) === 'Completed').length;
-  const cancelledCount = referrals.filter((r) => normalizeStatus(r.status) === 'Cancelled').length;
 
   return (
     <div className="space-y-6">
@@ -218,7 +217,6 @@ function Referrals() {
               { val: 'all', lbl: 'All' },
               { val: 'Pending', lbl: `Pending (${pendingCount})` },
               { val: 'Ongoing', lbl: `Ongoing (${ongoingCount})` },
-              { val: 'Cancelled', lbl: `Cancelled (${cancelledCount})` },
               { val: 'Completed', lbl: `Completed (${completedCount})` },
             ].map(({ val, lbl }) => (
               <button
@@ -324,9 +322,9 @@ function Referrals() {
 
       {/* ── Status Update Modal ── */}
       {actionTarget && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setActionTarget(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] my-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-hidden" onClick={() => setActionTarget(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col my-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
               <div>
                 <h3 className="font-bold text-base">Update Referral Status</h3>
                 <p className="text-xs text-white/80 mt-0.5">
@@ -338,7 +336,7 @@ function Referrals() {
               </button>
             </div>
 
-            <div className="p-6 space-y-3.5">
+            <div className="p-6 space-y-3.5 overflow-y-auto flex-1">
               {actionError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{actionError}</div>}
 
               <div>
@@ -350,7 +348,6 @@ function Referrals() {
                 >
                   <option value="Pending">Pending</option>
                   <option value="Ongoing">Ongoing</option>
-                  <option value="Cancelled">Cancelled</option>
                   <option value="Completed">Completed</option>
                 </select>
               </div>
