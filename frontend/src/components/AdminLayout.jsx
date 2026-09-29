@@ -30,8 +30,10 @@ const menuItems = [
 function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [notificationPreview, setNotificationPreview] = useState([]);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,9 +42,14 @@ function AdminLayout() {
   const fetchUnreadCount = useCallback(async () => {
     try {
       const response = await axiosClient.get('/notifications');
+      const notifications = (response.data?.notifications || []).filter(
+        (n) => n.type?.toLowerCase() !== 'referral' && n.type?.toLowerCase() !== 'malnutrition'
+      );
       setUnreadNotifications(Number(response.data?.unreadCount || 0));
+      setNotificationPreview(notifications.slice(0, 4));
     } catch {
       setUnreadNotifications(0);
+      setNotificationPreview([]);
     }
   }, []);
 
@@ -217,19 +224,73 @@ function AdminLayout() {
           </div>
 
           <div className="relative flex items-center gap-3">
-            <button
-              type="button"
-              aria-label="View notifications"
-              onClick={() => navigate('/admin/notifications')}
-              className="relative flex h-10 w-10 items-center justify-center rounded-full text-green-800 transition hover:bg-green-50"
-            >
-              <Bell size={19} />
-              {unreadNotifications > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
-                </span>
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="Notifications"
+                aria-expanded={isNotificationMenuOpen}
+                onClick={() => {
+                  setIsNotificationMenuOpen((prev) => !prev);
+                  setIsProfileMenuOpen(false);
+                }}
+                className="relative flex h-10 w-10 items-center justify-center rounded-full text-green-800 transition hover:bg-green-50"
+              >
+                <Bell size={19} />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                    {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                  </span>
+                )}
+              </button>
+
+              {isNotificationMenuOpen && (
+                <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-black/15">
+                  <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
+                    <p className="text-sm font-bold text-gray-900">Notifications</p>
+                    {unreadNotifications > 0 && (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800">
+                        {unreadNotifications} new
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="max-h-72 space-y-1 overflow-y-auto py-1">
+                    {notificationPreview.length > 0 ? (
+                      notificationPreview.map((item) => (
+                        <button
+                          key={item.notification_id || item.id}
+                          type="button"
+                          onClick={() => {
+                            setIsNotificationMenuOpen(false);
+                            navigate('/admin/notifications');
+                          }}
+                          className="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-green-50"
+                        >
+                          <div className={`mt-0.5 h-2.5 w-2.5 rounded-full ${item.is_read ? 'bg-gray-300' : 'bg-green-600'}`} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-gray-800">{item.title || 'Notification'}</p>
+                            <p className="line-clamp-2 text-xs text-gray-500">{item.message || item.details || 'You have a new update.'}</p>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-5 text-center text-sm text-gray-500">No notifications yet.</div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNotificationMenuOpen(false);
+                      navigate('/admin/notifications');
+                    }}
+                    className="mt-1 flex w-full items-center justify-center rounded-xl bg-green-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+                  >
+                    View all
+                  </button>
+                </div>
               )}
-            </button>
+            </div>
 
             <button
               type="button"
