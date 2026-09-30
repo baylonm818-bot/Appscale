@@ -330,14 +330,14 @@ function UserManagement() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
             <colgroup>
-              <col className="w-[24%]" />
-              <col className="w-[15%]" />
-              <col className="w-[15%]" />
-              <col className="w-[10%]" />
-              <col className="w-[12%]" />
-              <col className="w-[24%]" />
+              <col className="w-[22%]" />
+              <col className="w-[14%]" />
+              <col className="w-[14%]" />
+              <col className="w-[9%]" />
+              <col className="w-[11%]" />
+              <col className="w-[30%]" />
             </colgroup>
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80 border-b border-gray-100">

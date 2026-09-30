@@ -159,7 +159,7 @@ exports.createReferral = async (req, res) => {
       const [existing] = await conn.query(
         `SELECT referral_id
          FROM referrals
-         WHERE status IN ('pending', 'responded')
+         WHERE LOWER(status) IN ('pending', 'ongoing', 'responded')
            AND (
              (? IS NOT NULL AND child_id = ?)
              OR (? IS NOT NULL AND mother_id = ?)

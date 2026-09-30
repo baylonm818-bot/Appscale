@@ -131,6 +131,21 @@ async function ensureMedicalRecordTables(pool) {
       }
     }
   }
+
+  // Ensure nutrition_records has bmi/bmi_status columns (added after initial schema)
+  try {
+    const [nrCols] = await pool.query('SHOW COLUMNS FROM nutrition_records');
+    const nrColNames = nrCols.map((c) => c.Field);
+    if (!nrColNames.includes('bmi')) {
+      await pool.query('ALTER TABLE nutrition_records ADD COLUMN bmi DECIMAL(5,2) NULL');
+    }
+    if (!nrColNames.includes('bmi_status')) {
+      await pool.query('ALTER TABLE nutrition_records ADD COLUMN bmi_status VARCHAR(50) NULL');
+    }
+  } catch (nrErr) {
+    // nutrition_records table may not exist yet — non-fatal
+    console.warn('ensureMedicalRecordTables: could not check nutrition_records:', nrErr.message);
+  }
 }
 
 module.exports = {
