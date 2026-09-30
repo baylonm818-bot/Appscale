@@ -373,14 +373,14 @@ function UserManagement() {
                     <td className="px-4 py-3.5 text-gray-600 font-medium truncate">{u.username}</td>
                     <td className="px-4 py-3.5 text-gray-600 truncate">{u.barangay || '—'}</td>
                     <td className="px-4 py-3.5 text-center">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
+                      <span className={`inline-block whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold uppercase ${
                         u.role === 'bns' ? 'bg-emerald-100 text-emerald-800' : 'bg-green-100 text-green-800'
                       }`}>
                         {u.role}
                       </span>
                     </td>
                     <td className="px-4 py-3.5 text-center">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
+                      <span className={`inline-block whitespace-nowrap px-3 py-1 rounded-full text-xs font-semibold capitalize ${
                         u.status === 'active'
                           ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
                           : 'bg-red-50 text-red-700 ring-1 ring-red-200'
@@ -389,11 +389,11 @@ function UserManagement() {
                       </span>
                     </td>
                     <td className="px-4 py-3.5 text-center">
-                      <div className="flex items-center justify-center gap-2 flex-wrap">
+                      <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => openEditModal(u)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition shadow-2xs"
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition shadow-2xs"
                         >
                           View
                         </button>
@@ -402,7 +402,7 @@ function UserManagement() {
                           <button
                             type="button"
                             onClick={() => restoreUser(u)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 border border-emerald-300 hover:bg-emerald-50 transition shadow-2xs"
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-700 border border-emerald-300 hover:bg-emerald-50 transition shadow-2xs"
                           >
                             Restore
                           </button>
@@ -412,23 +412,21 @@ function UserManagement() {
                               type="button"
                               onClick={() => setStatusConfirm({ user: u, action: u.status === 'active' ? 'lock' : 'unlock' })}
                               title={u.status === 'active' ? 'Lock Account' : 'Unlock Account'}
-                              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-2xs ${
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition shadow-2xs ${
                                 u.status === 'active'
                                   ? 'text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100'
                                   : 'text-green-700 border border-green-200 bg-green-50 hover:bg-green-100'
                               }`}
                             >
-                              {u.status === 'active' ? <Lock size={13} /> : <Unlock size={13} />}
-                              <span>{u.status === 'active' ? 'Lock' : 'Unlock'}</span>
+                              {u.status === 'active' ? 'Lock' : 'Unlock'}
                             </button>
                             <button
                               type="button"
                               onClick={() => archiveUser(u)}
                               title="Archive Account"
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 transition shadow-2xs"
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 transition shadow-2xs"
                             >
-                              <Archive size={13} />
-                              <span>Archive</span>
+                              Archive
                             </button>
                           </>
                         )}
@@ -449,7 +447,7 @@ function UserManagement() {
           className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] flex flex-col my-auto">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[88vh] flex flex-col">
 
             {/* Header */}
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
@@ -602,7 +600,7 @@ function UserManagement() {
           className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setStatusConfirm(null); }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[90vh] flex flex-col my-auto overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[85vh] flex flex-col">
             <div className="flex items-center gap-3 mb-4">
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
                 statusConfirm.action === 'lock' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-700'

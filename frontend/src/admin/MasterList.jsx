@@ -420,12 +420,12 @@ function Masterlist() {
           className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedPerson(null); }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col my-auto overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
 
             {/* Modal header */}
-            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between">
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-lg">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-lg shrink-0">
                   {(selectedPerson.first_name ?? '?').charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -446,7 +446,7 @@ function Masterlist() {
             </div>
 
             {/* Modal body */}
-            <div className="px-6 py-4 max-h-[70vh] overflow-y-auto divide-y divide-gray-50">
+            <div className="px-6 py-4 overflow-y-auto flex-1 divide-y divide-gray-50">
 
               {selectedPerson._type === 'child' ? (
                 <>
@@ -503,7 +503,7 @@ function Masterlist() {
             </div>
 
             {/* Modal footer */}
-            <div className="px-6 pb-5 pt-2">
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 shrink-0">
               <button
                 onClick={() => setSelectedPerson(null)}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold text-[#2e7d32] border-2 border-green-200 hover:bg-green-50 transition"
