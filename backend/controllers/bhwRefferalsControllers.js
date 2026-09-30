@@ -137,6 +137,10 @@ exports.createReferral = async (req, res) => {
       targetLabel = targetDisplayName;
     }
 
+    // ── Determine referring user ──────────────────────────────────────────────
+    // Priority: (1) body.referred_by, (2) JWT user_id, (3) any active user in barangay
+    const jwtUserId = req.user?.user_id || null;
+
     const [[referrer]] = await pool.query(
       `SELECT user_id FROM users
        WHERE status = 'active' AND deleted_at IS NULL
@@ -145,17 +149,19 @@ exports.createReferral = async (req, res) => {
       [targetBarangay || null, targetBarangay || null]
     );
 
-    if (!referrer && !referred_by) {
-      return res.status(500).json({ message: 'No active referring user is available.' });
+    const referringUserId = referred_by || jwtUserId || referrer?.user_id || null;
+
+    if (!referringUserId) {
+      return res.status(400).json({ message: 'Could not determine referring user. Please log in again.' });
     }
 
-    const referringUserId = referred_by || referrer.user_id;
     const referralNotes = [facility ? `Facility: ${facility}` : '', notes || ''].filter(Boolean).join('\n');
 
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
 
+      // ── Duplicate check (case-insensitive status) ─────────────────────────
       const [existing] = await conn.query(
         `SELECT referral_id
          FROM referrals
@@ -187,6 +193,7 @@ exports.createReferral = async (req, res) => {
         });
       }
 
+      // ── Build dynamic INSERT based on actual table columns ────────────────
       const insertFields = [];
       const insertValues = [];
 
@@ -208,7 +215,7 @@ exports.createReferral = async (req, res) => {
       insertFields.push('referred_by', 'referred_to', 'reason', 'severity', 'status', 'notes');
       insertValues.push(
         referringUserId,
-        referrer?.user_id || referred_by,
+        referrer?.user_id || referringUserId,
         reason,
         severity || 'medium',
         'Pending',
@@ -221,19 +228,38 @@ exports.createReferral = async (req, res) => {
         insertValues
       );
 
-      await conn.query(
-        `INSERT INTO notifications (title, message, type, is_read, related_id, created_by)
-         VALUES (?, ?, 'referral', FALSE, ?, ?)`,
-        [
-          'New Referral Submitted',
-          `${targetLabel} from ${targetBarangay || 'Unknown Barangay'} needs follow-up (${severity || 'medium'} severity).`,
-          result.insertId,
-          referringUserId,
-        ]
-      );
-
       await conn.commit();
       conn.release();
+
+      // ── Notification — NON-FATAL, runs outside transaction ────────────────
+      // Missing columns in notifications table must NOT undo a successfully saved referral.
+      try {
+        const [notifCols] = await pool.query(
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications'`
+        );
+        const notifColSet = new Set(notifCols.map((c) => c.COLUMN_NAME));
+
+        const nf = ['title', 'message', 'type', 'is_read'];
+        const nv = [
+          'New Referral Submitted',
+          `${targetLabel} from ${targetBarangay || 'Unknown Barangay'} needs follow-up (${severity || 'medium'} severity).`,
+          'referral',
+          false,
+        ];
+
+        if (notifColSet.has('related_id')) { nf.push('related_id'); nv.push(result.insertId); }
+        if (notifColSet.has('created_by')) { nf.push('created_by'); nv.push(referringUserId); }
+        if (notifColSet.has('created_at')) { nf.push('created_at'); nv.push(new Date()); }
+
+        await pool.query(
+          `INSERT INTO notifications (${nf.join(', ')}) VALUES (${nf.map(() => '?').join(', ')})`,
+          nv
+        );
+      } catch (notifErr) {
+        console.error('Referral notification insert failed (non-fatal):', notifErr.message);
+      }
+
       return res.status(201).json({ message: 'Referral submitted successfully.', referral_id: result.insertId });
     } catch (txErr) {
       await conn.rollback();
@@ -249,11 +275,19 @@ exports.createReferral = async (req, res) => {
 exports.getReferrals = async (req, res) => {
   const user = req.user;
 
-  if (!user?.barangay) {
+  // Admin can query all referrals; BHW/BNS need barangay
+  const isAdmin = String(user?.role || '').toLowerCase() === 'admin';
+
+  if (!isAdmin && !user?.barangay) {
     return res.status(400).json({ message: 'Barangay is required.' });
   }
 
   try {
+    const whereClause = isAdmin
+      ? '1=1'
+      : 'COALESCE(c.barangay, m.barangay) = ?';
+    const params = isAdmin ? [] : [user.barangay];
+
     const [referrals] = await pool.query(
       `SELECT DISTINCT
          r.referral_id,
@@ -283,9 +317,9 @@ exports.getReferrals = async (req, res) => {
        FROM referrals r
        LEFT JOIN children c ON c.child_id = r.child_id
        LEFT JOIN mothers m ON m.mother_id = r.mother_id
-       WHERE COALESCE(c.barangay, m.barangay) = ?
+       WHERE ${whereClause}
        ORDER BY FIELD(LOWER(r.status), 'pending', 'ongoing', 'responded', 'cancelled', 'completed', 'closed'), r.created_at DESC`,
-      [user.barangay]
+      params
     );
 
     const allowedReferrals = referrals.map((ref) => {
