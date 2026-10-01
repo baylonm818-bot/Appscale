@@ -28,7 +28,7 @@ class MotherProfileTabBar extends StatelessWidget {
                   border: Border(
                     bottom: BorderSide(
                       color: isActive
-                          ? const Color(0xFF9A2D5E)
+                          ? AppColors.primaryGreen
                           : Colors.transparent,
                       width: 2.5,
                     ),
@@ -39,7 +39,7 @@ class MotherProfileTabBar extends StatelessWidget {
                   _labels[index],
                   style: TextStyle(
                     color: isActive
-                        ? const Color(0xFF9A2D5E)
+                        ? AppColors.primaryGreen
                         : AppColors.textMuted,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,

@@ -48,7 +48,7 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
         context,
         beneficiaryName: current.fullName,
         reasons: const ['Transferred', 'Deceased', 'Other'],
-        accentColor: const Color(0xFF9A2D5E),
+        accentColor: AppColors.darkGreen,
       );
       if (reason != null) {
         await MotherRepository().update(

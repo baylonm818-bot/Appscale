@@ -14,7 +14,7 @@ const severityPriority = { high: 0, medium: 1, low: 2 };
 const statusColors = {
   Pending: 'bg-amber-100 text-amber-800 ring-1 ring-amber-200',
   Ongoing: 'bg-blue-100 text-blue-800 ring-1 ring-blue-200',
-  Cancelled: 'bg-rose-100 text-rose-800 ring-1 ring-rose-200',
+  Cancelled: 'bg-gray-100 text-gray-700 ring-1 ring-gray-300',
   Completed: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200',
   // Backward compatibility
   pending: 'bg-amber-100 text-amber-800 ring-1 ring-amber-200',

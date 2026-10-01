@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  static const primaryGreen = Color(0xFF5A8F29);
-  static const darkGreen = Color(0xFF3E7C1B);
-  static const lightGreenBg = Color(0xFFEAF3DE);
+  static const primaryGreen = Color(0xFF2E7D32);
+  static const darkGreen = Color(0xFF1B5E20);
+  static const lightGreenBg = Color(0xFFE8F5E9);
 
   static const background = Color(0xFFFAF9F5);
   static const surface = Colors.white;

@@ -18,7 +18,7 @@ import '../referrals/create_referral_screen.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../../shared/widgets/urgent_referral_dialog.dart';
 
-const _kAccent = Color(0xFF9A2D5E);
+const _kAccent = Color(0xFF1B5E20);
 const _kTopics = [
   'Proper latching',
   'Maternal nutrition',

@@ -6,8 +6,8 @@ import '../../../data/models/mother.dart';
 import '../../masterlist/utils/mother_status_meta.dart';
 import '../../masterlist/widgets/status_badge.dart';
 
-const _kAccent = Color(0xFF9A2D5E);
-const _kAccentDark = Color(0xFF6E1F42);
+const _kAccent = Color(0xFF1B5E20);
+const _kAccentDark = Color(0xFF2E7D32);
 
 class MotherProfileHeader extends StatelessWidget {
   final Mother mother;

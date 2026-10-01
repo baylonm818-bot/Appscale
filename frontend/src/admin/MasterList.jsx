@@ -9,7 +9,7 @@ const STATUS_CONFIG = {
   MAM:         { label: 'MAM',         cls: 'bg-amber-100  text-amber-700  ring-1 ring-amber-200'  },
   SAM:         { label: 'SAM',         cls: 'bg-red-100    text-red-700    ring-1 ring-red-200'    },
   overweight:  { label: 'Overweight',  cls: 'bg-orange-100 text-orange-700 ring-1 ring-orange-200' },
-  obese:       { label: 'Obese',       cls: 'bg-rose-100   text-rose-700   ring-1 ring-rose-200'   },
+  obese:       { label: 'Obese',       cls: 'bg-purple-100  text-purple-700  ring-1 ring-purple-200'  },
   graduate:    { label: 'Graduate',    cls: 'bg-blue-100   text-blue-700   ring-1 ring-blue-200'   },
   no_record:   { label: 'No Record',   cls: 'bg-gray-100   text-gray-500   ring-1 ring-gray-200'   },
 };

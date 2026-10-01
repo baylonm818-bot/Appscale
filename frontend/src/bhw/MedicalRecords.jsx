@@ -736,7 +736,7 @@ function MedicalRecords() {
                   <div className="p-4 border-b border-gray-100 space-y-3 bg-gray-50/50">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold text-gray-900">Registered Lactating Mothers</p>
-                      <span className="text-xs font-bold bg-pink-100 text-pink-800 px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full">
                         {filteredMothers.length}
                       </span>
                     </div>
@@ -766,12 +766,12 @@ function MedicalRecords() {
                             onClick={() => openMother(m)}
                             className={`w-full text-left p-3.5 flex items-center gap-3 transition-colors ${
                               isSelected
-                                ? 'bg-pink-50/80 border-l-4 border-pink-600'
+                                ? 'bg-teal-50/80 border-l-4 border-[#2e7d32]'
                                 : 'hover:bg-gray-50/70'
                             }`}
                           >
                             <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white ${
-                              isSelected ? 'bg-linear-to-br from-pink-600 to-rose-600' : 'bg-pink-400'
+                              isSelected ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32]' : 'bg-teal-600'
                             }`}>
                               {(m.first_name ?? '?').charAt(0).toUpperCase()}
                             </div>
@@ -781,7 +781,7 @@ function MedicalRecords() {
                                 {m.age_years != null ? `${m.age_years} yrs` : '—'} · {m.purok || 'Purok N/A'}
                               </p>
                             </div>
-                            <span className="bg-pink-50 text-pink-700 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+                            <span className="bg-teal-50 text-teal-700 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
                               {m.child_count || 0} {m.child_count === 1 ? 'child' : 'children'}
                             </span>
                           </button>
@@ -808,13 +808,13 @@ function MedicalRecords() {
                       <button
                         type="button"
                         onClick={() => setSelectedMother(null)}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-pink-700 hover:text-pink-900"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 hover:text-teal-900"
                       >
                         <ArrowLeft size={14} /> Back to Directory
                       </button>
                     </div>
 
-                    <div className="bg-linear-to-r from-pink-700 to-rose-600 p-6 text-white flex flex-wrap items-center justify-between gap-4">
+                    <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] p-6 text-white flex flex-wrap items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
                         <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-white text-xl font-black shadow-sm">
                           {(selectedMother.first_name ?? '?').charAt(0).toUpperCase()}
@@ -825,7 +825,7 @@ function MedicalRecords() {
                             Lactating Mother · {selectedMother.age_years != null ? `${selectedMother.age_years} years old` : 'Age N/A'} · {selectedMother.purok || 'Purok N/A'} · {selectedMother.barangay}
                           </p>
                           {selectedMother.contact_number && (
-                            <p className="text-xs text-rose-100/80 mt-0.5 flex items-center gap-1">
+                            <p className="text-xs text-emerald-100/80 mt-0.5 flex items-center gap-1">
                               <Phone size={11} /> {selectedMother.contact_number}
                             </p>
                           )}
@@ -835,7 +835,7 @@ function MedicalRecords() {
                         <button
                           type="button"
                           onClick={() => openAddInterventionModal('mother')}
-                          className="bg-white hover:bg-gray-100 text-pink-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                          className="bg-white hover:bg-gray-100 text-[#2e7d32] px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
                         >
                           <PlusCircle size={15} /> Record Medication / Supplement
                         </button>
@@ -857,7 +857,7 @@ function MedicalRecords() {
                           onClick={() => setMotherActiveTab(tab.key)}
                           className={`text-xs font-bold py-3.5 px-3 border-b-2 transition-all ${
                             motherActiveTab === tab.key
-                              ? 'border-pink-600 text-pink-700'
+                              ? 'border-[#2e7d32] text-[#2e7d32]'
                               : 'border-transparent text-gray-500 hover:text-gray-800'
                           }`}
                         >
@@ -880,7 +880,7 @@ function MedicalRecords() {
                                 <button
                                   type="button"
                                   onClick={() => openAddInterventionModal('mother')}
-                                  className="text-xs font-bold text-pink-700 hover:text-pink-900 flex items-center gap-1"
+                                  className="text-xs font-bold text-[#2e7d32] hover:text-[#1b5e20] flex items-center gap-1"
                                 >
                                   <PlusCircle size={14} /> Add New Entry
                                 </button>
@@ -897,7 +897,7 @@ function MedicalRecords() {
                                           <span className="text-xs font-bold text-gray-900">
                                             {s.service_name || s.service_type}
                                           </span>
-                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-800 uppercase">
+                                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 uppercase">
                                             {s.service_type}
                                           </span>
                                         </div>
@@ -914,7 +914,7 @@ function MedicalRecords() {
                                         )}
                                         {s.notes && <p className="text-xs text-gray-600 mt-1 italic">&quot;{s.notes}&quot;</p>}
                                       </div>
-                                      <span className="bg-pink-100 text-pink-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0">
+                                      <span className="bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0">
                                         Recorded
                                       </span>
                                     </div>
