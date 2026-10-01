@@ -72,15 +72,31 @@ exports.createReferral = async (req, res) => {
              WHERE c.external_id = ?`,
             [normalizeIdValue(resolvedChildId)]
           );
+          if (childQuery[0].length === 0 && targetDisplayName && targetBarangay) {
+            childQuery = await pool.query(
+              `SELECT c.child_id, c.first_name, c.last_name, c.barangay
+               FROM children c
+               WHERE LOWER(TRIM(c.barangay)) = LOWER(TRIM(?))
+                 AND (
+                   CONCAT_WS(' ', c.first_name, c.last_name) = ?
+                   OR CONCAT_WS(' ', c.first_name, c.middle_initial, c.last_name) = ?
+                 )
+               LIMIT 2`,
+              [targetBarangay, targetDisplayName.trim(), targetDisplayName.trim()]
+            );
+          }
         }
       } else if (targetDisplayName && targetBarangay) {
         childQuery = await pool.query(
           `SELECT c.child_id, c.first_name, c.last_name, c.barangay
            FROM children c
-           WHERE c.barangay = ?
-             AND CONCAT_WS(' ', c.first_name, c.middle_initial, c.last_name) = ?
+           WHERE LOWER(TRIM(c.barangay)) = LOWER(TRIM(?))
+             AND (
+               CONCAT_WS(' ', c.first_name, c.last_name) = ?
+               OR CONCAT_WS(' ', c.first_name, c.middle_initial, c.last_name) = ?
+             )
            LIMIT 2`,
-          [targetBarangay, targetDisplayName.trim()]
+          [targetBarangay, targetDisplayName.trim(), targetDisplayName.trim()]
         );
       } else {
         return res.status(400).json({ message: 'Child referral requires a valid child or child name and barangay.' });
@@ -112,15 +128,31 @@ exports.createReferral = async (req, res) => {
              WHERE m.external_id = ?`,
             [normalizeIdValue(resolvedMotherId)]
           );
+          if (motherQuery[0].length === 0 && targetDisplayName && targetBarangay) {
+            motherQuery = await pool.query(
+              `SELECT m.mother_id, m.first_name, m.last_name, m.barangay
+               FROM mothers m
+               WHERE LOWER(TRIM(m.barangay)) = LOWER(TRIM(?))
+                 AND (
+                   CONCAT_WS(' ', m.first_name, m.last_name) = ?
+                   OR CONCAT_WS(' ', m.first_name, m.middle_initial, m.last_name) = ?
+                 )
+               LIMIT 2`,
+              [targetBarangay, targetDisplayName.trim(), targetDisplayName.trim()]
+            );
+          }
         }
       } else if (targetDisplayName && targetBarangay) {
         motherQuery = await pool.query(
           `SELECT m.mother_id, m.first_name, m.last_name, m.barangay
            FROM mothers m
-           WHERE m.barangay = ?
-             AND CONCAT_WS(' ', m.first_name, m.middle_initial, m.last_name) = ?
+           WHERE LOWER(TRIM(m.barangay)) = LOWER(TRIM(?))
+             AND (
+               CONCAT_WS(' ', m.first_name, m.last_name) = ?
+               OR CONCAT_WS(' ', m.first_name, m.middle_initial, m.last_name) = ?
+             )
            LIMIT 2`,
-          [targetBarangay, targetDisplayName.trim()]
+          [targetBarangay, targetDisplayName.trim(), targetDisplayName.trim()]
         );
       } else {
         return res.status(400).json({ message: 'Mother referral requires a valid mother or mother name and barangay.' });

@@ -77,10 +77,10 @@ exports.getMothersList = async (req, res) => {
        FROM mothers m
        LEFT JOIN children c ON c.guardian_name = CONCAT(m.first_name, ' ', m.last_name)
          AND c.barangay = m.barangay AND c.status = 'active'
-       WHERE m.barangay = ? AND m.status = 'active'
+       WHERE (LOWER(TRIM(m.barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND m.status = 'active'
        GROUP BY m.mother_id
        ORDER BY m.first_name ASC`,
-      [barangay]
+      [barangay, barangay]
     );
     return res.status(200).json(mothers);
   } catch (error) {

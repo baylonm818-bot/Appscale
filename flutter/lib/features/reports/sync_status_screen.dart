@@ -22,6 +22,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
   final _children = ChildRepository();
   final _mothers = MotherRepository();
   final _measurements = MeasurementRepository();
+  final _referrals = ReferralRepository();
   final _settings = SettingsRepository();
   bool _isSyncing = false;
   String? _message;
@@ -44,11 +45,12 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       _message = null;
     });
     try {
-      // 1. Push pending local records to server (children, mothers, measurements)
+      // 1. Push pending local records to server (children, mothers, measurements, referrals)
       await Future.wait([
         _children.syncPending(),
         _mothers.syncPending(),
         _measurements.syncPending(),
+        _referrals.syncPending(),
       ]);
 
       // 2. Pull fresh data from server for this barangay (re-seed)

@@ -18,8 +18,14 @@ class BeneficiaryApi {
 
   static Future<void> syncChild(Child child) async {
     final settings = SettingsRepository();
+    final nameParts = child.fullName.trim().split(RegExp(r'\s+'));
+    final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
     await _post('/mobile/children', {
       'external_id': child.id,
+      'first_name': firstName,
+      'last_name': lastName,
       'full_name': child.fullName,
       'birth_date': _date(child.birthDate),
       'gender': child.gender,
@@ -34,8 +40,14 @@ class BeneficiaryApi {
 
   static Future<void> syncMother(Mother mother) async {
     final settings = SettingsRepository();
+    final nameParts = mother.fullName.trim().split(RegExp(r'\s+'));
+    final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
     await _post('/mobile/mothers', {
       'external_id': mother.id,
+      'first_name': firstName,
+      'last_name': lastName,
       'full_name': mother.fullName,
       'birth_date': _date(mother.birthDate),
       'contact_number': mother.contactNo,

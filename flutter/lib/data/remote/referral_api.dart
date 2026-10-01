@@ -37,8 +37,7 @@ class ReferralApi {
       'referred_by': userId,
     };
 
-    if (trimmedBeneficiaryId.isNotEmpty &&
-        RegExp(r'^\d+$').hasMatch(trimmedBeneficiaryId)) {
+    if (trimmedBeneficiaryId.isNotEmpty) {
       if (referral.beneficiaryType == 'mother') {
         payload['mother_id'] = trimmedBeneficiaryId;
       } else {
