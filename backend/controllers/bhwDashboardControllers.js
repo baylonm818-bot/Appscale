@@ -8,25 +8,17 @@ exports.getBhwStats = async (req, res) => {
   }
 
   try {
-    // Scope filter: BNS users only see records they personally encoded
-    const role = String(req.user?.role || '').toLowerCase();
-    const isBns = role === 'bns';
-    const childScopeClause = isBns ? 'AND (c.encoded_by IS NULL OR c.encoded_by = ?)' : '';
-    const childScopeParams = isBns ? [req.user.user_id] : [];
-    const motherScopeClause = isBns ? 'AND (m.encoded_by IS NULL OR m.encoded_by = ?)' : '';
-    const motherScopeParams = isBns ? [req.user.user_id] : [];
-
     // ── Total children & mothers in barangay ──
     const [[childStats]] = await pool.query(
       `SELECT COUNT(*) AS totalChildren FROM children c
-       WHERE c.barangay = ? AND c.status = 'active' ${childScopeClause}`,
-      [barangay, ...childScopeParams]
+       WHERE (LOWER(TRIM(c.barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND c.status = 'active'`,
+      [barangay, barangay]
     );
 
     const [[motherStats]] = await pool.query(
       `SELECT COUNT(*) AS totalMothers FROM mothers m
-       WHERE m.barangay = ? AND m.status = 'active' ${motherScopeClause}`,
-      [barangay, ...motherScopeParams]
+       WHERE (LOWER(TRIM(m.barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND m.status = 'active'`,
+      [barangay, barangay]
     );
 
     // ── Check if optional wasting_status column exists ──
@@ -42,15 +34,13 @@ exports.getBhwStats = async (req, res) => {
     // ── Latest nutrition records for children in this barangay ──
     const [latestRecords] = await pool.query(
       `SELECT ${selectCols.join(', ')}
-       FROM nutrition_records nr
-       INNER JOIN (
-         SELECT child_id, MAX(record_date) AS latest_date
-         FROM nutrition_records
-         GROUP BY child_id
-       ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
-       INNER JOIN children c ON c.child_id = nr.child_id
-       WHERE c.barangay = ? ${childScopeClause}`,
-      [barangay, ...childScopeParams]
+       FROM children c
+       LEFT JOIN nutrition_records nr ON nr.record_id = (
+         SELECT record_id FROM nutrition_records WHERE child_id = c.child_id ORDER BY record_date DESC, record_id DESC LIMIT 1
+       )
+       WHERE (LOWER(TRIM(c.barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND c.status = 'active'
+         AND nr.record_id IS NOT NULL`,
+      [barangay, barangay]
     );
 
     let normal = 0, stunted = 0, wasted = 0, underweight = 0, atRiskChildren = 0;
@@ -65,9 +55,9 @@ exports.getBhwStats = async (req, res) => {
     // ── At-risk mothers (weight < 45 kg) ──
     const [[atRiskMothersRow]] = await pool.query(
       `SELECT COUNT(*) AS atRiskMothers FROM mothers m
-       WHERE m.barangay = ? AND m.status = 'active'
-         AND m.weight_kg IS NOT NULL AND m.weight_kg < 45 ${motherScopeClause}`,
-      [barangay, ...motherScopeParams]
+       WHERE (LOWER(TRIM(m.barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND m.status = 'active'
+         AND m.weight_kg IS NOT NULL AND m.weight_kg < 45`,
+      [barangay, barangay]
     );
 
     // ── Monthly monitoring trend for past 6 months ──
@@ -77,12 +67,11 @@ exports.getBhwStats = async (req, res) => {
               COUNT(DISTINCT CASE WHEN nr.overall_status IN ('MAM', 'SAM') THEN nr.child_id END) AS at_risk
        FROM nutrition_records nr
        INNER JOIN children c ON c.child_id = nr.child_id
-       WHERE c.barangay = ?
+       WHERE (LOWER(TRIM(c.barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays')
          AND nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 5 MONTH)
-         ${childScopeClause}
        GROUP BY DATE_FORMAT(nr.record_date, '%Y-%m')
        ORDER BY month_key ASC`,
-      [barangay, ...childScopeParams]
+      [barangay, barangay]
     );
 
     const monthlyMonitoring = Array.from({ length: 6 }, (_, index) => {

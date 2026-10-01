@@ -216,10 +216,26 @@ exports.upsertChild = async (req, res) => {
       ]
     );
 
+    // Automatic Notification for BHW/Admin
+    try {
+      const childName = `${firstName} ${lastName || ''}`.trim();
+      await pool.query(
+        `INSERT INTO notifications (title, message, type, is_read, created_at)
+         VALUES (?, ?, 'system', FALSE, NOW())`,
+        [
+          `Data Synced Automatically: ${childName}`,
+          `Child beneficiary ${childName} in Barangay ${resolvedBarangay} was automatically synced and added to the masterlist.`,
+        ]
+      );
+    } catch (notifErr) {
+      console.error('Auto-sync child notification error (non-fatal):', notifErr && notifErr.message);
+    }
+
     return res.status(201).json({
-      message: 'Child registered successfully.',
+      message: 'Child registered and synced automatically.',
       child_id: result.insertId,
       external_id,
+      synced: true,
     });
   } catch (error) {
     console.error('Sync child error:', error);
@@ -477,10 +493,28 @@ exports.syncNutritionRecord = async (req, res) => {
       }
     }
 
+    // Automatic Notification for BHW/Admin on Nutrition Sync
+    try {
+      const [[childRow]] = await pool.query('SELECT first_name, last_name, barangay FROM children WHERE child_id = ? LIMIT 1', [resolvedChildId]);
+      const childName = childRow ? `${childRow.first_name} ${childRow.last_name}` : `Child #${resolvedChildId}`;
+      const statusLabel = os ? ` (${os})` : '';
+      await pool.query(
+        `INSERT INTO notifications (title, message, type, is_read, created_at)
+         VALUES (?, ?, 'system', FALSE, NOW())`,
+        [
+          `Data Synced Automatically: ${childName}`,
+          `New growth measurement for ${childName}${statusLabel} (Weight: ${safeWeight}kg, Height: ${safeHeight}cm) was automatically synced to the server.`,
+        ]
+      );
+    } catch (notifErr) {
+      console.error('Auto-sync nutrition notification error (non-fatal):', notifErr && notifErr.message);
+    }
+
     return res.status(201).json({
-      message: 'Nutrition measurement synced successfully.',
+      message: 'Nutrition measurement synced automatically.',
       record_id: result.insertId,
       overall_status: os,
+      synced: true,
     });
   } catch (error) {
     console.error('Sync nutrition record error:', error);

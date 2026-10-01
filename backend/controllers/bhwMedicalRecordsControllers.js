@@ -19,38 +19,17 @@ exports.getMedicalRecordsList = async (req, res) => {
   }
 
   try {
-    let scopeClause = '';
-    let scopeParams = [];
-
-    if (role === 'bns') {
-      const [[{ cnt }]] = await pool.query(
-        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-        [process.env.DB_DATABASE || process.env.DB_NAME || 'test', 'children', 'encoded_by']
-      );
-
-      if (Number(cnt) > 0) {
-        scopeClause = 'AND (c.encoded_by IS NULL OR c.encoded_by = ?)';
-        scopeParams = [req.user.user_id];
-      }
-    }
-
     const [children] = await pool.query(
       `SELECT
-         c.child_id, c.first_name, c.last_name, c.sex, c.age_in_months, c.guardian_name,
-         nr.overall_status, nr.record_date AS last_visit, nr.weight_kg, nr.height_cm, nr.bmi, nr.bmi_status
+         c.child_id, c.first_name, c.last_name, c.sex, c.age_in_months, c.guardian_name, c.barangay,
+         nr.overall_status, nr.record_date AS last_visit, nr.weight_kg, nr.height_cm, nr.muac_cm, nr.bmi, nr.bmi_status, nr.weight_status, nr.height_status
        FROM children c
-       LEFT JOIN (
-         SELECT nr1.*
-         FROM nutrition_records nr1
-         INNER JOIN (
-           SELECT child_id, MAX(record_date) AS latest_date
-           FROM nutrition_records
-           GROUP BY child_id
-         ) latest ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
-       ) nr ON nr.child_id = c.child_id
-       WHERE c.barangay = ? AND c.status = 'active' ${scopeClause}
+       LEFT JOIN nutrition_records nr ON nr.record_id = (
+         SELECT record_id FROM nutrition_records WHERE child_id = c.child_id ORDER BY record_date DESC, record_id DESC LIMIT 1
+       )
+       WHERE (LOWER(TRIM(c.barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND c.status = 'active'
        ORDER BY c.first_name ASC`,
-      [barangay, ...scopeParams]
+      [barangay, barangay]
     );
     return res.status(200).json(children);
   } catch (error) {

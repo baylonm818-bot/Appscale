@@ -41,15 +41,9 @@ exports.getChildren = async (req, res) => {
          c.guardian_name, c.barangay, c.status,
          nr.weight_kg, nr.height_cm, nr.overall_status, nr.record_date AS last_visit
        FROM children c
-       LEFT JOIN (
-         SELECT nr1.*
-         FROM nutrition_records nr1
-         INNER JOIN (
-           SELECT child_id, MAX(record_date) AS latest_date
-           FROM nutrition_records
-           GROUP BY child_id
-         ) latest ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
-       ) nr ON nr.child_id = c.child_id
+       LEFT JOIN nutrition_records nr ON nr.record_id = (
+         SELECT record_id FROM nutrition_records WHERE child_id = c.child_id ORDER BY record_date DESC, record_id DESC LIMIT 1
+       )
        ORDER BY c.first_name ASC`
     );
     return res.status(200).json(children);
