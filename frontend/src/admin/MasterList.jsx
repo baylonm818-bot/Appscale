@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
-import { Users, Search, Baby, Heart, X, MapPin } from 'lucide-react';
+import { Users, Search, Baby, Heart, X, MapPin, FileText, Printer } from 'lucide-react';
+import ReportPreviewModal from '../components/ui/ReportPreviewModal';
 
 /* ── Status badge config ── */
 const STATUS_CONFIG = {
@@ -73,6 +74,10 @@ function Masterlist() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedPerson, setSelectedPerson] = useState(null);
 
+  // Report Modal state (Item 30 & 34)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportData, setReportData] = useState(null);
+
   useEffect(() => {
     (async () => {
       try {
@@ -93,6 +98,24 @@ function Masterlist() {
       }
     })();
   }, []);
+
+  const handleOpenReportPreview = () => {
+    const list = activeTab === 'children' ? filteredChildren : filteredMothers;
+    const normal = filteredChildren.filter((c) => c.overall_status === 'normal').length;
+    const mam = filteredChildren.filter((c) => c.overall_status === 'MAM').length;
+    const sam = filteredChildren.filter((c) => c.overall_status === 'SAM').length;
+
+    setReportData({
+      summary: {
+        totalChildren: filteredChildren.length,
+        normal,
+        mam,
+        sam,
+      },
+      items: list,
+    });
+    setIsReportModalOpen(true);
+  };
 
   /* ── Loading / error states ── */
   if (loading) return (
@@ -121,6 +144,7 @@ function Masterlist() {
       if (ageFilter === 'all') return true;
       const age = Number(c.age_in_months ?? 0);
       if (ageFilter === '0-23')  return age >= 0  && age <= 23;
+      if (ageFilter === '0-24')  return age >= 0  && age <= 24;
       if (ageFilter === '24-59') return age >= 24 && age <= 59;
       return true;
     })
@@ -207,74 +231,85 @@ function Masterlist() {
       {/* ── Search + Filters panel ── */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
 
-
-
         {/* Search + filters bar */}
-        <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center">
-          {/* Search */}
-          <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 flex-1 min-w-[200px] border border-gray-100 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition">
-            <Search size={15} className="text-gray-400 shrink-0" />
-            <input
-              type="text"
-              placeholder={activeTab === 'children' ? 'Search name, barangay, status…' : 'Search name or barangay…'}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="outline-none text-sm w-full bg-transparent text-gray-700 placeholder-gray-400"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600">
-                <X size={14} />
-              </button>
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
+          <div className="flex flex-wrap gap-3 items-center flex-1 min-w-[300px]">
+            {/* Search */}
+            <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 flex-1 min-w-[200px] border border-gray-100 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition">
+              <Search size={15} className="text-gray-400 shrink-0" />
+              <input
+                type="text"
+                placeholder={activeTab === 'children' ? 'Search name, barangay, status…' : 'Search name or barangay…'}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="outline-none text-sm w-full bg-transparent text-gray-700 placeholder-gray-400"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Age group pills — Item 33 (0-23, 0-24, 24-59) */}
+            {activeTab === 'children' && (
+              <div className="flex gap-1 bg-gray-50 rounded-xl p-1 border border-gray-100">
+                {[
+                  { val: 'all',   lbl: 'All Ages'  },
+                  { val: '0-23',  lbl: '0–23 mos'  },
+                  { val: '0-24',  lbl: '0–24 mos'  },
+                  { val: '24-59', lbl: '24–59 mos' },
+                ].map(({ val, lbl }) => (
+                  <button
+                    key={val}
+                    onClick={() => setAgeFilter(val)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer
+                      ${ageFilter === val
+                        ? 'bg-[#2e7d32] text-white shadow-sm'
+                        : 'text-gray-500 hover:bg-gray-100'
+                      }`}
+                  >
+                    {lbl}
+                  </button>
+                ))}
+              </div>
             )}
+
+            {/* Status dropdown */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-600 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition font-medium"
+            >
+              {activeTab === 'children' ? (
+                <>
+                  <option value="all">All Status</option>
+                  <option value="normal">Normal</option>
+                  <option value="MAM">MAM</option>
+                  <option value="SAM">SAM</option>
+                  <option value="overweight">Overweight</option>
+                  <option value="obese">Obese</option>
+                  <option value="graduate">Graduate</option>
+                  <option value="no_record">No Record</option>
+                </>
+              ) : (
+                <>
+                  <option value="all">All Status</option>
+                  <option value="completed">Completed</option>
+                </>
+              )}
+            </select>
           </div>
 
-          {/* Age group pills — children only */}
-          {activeTab === 'children' && (
-            <div className="flex gap-1 bg-gray-50 rounded-xl p-1 border border-gray-100">
-              {[
-                { val: 'all',   lbl: 'All Ages'     },
-                { val: '0-23',  lbl: '0–23 mos'     },
-                { val: '24-59', lbl: '24–59 mos'    },
-              ].map(({ val, lbl }) => (
-                <button
-                  key={val}
-                  onClick={() => setAgeFilter(val)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition
-                    ${ageFilter === val
-                      ? 'bg-[#2e7d32] text-white shadow-sm'
-                      : 'text-gray-500 hover:bg-gray-100'
-                    }`}
-                >
-                  {lbl}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Status dropdown */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-600 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition font-medium"
+          {/* Export / Preview Report Button (Item 30 & 34) */}
+          <button
+            type="button"
+            onClick={handleOpenReportPreview}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white text-xs font-bold shadow-sm hover:opacity-95 transition cursor-pointer shrink-0"
           >
-            {activeTab === 'children' ? (
-              <>
-                <option value="all">All Status</option>
-                <option value="normal">Normal</option>
-                <option value="MAM">MAM</option>
-                <option value="SAM">SAM</option>
-                <option value="overweight">Overweight</option>
-                <option value="obese">Obese</option>
-                <option value="graduate">Graduate</option>
-                <option value="no_record">No Record</option>
-              </>
-            ) : (
-              <>
-                <option value="all">All Status</option>
-                <option value="completed">Completed</option>
-              </>
-            )}
-          </select>
+            <FileText size={15} />
+            Preview & Export Report
+          </button>
         </div>
 
         {/* Result count */}
@@ -514,6 +549,15 @@ function Masterlist() {
           </div>
         </div>
       )}
+
+      {/* Official Report Preview Modal (Items 30 & 34) */}
+      <ReportPreviewModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        reportData={reportData}
+        title={`BNS ${activeTab === 'children' ? 'Child Beneficiary Masterlist' : 'Maternal Health Masterlist'}`}
+        barangay="All Barangays"
+      />
     </div>
   );
 }

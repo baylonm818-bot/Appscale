@@ -17,8 +17,11 @@ import {
   History,
   ShieldCheck,
   Clock,
+  Printer,
+  Plus,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import ReportPreviewModal from '../components/ui/ReportPreviewModal';
 
 const statusColors = {
   normal: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200',
@@ -38,6 +41,26 @@ const severityColors = {
 function MedicalRecords() {
   const [recordType, setRecordType] = useState('children'); // 'children' | 'mothers' | 'audit'
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+
+  // Report Modal state (Item 30 & 34)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportData, setReportData] = useState(null);
+
+  // ── Add Beneficiary Modal State (Item 25 & 36) ──
+  const [showAddBeneficiaryModal, setShowAddBeneficiaryModal] = useState(false);
+  const [beneficiaryType, setBeneficiaryType] = useState('child'); // 'child' | 'mother'
+  const [newFirstName, setNewFirstName] = useState('');
+  const [newMiddleInitial, setNewMiddleInitial] = useState('');
+  const [newLastName, setNewLastName] = useState('');
+  const [newBirthDate, setNewBirthDate] = useState('');
+  const [newSex, setNewSex] = useState('male');
+  const [newGuardianName, setNewGuardianName] = useState('');
+  const [newGuardianContact, setNewGuardianContact] = useState('');
+  const [newBarangay, setNewBarangay] = useState(user.barangay || 'Antipolo');
+  const [newPurok, setNewPurok] = useState('');
+  const [addBeneficiarySubmitting, setAddBeneficiarySubmitting] = useState(false);
+  const [addBeneficiaryError, setAddBeneficiaryError] = useState('');
+  const [addBeneficiarySuccess, setAddBeneficiarySuccess] = useState('');
 
   // ── Children state ──
   const [children, setChildren] = useState([]);
@@ -70,8 +93,8 @@ function MedicalRecords() {
 
   // ── Add Intervention Modal State ──
   const [showAddModal, setShowAddModal] = useState(false);
-  const [modalBeneficiaryType, setModalBeneficiaryType] = useState('child'); // 'child' | 'mother'
-  const [interventionCategory, setInterventionCategory] = useState('Medication'); // 'Medication', 'Supplement', 'Health Intervention'
+  const [modalBeneficiaryType, setModalBeneficiaryType] = useState('child');
+  const [interventionCategory, setInterventionCategory] = useState('Medication');
   const [serviceName, setServiceName] = useState('');
   const [dosage, setDosage] = useState('');
   const [serviceDate, setServiceDate] = useState(new Date().toISOString().slice(0, 10));
@@ -155,8 +178,10 @@ function MedicalRecords() {
     if (ageFilter !== 'all') {
       list = list.filter((c) => {
         if (ageFilter === '0-11') return c.age_in_months <= 11;
+        if (ageFilter === '0-23') return c.age_in_months >= 0 && c.age_in_months <= 23;
+        if (ageFilter === '0-24') return c.age_in_months >= 0 && c.age_in_months <= 24;
         if (ageFilter === '12-23') return c.age_in_months >= 12 && c.age_in_months <= 23;
-        return c.age_in_months >= 24;
+        return c.age_in_months >= 24 && c.age_in_months <= 59;
       });
     }
     return list;
@@ -277,13 +302,13 @@ function MedicalRecords() {
   return (
     <div className="space-y-4">
 
-      {/* ── Record Type Toggle ── */}
+      {/* ── Record Type Toggle & Action Bar ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
           <button
             type="button"
             onClick={() => { setRecordType('children'); setSelectedMother(null); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
               recordType === 'children'
                 ? 'bg-white text-[#2e7d32] shadow-sm'
                 : 'text-gray-500 hover:text-gray-800'
@@ -294,7 +319,7 @@ function MedicalRecords() {
           <button
             type="button"
             onClick={() => { setRecordType('mothers'); setSelectedChild(null); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
               recordType === 'mothers'
                 ? 'bg-white text-[#2e7d32] shadow-sm'
                 : 'text-gray-500 hover:text-gray-800'
@@ -305,13 +330,48 @@ function MedicalRecords() {
           <button
             type="button"
             onClick={() => { setRecordType('audit'); setSelectedChild(null); setSelectedMother(null); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
               recordType === 'audit'
                 ? 'bg-white text-[#2e7d32] shadow-sm'
                 : 'text-gray-500 hover:text-gray-800'
             }`}
           >
             <History size={15} /> Audit Trail
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Add Beneficiary Button (Item 25 & 36) */}
+          <button
+            type="button"
+            onClick={() => {
+              setBeneficiaryType(recordType === 'mothers' ? 'mother' : 'child');
+              setShowAddBeneficiaryModal(true);
+              setAddBeneficiaryError('');
+              setAddBeneficiarySuccess('');
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white text-xs font-bold shadow-sm hover:opacity-95 transition cursor-pointer"
+          >
+            <Plus size={15} /> Add Beneficiary
+          </button>
+
+          {/* Export / Preview Report Button (Item 30 & 34) */}
+          <button
+            type="button"
+            onClick={() => {
+              const list = recordType === 'mothers' ? filteredMothers : filteredChildren;
+              const normal = children.filter((c) => c.overall_status === 'normal').length;
+              const mam = children.filter((c) => c.overall_status === 'MAM').length;
+              const sam = children.filter((c) => c.overall_status === 'SAM').length;
+              setReportData({
+                summary: { totalChildren: children.length, normal, mam, sam },
+                items: list,
+              });
+              setIsReportModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-green-700 text-green-800 text-xs font-bold shadow-sm hover:bg-green-50 transition cursor-pointer"
+          >
+            <FileText size={15} /> Preview Report
           </button>
         </div>
       </div>
@@ -366,14 +426,15 @@ function MedicalRecords() {
                         <option value="underweight">Underweight</option>
                       </select>
 
+                      {/* Age group filter — Item 33 (0-23, 0-24, 24-59) */}
                       <select
                         value={ageFilter}
                         onChange={(e) => setAgeFilter(e.target.value)}
                         className="border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-gray-700 bg-white"
                       >
                         <option value="all">All Ages</option>
-                        <option value="0-11">0–11 mos</option>
-                        <option value="12-23">12–23 mos</option>
+                        <option value="0-23">0–23 mos</option>
+                        <option value="0-24">0–24 mos</option>
                         <option value="24-59">24–59 mos</option>
                       </select>
                     </div>
@@ -1138,6 +1199,223 @@ function MedicalRecords() {
           </div>
         </div>
       )}
+
+      {/* ── Add Beneficiary Modal (Item 25 & 36) ── */}
+      {showAddBeneficiaryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col my-8">
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between text-white shrink-0">
+              <div className="flex items-center gap-2">
+                <PlusCircle size={20} />
+                <div>
+                  <h3 className="text-base font-bold">Register New Beneficiary</h3>
+                  <p className="text-xs text-white/80">Add child or mother to barangay masterlist</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddBeneficiaryModal(false)}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                // Call handlesubmit default
+                const bDate = newBirthDate ? new Date(newBirthDate) : null;
+                const now = new Date();
+                if (beneficiaryType === 'child' && bDate) {
+                  let ageMonths = (now.getFullYear() - bDate.getFullYear()) * 12 + (now.getMonth() - bDate.getMonth());
+                  if (now.getDate() < bDate.getDate()) ageMonths--;
+                  if (ageMonths < 0 || ageMonths > 59) {
+                    setAddBeneficiaryError('Child age must be between 0 and 59 months (under 5 years old).');
+                    return;
+                  }
+                }
+                setAddBeneficiaryError('');
+                setAddBeneficiarySubmitting(true);
+                const endpoint = beneficiaryType === 'child' ? '/mobile/children' : '/mobile/mothers';
+                const payload = beneficiaryType === 'child' ? {
+                  first_name: newFirstName,
+                  middle_initial: newMiddleInitial || null,
+                  last_name: newLastName,
+                  birth_date: newBirthDate,
+                  sex: newSex,
+                  guardian_name: newGuardianName,
+                  guardian_contact: newGuardianContact,
+                  barangay: newBarangay || user.barangay,
+                  purok: newPurok || null,
+                } : {
+                  first_name: newFirstName,
+                  middle_initial: newMiddleInitial || null,
+                  last_name: newLastName,
+                  contact_number: newGuardianContact,
+                  barangay: newBarangay || user.barangay,
+                  purok: newPurok || null,
+                };
+                axiosClient.post(endpoint, payload)
+                  .then(() => {
+                    setAddBeneficiarySuccess(`Successfully registered ${newFirstName} ${newLastName}!`);
+                    if (beneficiaryType === 'child') fetchChildren(); else fetchMothers();
+                    setNewFirstName(''); setNewMiddleInitial(''); setNewLastName(''); setNewBirthDate(''); setNewGuardianName(''); setNewGuardianContact(''); setNewPurok('');
+                  })
+                  .catch((err) => setAddBeneficiaryError(err.response?.data?.message || 'Failed to register beneficiary.'))
+                  .finally(() => setAddBeneficiarySubmitting(false));
+              }}
+              className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"
+            >
+              {addBeneficiaryError && (
+                <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium flex items-center gap-2">
+                  <X size={16} className="shrink-0 text-red-500" />
+                  <span>{addBeneficiaryError}</span>
+                </div>
+              )}
+              {addBeneficiarySuccess && (
+                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-800 text-xs border border-emerald-200 font-medium flex items-center gap-2">
+                  <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
+                  <span>{addBeneficiarySuccess}</span>
+                </div>
+              )}
+
+              {/* Beneficiary Type Selector */}
+              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setBeneficiaryType('child')}
+                  className={`py-2 text-xs font-bold rounded-lg transition ${beneficiaryType === 'child' ? 'bg-white text-green-900 shadow-xs' : 'text-gray-600'}`}
+                >
+                  Child (0–59 Months)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBeneficiaryType('mother')}
+                  className={`py-2 text-xs font-bold rounded-lg transition ${beneficiaryType === 'mother' ? 'bg-white text-green-900 shadow-xs' : 'text-gray-600'}`}
+                >
+                  Lactating Mother
+                </button>
+              </div>
+
+              {/* Names */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1">
+                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">First Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newFirstName}
+                    onChange={(e) => setNewFirstName(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                    placeholder="First Name"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">M.I.</label>
+                  <input
+                    type="text"
+                    maxLength={2}
+                    value={newMiddleInitial}
+                    onChange={(e) => setNewMiddleInitial(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 text-center"
+                    placeholder="M"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">Last Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newLastName}
+                    onChange={(e) => setNewLastName(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                    placeholder="Last Name"
+                  />
+                </div>
+              </div>
+
+              {beneficiaryType === 'child' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">Birth Date (0-59 mos) *</label>
+                    <input
+                      type="date"
+                      required
+                      value={newBirthDate}
+                      onChange={(e) => setNewBirthDate(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">Sex *</label>
+                    <select
+                      value={newSex}
+                      onChange={(e) => setNewSex(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                    >
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                    {beneficiaryType === 'child' ? 'Guardian Name' : 'Contact Number'}
+                  </label>
+                  <input
+                    type="text"
+                    value={beneficiaryType === 'child' ? newGuardianName : newGuardianContact}
+                    onChange={(e) => beneficiaryType === 'child' ? setNewGuardianName(e.target.value) : setNewGuardianContact(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                    placeholder={beneficiaryType === 'child' ? 'Mother/Father Name' : '09123456789'}
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">Purok / Zone</label>
+                  <input
+                    type="text"
+                    value={newPurok}
+                    onChange={(e) => setNewPurok(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                    placeholder="Purok 1"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons: Includes "Save & Add Another" so user is NOT kicked out to home (Item 25) */}
+              <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddBeneficiaryModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={addBeneficiarySubmitting || !newFirstName || !newLastName}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:opacity-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {addBeneficiarySubmitting ? 'Saving…' : 'Save & Add Another'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Official Report Preview Modal (Item 30 & 34) */}
+      <ReportPreviewModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        reportData={reportData}
+        title={`BHW ${recordType === 'mothers' ? 'Lactating Mothers' : 'Child Nutrition & Health'} Report`}
+        barangay={user.barangay || 'Community'}
+      />
 
     </div>
   );

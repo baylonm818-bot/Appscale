@@ -121,6 +121,22 @@ exports.upsertChild = async (req, res) => {
     });
   }
 
+  // Item 36: Strictly limit child age to 0-59 months (0 to 5 years old)
+  const bDate = new Date(birth_date);
+  const now = new Date();
+  if (isNaN(bDate.getTime())) {
+    return res.status(400).json({ message: 'Invalid birth date provided.' });
+  }
+  let ageMonths = (now.getFullYear() - bDate.getFullYear()) * 12 + (now.getMonth() - bDate.getMonth());
+  if (now.getDate() < bDate.getDate()) ageMonths--;
+
+  if (ageMonths < 0 || ageMonths > 59) {
+    return res.status(400).json({
+      message: 'Child age must be between 0 and 59 months (under 5 years old).',
+      code: 'invalid_child_age',
+    });
+  }
+
   try {
     let resolvedMotherId = mother_id || null;
     if (!resolvedMotherId && mother_external_id) {
