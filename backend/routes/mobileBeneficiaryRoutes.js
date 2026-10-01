@@ -11,8 +11,8 @@ const {
   createMobileSchedule,
 } = require('../controllers/mobileBeneficiaryControllers');
 
-// Mobile app users are BNS/BHW — enforce role
-router.use(roleCheck(['bhw', 'bns']));
+// Mobile app users are BNS/BHW — enforce role (allow admin for server-side syncs)
+router.use(roleCheck(['bhw', 'bns', 'admin']));
 
 router.post('/children', upsertChild);
 router.post('/mothers', upsertMother);

@@ -90,6 +90,9 @@ exports.upsertChild = async (req, res) => {
     encoded_by,
   } = req.body;
 
+  // debug: show user making the request
+  // debug logging removed
+
   // Enforce barangay ownership from JWT for non-admin users to prevent
   // clients writing records into other barangays.
   const scope = enforceScopedBarangay(req.user, barangay);
@@ -400,6 +403,7 @@ exports.syncNutritionRecord = async (req, res) => {
   } = req.body;
 
   try {
+    // debug logging removed
     let resolvedChildId = child_id;
     if (!resolvedChildId && child_external_id) {
       const [[childRow]] = await pool.query(
@@ -437,7 +441,7 @@ exports.syncNutritionRecord = async (req, res) => {
     const date = record_date || new Date().toISOString().slice(0, 10);
 
     const [existing] = await pool.query(
-      'SELECT nutrition_record_id, child_id, record_date FROM nutrition_records WHERE child_id = ? AND record_date = ? LIMIT 1',
+      'SELECT record_id, child_id, record_date FROM nutrition_records WHERE child_id = ? AND record_date = ? LIMIT 1',
       [resolvedChildId, date]
     );
 
@@ -445,7 +449,7 @@ exports.syncNutritionRecord = async (req, res) => {
       return res.status(200).json({
         message: 'Nutrition measurement already recorded for this child and date.',
         duplicate: true,
-        record_id: existing[0].nutrition_record_id,
+        record_id: existing[0].record_id,
         overall_status: os,
       });
     }
