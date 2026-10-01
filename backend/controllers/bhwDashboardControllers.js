@@ -35,9 +35,15 @@ exports.getBhwStats = async (req, res) => {
     const [latestRecords] = await pool.query(
       `SELECT ${selectCols.join(', ')}
        FROM children c
-       LEFT JOIN nutrition_records nr ON nr.record_id = (
-         SELECT record_id FROM nutrition_records WHERE child_id = c.child_id ORDER BY record_date DESC, record_id DESC LIMIT 1
-       )
+       LEFT JOIN (
+         SELECT nr1.*
+         FROM nutrition_records nr1
+         INNER JOIN (
+           SELECT child_id, MAX(record_id) AS max_id
+           FROM nutrition_records
+           GROUP BY child_id
+         ) latest ON nr1.record_id = latest.max_id
+       ) nr ON nr.child_id = c.child_id
        WHERE (LOWER(TRIM(c.barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND c.status = 'active'
          AND nr.record_id IS NOT NULL`,
       [barangay, barangay]

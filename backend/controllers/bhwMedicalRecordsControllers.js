@@ -24,9 +24,15 @@ exports.getMedicalRecordsList = async (req, res) => {
          c.child_id, c.first_name, c.last_name, c.sex, c.age_in_months, c.guardian_name, c.barangay,
          nr.overall_status, nr.record_date AS last_visit, nr.weight_kg, nr.height_cm, nr.muac_cm, nr.bmi, nr.bmi_status, nr.weight_status, nr.height_status
        FROM children c
-       LEFT JOIN nutrition_records nr ON nr.record_id = (
-         SELECT record_id FROM nutrition_records WHERE child_id = c.child_id ORDER BY record_date DESC, record_id DESC LIMIT 1
-       )
+       LEFT JOIN (
+         SELECT nr1.*
+         FROM nutrition_records nr1
+         INNER JOIN (
+           SELECT child_id, MAX(record_id) AS max_id
+           FROM nutrition_records
+           GROUP BY child_id
+         ) latest ON nr1.record_id = latest.max_id
+       ) nr ON nr.child_id = c.child_id
        WHERE (LOWER(TRIM(c.barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND c.status = 'active'
        ORDER BY c.first_name ASC`,
       [barangay, barangay]
