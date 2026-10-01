@@ -19,12 +19,11 @@ const tablesData = [
     rows: [
       ['Field', 'Type', 'Constraint'],
       ['user_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
-      ['username', 'VARCHAR(100)', 'UNIQUE NOT NULL'],
-      ['email', 'VARCHAR(255)', 'UNIQUE NOT NULL'],
-      ['password_hash', 'VARCHAR(255)', 'NOT NULL (bcrypt hashed)'],
       ['first_name', 'VARCHAR(100)', 'NOT NULL'],
       ['middle_initial', 'VARCHAR(5)', 'NULL'],
       ['last_name', 'VARCHAR(100)', 'NOT NULL'],
+      ['email', 'VARCHAR(255)', 'UNIQUE NOT NULL (Primary Login)'],
+      ['password_hash', 'VARCHAR(255)', 'NOT NULL (bcrypt hashed)'],
       ['role', 'ENUM(\'admin\',\'bhw\',\'bns\')', 'DEFAULT \'bhw\' NOT NULL'],
       ['municipality', 'VARCHAR(100)', 'DEFAULT \'Gasan\' NOT NULL'],
       ['barangay', 'VARCHAR(100)', 'NOT NULL'],
@@ -43,6 +42,32 @@ const tablesData = [
   },
   {
     tableNum: 'Table 2.2',
+    title: 'Children',
+    rows: [
+      ['Field', 'Type', 'Constraint'],
+      ['child_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
+      ['external_id', 'VARCHAR(100)', 'UNIQUE NULL (Mobile Sync UUID)'],
+      ['mother_id', 'INT', 'FK mothers (mother_id) NULL'],
+      ['guardian_id', 'INT', 'FK guardians (guardian_id) NULL'],
+      ['first_name', 'VARCHAR(50)', 'NOT NULL'],
+      ['middle_initial', 'VARCHAR(5)', 'NULL'],
+      ['last_name', 'VARCHAR(50)', 'NOT NULL'],
+      ['birth_date', 'DATE', 'NOT NULL'],
+      ['sex', 'ENUM(\'male\',\'female\')', 'NOT NULL'],
+      ['age_in_months', 'INT', 'NOT NULL DEFAULT 0'],
+      ['municipality', 'VARCHAR(50)', 'NOT NULL DEFAULT \'Gasan\''],
+      ['barangay', 'VARCHAR(50)', 'NOT NULL'],
+      ['purok', 'VARCHAR(20)', 'NOT NULL'],
+      ['guardian_name', 'VARCHAR(150)', 'NULL'],
+      ['guardian_contact', 'VARCHAR(50)', 'NULL'],
+      ['status', 'ENUM(\'active\',\'transfer\',\'move_out\',\'dead\',\'graduate\')', 'DEFAULT \'active\''],
+      ['encoded_by', 'INT', 'FK users BNS (user_id)'],
+      ['created_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP'],
+      ['updated_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'],
+    ]
+  },
+  {
+    tableNum: 'Table 2.3',
     title: 'Mothers (Lactating & Pregnant Mothers)',
     rows: [
       ['Field', 'Type', 'Constraint'],
@@ -65,32 +90,24 @@ const tablesData = [
     ]
   },
   {
-    tableNum: 'Table 2.3',
-    title: 'Children (0 to 59 Months)',
+    tableNum: 'Table 2.4',
+    title: 'Guardian',
     rows: [
       ['Field', 'Type', 'Constraint'],
-      ['child_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
-      ['external_id', 'VARCHAR(100)', 'UNIQUE NULL (Mobile Sync UUID)'],
-      ['mother_id', 'INT', 'FK mothers (mother_id) NULL'],
+      ['guardian_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
       ['first_name', 'VARCHAR(50)', 'NOT NULL'],
-      ['middle_initial', 'VARCHAR(5)', 'NULL'],
+      ['middle_initial', 'CHAR(1)', 'NULL'],
       ['last_name', 'VARCHAR(50)', 'NOT NULL'],
-      ['birth_date', 'DATE', 'NOT NULL'],
-      ['sex', 'ENUM(\'male\',\'female\')', 'NOT NULL'],
-      ['age_in_months', 'INT', 'NOT NULL DEFAULT 0'],
+      ['relationship', 'VARCHAR(50)', 'NOT NULL'],
+      ['contact_number', 'VARCHAR(20)', 'NULL'],
       ['municipality', 'VARCHAR(50)', 'NOT NULL DEFAULT \'Gasan\''],
       ['barangay', 'VARCHAR(50)', 'NOT NULL'],
       ['purok', 'VARCHAR(20)', 'NOT NULL'],
-      ['guardian_name', 'VARCHAR(150)', 'NULL'],
-      ['guardian_contact', 'VARCHAR(50)', 'NULL'],
-      ['status', 'ENUM(\'active\',\'transfer\',\'move_out\',\'dead\',\'graduate\')', 'DEFAULT \'active\''],
-      ['encoded_by', 'INT', 'FK users BNS (user_id)'],
       ['created_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP'],
-      ['updated_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'],
     ]
   },
   {
-    tableNum: 'Table 2.4',
+    tableNum: 'Table 2.5',
     title: 'Child Nutrition Record',
     rows: [
       ['Field', 'Type', 'Constraint'],
@@ -112,7 +129,46 @@ const tablesData = [
     ]
   },
   {
-    tableNum: 'Table 2.5',
+    tableNum: 'Table 2.6',
+    title: 'Feeding Program Records',
+    rows: [
+      ['Field', 'Type', 'Constraint'],
+      ['feeding_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
+      ['child_id', 'INT', 'FK children (child_id) NOT NULL'],
+      ['status', 'ENUM(\'active\',\'completed\',\'removed\')', 'DEFAULT \'active\''],
+      ['start_date', 'DATE', 'DEFAULT CURRENT_DATE'],
+      ['end_date', 'DATE', 'NULL'],
+      ['created_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP'],
+    ]
+  },
+  {
+    tableNum: 'Table 2.7',
+    title: 'Feeding Attendance',
+    rows: [
+      ['Field', 'Type', 'Constraint'],
+      ['attendance_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
+      ['feeding_id', 'INT', 'FK feeding_programs (feeding_id) NOT NULL'],
+      ['feeding_date', 'DATE', 'NOT NULL'],
+      ['status', 'ENUM(\'present\',\'absent\')', 'NOT NULL DEFAULT \'present\''],
+      ['remarks', 'VARCHAR(255)', 'NULL'],
+      ['created_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP'],
+    ]
+  },
+  {
+    tableNum: 'Table 2.8',
+    title: 'Feeding Meals',
+    rows: [
+      ['Field', 'Type', 'Constraint'],
+      ['meal_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
+      ['attendance_id', 'INT', 'FK feeding_attendance (attendance_id) NOT NULL'],
+      ['meal_description', 'VARCHAR(255)', 'NOT NULL'],
+      ['calories', 'INT', 'NULL'],
+      ['notes', 'TEXT', 'NULL'],
+      ['created_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP'],
+    ]
+  },
+  {
+    tableNum: 'Table 2.9',
     title: 'Child Services',
     rows: [
       ['Field', 'Type', 'Constraint'],
@@ -129,24 +185,7 @@ const tablesData = [
     ]
   },
   {
-    tableNum: 'Table 2.6',
-    title: 'Mother Services',
-    rows: [
-      ['Field', 'Type', 'Constraint'],
-      ['service_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
-      ['mother_id', 'INT', 'FK mothers (mother_id) NOT NULL'],
-      ['service_type', 'VARCHAR(100)', 'NOT NULL (iron_folic, checkup, counseling)'],
-      ['service_name', 'VARCHAR(150)', 'NULL'],
-      ['dosage', 'VARCHAR(100)', 'NULL'],
-      ['service_date', 'DATE', 'NOT NULL'],
-      ['next_schedule', 'DATE', 'NULL'],
-      ['provided_by', 'VARCHAR(100)', 'NULL (FK users BHW)'],
-      ['notes', 'TEXT', 'NULL'],
-      ['created_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP'],
-    ]
-  },
-  {
-    tableNum: 'Table 2.7',
+    tableNum: 'Table 2.10',
     title: 'Schedules',
     rows: [
       ['Field', 'Type', 'Constraint'],
@@ -162,7 +201,7 @@ const tablesData = [
     ]
   },
   {
-    tableNum: 'Table 2.8',
+    tableNum: 'Table 2.11',
     title: 'Referrals',
     rows: [
       ['Field', 'Type', 'Constraint'],
@@ -181,7 +220,7 @@ const tablesData = [
     ]
   },
   {
-    tableNum: 'Table 2.9',
+    tableNum: 'Table 2.12',
     title: 'Notifications',
     rows: [
       ['Field', 'Type', 'Constraint'],
@@ -196,7 +235,63 @@ const tablesData = [
     ]
   },
   {
-    tableNum: 'Table 2.10',
+    tableNum: 'Table 2.13',
+    title: 'Password Reset',
+    rows: [
+      ['Field', 'Type', 'Constraint'],
+      ['reset_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
+      ['user_id', 'INT', 'FK users (user_id) NOT NULL'],
+      ['reset_token', 'VARCHAR(255)', 'NOT NULL'],
+      ['expires_at', 'DATETIME', 'NOT NULL'],
+      ['created_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP'],
+    ]
+  },
+  {
+    tableNum: 'Table 2.14',
+    title: 'Archive Records',
+    rows: [
+      ['Field', 'Type', 'Constraint'],
+      ['archive_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
+      ['table_name', 'VARCHAR(50)', 'NOT NULL'],
+      ['record_id', 'INT', 'NOT NULL'],
+      ['snapshot', 'JSON', 'NOT NULL'],
+      ['reason', 'ENUM(\'deleted\',\'transfer\',\'move_out\',\'dead\',\'graduate\')', 'NOT NULL'],
+      ['archived_by', 'INT', 'FK users (user_id) NULL'],
+      ['archived_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP'],
+    ]
+  },
+  {
+    tableNum: 'Table 2.15',
+    title: 'Sync Logs',
+    rows: [
+      ['Field', 'Type', 'Constraint'],
+      ['sync_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
+      ['user_id', 'INT', 'FK users (user_id) NOT NULL'],
+      ['local_id', 'VARCHAR(100)', 'NOT NULL'],
+      ['table_name', 'VARCHAR(50)', 'NOT NULL'],
+      ['status', 'ENUM(\'pending\',\'synced\',\'failed\')', 'DEFAULT \'pending\''],
+      ['synced_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP'],
+    ]
+  },
+  {
+    tableNum: 'Table 2.16',
+    title: 'Mother Services',
+    rows: [
+      ['Field', 'Type', 'Constraint'],
+      ['service_id', 'INT', 'PRIMARY KEY AUTO_INCREMENT'],
+      ['mother_id', 'INT', 'FK mothers (mother_id) NOT NULL'],
+      ['service_type', 'VARCHAR(100)', 'NOT NULL (iron_folic, checkup, counseling)'],
+      ['service_name', 'VARCHAR(150)', 'NULL'],
+      ['dosage', 'VARCHAR(100)', 'NULL'],
+      ['service_date', 'DATE', 'NOT NULL'],
+      ['next_schedule', 'DATE', 'NULL'],
+      ['provided_by', 'VARCHAR(100)', 'NULL (FK users BHW)'],
+      ['notes', 'TEXT', 'NULL'],
+      ['created_at', 'TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP'],
+    ]
+  },
+  {
+    tableNum: 'Table 2.17',
     title: 'Medical Records Audit Trail',
     rows: [
       ['Field', 'Type', 'Constraint'],
@@ -304,18 +399,18 @@ const doc = new Document({
   ],
 });
 
-const primaryOutput = path.join(__dirname, '../../AppScale_Database_Schema_Clean.docx');
+const fileOutputs = [
+  path.join(__dirname, '../../AppScale_Database_Schema_Full.docx'),
+  path.join(__dirname, '../../AppScale_Database_Schema_v2.docx')
+];
 
 Packer.toBuffer(doc).then((buffer) => {
-  fs.writeFileSync(primaryOutput, buffer);
-  console.log('Successfully written clean Word document at:', primaryOutput);
-  
-  // Also try writing to AppScale_Database_Schema_Updated.docx if not locked
-  try {
-    const updatedOutput = path.join(__dirname, '../../AppScale_Database_Schema_Updated.docx');
-    fs.writeFileSync(updatedOutput, buffer);
-    console.log('Successfully updated:', updatedOutput);
-  } catch (e) {
-    console.log('AppScale_Database_Schema_Updated.docx is open in Word, created AppScale_Database_Schema_Clean.docx instead.');
-  }
+  fileOutputs.forEach((filePath) => {
+    try {
+      fs.writeFileSync(filePath, buffer);
+      console.log('Successfully written document at:', filePath);
+    } catch (e) {
+      console.log('File locked, skipping:', filePath);
+    }
+  });
 });
