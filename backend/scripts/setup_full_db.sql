@@ -1,7 +1,8 @@
 -- ====================================================================
--- AppScale Full Database Schema Creation Script
+-- AppScale Lean & Clean Database Schema Creation Script
 -- System: AppScale Child & Maternal Nutrition System
 -- Database Engine: MySQL / MariaDB (utf8mb4)
+-- Note: Contains only active, strictly-used tables in the system codebase
 -- ====================================================================
 
 CREATE DATABASE IF NOT EXISTS `appscale_db`
@@ -10,12 +11,11 @@ CREATE DATABASE IF NOT EXISTS `appscale_db`
 
 USE `appscale_db`;
 
--- Set foreign key checks off temporarily for smooth execution
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- --------------------------------------------------------------------
 -- Table 1: users
--- Core system users (Admin, BHW, BNS)
+-- System accounts (Admin, BHW, BNS) with Bcrypt Hashing & Lockout support
 -- --------------------------------------------------------------------
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
@@ -72,25 +72,7 @@ CREATE TABLE `mothers` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------------------
--- Table 3: guardians
--- Separate guardians registry
--- --------------------------------------------------------------------
-DROP TABLE IF EXISTS `guardians`;
-CREATE TABLE `guardians` (
-  `guardian_id` INT AUTO_INCREMENT PRIMARY KEY,
-  `first_name` VARCHAR(50) NOT NULL,
-  `middle_initial` CHAR(1) NULL,
-  `last_name` VARCHAR(50) NOT NULL,
-  `relationship` VARCHAR(50) NOT NULL COMMENT 'Mother, Father, Grandmother, etc.',
-  `contact_number` VARCHAR(20) NULL,
-  `municipality` VARCHAR(50) NOT NULL DEFAULT 'Gasan',
-  `barangay` VARCHAR(50) NOT NULL,
-  `purok` VARCHAR(20) NOT NULL,
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------------------
--- Table 4: children
+-- Table 3: children
 -- Children registry (0 to 59 months)
 -- --------------------------------------------------------------------
 DROP TABLE IF EXISTS `children`;
@@ -98,7 +80,6 @@ CREATE TABLE `children` (
   `child_id` INT AUTO_INCREMENT PRIMARY KEY,
   `external_id` VARCHAR(100) UNIQUE NULL COMMENT 'Mobile App Sync UUID',
   `mother_id` INT NULL,
-  `guardian_id` INT NULL,
   `first_name` VARCHAR(50) NOT NULL,
   `middle_initial` VARCHAR(5) NULL,
   `last_name` VARCHAR(50) NOT NULL,
@@ -115,14 +96,13 @@ CREATE TABLE `children` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (`mother_id`) REFERENCES `mothers` (`mother_id`) ON DELETE SET NULL,
-  FOREIGN KEY (`guardian_id`) REFERENCES `guardians` (`guardian_id`) ON DELETE SET NULL,
   FOREIGN KEY (`encoded_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL,
   INDEX `idx_children_barangay` (`barangay`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------------------
--- Table 5: nutrition_records
--- Anthropometric assessments & WHO/DOH classification history
+-- Table 4: nutrition_records
+-- Anthropometric assessments & WHO/DOH status classification history
 -- --------------------------------------------------------------------
 DROP TABLE IF EXISTS `nutrition_records`;
 CREATE TABLE `nutrition_records` (
@@ -147,7 +127,7 @@ CREATE TABLE `nutrition_records` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------------------
--- Table 6: child_services
+-- Table 5: child_services
 -- Health & nutrition intervention services given to children
 -- --------------------------------------------------------------------
 DROP TABLE IF EXISTS `child_services`;
@@ -166,7 +146,7 @@ CREATE TABLE `child_services` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------------------
--- Table 7: mother_services
+-- Table 6: mother_services
 -- Health & nutrition intervention services given to mothers
 -- --------------------------------------------------------------------
 DROP TABLE IF EXISTS `mother_services`;
@@ -185,52 +165,7 @@ CREATE TABLE `mother_services` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------------------
--- Table 8: feeding_programs
--- Supplemental feeding program enrollment records
--- --------------------------------------------------------------------
-DROP TABLE IF EXISTS `feeding_programs`;
-CREATE TABLE `feeding_programs` (
-  `feeding_id` INT AUTO_INCREMENT PRIMARY KEY,
-  `child_id` INT NOT NULL,
-  `status` ENUM('active', 'completed', 'removed') DEFAULT 'active',
-  `start_date` DATE DEFAULT (CURRENT_DATE),
-  `end_date` DATE NULL,
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`child_id`) REFERENCES `children` (`child_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------------------
--- Table 9: feeding_attendance
--- Daily attendance for enrolled children in feeding program
--- --------------------------------------------------------------------
-DROP TABLE IF EXISTS `feeding_attendance`;
-CREATE TABLE `feeding_attendance` (
-  `attendance_id` INT AUTO_INCREMENT PRIMARY KEY,
-  `feeding_id` INT NOT NULL,
-  `feeding_date` DATE NOT NULL,
-  `status` ENUM('present', 'absent') NOT NULL DEFAULT 'present',
-  `remarks` VARCHAR(255) NULL,
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`feeding_id`) REFERENCES `feeding_programs` (`feeding_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------------------
--- Table 10: feeding_meals
--- Meals served during feeding program sessions
--- --------------------------------------------------------------------
-DROP TABLE IF EXISTS `feeding_meals`;
-CREATE TABLE `feeding_meals` (
-  `meal_id` INT AUTO_INCREMENT PRIMARY KEY,
-  `attendance_id` INT NOT NULL,
-  `meal_description` VARCHAR(255) NOT NULL,
-  `calories` INT NULL,
-  `notes` TEXT NULL,
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`attendance_id`) REFERENCES `feeding_attendance` (`attendance_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------------------
--- Table 11: schedules
+-- Table 7: schedules
 -- Activity schedules (Immunization, Feeding, Home Visit, Checkup)
 -- --------------------------------------------------------------------
 DROP TABLE IF EXISTS `schedules`;
@@ -241,14 +176,14 @@ CREATE TABLE `schedules` (
   `schedule_date` DATE NOT NULL,
   `schedule_time` TIME NULL,
   `barangay` VARCHAR(100) NULL,
-  `assigned_to` INT NULL COMMENT 'FK to users table',
+  `assigned_to` INT NULL,
   `status` ENUM('pending', 'ongoing', 'done', 'cancelled') DEFAULT 'pending',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`assigned_to`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------------------
--- Table 12: referrals
+-- Table 8: referrals
 -- Beneficiary risk referral tracking (BNS to BHW / RHU)
 -- --------------------------------------------------------------------
 DROP TABLE IF EXISTS `referrals`;
@@ -273,7 +208,7 @@ CREATE TABLE `referrals` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------------------
--- Table 13: notifications
+-- Table 9: notifications
 -- System and user notifications
 -- --------------------------------------------------------------------
 DROP TABLE IF EXISTS `notifications`;
@@ -290,52 +225,7 @@ CREATE TABLE `notifications` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------------------
--- Table 14: password_resets
--- Password reset tokens
--- --------------------------------------------------------------------
-DROP TABLE IF EXISTS `password_resets`;
-CREATE TABLE `password_resets` (
-  `reset_id` INT AUTO_INCREMENT PRIMARY KEY,
-  `user_id` INT NOT NULL,
-  `reset_token` VARCHAR(255) NOT NULL,
-  `expires_at` DATETIME NOT NULL,
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------------------
--- Table 15: archive_records
--- Soft-deleted or graduated beneficiary snapshots
--- --------------------------------------------------------------------
-DROP TABLE IF EXISTS `archive_records`;
-CREATE TABLE `archive_records` (
-  `archive_id` INT AUTO_INCREMENT PRIMARY KEY,
-  `table_name` VARCHAR(50) NOT NULL COMMENT 'children, mothers, etc.',
-  `record_id` INT NOT NULL,
-  `snapshot` JSON NOT NULL,
-  `reason` ENUM('deleted', 'transfer', 'move_out', 'dead', 'graduate') NOT NULL,
-  `archived_by` INT NULL,
-  `archived_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`archived_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------------------
--- Table 16: sync_logs
--- Mobile app offline synchronization logs
--- --------------------------------------------------------------------
-DROP TABLE IF EXISTS `sync_logs`;
-CREATE TABLE `sync_logs` (
-  `sync_id` INT AUTO_INCREMENT PRIMARY KEY,
-  `user_id` INT NOT NULL,
-  `local_id` VARCHAR(100) NOT NULL,
-  `table_name` VARCHAR(50) NOT NULL,
-  `status` ENUM('pending', 'synced', 'failed') DEFAULT 'pending',
-  `synced_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------------------
--- Table 17: medical_records_audit_trail
+-- Table 10: medical_records_audit_trail
 -- Audit trail for BHW/BNS medical updates
 -- --------------------------------------------------------------------
 DROP TABLE IF EXISTS `medical_records_audit_trail`;
@@ -353,13 +243,9 @@ CREATE TABLE `medical_records_audit_trail` (
   `timestamp` DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;
 
--- --------------------------------------------------------------------
--- Seed Data: Default System Admin User
--- Password: AppScaleAdmin123! (bcrypt hash below)
--- --------------------------------------------------------------------
+-- Seed Default Admin User (Password: AppScaleAdmin123!)
 INSERT INTO `users` (`username`, `email`, `password_hash`, `first_name`, `last_name`, `role`, `municipality`, `barangay`, `status`)
 VALUES (
   'admin',
@@ -375,5 +261,5 @@ VALUES (
 ON DUPLICATE KEY UPDATE `status` = 'active';
 
 -- ====================================================================
--- End of AppScale Full Database Schema Script
+-- End of AppScale Clean Database Schema Script
 -- ====================================================================
