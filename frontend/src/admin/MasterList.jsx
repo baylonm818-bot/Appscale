@@ -74,6 +74,10 @@ function Masterlist() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedPerson, setSelectedPerson] = useState(null);
 
+  // Role-based access: only BNS can preview/export reports
+  const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+  const isBns = user.role === 'bns';
+
   // Report Modal state (Item 30 & 34)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportData, setReportData] = useState(null);
@@ -301,15 +305,7 @@ function Masterlist() {
             </select>
           </div>
 
-          {/* Export / Preview Report Button (Item 30 & 34) */}
-          <button
-            type="button"
-            onClick={handleOpenReportPreview}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white text-xs font-bold shadow-sm hover:opacity-95 transition cursor-pointer shrink-0"
-          >
-            <FileText size={15} />
-            Preview & Export Report
-          </button>
+
         </div>
 
         {/* Result count */}

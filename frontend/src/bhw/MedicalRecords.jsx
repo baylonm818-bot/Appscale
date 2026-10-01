@@ -340,40 +340,7 @@ function MedicalRecords() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Add Beneficiary Button (Item 25 & 36) */}
-          <button
-            type="button"
-            onClick={() => {
-              setBeneficiaryType(recordType === 'mothers' ? 'mother' : 'child');
-              setShowAddBeneficiaryModal(true);
-              setAddBeneficiaryError('');
-              setAddBeneficiarySuccess('');
-            }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white text-xs font-bold shadow-sm hover:opacity-95 transition cursor-pointer"
-          >
-            <Plus size={15} /> Add Beneficiary
-          </button>
 
-          {/* Export / Preview Report Button (Item 30 & 34) */}
-          <button
-            type="button"
-            onClick={() => {
-              const list = recordType === 'mothers' ? filteredMothers : filteredChildren;
-              const normal = children.filter((c) => c.overall_status === 'normal').length;
-              const mam = children.filter((c) => c.overall_status === 'MAM').length;
-              const sam = children.filter((c) => c.overall_status === 'SAM').length;
-              setReportData({
-                summary: { totalChildren: children.length, normal, mam, sam },
-                items: list,
-              });
-              setIsReportModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-green-700 text-green-800 text-xs font-bold shadow-sm hover:bg-green-50 transition cursor-pointer"
-          >
-            <FileText size={15} /> Preview Report
-          </button>
-        </div>
       </div>
 
       {/* ── CHILDREN VIEW ── */}

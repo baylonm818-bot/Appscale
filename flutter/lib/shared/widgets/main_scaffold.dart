@@ -9,6 +9,7 @@ class MainScaffold extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTabSelected;
   final VoidCallback onAddPressed;
+  final bool isBns;
 
   const MainScaffold({
     super.key,
@@ -16,6 +17,7 @@ class MainScaffold extends StatelessWidget {
     required this.currentIndex,
     required this.onTabSelected,
     required this.onAddPressed,
+    this.isBns = false,
   });
 
   @override
@@ -27,6 +29,7 @@ class MainScaffold extends StatelessWidget {
         currentIndex: currentIndex,
         onTabSelected: onTabSelected,
         onAddPressed: onAddPressed,
+        isBns: isBns,
       ),
     );
   }

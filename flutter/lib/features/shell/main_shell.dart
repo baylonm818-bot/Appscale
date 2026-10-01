@@ -40,12 +40,30 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     _masterlistKey.currentState?.setCategory(category);
   }
 
+  bool get _isBns {
+    final user = _settings.authUser;
+    return (user?['role'] ?? '').toString().toLowerCase() == 'bns';
+  }
+
   @override
   Widget build(BuildContext context) {
     return MainScaffold(
       currentIndex: _navIndex,
       onTabSelected: (index) => setState(() => _navIndex = index),
-      onAddPressed: () => AddProfileSheet.show(context),
+      isBns: _isBns,
+      onAddPressed: () {
+        if (_isBns) {
+          AddProfileSheet.show(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Only BNS can add beneficiaries.'),
+              backgroundColor: Color(0xFF1B5E20),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
       body: IndexedStack(
         index: _navIndex,
         children: [
@@ -57,6 +75,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       ),
     );
   }
+
 
   @override
   void initState() {

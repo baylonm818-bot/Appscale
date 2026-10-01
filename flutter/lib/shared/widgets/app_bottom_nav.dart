@@ -15,12 +15,14 @@ class AppBottomNav extends StatelessWidget {
   final int currentIndex; // 0..3, mapped across Home/List/Program/Reports
   final ValueChanged<int> onTabSelected;
   final VoidCallback onAddPressed;
+  final bool isBns;
 
   const AppBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTabSelected,
     required this.onAddPressed,
+    this.isBns = false,
   });
 
   static const _items = [
@@ -126,23 +128,26 @@ class AppBottomNav extends StatelessWidget {
               height: 46,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.primaryGreen, AppColors.darkGreen],
+                  colors: isBns
+                      ? [AppColors.primaryGreen, AppColors.darkGreen]
+                      : [const Color(0xFFBDBDBD), const Color(0xFF9E9E9E)],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.darkGreen.withValues(alpha: 0.35),
+                    color: (isBns ? AppColors.darkGreen : const Color(0xFF9E9E9E))
+                        .withValues(alpha: 0.35),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.add_rounded,
+              child: Icon(
+                isBns ? Icons.add_rounded : Icons.lock_outline_rounded,
                 color: Colors.white,
-                size: 26,
+                size: isBns ? 26 : 20,
               ),
             ),
           ),
