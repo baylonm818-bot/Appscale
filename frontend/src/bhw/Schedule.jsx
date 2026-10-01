@@ -231,7 +231,7 @@ function Schedule() {
         />
       </div>
 
-      {/* ── Search Bar ── */}
+      {/* ── Search Bar + Add Activity Button ── */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
           <Search size={16} className="text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -242,13 +242,21 @@ function Schedule() {
             className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition bg-white"
           />
         </div>
+        <button
+          type="button"
+          onClick={() => { setShowModal(true); setForm(emptyForm); setFormError(''); }}
+          className="flex items-center justify-center gap-2 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition shadow-sm shrink-0 cursor-pointer"
+        >
+          <Calendar size={16} />
+          Add Activity
+        </button>
       </div>
 
       {/* ── Activity List ── */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-3.5 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            {filteredActivities.length} {activeFilter === 'all' ? 'total' : activeFilter} activities in {user.barangay}
+            {filteredActivities.length} {activeFilter === 'all' ? 'total' : activeFilter} activities in {user.barangay || 'Barangay'}
           </p>
         </div>
 
@@ -269,6 +277,119 @@ function Schedule() {
           ))
         )}
       </div>
+
+      {/* ── Centered Add Schedule Modal Popup ── */}
+      {showModal && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-hidden animate-in fade-in duration-200"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[88vh] flex flex-col transform transition-all scale-100">
+            {/* Modal header */}
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between shrink-0 text-white">
+              <div>
+                <h2 className="text-base font-bold">New Activity Schedule</h2>
+                <p className="text-white/80 text-xs mt-0.5">Barangay: {user.barangay || 'Community'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="overflow-y-auto flex-1 px-6 py-5">
+              {formError && (
+                <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3 font-medium">
+                  {formError}
+                </div>
+              )}
+              <form id="bhwSchedForm" onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Activity Title *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Supplemental Feeding Session"
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Activity Type</label>
+                  <select
+                    value={form.schedule_type}
+                    onChange={(e) => setForm({ ...form, schedule_type: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                  >
+                    <option value="feeding">Feeding Program</option>
+                    <option value="home_visit">Home Visit</option>
+                    <option value="immunization">Immunization / Checkup</option>
+                    <option value="checkup">General Health Consultation</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={form.schedule_date}
+                      onChange={(e) => setForm({ ...form, schedule_date: e.target.value })}
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Time</label>
+                    <input
+                      type="time"
+                      value={form.schedule_time}
+                      onChange={(e) => setForm({ ...form, schedule_time: e.target.value })}
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Venue / Location</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Barangay Health Center Hall"
+                    value={form.venue}
+                    onChange={(e) => setForm({ ...form, venue: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                  />
+                </div>
+              </form>
+            </div>
+
+            {/* Modal footer */}
+            <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/70 flex justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200/60 border border-gray-200 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="bhwSchedForm"
+                disabled={saving}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white hover:from-[#154a1a] hover:to-[#256427] transition shadow-xs disabled:opacity-60"
+              >
+                {saving ? 'Saving…' : 'Save Activity'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
