@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { Users, Search, Baby, Heart, X, MapPin, FileText, Printer } from 'lucide-react';
 import ReportPreviewModal from '../components/ui/ReportPreviewModal';
@@ -445,10 +446,10 @@ function Masterlist() {
         </div>
       </div>
 
-      {/* ── Profile Modal ── */}
-      {selectedPerson && (
+      {/* Detail Modal — Full Screen Overlay Portal */}
+      {selectedPerson && createPortal(
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedPerson(null); }}
         >
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
@@ -470,7 +471,7 @@ function Masterlist() {
               </div>
               <button
                 onClick={() => setSelectedPerson(null)}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition"
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -537,13 +538,14 @@ function Masterlist() {
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 shrink-0">
               <button
                 onClick={() => setSelectedPerson(null)}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold text-[#2e7d32] border-2 border-green-200 hover:bg-green-50 transition"
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-[#2e7d32] border-2 border-green-200 hover:bg-green-50 transition cursor-pointer"
               >
                 Close
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Official Report Preview Modal (Items 30 & 34) */}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, Printer, Download, FileText } from 'lucide-react';
 import logo from '../../assets/logo.png';
 
@@ -15,8 +16,8 @@ export default function ReportPreviewModal({ isOpen, onClose, reportData, title,
     year: 'numeric',
   });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] print:max-h-none print:shadow-none print:rounded-none print:w-full print:p-0">
         
         {/* Modal Toolbar (Hidden during print) */}
@@ -165,8 +166,8 @@ export default function ReportPreviewModal({ isOpen, onClose, reportData, title,
           </div>
 
         </div>
-
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

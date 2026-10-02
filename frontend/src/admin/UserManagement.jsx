@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { Users, Archive, Plus, Search, Shield, Lock, Unlock, RefreshCw, X, ChevronRight, CheckCircle2 } from 'lucide-react';
 
@@ -442,9 +443,9 @@ function UserManagement() {
       </div>
 
       {/* ── User Modal ── */}
-      {showModal && (
+      {showModal && createPortal(
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[88vh] flex flex-col">
@@ -591,13 +592,14 @@ function UserManagement() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Status Change Confirmation Modal (Are you sure?) ── */}
-      {statusConfirm && (
+      {statusConfirm && createPortal(
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setStatusConfirm(null); }}
         >
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[85vh] flex flex-col">
@@ -660,7 +662,8 @@ function UserManagement() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
