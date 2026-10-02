@@ -21,13 +21,13 @@ test('mobile nutrition sync normalizes status values to database-safe strings', 
 
   const created = { insertId: 221, values: null };
   pool.query = async (sql, params) => {
-    if (sql.includes('SELECT child_id, age_in_months, sex FROM children WHERE external_id = ?')) {
+    if (sql.includes('SELECT child_id FROM children WHERE external_id = ? OR child_id = ?')) {
       return [[{ child_id: 21, age_in_months: 18, sex: 'male' }]];
     }
     if (sql.includes('SELECT age_in_months, sex FROM children WHERE child_id = ?')) {
       return [[{ age_in_months: 18, sex: 'male' }]];
     }
-    if (sql.includes('SELECT nutrition_record_id, child_id, record_date FROM nutrition_records')) {
+    if (sql.includes('SELECT record_id, child_id, record_date FROM nutrition_records')) {
       return [[]];
     }
     if (sql.includes('INSERT INTO nutrition_records')) {

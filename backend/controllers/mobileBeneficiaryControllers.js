@@ -104,7 +104,8 @@ exports.upsertChild = async (req, res) => {
   }
   const resolvedBarangay = scope.barangay;
 
-  const resolvedGender = sex || gender || 'male';
+  const rawGender = (sex || gender || 'male').toString().trim().toLowerCase();
+  const resolvedGender = (rawGender === 'f' || rawGender === 'female' || rawGender === 'girl') ? 'female' : 'male';
   const resolvedEncodedBy = encoded_by || req.user?.user_id || null;
 
   let firstName = first_name;
@@ -404,13 +405,18 @@ exports.syncNutritionRecord = async (req, res) => {
 
   try {
     // debug logging removed
-    let resolvedChildId = child_id;
-    if (!resolvedChildId && child_external_id) {
-      const [[childRow]] = await pool.query(
-        'SELECT child_id, age_in_months, sex FROM children WHERE external_id = ? LIMIT 1',
-        [child_external_id]
-      );
-      if (childRow) resolvedChildId = childRow.child_id;
+    let resolvedChildId = null;
+    if (child_id && /^\d+$/.test(String(child_id))) {
+      resolvedChildId = Number(child_id);
+    } else {
+      const lookupId = child_external_id || child_id;
+      if (lookupId) {
+        const [[childRow]] = await pool.query(
+          'SELECT child_id FROM children WHERE external_id = ? OR child_id = ? LIMIT 1',
+          [lookupId, lookupId]
+        );
+        if (childRow) resolvedChildId = childRow.child_id;
+      }
     }
 
     if (!resolvedChildId) {
