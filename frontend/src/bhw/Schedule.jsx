@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { Calendar, Clock, CheckCircle2, Archive, Search, X } from 'lucide-react';
 
@@ -279,9 +280,9 @@ function Schedule() {
       </div>
 
       {/* ── Centered Add Schedule Modal Popup ── */}
-      {showModal && (
+      {showModal && createPortal(
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-hidden animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden animate-in fade-in duration-200"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[88vh] flex flex-col transform transition-all scale-100">
@@ -388,7 +389,8 @@ function Schedule() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

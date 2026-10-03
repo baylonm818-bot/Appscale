@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 
 /* ── Helpers ── */
@@ -267,8 +268,8 @@ function Schedule() {
       </div>
 
       {/* ── Add Schedule Modal ── */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-hidden"
+      {showModal && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[88vh] flex flex-col">
 
@@ -393,7 +394,8 @@ function Schedule() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import { useAuth } from '../components/AuthContext';
@@ -353,8 +354,8 @@ function Profile() {
       </div>
 
       {/* Deactivate Confirmation Modal */}
-      {deactivateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setDeactivateModal(false)}>
+      {deactivateModal && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-y-auto" onClick={() => setDeactivateModal(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] my-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="bg-red-600 px-6 py-5 text-white">
               <h3 className="font-bold text-base">Deactivate Your Account?</h3>
@@ -418,7 +419,8 @@ function Profile() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
