@@ -291,27 +291,6 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* ── Quick Action Tiles ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { to: '/bhw/need-attention', label: 'Need Attention', icon: AlertCircle, count: s.atRiskChildren, desc: 'High priority cases', color: 'from-amber-500 to-orange-600' },
-          { to: '/bhw/referrals',      label: 'Referrals',      icon: Users,       count: null, desc: 'Doctor & RHU referrals', color: 'from-emerald-600 to-teal-700' },
-          { to: '/bhw/medical-records',label: 'Medical Records',icon: List,        count: s.totalChildren, desc: 'Complete health log', color: 'from-[#1b5e20] to-[#2e7d32]' },
-          { to: '/bhw/schedule',       label: 'Schedule',       icon: CalendarDays,count: activities.length, desc: 'Activities & visits', color: 'from-green-600 to-emerald-700' },
-        ].map(({ to, label, icon: Icon, count, desc, color }) => (
-          <Link
-            key={to}
-            to={to}
-            className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all"
-          >
-            <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${color} text-white flex items-center justify-center mb-3 shadow-xs group-hover:scale-105 transition`}>
-              <Icon size={18} />
-            </div>
-            <p className="font-bold text-gray-900 text-sm group-hover:text-[#2e7d32] transition">{label}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-          </Link>
-        ))}
-      </div>
 
     </div>
   );
