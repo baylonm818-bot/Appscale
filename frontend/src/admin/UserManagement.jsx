@@ -241,7 +241,7 @@ function UserManagement() {
           label="Total Users"
           value={safeStats.totalUsers}
           sublabel="All assigned accounts"
-          isActive={activeTab === 'all' && !showArchive}
+          isActive={activeTab === 'all' && !showArchive && statusFilter !== 'locked'}
           onClick={() => { setActiveTab('all'); setShowArchive(false); setStatusFilter('all'); }}
         />
         <StatCard
@@ -249,7 +249,7 @@ function UserManagement() {
           label="Total BNS"
           value={safeStats.totalBNS}
           sublabel="Nutrition Scholars"
-          isActive={activeTab === 'bns' && !showArchive}
+          isActive={activeTab === 'bns' && !showArchive && statusFilter !== 'locked'}
           onClick={() => { setActiveTab('bns'); setShowArchive(false); setStatusFilter('all'); }}
         />
         <StatCard
@@ -257,7 +257,7 @@ function UserManagement() {
           label="Total BHW"
           value={safeStats.totalBHW}
           sublabel="Health Workers"
-          isActive={activeTab === 'bhw' && !showArchive}
+          isActive={activeTab === 'bhw' && !showArchive && statusFilter !== 'locked'}
           onClick={() => { setActiveTab('bhw'); setShowArchive(false); setStatusFilter('all'); }}
         />
         <StatCard
