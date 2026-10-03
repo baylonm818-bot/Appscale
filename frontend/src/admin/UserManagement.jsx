@@ -266,7 +266,7 @@ function UserManagement() {
           value={safeStats.lockedUsers ?? users.filter((u) => u.status === 'locked' && !u.deleted_at).length}
           sublabel="Locked accounts"
           isActive={statusFilter === 'locked'}
-          onClick={() => { setStatusFilter(statusFilter === 'locked' ? 'all' : 'locked'); setShowArchive(false); }}
+          onClick={() => { setStatusFilter(statusFilter === 'locked' ? 'all' : 'locked'); setActiveTab('all'); setShowArchive(false); }}
         />
       </div>
 
@@ -299,7 +299,7 @@ function UserManagement() {
 
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setActiveTab('all'); }}
               className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#2e7d32]"
             >
               <option value="all">All Status</option>
