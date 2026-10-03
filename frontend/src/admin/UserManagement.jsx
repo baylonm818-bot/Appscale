@@ -56,6 +56,7 @@ function UserManagement() {
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [statusConfirm, setStatusConfirm] = useState(null);
+  const [archiveConfirm, setArchiveConfirm] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -173,12 +174,18 @@ function UserManagement() {
   };
 
   const archiveUser = async (u) => {
-    if (!window.confirm(`Archive ${u.first_name} ${u.last_name}? This user will no longer be able to log in.`)) return;
+    setArchiveConfirm(u);
+  };
+
+  const doArchive = async () => {
+    if (!archiveConfirm) return;
     try {
-      await axiosClient.patch(`/users/${u.user_id}/archive`);
+      await axiosClient.patch(`/users/${archiveConfirm.user_id}/archive`);
       fetchData();
     } catch {
       alert('Failed to archive user.');
+    } finally {
+      setArchiveConfirm(null);
     }
   };
 
@@ -659,6 +666,55 @@ function UserManagement() {
                 }`}
               >
                 Yes, {statusConfirm.action === 'lock' ? 'Deactivate Account' : 'Activate Account'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Archive Confirmation Modal ── */}
+      {archiveConfirm && createPortal(
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-hidden"
+          onClick={(e) => { if (e.target === e.currentTarget) setArchiveConfirm(null); }}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[85vh] flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <Archive size={22} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Archive User Account</h3>
+                <p className="text-xs text-gray-500">Permanent account removal</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-2 leading-relaxed">
+              Are you sure you want to archive the account of{' '}
+              <strong className="text-gray-900">{archiveConfirm.first_name} {archiveConfirm.last_name}</strong>{' '}
+              ({(archiveConfirm.role || '').toUpperCase()})?
+            </p>
+
+            <div className="mb-6 p-3 bg-red-50 rounded-xl border border-red-200 text-xs text-red-800 flex items-start gap-2">
+              <span className="shrink-0 text-base">⚠️</span>
+              <span>This user will no longer be able to log in to AppScale. You can restore archived accounts later from the Archives tab.</span>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setArchiveConfirm(null)}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={doArchive}
+                className="px-5 py-2.5 text-sm font-bold text-white rounded-xl transition shadow-sm bg-red-600 hover:bg-red-700 cursor-pointer"
+              >
+                Yes, Archive Account
               </button>
             </div>
           </div>
