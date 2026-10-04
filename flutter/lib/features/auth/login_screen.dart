@@ -61,94 +61,137 @@ class _LoginScreenState extends State<LoginScreen> {
         session.toMap()['user'] as Map<String, dynamic>,
       );
 
-      // After storing session, fetch server-side beneficiaries for this user's barangay
-      // and seed local Hive so a fresh install shows server data immediately.
+      // ── Restore server data to local Hive ────────────────────────────────
+      // This ensures data survives app reinstalls and account switches.
       try {
         final barangay = _settings.authUser?['barangay'] as String?;
+        final newUserId = _settings.authUser?['user_id']?.toString() ?? '';
+
+        // Detect account switch: clear beneficiary data if a different user logged in
+        final prevUserId = Hive.box(HiveBoxes.settings).get('last_user_id') as String? ?? '';
+        if (prevUserId.isNotEmpty && prevUserId != newUserId) {
+          await Hive.box(HiveBoxes.children).clear();
+          await Hive.box(HiveBoxes.mothers).clear();
+          await Hive.box(HiveBoxes.measurements).clear();
+          await Hive.box(HiveBoxes.referrals).clear();
+          await Hive.box(HiveBoxes.notifications).clear();
+          debugPrint('Account switched ($prevUserId→$newUserId): cleared local Hive data.');
+        }
+        await Hive.box(HiveBoxes.settings).put('last_user_id', newUserId);
+
         if (barangay != null && barangay.isNotEmpty) {
-          // fetch children and mothers for barangay and seed local boxes
-          final children = await BeneficiaryApi.fetchChildrenForBarangay(barangay, _settings.authToken);
-          final mothers = await BeneficiaryApi.fetchMothersForBarangay(barangay, _settings.authToken);
-          // store into local repositories / boxes
-          // NOTE: API returns snake_case fields; we map them to the camelCase format
-          // that Child.fromMap() and Mother.fromMap() expect so data survives reinstalls.
-          final childBox = Hive.box(HiveBoxes.children);
-          final motherBox = Hive.box(HiveBoxes.mothers);
+          final token = _settings.authToken;
+
+          // Fetch all data in parallel for speed
+          final results = await Future.wait([
+            BeneficiaryApi.fetchChildrenForBarangay(barangay, token),
+            BeneficiaryApi.fetchMothersForBarangay(barangay, token),
+            BeneficiaryApi.fetchReferralsForBarangay(barangay, token),
+          ]);
+
+          final children  = results[0];
+          final mothers   = results[1];
+          final referrals = results[2];
+
+          final childBox    = Hive.box(HiveBoxes.children);
+          final motherBox   = Hive.box(HiveBoxes.mothers);
+          final referralBox = Hive.box(HiveBoxes.referrals);
+
+          // ── Seed children (server always wins for synced records) ──
           for (final c in children) {
             final key = (c['external_id'] ?? c['child_id']).toString();
-            // Only seed if not already locally stored (don't overwrite local edits)
             final existing = childBox.get(key) as Map?;
-            if (!childBox.containsKey(key)) {
-              final firstName = c['first_name'] as String? ?? '';
-              final middleInitial = c['middle_initial'] as String? ?? '';
-              final lastName = c['last_name'] as String? ?? '';
-              final fullName = [firstName, if (middleInitial.isNotEmpty) middleInitial, lastName]
-                  .where((s) => s.isNotEmpty)
-                  .join(' ');
-              childBox.put(key, {
-                'id': key,
-                'sequenceNo': key,
-                'fullName': fullName,
-                'birthDate': (c['birth_date'] as String?)?.split('T').first ?? DateTime.now().toIso8601String(),
-                'gender': c['sex'] as String? ?? 'Male',
-                'address': c['purok'] as String? ?? '',
-                'barangay': c['barangay'] as String? ?? barangay,
-                'belongsToIpGroup': false,
-                'disability': '',
-                'guardian': {
-                  'fullName': c['guardian_name'] as String? ?? '',
-                  'relationship': 'Guardian',
-                  'contactNo': c['guardian_contact'] as String? ?? '',
-                  'linkedMotherId': null,
-                },
-                'createdAt': DateTime.now().toIso8601String(),
-                'nutritionStatus': (c['weight_status'] != null && c['weight_status'] != 'Not weighed')
-                    ? c['weight_status']
-                    : (existing?['nutritionStatus'] ?? 'Not weighed'),
-                'stuntingStatus': (c['height_status'] != null && c['height_status'] != 'Not weighed')
-                    ? c['height_status']
-                    : (existing?['stuntingStatus'] ?? 'Not weighed'),
-                'wastingStatus': (c['overall_status'] != null && c['overall_status'] != 'Not weighed')
-                    ? c['overall_status']
-                    : (existing?['wastingStatus'] ?? 'Not weighed'),
-                'lastWeighedAt': c['last_visit'] != null
-                    ? (c['last_visit'] as String).split('T').first
-                    : existing?['lastWeighedAt'],
-                'isActive': (c['status'] as String? ?? 'active') == 'active',
-                'inactiveReason': null,
-                '_syncStatus': 'synced',
-              });
-            }
+            // Don't overwrite records that have unsynced local edits
+            if (existing != null && existing['_syncStatus'] == 'pending') continue;
+            final firstName = c['first_name'] as String? ?? '';
+            final middleInitial = c['middle_initial'] as String? ?? '';
+            final lastName = c['last_name'] as String? ?? '';
+            final fullName = [firstName, if (middleInitial.isNotEmpty) middleInitial, lastName]
+                .where((s) => s.isNotEmpty)
+                .join(' ');
+            childBox.put(key, {
+              'id': key,
+              'sequenceNo': key,
+              'fullName': fullName,
+              'birthDate': (c['birth_date'] as String?)?.split('T').first ?? DateTime.now().toIso8601String(),
+              'gender': c['sex'] as String? ?? 'Male',
+              'address': c['purok'] as String? ?? '',
+              'barangay': c['barangay'] as String? ?? barangay,
+              'belongsToIpGroup': false,
+              'disability': '',
+              'guardian': {
+                'fullName': c['guardian_name'] as String? ?? '',
+                'relationship': 'Guardian',
+                'contactNo': c['guardian_contact'] as String? ?? '',
+                'linkedMotherId': null,
+              },
+              'createdAt': DateTime.now().toIso8601String(),
+              'nutritionStatus': c['weight_status'] ?? existing?['nutritionStatus'] ?? 'Not weighed',
+              'stuntingStatus': c['height_status'] ?? existing?['stuntingStatus'] ?? 'Not weighed',
+              'wastingStatus': c['overall_status'] ?? existing?['wastingStatus'] ?? 'Not weighed',
+              'lastWeighedAt': c['last_visit'] != null
+                  ? (c['last_visit'] as String).split('T').first
+                  : existing?['lastWeighedAt'],
+              'isActive': (c['status'] as String? ?? 'active') == 'active',
+              'inactiveReason': null,
+              '_syncStatus': 'synced',
+            });
           }
+
+          // ── Seed mothers ──
           for (final m in mothers) {
             final key = (m['external_id'] ?? m['mother_id']).toString();
-            if (!motherBox.containsKey(key)) {
-              final firstName = m['first_name'] as String? ?? '';
-              final middleInitial = m['middle_initial'] as String? ?? '';
-              final lastName = m['last_name'] as String? ?? '';
-              final fullName = [firstName, if (middleInitial.isNotEmpty) middleInitial, lastName]
-                  .where((s) => s.isNotEmpty)
-                  .join(' ');
-              motherBox.put(key, {
-                'id': key,
-                'fullName': fullName,
-                'birthDate': (m['birth_date'] as String?)?.split('T').first ?? DateTime.now().toIso8601String(),
-                'contactNo': m['contact_number'] as String? ?? '',
-                'address': m['purok'] as String? ?? '',
-                'barangay': m['barangay'] as String? ?? barangay,
-                'linkedChildIds': <String>[],
-                'isActive': (m['status'] as String? ?? 'active') == 'active',
-                'inactiveReason': null,
-                'createdAt': DateTime.now().toIso8601String(),
-                '_syncStatus': 'synced',
-              });
-            }
+            final existing = motherBox.get(key) as Map?;
+            if (existing != null && existing['_syncStatus'] == 'pending') continue;
+            final firstName = m['first_name'] as String? ?? '';
+            final middleInitial = m['middle_initial'] as String? ?? '';
+            final lastName = m['last_name'] as String? ?? '';
+            final fullName = [firstName, if (middleInitial.isNotEmpty) middleInitial, lastName]
+                .where((s) => s.isNotEmpty)
+                .join(' ');
+            motherBox.put(key, {
+              'id': key,
+              'fullName': fullName,
+              'birthDate': (m['birth_date'] as String?)?.split('T').first ?? DateTime.now().toIso8601String(),
+              'contactNo': m['contact_number'] as String? ?? '',
+              'address': m['purok'] as String? ?? '',
+              'barangay': m['barangay'] as String? ?? barangay,
+              'linkedChildIds': <String>[],
+              'isActive': (m['status'] as String? ?? 'active') == 'active',
+              'inactiveReason': null,
+              'createdAt': DateTime.now().toIso8601String(),
+              '_syncStatus': 'synced',
+            });
           }
+
+          // ── Seed referrals ──
+          for (final r in referrals) {
+            final key = r['referral_id']?.toString() ?? '';
+            if (key.isEmpty) continue;
+            final existing = referralBox.get(key) as Map?;
+            if (existing != null && existing['_syncStatus'] == 'pending') continue;
+            referralBox.put(key, {
+              'id': key,
+              'beneficiaryId': (r['child_id'] ?? r['mother_id'])?.toString() ?? '',
+              'beneficiaryType': r['beneficiary_type'] as String? ?? 'child',
+              'beneficiaryName': '${r['beneficiary_first_name'] ?? ''} ${r['beneficiary_last_name'] ?? ''}'.trim(),
+              'barangay': r['barangay'] as String? ?? barangay,
+              'facility': r['referred_to']?.toString() ?? '',
+              'reason': r['reason'] as String? ?? '',
+              'notes': r['response_notes'] as String? ?? '',
+              'status': r['status'] as String? ?? 'Pending',
+              'createdAt': r['created_at'] as String? ?? DateTime.now().toIso8601String(),
+              '_syncStatus': 'synced',
+            });
+          }
+
+          debugPrint('Seeded ${children.length} children, ${mothers.length} mothers, ${referrals.length} referrals from server.');
         }
       } catch (seedErr) {
         // Non-fatal: proceed to main UI even if seeding failed.
         debugPrint('Failed to seed local data after login: $seedErr');
       }
+
 
       if (!mounted) return;
       Navigator.of(

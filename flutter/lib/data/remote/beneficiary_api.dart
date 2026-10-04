@@ -104,12 +104,40 @@ class BeneficiaryApi {
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
     final uri = Uri.parse('$_baseUrl/mobile/mothers?barangay=${Uri.encodeComponent(barangay)}');
-    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 5));
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       final data = jsonDecode(resp.body) as List<dynamic>;
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     }
     throw Exception('Failed to fetch mothers for barangay');
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchMeasurementsForBarangay(String barangay, String? token) async {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
+    final uri = Uri.parse('$_baseUrl/mobile/children?barangay=${Uri.encodeComponent(barangay)}');
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      final data = jsonDecode(resp.body) as List<dynamic>;
+      // Extract nutrition records embedded in children response
+      return data
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .where((c) => c['last_weight'] != null || c['last_height'] != null)
+          .toList();
+    }
+    return [];
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchReferralsForBarangay(String barangay, String? token) async {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
+    final uri = Uri.parse('$_baseUrl/bhw/referrals');
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      final data = jsonDecode(resp.body) as List<dynamic>;
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return [];
   }
 
   static Future<void> deactivateAccount(int userId, String password, String reason) async {
