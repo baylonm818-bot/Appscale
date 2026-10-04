@@ -122,6 +122,33 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       await _measurementRepo.syncPending();
       await _referralRepo.syncPending();
       AppDataBus.notifyChanged();
+
+      // Show snackbar only if some records were actually synced
+      final remaining = _childRepo.pendingCount +
+          _motherRepo.pendingCount +
+          _measurementRepo.pendingCount +
+          _referralRepo.pendingCount;
+      final synced = totalPending - remaining;
+      if (synced > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.cloud_done_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Text(
+                  'Synced $synced record${synced > 1 ? 's' : ''} to server.',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF2e7d32),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('Auto sync periodic attempt: $e');
     } finally {
