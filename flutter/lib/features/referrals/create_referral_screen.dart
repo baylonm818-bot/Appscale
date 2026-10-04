@@ -11,6 +11,7 @@ import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/form_action_buttons.dart';
 import '../../shared/widgets/form_section_card.dart';
 import 'referral_constants.dart';
+import '../../shared/utils/app_notifications.dart';
 import 'widgets/referral_beneficiary_field.dart';
 
 class CreateReferralScreen extends StatefulWidget {
@@ -69,10 +70,10 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
 
   Future<void> _handleSubmit() async {
     if (!_isFormValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a beneficiary and describe the reason'),
-        ),
+      AppNotificationUI.showWarning(
+        context,
+        'Please select a beneficiary and describe the reason for referral.',
+        title: 'Form Incomplete',
       );
       return;
     }
@@ -98,10 +99,10 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Saved on this device, but not sent to BHW: $error'),
-        ),
+      AppNotificationUI.showWarning(
+        context,
+        'Saved locally, but server sync failed: ${error.toString().replaceFirst('Exception: ', '')}',
+        title: 'Offline Saved',
       );
       return;
     }

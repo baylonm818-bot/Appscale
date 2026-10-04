@@ -21,6 +21,7 @@ import '../masterlist/utils/child_status_meta.dart';
 import '../masterlist/widgets/status_badge.dart';
 import '../referrals/create_referral_screen.dart';
 import '../../shared/utils/app_page_route.dart';
+import '../../shared/utils/app_notifications.dart';
 import '../../shared/widgets/urgent_referral_dialog.dart';
 
 class AddMeasurementScreen extends StatefulWidget {
@@ -122,27 +123,35 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     final rawM = _isMuacEligible ? double.tryParse(_muacController.text.trim()) : null;
 
     if (rawW == null || rawH == null || (_isMuacEligible && rawM == null)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter valid numeric values for weight, height, and MUAC.')),
+      AppNotificationUI.showWarning(
+        context,
+        'Please enter valid numeric values for weight, height, and MUAC.',
+        title: 'Invalid Input',
       );
       return;
     }
 
     if (rawW < 1.0 || rawW > 50.0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unrealistic weight entry. Weight must be between 1.0 kg and 50.0 kg.')),
+      AppNotificationUI.showWarning(
+        context,
+        'Weight must be realistic (between 1.0 kg and 50.0 kg).',
+        title: 'Unrealistic Weight Entry',
       );
       return;
     }
     if (rawH < 35.0 || rawH > 140.0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unrealistic height entry. Height must be between 35.0 cm and 140.0 cm.')),
+      AppNotificationUI.showWarning(
+        context,
+        'Height must be realistic (between 35.0 cm and 140.0 cm).',
+        title: 'Unrealistic Height Entry',
       );
       return;
     }
     if (_isMuacEligible && (rawM! < 7.0 || rawM > 30.0)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unrealistic MUAC entry. MUAC must be between 7.0 cm and 30.0 cm.')),
+      AppNotificationUI.showWarning(
+        context,
+        'MUAC must be realistic (between 7.0 cm and 30.0 cm).',
+        title: 'Unrealistic MUAC Entry',
       );
       return;
     }
@@ -153,11 +162,10 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     final previewStatus = _liveResult;
 
     if (!_isFormValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please ensure all entries are realistic (Weight: 1-50kg, Height: 35-140cm, MUAC: 7-30cm).'),
-          backgroundColor: AppColors.statRed,
-        ),
+      AppNotificationUI.showWarning(
+        context,
+        'Please ensure all entries are realistic (Weight: 1-50kg, Height: 35-140cm, MUAC: 7-30cm).',
+        title: 'Validation Error',
       );
       return;
     }

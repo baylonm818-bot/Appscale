@@ -17,6 +17,7 @@ import '../../shared/widgets/form_action_buttons.dart';
 import '../../shared/widgets/form_section_card.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../shared/utils/app_user_identity.dart';
+import '../../shared/utils/app_notifications.dart';
 import 'widgets/mother_picker_field.dart';
 
 class AddChildScreen extends StatefulWidget {
@@ -114,8 +115,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
   Future<void> _handleSave() async {
     if (!_isFormValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields')),
+      AppNotificationUI.showWarning(
+        context,
+        'Please fill in all required fields marked with *',
+        title: 'Required Information Missing',
       );
       return;
     }
@@ -126,8 +129,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
       _guardianContactController.text,
     );
     if (sanitizedGuardianContact.isNotEmpty && sanitizedGuardianContact.length < 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid guardian mobile number.')),
+      AppNotificationUI.showWarning(
+        context,
+        'Please enter a valid 11-digit guardian mobile number.',
+        title: 'Invalid Contact Number',
       );
       setState(() => _isSaving = false);
       return;
