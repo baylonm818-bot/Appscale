@@ -300,7 +300,7 @@ exports.createReferral = async (req, res) => {
     }
   } catch (error) {
     console.error('Create referral error:', error);
-    return res.status(500).json({ message: 'Server error. Please try again later.' });
+    return res.status(500).json({ message: 'Server error. Please try again later.', debug: error.message, code: error.code });
   }
 };
 
