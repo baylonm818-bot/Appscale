@@ -149,7 +149,6 @@ function Masterlist() {
       if (ageFilter === 'all') return true;
       const age = Number(c.age_in_months ?? 0);
       if (ageFilter === '0-23')  return age >= 0  && age <= 23;
-      if (ageFilter === '0-24')  return age >= 0  && age <= 24;
       if (ageFilter === '24-59') return age >= 24 && age <= 59;
       return true;
     })
@@ -262,7 +261,6 @@ function Masterlist() {
                 {[
                   { val: 'all',   lbl: 'All Ages'  },
                   { val: '0-23',  lbl: '0–23 mos'  },
-                  { val: '0-24',  lbl: '0–24 mos'  },
                   { val: '24-59', lbl: '24–59 mos' },
                 ].map(({ val, lbl }) => (
                   <button
