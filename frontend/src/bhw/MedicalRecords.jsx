@@ -180,7 +180,6 @@ function MedicalRecords() {
       list = list.filter((c) => {
         if (ageFilter === '0-11') return c.age_in_months <= 11;
         if (ageFilter === '0-23') return c.age_in_months >= 0 && c.age_in_months <= 23;
-        if (ageFilter === '0-24') return c.age_in_months >= 0 && c.age_in_months <= 24;
         if (ageFilter === '12-23') return c.age_in_months >= 12 && c.age_in_months <= 23;
         return c.age_in_months >= 24 && c.age_in_months <= 59;
       });
@@ -402,7 +401,6 @@ function MedicalRecords() {
                       >
                         <option value="all">All Ages</option>
                         <option value="0-23">0–23 mos</option>
-                        <option value="0-24">0–24 mos</option>
                         <option value="24-59">24–59 mos</option>
                       </select>
                     </div>
