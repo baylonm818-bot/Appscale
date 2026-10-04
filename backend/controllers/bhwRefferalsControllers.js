@@ -202,7 +202,6 @@ exports.createReferral = async (req, res) => {
              (? IS NOT NULL AND child_id = ?)
              OR (? IS NOT NULL AND mother_id = ?)
            )
-           AND COALESCE(beneficiary_type, CASE WHEN child_id IS NOT NULL THEN 'child' ELSE 'mother' END) = ?
            AND LOWER(TRIM(reason)) = LOWER(TRIM(?))
          LIMIT 1`,
         [
@@ -210,7 +209,6 @@ exports.createReferral = async (req, res) => {
           resolvedChildId,
           resolvedMotherId,
           resolvedMotherId,
-          beneficiaryType,
           reason,
         ]
       );
@@ -300,7 +298,7 @@ exports.createReferral = async (req, res) => {
     }
   } catch (error) {
     console.error('Create referral error:', error);
-    return res.status(500).json({ message: 'Server error. Please try again later.', debug: error.message, code: error.code });
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };
 
