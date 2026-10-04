@@ -247,7 +247,7 @@ exports.createReferral = async (req, res) => {
       insertFields.push('referred_by', 'referred_to', 'reason', 'severity', 'status', 'notes');
       insertValues.push(
         referringUserId,
-        referrer?.user_id || referringUserId,
+        facility || null,
         reason,
         severity || 'medium',
         'Pending',
