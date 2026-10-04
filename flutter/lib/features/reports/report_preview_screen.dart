@@ -476,48 +476,124 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   Widget _buildRecordPreview() {
     final data = _buildExcelData(widget.reportType.id);
+    final previewRows = data.rows.take(10).toList();
+
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${data.rows.length} records',
-            style: AppTextStyles.label.copyWith(fontSize: 13),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            data.headers.join(' · '),
-            style: AppTextStyles.body.copyWith(
-              fontSize: 11,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const Divider(color: AppColors.border),
-          ...data.rows
-              .take(5)
-              .map(
-                (r) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    r.join(' · '),
-                    style: AppTextStyles.body.copyWith(fontSize: 11),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Record Preview (${data.rows.length} Total)',
+                  style: AppTextStyles.label.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Barangay $_currentBarangay',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkGreen,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.border),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Table(
+              defaultColumnWidth: const IntrinsicColumnWidth(),
+              border: TableBorder.all(
+                color: AppColors.border.withValues(alpha: 0.6),
+                width: 0.5,
               ),
-          if (data.rows.length > 5)
-            Text(
-              '+ ${data.rows.length - 5} more in the exported file',
-              style: AppTextStyles.body.copyWith(
-                fontSize: 11,
-                color: AppColors.textMuted,
+              children: [
+                // Table Header
+                TableRow(
+                  decoration: const BoxDecoration(
+                    color: AppColors.darkGreen,
+                  ),
+                  children: data.headers
+                      .map(
+                        (h) => Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            h.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                // Table Data Rows
+                ...previewRows.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final row = entry.value;
+                  final isEven = idx % 2 == 0;
+                  return TableRow(
+                    decoration: BoxDecoration(
+                      color: isEven
+                          ? Colors.white
+                          : AppColors.background.withValues(alpha: 0.5),
+                    ),
+                    children: row
+                        .map(
+                          (val) => Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 7,
+                            ),
+                            child: Text(
+                              val.toString(),
+                              style: AppTextStyles.body.copyWith(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  );
+                }),
+              ],
+            ),
+          ),
+          if (data.rows.length > 10)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                '+ ${data.rows.length - 10} more records in the exported file',
+                style: AppTextStyles.caption.copyWith(
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                  color: AppColors.textMuted,
+                ),
               ),
             ),
         ],

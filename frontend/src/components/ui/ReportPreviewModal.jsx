@@ -81,63 +81,70 @@ export default function ReportPreviewModal({ isOpen, onClose, reportData, title,
 
           {/* Summary Cards Table */}
           {reportData.summary && (
-            <div className="grid grid-cols-4 gap-3 mb-6 print:grid-cols-4">
+            <div className="grid grid-cols-4 gap-3 mb-6 print:grid-cols-4 print:break-inside-avoid">
               <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 text-center">
-                <p className="text-[10px] font-bold text-gray-500 uppercase">Total Children</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Total Children</p>
                 <p className="text-xl font-black text-gray-900">{reportData.summary.totalChildren || reportData.items?.length || 0}</p>
               </div>
-              <div className="border border-green-200 rounded-xl p-3 bg-green-50 text-center">
-                <p className="text-[10px] font-bold text-green-800 uppercase">Normal Status</p>
-                <p className="text-xl font-black text-green-900">{reportData.summary.normal || 0}</p>
+              <div className="border border-emerald-200 rounded-xl p-3 bg-emerald-50 text-center">
+                <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide">Normal Status</p>
+                <p className="text-xl font-black text-emerald-900">{reportData.summary.normal || 0}</p>
               </div>
               <div className="border border-amber-200 rounded-xl p-3 bg-amber-50 text-center">
-                <p className="text-[10px] font-bold text-amber-800 uppercase">MAM / Underweight</p>
+                <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wide">MAM / Underweight</p>
                 <p className="text-xl font-black text-amber-900">{reportData.summary.mam || 0}</p>
               </div>
-              <div className="border border-red-200 rounded-xl p-3 bg-red-50 text-center">
-                <p className="text-[10px] font-bold text-red-800 uppercase">SAM / At Risk</p>
-                <p className="text-xl font-black text-red-900">{reportData.summary.sam || 0}</p>
+              <div className="border border-rose-200 rounded-xl p-3 bg-rose-50 text-center">
+                <p className="text-[10px] font-bold text-rose-800 uppercase tracking-wide">SAM / At Risk</p>
+                <p className="text-xl font-black text-rose-900">{reportData.summary.sam || 0}</p>
               </div>
             </div>
           )}
 
           {/* Data Table */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden mb-8">
+          <div className="border border-gray-200 rounded-xl overflow-hidden mb-8 print:border-gray-300">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-green-800 text-white font-bold uppercase tracking-wider text-[11px]">
-                  <th className="p-3 border-b border-green-700">#</th>
+                <tr className="bg-[#1b5e20] text-white font-bold uppercase tracking-wider text-[11px] print:bg-gray-800">
+                  <th className="p-3 border-b border-green-700 w-10 text-center">#</th>
                   <th className="p-3 border-b border-green-700">Child / Beneficiary Name</th>
-                  <th className="p-3 border-b border-green-700">Age (Mos)</th>
-                  <th className="p-3 border-b border-green-700">Sex</th>
+                  <th className="p-3 border-b border-green-700 text-center">Age (Mos)</th>
+                  <th className="p-3 border-b border-green-700 text-center">Sex</th>
                   <th className="p-3 border-b border-green-700">Guardian Name</th>
-                  <th className="p-3 border-b border-green-700">Weight (kg)</th>
-                  <th className="p-3 border-b border-green-700">Height (cm)</th>
-                  <th className="p-3 border-b border-green-700">Nutritional Status</th>
+                  <th className="p-3 border-b border-green-700 text-right">Weight (kg)</th>
+                  <th className="p-3 border-b border-green-700 text-right">Height (cm)</th>
+                  <th className="p-3 border-b border-green-700 text-center">Nutritional Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {reportData.items && reportData.items.length > 0 ? (
-                  reportData.items.map((item, idx) => (
-                    <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                      <td className="p-3 font-semibold text-gray-500">{idx + 1}</td>
-                      <td className="p-3 font-bold text-gray-900">{item.first_name} {item.last_name}</td>
-                      <td className="p-3 font-medium text-gray-700">{item.age_in_months ?? '—'}</td>
-                      <td className="p-3 font-medium text-gray-700 capitalize">{item.sex || '—'}</td>
-                      <td className="p-3 font-medium text-gray-700">{item.guardian_name || '—'}</td>
-                      <td className="p-3 font-semibold text-gray-800">{item.weight_kg ? `${item.weight_kg} kg` : '—'}</td>
-                      <td className="p-3 font-semibold text-gray-800">{item.height_cm ? `${item.height_cm} cm` : '—'}</td>
-                      <td className="p-3 font-bold">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] ${
-                          item.overall_status === 'normal' ? 'bg-green-100 text-green-800' :
-                          item.overall_status === 'MAM' ? 'bg-amber-100 text-amber-800' :
-                          item.overall_status === 'SAM' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {item.overall_status || 'No Record'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                  reportData.items.map((item, idx) => {
+                    const statusLower = String(item.overall_status || item.nutrition_status || item.status || '').toLowerCase();
+                    const isNormal = statusLower === 'normal';
+                    const isMam = statusLower === 'mam' || statusLower.includes('underweight');
+                    const isSam = statusLower === 'sam' || statusLower.includes('severely') || statusLower.includes('risk');
+
+                    return (
+                      <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}>
+                        <td className="p-3 font-semibold text-gray-500 text-center">{idx + 1}</td>
+                        <td className="p-3 font-bold text-gray-900">{item.first_name || item.fullName || ''} {item.last_name || ''}</td>
+                        <td className="p-3 font-medium text-gray-700 text-center">{item.age_in_months ?? item.ageInMonths ?? '—'}</td>
+                        <td className="p-3 font-medium text-gray-700 text-center capitalize">{item.sex || item.gender || '—'}</td>
+                        <td className="p-3 font-medium text-gray-700">{item.guardian_name || item.guardian?.fullName || '—'}</td>
+                        <td className="p-3 font-semibold text-gray-800 text-right">{item.weight_kg ? `${item.weight_kg} kg` : '—'}</td>
+                        <td className="p-3 font-semibold text-gray-800 text-right">{item.height_cm ? `${item.height_cm} cm` : '—'}</td>
+                        <td className="p-3 text-center">
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                            isNormal ? 'bg-emerald-100 text-emerald-800' :
+                            isMam ? 'bg-amber-100 text-amber-800' :
+                            isSam ? 'bg-rose-100 text-rose-800' : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {item.overall_status || item.nutrition_status || item.status || 'No Record'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={8} className="p-6 text-center text-gray-400 font-medium">
@@ -150,17 +157,17 @@ export default function ReportPreviewModal({ isOpen, onClose, reportData, title,
           </div>
 
           {/* Signatures Footer */}
-          <div className="grid grid-cols-2 gap-12 pt-6 border-t border-gray-200 print:pt-4">
+          <div className="grid grid-cols-2 gap-12 pt-6 border-t border-gray-200 print:pt-6 print:break-inside-avoid">
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Prepared by:</p>
-              <div className="mt-8 border-b border-gray-400 w-48" />
-              <p className="text-xs font-bold text-gray-800 mt-1">Barangay Nutrition Scholar (BNS)</p>
+              <div className="mt-10 border-b border-gray-400 w-52" />
+              <p className="text-xs font-bold text-gray-800 mt-1.5">Barangay Nutrition Scholar (BNS)</p>
               <p className="text-[10px] text-gray-400">Signature over printed name</p>
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Noted & Approved by:</p>
-              <div className="mt-8 border-b border-gray-400 w-48" />
-              <p className="text-xs font-bold text-gray-800 mt-1">Barangay Health Worker (BHW) Lead</p>
+              <div className="mt-10 border-b border-gray-400 w-52" />
+              <p className="text-xs font-bold text-gray-800 mt-1.5">Barangay Health Worker (BHW) Lead</p>
               <p className="text-[10px] text-gray-400">Signature over printed name</p>
             </div>
           </div>
