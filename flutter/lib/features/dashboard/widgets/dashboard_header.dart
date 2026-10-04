@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -41,7 +42,8 @@ class DashboardHeader extends StatelessWidget {
       if (relative.startsWith('profile-pictures/')) {
         return 'https://appscale-1.onrender.com/uploads/$relative';
       }
-      return 'https://appscale-1.onrender.com/$relative';
+      // Return raw local path if it doesn't match server uploads prefix
+      return raw;
     }
 
     if (raw.startsWith('uploads/')) {
@@ -55,9 +57,94 @@ class DashboardHeader extends StatelessWidget {
     return raw;
   }
 
+  Widget _buildAvatarWidget(String? rawUrl, String initials) {
+    if (rawUrl == null || rawUrl.trim().isEmpty) {
+      return CircleAvatar(
+        radius: 18,
+        backgroundColor: Colors.white,
+        child: Text(
+          initials,
+          style: const TextStyle(
+            color: AppColors.darkGreen,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
+    final trimmed = rawUrl.trim();
+    final isLocalPath = trimmed.startsWith('/data/') ||
+        trimmed.startsWith('/storage/') ||
+        trimmed.startsWith('/var/') ||
+        trimmed.startsWith('file://') ||
+        (trimmed.startsWith('/') &&
+            !trimmed.startsWith('/uploads/') &&
+            !trimmed.startsWith('/profile-pictures/'));
+
+    if (isLocalPath) {
+      final cleanPath = trimmed.replaceFirst(RegExp(r'^file://'), '');
+      final file = File(cleanPath);
+      if (file.existsSync()) {
+        return ClipOval(
+          child: Image.file(
+            file,
+            width: 36,
+            height: 36,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.white,
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: AppColors.darkGreen,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    final networkUrl = normalizeProfileImageUrl(trimmed);
+    if (networkUrl != null && (networkUrl.startsWith('http://') || networkUrl.startsWith('https://'))) {
+      return ClipOval(
+        child: Image.network(
+          networkUrl,
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.white,
+            child: Text(
+              initials,
+              style: const TextStyle(
+                color: AppColors.darkGreen,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 18,
+      backgroundColor: Colors.white,
+      child: Text(
+        initials,
+        style: const TextStyle(
+          color: AppColors.darkGreen,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final resolvedProfileImageUrl = normalizeProfileImageUrl(profileImageUrl);
     final initials = bnsName.trim().isNotEmpty ? bnsName.trim()[0].toUpperCase() : 'B';
 
     return AppGradientHeader(
@@ -168,37 +255,7 @@ class DashboardHeader extends StatelessWidget {
           const SizedBox(width: 8),
           GestureDetector(
             onTap: onProfileTap,
-            child: resolvedProfileImageUrl != null
-                ? ClipOval(
-                    child: Image.network(
-                      resolvedProfileImageUrl,
-                      width: 36,
-                      height: 36,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.white,
-                        child: Text(
-                          initials,
-                          style: const TextStyle(
-                            color: AppColors.darkGreen,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                : CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Colors.white,
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        color: AppColors.darkGreen,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
+            child: _buildAvatarWidget(profileImageUrl, initials),
           ),
         ],
       ),

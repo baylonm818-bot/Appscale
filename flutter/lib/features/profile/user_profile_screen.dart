@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -6,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../data/local/app_data_bus.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/mother_repository.dart';
@@ -39,6 +41,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
     if (pickedFile == null) return;
 
+    // Instantly save local picked path so user picture updates immediately
+    final updatedUser = Map<String, dynamic>.from(settings.authUser ?? {});
+    updatedUser['profile_picture'] = pickedFile.path;
+    await settings.setAuthUser(updatedUser);
+    AppDataBus.notifyChanged();
+    if (mounted) setState(() {});
+
     setState(() => _isUploadingPicture = true);
 
     try {
@@ -57,39 +66,110 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final parsed = responseBody.isEmpty
+            ? <String, dynamic>{}
+            : Map<String, dynamic>.from(jsonDecode(responseBody) as Map);
+        final uploadedPath = parsed['profile_picture'];
+        if (uploadedPath != null && uploadedPath.toString().trim().isNotEmpty) {
+          final serverUser = Map<String, dynamic>.from(settings.authUser ?? {});
+          serverUser['profile_picture'] = uploadedPath.toString();
+          await settings.setAuthUser(serverUser);
+          AppDataBus.notifyChanged();
+        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Profile picture updated.')));
+      } else {
         final parsed = jsonDecode(responseBody);
         final message = (parsed is Map && parsed['message'] is String)
             ? parsed['message'] as String
-            : 'Unable to upload profile picture.';
-        throw Exception(message);
+            : 'Unable to upload profile picture to server.';
+        debugPrint('Profile picture upload warning: $message');
       }
-
-      final parsed = responseBody.isEmpty
-          ? <String, dynamic>{}
-          : Map<String, dynamic>.from(jsonDecode(responseBody) as Map);
-      final updatedUser = Map<String, dynamic>.from(settings.authUser ?? {});
-      final uploadedPath = parsed['profile_picture'];
-      if (uploadedPath != null && uploadedPath.toString().trim().isNotEmpty) {
-        updatedUser['profile_picture'] = uploadedPath.toString();
-        await settings.setAuthUser(updatedUser);
-      }
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Profile picture updated.')));
-      setState(() {});
     } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      debugPrint('Profile picture upload exception: $error');
+      // Local image path remains saved so picture is still visible offline
     } finally {
       if (mounted) {
         setState(() => _isUploadingPicture = false);
       }
     }
+  }
+
+  Widget _buildProfileAvatar(String? profileImageUrl, String resolvedName) {
+    final initials = resolvedName.isNotEmpty ? resolvedName[0].toUpperCase() : 'B';
+    final fallback = CircleAvatar(
+      radius: 36,
+      backgroundColor: Colors.white,
+      child: Text(
+        initials,
+        style: const TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: AppColors.darkGreen,
+        ),
+      ),
+    );
+
+    if (profileImageUrl == null || profileImageUrl.trim().isEmpty) {
+      return fallback;
+    }
+
+    final trimmed = profileImageUrl.trim();
+    final isLocalPath = trimmed.startsWith('/data/') ||
+        trimmed.startsWith('/storage/') ||
+        trimmed.startsWith('/var/') ||
+        trimmed.startsWith('file://') ||
+        (trimmed.startsWith('/') &&
+            !trimmed.startsWith('/uploads/') &&
+            !trimmed.startsWith('/profile-pictures/'));
+
+    if (isLocalPath) {
+      final cleanPath = trimmed.replaceFirst(RegExp(r'^file://'), '');
+      final file = File(cleanPath);
+      if (file.existsSync()) {
+        return ClipOval(
+          child: Image.file(
+            file,
+            width: 72,
+            height: 72,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => fallback,
+          ),
+        );
+      }
+    }
+
+    final normalizedUrl = (() {
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+        return trimmed;
+      }
+      if (trimmed.startsWith('/')) {
+        final relative = trimmed.replaceFirst(RegExp(r'^/+'), '');
+        if (relative.startsWith('uploads/')) return 'https://appscale-1.onrender.com/$relative';
+        if (relative.startsWith('profile-pictures/')) return 'https://appscale-1.onrender.com/uploads/$relative';
+        return trimmed;
+      }
+      if (trimmed.startsWith('uploads/')) return 'https://appscale-1.onrender.com/$trimmed';
+      if (trimmed.startsWith('profile-pictures/')) return 'https://appscale-1.onrender.com/uploads/$trimmed';
+      return trimmed;
+    })();
+
+    if (normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
+      return ClipOval(
+        child: Image.network(
+          normalizedUrl,
+          width: 72,
+          height: 72,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => fallback,
+        ),
+      );
+    }
+
+    return fallback;
   }
 
   @override
@@ -102,32 +182,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ? widget.barangay
         : AppUserIdentity.resolveBarangay(settings.authUser);
     final profileImageUrl = settings.authUser?['profile_picture']?.toString();
-    final normalizedProfileImageUrl = (() {
-      final raw = profileImageUrl?.trim();
-      if (raw == null || raw.isEmpty) return null;
-      if (raw.startsWith('http://') ||
-          raw.startsWith('https://') ||
-          raw.startsWith('data:')) {
-        return raw;
-      }
-      if (raw.startsWith('/')) {
-        final relative = raw.replaceFirst(RegExp(r'^/+'), '');
-        if (relative.startsWith('uploads/')) {
-          return 'https://appscale-1.onrender.com/$relative';
-        }
-        if (relative.startsWith('profile-pictures/')) {
-          return 'https://appscale-1.onrender.com/uploads/$relative';
-        }
-        return 'https://appscale-1.onrender.com/$relative';
-      }
-      if (raw.startsWith('uploads/')) {
-        return 'https://appscale-1.onrender.com/$raw';
-      }
-      if (raw.startsWith('profile-pictures/')) {
-        return 'https://appscale-1.onrender.com/uploads/$raw';
-      }
-      return raw;
-    })();
     final barangayLabel = resolvedBarangay.trim().isEmpty
         ? 'Barangay Tiguion'
         : resolvedBarangay.toLowerCase().startsWith('barangay ')
@@ -179,43 +233,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       : _pickAndUploadProfilePicture,
                   child: Stack(
                     children: [
-                      normalizedProfileImageUrl != null
-                          ? ClipOval(
-                              child: Image.network(
-                                normalizedProfileImageUrl,
-                                width: 72,
-                                height: 72,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => CircleAvatar(
-                                  radius: 36,
-                                  backgroundColor: Colors.white,
-                                  child: Text(
-                                    resolvedName.isNotEmpty
-                                        ? resolvedName[0].toUpperCase()
-                                        : 'B',
-                                    style: const TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.darkGreen,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            )
-                          : CircleAvatar(
-                              radius: 36,
-                              backgroundColor: Colors.white,
-                              child: Text(
-                                resolvedName.isNotEmpty
-                                    ? resolvedName[0].toUpperCase()
-                                    : 'B',
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.darkGreen,
-                                ),
-                              ),
-                            ),
+                      _buildProfileAvatar(profileImageUrl, resolvedName),
                       if (_isUploadingPicture)
                         Positioned.fill(
                           child: Container(
