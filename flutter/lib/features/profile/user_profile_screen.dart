@@ -136,7 +136,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             width: 72,
             height: 72,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => fallback,
+            errorBuilder: (_, _, _) => fallback,
           ),
         );
       }
@@ -164,7 +164,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           width: 72,
           height: 72,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => fallback,
+          errorBuilder: (_, _, _) => fallback,
         ),
       );
     }
