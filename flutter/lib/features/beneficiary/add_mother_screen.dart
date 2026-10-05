@@ -99,8 +99,10 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
 
   Future<void> _handleSave() async {
     if (!_isFormValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields')),
+      AppNotificationUI.showWarning(
+        context,
+        'Please fill in all required fields marked with *',
+        title: 'Required Information Missing',
       );
       return;
     }
@@ -111,8 +113,10 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
       _contactController.text,
     );
     if (sanitizedContact.length < 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid mobile number.')),
+      AppNotificationUI.showWarning(
+        context,
+        'Please enter a valid 11-digit mobile contact number.',
+        title: 'Invalid Contact Number',
       );
       setState(() => _isSaving = false);
       return;
