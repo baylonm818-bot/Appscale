@@ -112,44 +112,59 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     if (reportTypeId == 'monthly_weight_record') {
       final children = childRepo
           .getByBarangay(_currentBarangay)
-          .where((c) => c.isActive)
+          .where((c) => c.isActive && c.ageInMonths < 24)
           .toList();
-      final rows = children.map((c) {
-        final m = measurementRepo.getForChild(c.id);
-        final latest = m.isNotEmpty ? m.first : null;
-        return [
-          c.sequenceNo,
-          c.fullName,
-          c.gender,
-          '${c.birthDate.year}',
-          '${c.birthDate.month}',
-          '${c.birthDate.day}',
-          '${c.ageInMonths}',
-          latest?.weightKg.toString() ?? '—',
-          latest?.heightCm.toString() ?? '—',
-          latest != null ? latest.bmi.toStringAsFixed(2) : '—',
-          latest?.bmiStatus ?? c.nutritionStatus,
-          latest != null ? _fmtDate(latest.date) : '—',
-        ];
-      }).toList();
-      return ExcelTableData(
-        headers: [
-          'Seq No',
-          'Name of Child',
-          'Sex',
-          'DOB Year',
-          'DOB Mo',
-          'DOB Day',
-          'Age (mo)',
-          'Weight (kg)',
-          'Height (cm)',
-          'Computed BMI',
-          'Nutritional Status',
-          'Date Weighed',
-        ],
-        rows: rows,
-      );
+
+      final monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+                          'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+      // Build header: NAME | AGE | DOB | then each month x3 (WT, HT, STATUS)
+      final headers = <String>[
+        'NAME OF CHILD', 'AGE\n(MO)', 'DATE OF\nBIRTH',
+        ...monthNames.expand((m) => ['$m\nWT(kg)', '$m\nHT(cm)', '$m\nSTATUS']),
+      ];
+
+      List<List<String>> buildSection(List<dynamic> kids) {
+        final rows = <List<String>>[];
+        for (final c in kids) {
+          final measurements = measurementRepo.getForChild(c.id);
+          final row = <String>[
+            c.fullName,
+            '${c.ageInMonths}',
+            _fmtDate(c.birthDate),
+          ];
+          for (int mo = 1; mo <= 12; mo++) {
+            final rec = measurements.where(
+              (m) => m.date.month == mo && m.date.year == _period.year,
+            ).toList();
+            if (rec.isNotEmpty) {
+              row.add(rec.first.weightKg.toStringAsFixed(1));
+              row.add(rec.first.heightCm.toStringAsFixed(1));
+              row.add(rec.first.bmiStatus);
+            } else {
+              row.addAll(['', '', '']);
+            }
+          }
+          rows.add(row);
+        }
+        return rows;
+      }
+
+      final boys = children.where((c) => c.gender == 'Male').toList();
+      final girls = children.where((c) => c.gender == 'Female').toList();
+
+      final allRows = <List<String>>[
+        // MALE section header
+        List.filled(headers.length, 'MALE'),
+        ...buildSection(boys),
+        // FEMALE section header
+        List.filled(headers.length, 'FEMALE'),
+        ...buildSection(girls),
+      ];
+
+      return ExcelTableData(headers: headers, rows: allRows);
     }
+
 
     if (reportTypeId == 'quarterly_weighing') {
       final children = childRepo
@@ -391,22 +406,51 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                           ),
                         ],
                       ),
-                    ] else ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          'Data as of today. Exports as a spreadsheet — no signature block, since this is a data export, not a signed submission.',
-                          style: AppTextStyles.body.copyWith(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
+                    ] else ...[ 
+                      if (widget.reportType.id == 'monthly_weight_record') ...[
+                        InkWell(
+                          onTap: _pickPeriod,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: 16,
+                                  color: AppColors.textMuted,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Year: ${_period.year}  (tap to change)',
+                                  style: AppTextStyles.label.copyWith(fontSize: 13),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
+                        const SizedBox(height: AppSpacing.md),
+                      ] else ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Data as of today. Exports as a spreadsheet.',
+                            style: AppTextStyles.body.copyWith(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                      ],
                       _buildRecordPreview(),
                       const SizedBox(height: AppSpacing.lg),
                       Row(

@@ -48,7 +48,7 @@ class ReportTypes {
   );
   static const monthlyWeightRecord = ReportTypeInfo(
     id: 'monthly_weight_record',
-    title: 'Monthly Weight Record',
+    title: 'Monthly Record of Weight & Weight Status\n(Underweight/Severely Underweight)',
     category: ReportCategory.individualRecord,
     formats: [ExportFormat.excel],
   );
