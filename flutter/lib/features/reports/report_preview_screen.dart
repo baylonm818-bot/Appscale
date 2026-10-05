@@ -78,6 +78,21 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     if (mounted) setState(() => _isExporting = false);
   }
 
+  Future<void> _exportPdf() async {
+    setState(() => _isExporting = true);
+    final data = _buildExcelData(widget.reportType.id);
+    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+    await ReportPdfService().exportTableAndShare(
+      fileTitle: '${widget.reportType.id}_$_currentBarangay',
+      title: widget.reportType.title,
+      barangay: _currentBarangay,
+      headers: data.headers,
+      rows: data.rows,
+      signatory: signatory,
+    );
+    if (mounted) setState(() => _isExporting = false);
+  }
+
   Future<void> _exportExcel() async {
     setState(() => _isExporting = true);
     final data = _buildExcelData(widget.reportType.id);
@@ -216,130 +231,66 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
     if (reportTypeId == 'children_masterlist') {
       final children = childRepo.getByBarangay(_currentBarangay);
+      int no = 1;
       final rows = children
           .map(
             (c) => [
-              c.sequenceNo,
+              '${no++}',
               c.fullName,
               c.gender,
               _fmtDate(c.birthDate),
               '${c.ageInMonths}',
-              c.address,
+              c.address.isNotEmpty ? c.address : 'Purok 1',
               c.guardian.fullName,
               c.guardian.contactNo,
-              c.isActive ? 'Active' : 'Inactive',
               c.nutritionStatus,
-            ],
-          )
-          .toList();
-      return ExcelTableData(
-        headers: [
-          'Seq No',
-          'Name',
-          'Gender',
-          'DOB',
-          'Age (mo)',
-          'Address',
-          'Guardian',
-          'Guardian Contact',
-          'Status',
-          'Nutrition Status',
-        ],
-        rows: rows,
-      );
-    }
-
-    if (reportTypeId == 'lactating_mothers_masterlist') {
-      final mothers = MotherRepository()
-          .getAll()
-          .where((m) => m.barangay == _currentBarangay && m.isActive)
-          .toList();
-      int no = 1;
-      final rows = mothers
-          .map(
-            (m) => [
-              '${no++}',
-              m.fullName,
-              '${m.age}',
-              m.address,
-              m.contactNo,
-              m.breastfeedingPractice.isNotEmpty ? m.breastfeedingPractice : 'Lactating',
+              c.isActive ? 'Active' : 'Inactive',
             ],
           )
           .toList();
       return ExcelTableData(
         headers: [
           'NO.',
-          'NAME OF LACTATING MOTHER',
-          'AGE',
+          'NAME OF CHILD',
+          'SEX',
+          'BIRTHDAY',
+          'AGE (MO)',
           'ADDRESS',
-          'CONTACT',
+          'GUARDIAN NAME',
+          'GUARDIAN CONTACT',
+          'NUTRITIONAL STATUS',
           'STATUS',
         ],
         rows: rows,
       );
     }
 
-    if (reportTypeId == 'pregnant_mothers_attendance') {
-      final mothers = MotherRepository()
-          .getAll()
-          .where((m) => m.barangay == _currentBarangay && m.isActive)
-          .toList();
-      int no = 1;
-      final rows = mothers
-          .map(
-            (m) => [
-              '${no++}',
-              m.fullName,
-              '${m.age}',
-              _fmtDate(m.birthDate),
-              '—',
-              '—',
-              '_________________',
-            ],
-          )
-          .toList();
-      return ExcelTableData(
-        headers: [
-          'NO.',
-          'NAME PREGNANT MOTHERS',
-          'AGE',
-          'BIRTHDAY',
-          'LMP',
-          'EDD',
-          'SIGNATURE',
-        ],
-        rows: rows,
-      );
-    }
-
-    // mothers_masterlist
+    // lactating_mothers_masterlist
     final mothers = MotherRepository()
         .getAll()
-        .where((m) => m.barangay == _currentBarangay)
+        .where((m) => m.barangay == _currentBarangay && m.isActive)
         .toList();
+    int no = 1;
     final rows = mothers
         .map(
           (m) => [
+            '${no++}',
             m.fullName,
             '${m.age}',
-            m.address,
+            m.address.isNotEmpty ? m.address : 'Purok 1',
             m.contactNo,
-            m.breastfeedingPractice,
-            m.riskStatus,
-            m.isActive ? 'Active' : 'Inactive',
+            m.breastfeedingPractice.isNotEmpty ? m.breastfeedingPractice : 'Lactating',
           ],
         )
         .toList();
     return ExcelTableData(
       headers: [
-        'Name',
-        'Age',
-        'Address',
-        'Contact',
-        'Breastfeeding Practice',
-        'Risk Status',
-        'Status',
+        'NO.',
+        'NAME OF LACTATING MOTHER',
+        'AGE',
+        'ADDRESS',
+        'CONTACT',
+        'STATUS',
       ],
       rows: rows,
     );
@@ -458,10 +409,26 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                       const SizedBox(height: AppSpacing.md),
                       _buildRecordPreview(),
                       const SizedBox(height: AppSpacing.lg),
-                      _exportButton(
-                        'Export Excel',
-                        _exportExcel,
-                        Icons.grid_on_outlined,
+                      Row(
+                        children: [
+                          if (widget.reportType.formats.contains(ExportFormat.pdf)) ...[
+                            Expanded(
+                              child: _exportButton(
+                                'Export PDF',
+                                _exportPdf,
+                                Icons.picture_as_pdf_outlined,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
+                          Expanded(
+                            child: _exportButton(
+                              'Export Excel',
+                              _exportExcel,
+                              Icons.grid_on_outlined,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],

@@ -105,6 +105,61 @@ class ReportPdfService {
     );
   }
 
+  Future<void> exportTableAndShare({
+    required String fileTitle,
+    required String title,
+    required String barangay,
+    required List<String> headers,
+    required List<List<String>> rows,
+    required ReportSignatory? signatory,
+  }) async {
+    final doc = pw.Document();
+    final bns = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+    final pb = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : 'FELIX S. NAMBIO JR.';
+
+    doc.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(24),
+        build: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Center(
+              child: pw.Text(
+                title.toUpperCase(),
+                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+              ),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text('BARANGAY: ${barangay.toUpperCase()}', style: const pw.TextStyle(fontSize: 9)),
+            pw.SizedBox(height: 10),
+            pw.TableHelper.fromTextArray(
+              headers: headers,
+              data: rows,
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
+              cellStyle: const pw.TextStyle(fontSize: 7.5),
+              cellAlignment: pw.Alignment.centerLeft,
+              border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+            ),
+            pw.SizedBox(height: 20),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                _sigCol('PREPARED BY:', bns, 'BARANGAY NUTRITION SCHOLAR'),
+                _sigCol('NOTED BY:', pb, 'PUNONG BARANGAY'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await Printing.sharePdf(
+      bytes: await doc.save(),
+      filename: '$fileTitle.pdf',
+    );
+  }
+
   pw.Widget _buildMatrixTable(ConsolidationMatrixData matrix) {
     final is2459 = matrix.reportTypeId == 'consolidation_24_59';
 

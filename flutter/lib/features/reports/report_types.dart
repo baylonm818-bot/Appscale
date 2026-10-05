@@ -68,23 +68,11 @@ class ReportTypes {
     id: 'children_masterlist',
     title: 'Children masterlist',
     category: ReportCategory.masterlist,
-    formats: [ExportFormat.excel],
-  );
-  static const mothersMasterlist = ReportTypeInfo(
-    id: 'mothers_masterlist',
-    title: 'Mothers masterlist',
-    category: ReportCategory.masterlist,
-    formats: [ExportFormat.excel],
+    formats: [ExportFormat.excel, ExportFormat.pdf],
   );
   static const lactatingMothersMasterlist = ReportTypeInfo(
     id: 'lactating_mothers_masterlist',
     title: 'Masterlist of Lactating Mothers',
-    category: ReportCategory.masterlist,
-    formats: [ExportFormat.excel, ExportFormat.pdf],
-  );
-  static const pregnantMothersAttendance = ReportTypeInfo(
-    id: 'pregnant_mothers_attendance',
-    title: 'Pregnant Mothers Attendance',
     category: ReportCategory.masterlist,
     formats: [ExportFormat.excel, ExportFormat.pdf],
   );
@@ -102,9 +90,7 @@ class ReportTypes {
   ];
   static const masterlistTypes = [
     childrenMasterlist,
-    mothersMasterlist,
     lactatingMothersMasterlist,
-    pregnantMothersAttendance,
   ];
   static const all = [
     ...consolidationTypes,
