@@ -80,16 +80,34 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   Future<void> _exportPdf() async {
     setState(() => _isExporting = true);
-    final data = _buildExcelData(widget.reportType.id);
     final signatory = ReportSignatoryRepository().get(_currentBarangay);
-    await ReportPdfService().exportTableAndShare(
-      fileTitle: '${widget.reportType.id}_$_currentBarangay',
-      title: widget.reportType.title,
-      barangay: _currentBarangay,
-      headers: data.headers,
-      rows: data.rows,
-      signatory: signatory,
-    );
+
+    if (widget.reportType.id == 'lactating_mothers_masterlist') {
+      // Simple numbered-list PDF matching the official MASTERLIST OF LACTATING MOTHER form
+      final motherRepo = MotherRepository();
+      final mothers = motherRepo
+          .getAll()
+          .where((m) => m.barangay == _currentBarangay && m.isActive)
+          .toList();
+      final names = mothers.map((m) => m.fullName).toList();
+      await ReportPdfService().exportLactatingMasterlistPdf(
+        fileTitle: 'lactating_masterlist_${_period.year}_$_currentBarangay',
+        barangay: _currentBarangay,
+        year: _period.year,
+        names: names,
+        signatory: signatory,
+      );
+    } else {
+      final data = _buildExcelData(widget.reportType.id);
+      await ReportPdfService().exportTableAndShare(
+        fileTitle: '${widget.reportType.id}_$_currentBarangay',
+        title: widget.reportType.title,
+        barangay: _currentBarangay,
+        headers: data.headers,
+        rows: data.rows,
+        signatory: signatory,
+      );
+    }
     if (mounted) setState(() => _isExporting = false);
   }
 
