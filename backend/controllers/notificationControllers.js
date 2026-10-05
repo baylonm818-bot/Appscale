@@ -52,11 +52,12 @@ exports.getNotifications = async (req, res) => {
       console.warn('Schedule sync warning (non-fatal):', syncErr && syncErr.message);
     }
 
-    // 2. Fetch notifications excluding referral and malnutrition for admin
+    // 2. Fetch notifications excluding referral, malnutrition, and sync/system notifications for admin
     const [notifications] = await pool.query(
       `SELECT notification_id, title, message, type, is_read, created_at
        FROM notifications
-       WHERE type NOT IN ('referral', 'malnutrition')
+       WHERE type NOT IN ('referral', 'malnutrition', 'system')
+         AND title NOT LIKE 'Data Synced%'
        ORDER BY created_at DESC
        LIMIT 50`
     );
@@ -64,7 +65,9 @@ exports.getNotifications = async (req, res) => {
     const [[{ unreadCount }]] = await pool.query(
       `SELECT COUNT(*) AS unreadCount
        FROM notifications
-       WHERE is_read = FALSE AND type NOT IN ('referral', 'malnutrition')`
+       WHERE is_read = FALSE
+         AND type NOT IN ('referral', 'malnutrition', 'system')
+         AND title NOT LIKE 'Data Synced%'`
     );
 
     return res.status(200).json({ notifications, unreadCount });
@@ -88,7 +91,7 @@ exports.markAsRead = async (req, res) => {
 exports.markAllAsRead = async (req, res) => {
   try {
     await pool.query(
-      "UPDATE notifications SET is_read = TRUE WHERE is_read = FALSE AND type NOT IN ('referral', 'malnutrition')"
+      "UPDATE notifications SET is_read = TRUE WHERE is_read = FALSE AND type NOT IN ('referral', 'malnutrition', 'system') AND title NOT LIKE 'Data Synced%'"
     );
     return res.status(200).json({ message: 'All marked as read.' });
   } catch (error) {

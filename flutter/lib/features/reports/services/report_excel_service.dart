@@ -62,7 +62,10 @@ class ReportExcelService {
 
     // Title Block
     sheet.appendRow([xls.TextCellValue('CONSOLIDATION')]);
-    sheet.appendRow([xls.TextCellValue(matrix.title)]);
+    final titleRow2 = matrix.reportTypeId == 'consolidation_0_23'
+        ? '0 - 23 months'
+        : matrix.title;
+    sheet.appendRow([xls.TextCellValue(titleRow2)]);
     sheet.appendRow([]);
     sheet.appendRow([xls.TextCellValue('BARANGAY: ${matrix.barangay.toUpperCase()}')]);
 
@@ -101,10 +104,10 @@ class ReportExcelService {
     // Signatory Block
     sheet.appendRow([]);
     sheet.appendRow([]);
-    final sig1 = signatory?.bnsName ?? 'BNS';
-    final sig2 = signatory?.punongBarangayName ?? 'PUNONG BARANGAY';
-    final sig3 = signatory?.mnaoAdminAideName ?? 'ADMIN AIDE IV- MNAO OIC';
-    final sig4 = signatory?.dnpcName ?? 'DNPC';
+    final sig1 = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+    final sig2 = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : 'FELIX S. NAMBIO JR.';
+    final sig3 = (signatory?.mnaoAdminAideName.isNotEmpty ?? false) ? signatory!.mnaoAdminAideName : 'MA. THERESA F. LAUDIT';
+    final sig4 = (signatory?.dnpcName.isNotEmpty ?? false) ? signatory!.dnpcName : 'MAUREEN F. LEYCO';
 
     if (matrix.reportTypeId == 'consolidation_24_59') {
       sheet.appendRow([

@@ -417,6 +417,44 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       year: _period.year,
     );
 
+    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+    final sig1 = (signatory?.bnsName.isNotEmpty ?? false)
+        ? signatory!.bnsName
+        : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+    final sig2 = (signatory?.punongBarangayName.isNotEmpty ?? false)
+        ? signatory!.punongBarangayName
+        : 'FELIX S. NAMBIO JR.';
+    final sig3 = (signatory?.mnaoAdminAideName.isNotEmpty ?? false)
+        ? signatory!.mnaoAdminAideName
+        : 'MA. THERESA F. LAUDIT';
+    final sig4 = (signatory?.dnpcName.isNotEmpty ?? false)
+        ? signatory!.dnpcName
+        : 'MAUREEN F. LEYCO';
+
+    final is2459 = matrix.reportTypeId == 'consolidation_24_59';
+
+    final mainHeaderCells = <Widget>[
+      _cell('NUTRITIONAL STATUS', bold: true),
+    ];
+    if (is2459) {
+      for (final mh in matrix.mainHeaders) {
+        mainHeaderCells.add(_cell(mh, bold: true));
+        mainHeaderCells.add(_cell(''));
+        mainHeaderCells.add(_cell(''));
+        mainHeaderCells.add(_cell(''));
+      }
+    } else {
+      for (final mh in matrix.mainHeaders) {
+        mainHeaderCells.add(_cell(mh, bold: true));
+        mainHeaderCells.add(_cell(''));
+      }
+    }
+
+    final subHeaderCells = <Widget>[
+      _cell('', bold: true),
+      ...matrix.subHeaders.map((sh) => _cell(sh, bold: true)),
+    ];
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -449,10 +487,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               children: [
                 TableRow(
                   decoration: BoxDecoration(color: AppColors.background),
-                  children: [
-                    _cell('NUTRITIONAL STATUS', bold: true),
-                    ...matrix.subHeaders.map((sh) => _cell(sh, bold: true)),
-                  ],
+                  children: mainHeaderCells,
+                ),
+                TableRow(
+                  decoration: BoxDecoration(color: AppColors.background),
+                  children: subHeaderCells,
                 ),
                 ...matrix.rows.map(
                   (r) {
@@ -469,8 +508,59 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          const Divider(color: AppColors.border),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildPreviewSigCol('SUBMITTED BY:', sig1, 'BNS'),
+                const SizedBox(width: 24),
+                _buildPreviewSigCol('NOTED BY:', sig2, 'PUNONG BARANGAY'),
+                const SizedBox(width: 24),
+                _buildPreviewSigCol('APPROVED BY:', sig3, 'ADMIN AIDE IV- MNAO OIC'),
+                const SizedBox(width: 24),
+                _buildPreviewSigCol('APPROVED BY:', sig4, 'DNPC'),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPreviewSigCol(String title, String name, String position) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textMuted,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          name,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            decoration: TextDecoration.underline,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          position,
+          style: const TextStyle(
+            fontSize: 9,
+            color: AppColors.textMuted,
+          ),
+        ),
+      ],
     );
   }
 

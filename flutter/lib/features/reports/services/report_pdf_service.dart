@@ -109,44 +109,64 @@ class ReportPdfService {
     final is2459 = matrix.reportTypeId == 'consolidation_24_59';
 
     final headerRows = <pw.TableRow>[];
-    
+
+    final mainHeaderCells = <pw.Widget>[
+      pw.Padding(
+        padding: const pw.EdgeInsets.all(3),
+        child: pw.Text('NUTRITIONAL STATUS', style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold)),
+      ),
+    ];
+
     if (is2459) {
-      headerRows.add(
-        pw.TableRow(
-          decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-          children: [
-            pw.Padding(
-              padding: const pw.EdgeInsets.all(3),
-              child: pw.Text('NUTRITIONAL STATUS', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
-            ),
-            ...['BOYS (Q1-Q4)', 'GIRLS (Q1-Q4)', 'TOTAL (Q1-Q4)'].map(
-              (h) => pw.Padding(
-                padding: const pw.EdgeInsets.all(3),
-                child: pw.Text(h, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
-              ),
-            ),
-          ],
-        ),
-      );
+      for (final mh in matrix.mainHeaders) {
+        mainHeaderCells.add(
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(3),
+            child: pw.Text(mh, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold)),
+          ),
+        );
+        mainHeaderCells.add(pw.SizedBox());
+        mainHeaderCells.add(pw.SizedBox());
+        mainHeaderCells.add(pw.SizedBox());
+      }
     } else {
-      headerRows.add(
-        pw.TableRow(
-          decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-          children: [
-            pw.Padding(
-              padding: const pw.EdgeInsets.all(3),
-              child: pw.Text('STATUS', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
-            ),
-            ...matrix.subHeaders.map(
-              (h) => pw.Padding(
-                padding: const pw.EdgeInsets.all(2),
-                child: pw.Text(h, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold)),
-              ),
-            ),
-          ],
-        ),
-      );
+      for (final mh in matrix.mainHeaders) {
+        mainHeaderCells.add(
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(3),
+            child: pw.Text(mh, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold)),
+          ),
+        );
+        mainHeaderCells.add(pw.SizedBox());
+      }
     }
+
+    headerRows.add(
+      pw.TableRow(
+        decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+        children: mainHeaderCells,
+      ),
+    );
+
+    final subHeaderCells = <pw.Widget>[
+      pw.Padding(
+        padding: const pw.EdgeInsets.all(3),
+        child: pw.Text('', style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold)),
+      ),
+      ...matrix.subHeaders.map(
+        (h) => pw.Padding(
+          padding: const pw.EdgeInsets.all(2),
+          child: pw.Text(h, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 5.5, fontWeight: pw.FontWeight.bold)),
+        ),
+      ),
+    ];
+
+    headerRows.add(
+      pw.TableRow(
+        decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+        children: subHeaderCells,
+      ),
+    );
 
     final dataRows = matrix.rows.map((r) {
       final isBoldRow = r.label.contains('TOTAL');
@@ -181,10 +201,10 @@ class ReportPdfService {
   }
 
   pw.Widget _buildFourSignatoryBlock(ReportSignatory? s) {
-    final bns = s?.bnsName ?? 'LORNA D. TAPAR/DAISY J. MALINAO';
-    final pb = s?.punongBarangayName ?? 'FELIX S. NAMBIO JR.';
-    final mnao = s?.mnaoAdminAideName ?? 'MA. THERESA F. LAUDIT';
-    final dnpc = s?.dnpcName ?? 'MAUREEN F. LEYCO';
+    final bns = (s?.bnsName.isNotEmpty ?? false) ? s!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+    final pb = (s?.punongBarangayName.isNotEmpty ?? false) ? s!.punongBarangayName : 'FELIX S. NAMBIO JR.';
+    final mnao = (s?.mnaoAdminAideName.isNotEmpty ?? false) ? s!.mnaoAdminAideName : 'MA. THERESA F. LAUDIT';
+    final dnpc = (s?.dnpcName.isNotEmpty ?? false) ? s!.dnpcName : 'MAUREEN F. LEYCO';
 
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -205,12 +225,8 @@ class ReportPdfService {
         pw.Text(title, style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 12),
         pw.Text(name, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-        pw.Container(
-          width: 140,
-          decoration: const pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(width: 0.5))),
-          padding: const pw.EdgeInsets.only(top: 2),
-          child: pw.Text(role, style: const pw.TextStyle(fontSize: 6.5)),
-        ),
+        pw.SizedBox(height: 2),
+        pw.Text(role, style: const pw.TextStyle(fontSize: 6.5)),
       ],
     );
   }
