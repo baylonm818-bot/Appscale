@@ -128,34 +128,31 @@ exports.createReferral = async (req, res) => {
              WHERE m.external_id = ?`,
             [normalizeIdValue(resolvedMotherId)]
           );
-          if (motherQuery[0].length === 0 && targetDisplayName && targetBarangay) {
-            motherQuery = await pool.query(
-              `SELECT m.mother_id, m.first_name, m.last_name, m.barangay
-               FROM mothers m
-               WHERE LOWER(TRIM(m.barangay)) = LOWER(TRIM(?))
-                 AND (
-                   CONCAT_WS(' ', m.first_name, m.last_name) = ?
-                   OR CONCAT_WS(' ', m.first_name, m.middle_initial, m.last_name) = ?
-                 )
-               LIMIT 2`,
-              [targetBarangay, targetDisplayName.trim(), targetDisplayName.trim()]
-            );
-          }
         }
-      } else if (targetDisplayName && targetBarangay) {
+      }
+
+      if ((!motherQuery || motherQuery[0].length === 0) && targetDisplayName) {
+        const cleanDisplayName = targetDisplayName.trim();
+        const cleanBarangay = (targetBarangay || '').trim().replace(/^barangay\s+/i, '');
+
         motherQuery = await pool.query(
           `SELECT m.mother_id, m.first_name, m.last_name, m.barangay
            FROM mothers m
-           WHERE LOWER(TRIM(m.barangay)) = LOWER(TRIM(?))
-             AND (
-               CONCAT_WS(' ', m.first_name, m.last_name) = ?
-               OR CONCAT_WS(' ', m.first_name, m.middle_initial, m.last_name) = ?
-             )
+           WHERE (
+             ? = '' OR LOWER(REPLACE(m.barangay, 'Barangay ', '')) = LOWER(?)
+           )
+           AND (
+             LOWER(CONCAT_WS(' ', m.first_name, m.last_name)) = LOWER(?)
+             OR LOWER(CONCAT_WS(' ', m.first_name, m.middle_initial, m.last_name)) = LOWER(?)
+             OR LOWER(CONCAT_WS(' ', m.first_name, m.last_name)) LIKE LOWER(?)
+           )
            LIMIT 2`,
-          [targetBarangay, targetDisplayName.trim(), targetDisplayName.trim()]
+          [cleanBarangay, cleanBarangay, cleanDisplayName, cleanDisplayName, `%${cleanDisplayName}%`]
         );
-      } else {
-        return res.status(400).json({ message: 'Mother referral requires a valid mother or mother name and barangay.' });
+      }
+
+      if (!motherQuery) {
+        return res.status(400).json({ message: 'Mother referral requires a valid mother or mother name.' });
       }
 
       const [mothers] = motherQuery;

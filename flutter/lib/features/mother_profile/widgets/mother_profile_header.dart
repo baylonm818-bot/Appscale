@@ -14,6 +14,7 @@ class MotherProfileHeader extends StatelessWidget {
   final VoidCallback onEditPressed;
   final VoidCallback onStatusActionPressed;
   final VoidCallback onAddVisitPressed;
+  final VoidCallback onReferralPressed;
 
   const MotherProfileHeader({
     super.key,
@@ -21,6 +22,7 @@ class MotherProfileHeader extends StatelessWidget {
     required this.onEditPressed,
     required this.onStatusActionPressed,
     required this.onAddVisitPressed,
+    required this.onReferralPressed,
   });
 
   @override
@@ -38,7 +40,7 @@ class MotherProfileHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Single row: arrow -> title -> Add visit -> overflow menu.
+          // Single row: arrow -> title -> Add visit -> Referral -> overflow menu.
           Row(
             children: [
               InkWell(
@@ -61,7 +63,9 @@ class MotherProfileHeader extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               if (mother.isActive) ...[
                 _AddVisitButton(onPressed: onAddVisitPressed),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
+                _ReferralButton(onPressed: onReferralPressed),
+                const SizedBox(width: 6),
               ],
               _OverflowMenu(
                 isActive: mother.isActive,
@@ -229,6 +233,41 @@ class _AddVisitButton extends StatelessWidget {
               SizedBox(width: 3),
               Text(
                 'Visit',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReferralButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _ReferralButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.amber.shade700.withValues(alpha: 0.9),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(20),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.assignment_turned_in_outlined, color: Colors.white, size: 14),
+              SizedBox(width: 3),
+              Text(
+                'Referral',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 12,

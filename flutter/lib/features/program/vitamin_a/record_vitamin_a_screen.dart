@@ -41,9 +41,16 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
   @override
   void initState() {
     super.initState();
-    _allChildren = _childRepo.getByBarangay('Tiguion');
+    final barangay = AppUserIdentity.resolveBarangay(_settings.authUser);
+    _allChildren = _childRepo.getByBarangay(barangay);
+    if (_allChildren.isEmpty) {
+      _allChildren = _childRepo.getAll();
+    }
     if (widget.initialChild != null) {
       _selectedChild = widget.initialChild;
+      _applyDohRulesForChild(_selectedChild);
+    } else if (_allChildren.isNotEmpty) {
+      _selectedChild = _allChildren.first;
       _applyDohRulesForChild(_selectedChild);
     }
   }

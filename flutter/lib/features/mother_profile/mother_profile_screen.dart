@@ -6,6 +6,7 @@ import '../../data/models/mother.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../../shared/widgets/deactivate_beneficiary_sheet.dart';
 import '../beneficiary/add_mother_screen.dart';
+import '../referrals/create_referral_screen.dart';
 import 'widgets/children_tab.dart';
 import 'widgets/info_tab.dart';
 import 'widgets/mother_profile_header.dart';
@@ -39,6 +40,20 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
     await Navigator.push(
       context,
       appPageRoute(AddCounselingVisitScreen(mother: current)),
+    );
+  }
+
+  Future<void> _handleCreateReferral(Mother current) async {
+    await Navigator.push(
+      context,
+      appPageRoute(
+        CreateReferralScreen(
+          prefillBeneficiaryType: 'mother',
+          prefillBeneficiaryId: current.id,
+          prefillBeneficiaryName: current.fullName,
+          prefillReason: 'Maternal health referral',
+        ),
+      ),
     );
   }
 
@@ -79,6 +94,7 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
                   onEditPressed: () => _handleEdit(mother),
                   onStatusActionPressed: () => _handleStatusAction(mother),
                   onAddVisitPressed: () => _handleAddVisit(mother),
+                  onReferralPressed: () => _handleCreateReferral(mother),
                 ),
                 MotherProfileTabBar(
                   currentIndex: _tabIndex,

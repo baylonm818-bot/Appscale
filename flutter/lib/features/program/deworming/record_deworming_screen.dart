@@ -43,7 +43,11 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
   void initState() {
     super.initState();
     _round = DewormingRepository.currentNationalRound();
-    _allChildren = _childRepo.getByBarangay('Tiguion');
+    final barangay = AppUserIdentity.resolveBarangay(_settings.authUser);
+    _allChildren = _childRepo.getByBarangay(barangay);
+    if (_allChildren.isEmpty) {
+      _allChildren = _childRepo.getAll();
+    }
     if (widget.initialChild != null) {
       _selectedChild = widget.initialChild;
     } else {
