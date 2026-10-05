@@ -338,20 +338,13 @@ function UserManagement() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed">
-            <colgroup>
-              <col className="w-[35%]" />
-              <col className="w-[20%]" />
-              <col className="w-[15%]" />
-              <col className="w-[15%]" />
-              <col className="w-[15%]" />
-            </colgroup>
+          <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80 border-b border-gray-100">
-                <th className="px-6 py-3.5">Name</th>
-                <th className="px-4 py-3.5">Barangay</th>
-                <th className="px-4 py-3.5 text-center">Role</th>
-                <th className="px-4 py-3.5 text-center">Status</th>
+                <th className="px-6 py-3.5 w-[30%]">Name</th>
+                <th className="px-4 py-3.5 w-[18%]">Barangay</th>
+                <th className="px-4 py-3.5 text-center w-[12%]">Role</th>
+                <th className="px-4 py-3.5 text-center w-[12%]">Status</th>
                 <th className="px-4 py-3.5 text-center">Actions</th>
               </tr>
             </thead>
@@ -393,12 +386,12 @@ function UserManagement() {
                         {u.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-center min-w-[180px]">
+                      <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => openEditModal(u)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition shadow-2xs"
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition shadow-2xs whitespace-nowrap"
                         >
                           View
                         </button>
@@ -417,7 +410,7 @@ function UserManagement() {
                               type="button"
                               onClick={() => setStatusConfirm({ user: u, action: u.status === 'active' ? 'lock' : 'unlock' })}
                               title={u.status === 'active' ? 'Lock Account' : 'Unlock Account'}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition shadow-2xs ${
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-2xs whitespace-nowrap ${
                                 u.status === 'active'
                                   ? 'text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100'
                                   : 'text-green-700 border border-green-200 bg-green-50 hover:bg-green-100'
@@ -429,7 +422,7 @@ function UserManagement() {
                               type="button"
                               onClick={() => archiveUser(u)}
                               title="Archive Account"
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 transition shadow-2xs"
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 transition shadow-2xs whitespace-nowrap"
                             >
                               Archive
                             </button>
