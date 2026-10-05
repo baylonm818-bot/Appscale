@@ -76,6 +76,18 @@ class ReportTypes {
     category: ReportCategory.masterlist,
     formats: [ExportFormat.excel],
   );
+  static const lactatingMothersMasterlist = ReportTypeInfo(
+    id: 'lactating_mothers_masterlist',
+    title: 'Masterlist of Lactating Mothers',
+    category: ReportCategory.masterlist,
+    formats: [ExportFormat.excel, ExportFormat.pdf],
+  );
+  static const pregnantMothersAttendance = ReportTypeInfo(
+    id: 'pregnant_mothers_attendance',
+    title: 'Pregnant Mothers Attendance',
+    category: ReportCategory.masterlist,
+    formats: [ExportFormat.excel, ExportFormat.pdf],
+  );
 
   static const consolidationTypes = [
     consolidation0to23,
@@ -88,7 +100,12 @@ class ReportTypes {
     quarterlyWeighing,
     optPlus,
   ];
-  static const masterlistTypes = [childrenMasterlist, mothersMasterlist];
+  static const masterlistTypes = [
+    childrenMasterlist,
+    mothersMasterlist,
+    lactatingMothersMasterlist,
+    pregnantMothersAttendance,
+  ];
   static const all = [
     ...consolidationTypes,
     ...recordTypes,

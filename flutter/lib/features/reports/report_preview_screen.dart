@@ -249,6 +249,70 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       );
     }
 
+    if (reportTypeId == 'lactating_mothers_masterlist') {
+      final mothers = MotherRepository()
+          .getAll()
+          .where((m) => m.barangay == _currentBarangay && m.isActive)
+          .toList();
+      int no = 1;
+      final rows = mothers
+          .map(
+            (m) => [
+              '${no++}',
+              m.fullName,
+              '${m.age}',
+              m.address,
+              m.contactNo,
+              m.breastfeedingPractice.isNotEmpty ? m.breastfeedingPractice : 'Lactating',
+            ],
+          )
+          .toList();
+      return ExcelTableData(
+        headers: [
+          'NO.',
+          'NAME OF LACTATING MOTHER',
+          'AGE',
+          'ADDRESS',
+          'CONTACT',
+          'STATUS',
+        ],
+        rows: rows,
+      );
+    }
+
+    if (reportTypeId == 'pregnant_mothers_attendance') {
+      final mothers = MotherRepository()
+          .getAll()
+          .where((m) => m.barangay == _currentBarangay && m.isActive)
+          .toList();
+      int no = 1;
+      final rows = mothers
+          .map(
+            (m) => [
+              '${no++}',
+              m.fullName,
+              '${m.age}',
+              _fmtDate(m.birthDate),
+              '—',
+              '—',
+              '_________________',
+            ],
+          )
+          .toList();
+      return ExcelTableData(
+        headers: [
+          'NO.',
+          'NAME PREGNANT MOTHERS',
+          'AGE',
+          'BIRTHDAY',
+          'LMP',
+          'EDD',
+          'SIGNATURE',
+        ],
+        rows: rows,
+      );
+    }
+
     // mothers_masterlist
     final mothers = MotherRepository()
         .getAll()
