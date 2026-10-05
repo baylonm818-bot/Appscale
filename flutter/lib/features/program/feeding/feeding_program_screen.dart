@@ -73,7 +73,6 @@ class _FeedingProgramScreenState extends State<FeedingProgramScreen> {
                     index: _tabIndex,
                     children: [
                       OverviewTab(key: ValueKey('overview_$version')),
-                      AttendanceTab(key: ValueKey('attendance_$version')),
                       MealPlanTab(key: ValueKey('meal_plan_$version')),
                       WeighingTab(key: ValueKey('weighing_$version')),
                     ],
