@@ -68,9 +68,11 @@ exports.getUserStats = async (req, res) => {
     exports.createUsers = async (req, res) => {
         const { first_name, middle_initial, last_name, email, username, password, role, municipality, barangay , purok, contact_number} = req.body;
 
-        if (!first_name || !last_name || !email || !username || !password || !role || !barangay) {
-            return res.status(400).json({ message: 'First name, last name, email, username, password, role, and barangay are required.' });
+        if (!first_name || !last_name || !email || !password || !role || !barangay) {
+            return res.status(400).json({ message: 'First name, last name, email, password, role, and barangay are required.' });
         }
+        const finalUsername = (username && username.trim()) ? username.trim() : email.trim();
+
         try{
             if (role === 'bns') {
                 const [[existingBarangayBns]] = await pool.query(
@@ -98,16 +100,16 @@ exports.getUserStats = async (req, res) => {
                 }
             }
 
-            const [existingUser] = await pool.query('SELECT * FROM users WHERE email = ? OR username = ?', [email, username]);
+            const [existingUser] = await pool.query('SELECT * FROM users WHERE email = ? OR username = ?', [email, finalUsername]);
             if (existingUser.length > 0) {
-                return res.status(400).json({ message: 'Email or username already exists.' });
+                return res.status(400).json({ message: 'Email already exists.' });
             }
 
             const hashedPassword = await bcrypt.hash(password, 10);
 
             await pool.query(
                 'INSERT INTO users (first_name, middle_initial, last_name, email, username, password_hash, role, municipality, barangay, purok , contact_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)',
-                [first_name, middle_initial  || null, last_name, email, username, hashedPassword, role, municipality, barangay, purok, contact_number]
+                [first_name, middle_initial  || null, last_name, email, finalUsername, hashedPassword, role, municipality, barangay, purok, contact_number]
             );
             return res.status(201).json({ message: 'User created successfully.' });
         } catch (error) {
@@ -161,7 +163,8 @@ exports.updateUser = async (req, res) => {
       }
     }
 
-    const updateValues = [first_name, middle_initial || null, last_name, email, username, role, municipality, barangay, user_id];
+    const finalUsername = (username && username.trim()) ? username.trim() : email.trim();
+    const updateValues = [first_name, middle_initial || null, last_name, email, finalUsername, role, municipality, barangay, user_id];
     let query = 'UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, username = ?, role = ?, municipality = ?, barangay = ? WHERE user_id = ?';
 
     if (password) {

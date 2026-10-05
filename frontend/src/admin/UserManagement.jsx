@@ -11,7 +11,7 @@ const GASAN_BARANGAYS = [
 ];
 
 const emptyForm = {
-  first_name: '', middle_initial: '', last_name: '', email: '', username: '',
+  first_name: '', middle_initial: '', last_name: '', email: '',
   password: '', role: 'bhw', municipality: 'Gasan', barangay: '', purok: '', contact_number: '',
 };
 
@@ -350,7 +350,6 @@ function UserManagement() {
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80 border-b border-gray-100">
                 <th className="px-6 py-3.5">Name</th>
-                <th className="px-4 py-3.5">Username</th>
                 <th className="px-4 py-3.5">Barangay</th>
                 <th className="px-4 py-3.5 text-center">Role</th>
                 <th className="px-4 py-3.5 text-center">Status</th>
@@ -360,7 +359,7 @@ function UserManagement() {
             <tbody className="divide-y divide-gray-50">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center text-gray-400 text-sm">
+                  <td colSpan={5} className="px-6 py-16 text-center text-gray-400 text-sm">
                     No users match the selected filters.
                   </td>
                 </tr>
@@ -378,7 +377,6 @@ function UserManagement() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-gray-600 font-medium truncate">{u.username}</td>
                     <td className="px-4 py-3.5 text-gray-600 truncate">{u.barangay || '—'}</td>
                     <td className="px-4 py-3.5 text-center">
                       <span className={`inline-block whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold uppercase ${
@@ -515,11 +513,6 @@ function UserManagement() {
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Email Address *</label>
                   <input name="email" type="email" placeholder="email@address.com" value={form.email} onChange={handleChange} disabled={viewOnly} required className={inputCls} />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Username *</label>
-                  <input name="username" placeholder="Username" value={form.username} onChange={handleChange} disabled={viewOnly} required className={inputCls} />
                 </div>
 
                 {!viewOnly && (

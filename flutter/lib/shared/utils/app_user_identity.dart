@@ -17,6 +17,9 @@ class AppUserIdentity {
     final username = (user['username'] ?? '').toString().trim();
     if (username.isNotEmpty) return username;
 
+    final email = (user['email'] ?? '').toString().trim();
+    if (email.isNotEmpty) return email;
+
     return 'Worker';
   }
 

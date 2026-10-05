@@ -317,7 +317,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 16),
                     AppTextField(
                       label: 'Email',
-                      hint: 'Enter username or email',
+                      hint: 'Enter email address',
                       icon: Icons.person_outline,
                       controller: _emailController,
                     ),
