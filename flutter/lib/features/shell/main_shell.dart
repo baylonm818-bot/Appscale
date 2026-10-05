@@ -126,15 +126,18 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         BeneficiaryApi.fetchChildrenForBarangay(barangay, token),
         BeneficiaryApi.fetchMothersForBarangay(barangay, token),
         BeneficiaryApi.fetchReferralsForBarangay(barangay, token),
+        BeneficiaryApi.fetchSchedulesForBarangay(barangay, token),
       ]);
 
       final children  = results[0];
       final mothers   = results[1];
       final referrals = results[2];
+      final schedules = results[3];
 
       final childBox    = Hive.box(HiveBoxes.children);
       final motherBox   = Hive.box(HiveBoxes.mothers);
       final referralBox = Hive.box(HiveBoxes.referrals);
+      final scheduleBox = Hive.box(HiveBoxes.programSchedule);
 
       for (final c in children) {
         final key = (c['external_id'] ?? c['child_id']).toString();
@@ -210,6 +213,23 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           'notes': r['response_notes'] as String? ?? '',
           'status': r['status'] as String? ?? 'Pending',
           'createdAt': r['created_at'] as String? ?? DateTime.now().toIso8601String(),
+          '_syncStatus': 'synced',
+        });
+      }
+
+      for (final s in schedules) {
+        final key = s['schedule_id']?.toString() ?? '';
+        if (key.isEmpty) continue;
+        scheduleBox.put(key, {
+          'id': key,
+          'title': s['title'] as String? ?? 'Activity',
+          'programType': s['schedule_type'] as String? ?? 'feeding',
+          'date': (s['schedule_date'] as String?)?.split('T').first ?? DateTime.now().toIso8601String(),
+          'startTime': s['schedule_time'] as String? ?? '08:00 AM',
+          'location': s['venue'] as String? ?? 'Health Center',
+          'barangay': s['barangay'] as String? ?? barangay,
+          'notes': s['notes'] as String? ?? '',
+          'status': s['status'] as String? ?? 'pending',
           '_syncStatus': 'synced',
         });
       }

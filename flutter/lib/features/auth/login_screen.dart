@@ -87,15 +87,18 @@ class _LoginScreenState extends State<LoginScreen> {
             BeneficiaryApi.fetchChildrenForBarangay(barangay, token),
             BeneficiaryApi.fetchMothersForBarangay(barangay, token),
             BeneficiaryApi.fetchReferralsForBarangay(barangay, token),
+            BeneficiaryApi.fetchSchedulesForBarangay(barangay, token),
           ]);
 
           final children  = results[0];
           final mothers   = results[1];
           final referrals = results[2];
+          final schedules = results[3];
 
           final childBox    = Hive.box(HiveBoxes.children);
           final motherBox   = Hive.box(HiveBoxes.mothers);
           final referralBox = Hive.box(HiveBoxes.referrals);
+          final scheduleBox = Hive.box(HiveBoxes.programSchedule);
 
           // ── Seed children (server always wins for synced records) ──
           for (final c in children) {
@@ -185,7 +188,27 @@ class _LoginScreenState extends State<LoginScreen> {
             });
           }
 
-          debugPrint('Seeded ${children.length} children, ${mothers.length} mothers, ${referrals.length} referrals from server.');
+          // ── Seed schedules ──
+          for (final s in schedules) {
+            final key = s['schedule_id']?.toString() ?? '';
+            if (key.isEmpty) continue;
+            final existing = scheduleBox.get(key) as Map?;
+            if (existing != null && existing['_syncStatus'] == 'pending') continue;
+            scheduleBox.put(key, {
+              'id': key,
+              'title': s['title'] as String? ?? 'Activity',
+              'programType': s['schedule_type'] as String? ?? 'feeding',
+              'date': (s['schedule_date'] as String?)?.split('T').first ?? DateTime.now().toIso8601String(),
+              'startTime': s['schedule_time'] as String? ?? '08:00 AM',
+              'location': s['venue'] as String? ?? 'Health Center',
+              'barangay': s['barangay'] as String? ?? barangay,
+              'notes': s['notes'] as String? ?? '',
+              'status': s['status'] as String? ?? 'pending',
+              '_syncStatus': 'synced',
+            });
+          }
+
+          debugPrint('Seeded ${children.length} children, ${mothers.length} mothers, ${referrals.length} referrals, ${schedules.length} schedules from server.');
         }
       } catch (seedErr) {
         // Non-fatal: proceed to main UI even if seeding failed.
