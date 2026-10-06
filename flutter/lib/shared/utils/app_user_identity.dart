@@ -35,14 +35,20 @@ class AppUserIdentity {
 
   static String sanitizeMobileNumber(String? raw) {
     if (raw == null) return '';
-    final digits = raw.replaceAll(RegExp(r'\D+'), '');
+    var digits = raw.replaceAll(RegExp(r'\D+'), '');
     if (digits.isEmpty) return '';
-    if (digits.startsWith('0')) {
-      return digits;
+    if (digits.length == 10 && digits.startsWith('9')) {
+      digits = '0$digits';
     }
-    if (digits.startsWith('63')) {
-      return digits;
+    if (digits.startsWith('63') && digits.length == 12) {
+      digits = '0${digits.substring(2)}';
     }
     return digits;
+  }
+
+  static bool isValidPhilippineContactNumber(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return false;
+    final sanitized = sanitizeMobileNumber(raw);
+    return RegExp(r'^09\d{9}$').hasMatch(sanitized);
   }
 }

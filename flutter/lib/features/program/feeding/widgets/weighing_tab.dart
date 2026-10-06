@@ -12,6 +12,8 @@ import '../../../child_profile/add_measurement_screen.dart';
 import '../../../masterlist/utils/child_status_meta.dart';
 import '../../../masterlist/widgets/status_badge.dart';
 
+import '../../../../data/local/app_data_bus.dart';
+
 class WeighingTab extends StatelessWidget {
   const WeighingTab({super.key});
 
@@ -21,23 +23,27 @@ class WeighingTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final enrolled = FeedingEnrollmentRepository().getEnrolledChildren(
-      _currentBarangay,
-    );
-    final priorityCount = enrolled
-        .where(
-          (c) =>
-              c.nutritionStatus == 'Severely Underweight' ||
-              c.wastingStatus == 'SAM' ||
-              c.wastingStatus == 'MAM',
-        )
-        .length;
+    return ValueListenableBuilder<int>(
+      valueListenable: AppDataBus.version,
+      builder: (context, version, childWidget) {
+        final enrolled = FeedingEnrollmentRepository().getEnrolledChildren(
+          _currentBarangay,
+        );
+        final priorityCount = enrolled
+            .where(
+              (c) {
+                final n = ChildStatusMeta.formatStatus(c.nutritionStatus);
+                final w = ChildStatusMeta.formatStatus(c.wastingStatus);
+                return n == 'Severely Underweight' || w == 'SAM' || w == 'MAM';
+              },
+            )
+            .length;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           if (priorityCount > 0)
             Container(
               width: double.infinity,
@@ -92,6 +98,8 @@ class WeighingTab extends StatelessWidget {
             ...enrolled.map((c) => _ChildWeighRow(child: c)),
         ],
       ),
+    );
+      },
     );
   }
 }

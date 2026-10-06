@@ -11,6 +11,24 @@ class ReferralRepository {
   Box get _box => Hive.box(HiveBoxes.referrals);
 
   Future<Referral> add(Referral referral) async {
+    final existingPending = getAll().where(
+      (r) =>
+          r.beneficiaryId == referral.beneficiaryId &&
+          r.status == 'Pending' &&
+          r.reason == referral.reason,
+    ).toList();
+
+    if (existingPending.isNotEmpty) {
+      final existing = existingPending.first;
+      final updated = existing.copyWith(
+        createdAt: referral.createdAt,
+        notes: referral.notes.isNotEmpty ? referral.notes : existing.notes,
+      );
+      await _box.put(updated.id, updated.toMap()..['_syncStatus'] = 'pending');
+      AppDataBus.notifyChanged();
+      return updated;
+    }
+
     final map = referral.toMap()..['_syncStatus'] = 'pending';
     await _box.put(referral.id, map);
     AppDataBus.notifyChanged();

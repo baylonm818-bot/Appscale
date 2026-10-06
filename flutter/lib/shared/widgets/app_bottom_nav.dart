@@ -80,7 +80,7 @@ class AppBottomNav extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
+              duration: const Duration(milliseconds: 60),
               curve: Curves.easeOut,
               width: 40,
               height: 30,
@@ -97,7 +97,7 @@ class AppBottomNav extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 220),
+              duration: const Duration(milliseconds: 60),
               style: TextStyle(
                 color: isActive ? AppColors.darkGreen : AppColors.textMuted,
                 fontSize: 10.5,

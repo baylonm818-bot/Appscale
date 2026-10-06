@@ -125,13 +125,12 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
     setState(() => _isSaving = true);
 
-    final sanitizedGuardianContact = AppUserIdentity.sanitizeMobileNumber(
-      _guardianContactController.text,
-    );
-    if (sanitizedGuardianContact.isNotEmpty && sanitizedGuardianContact.length < 10) {
+    final rawContact = _guardianContactController.text.trim();
+    final sanitizedGuardianContact = AppUserIdentity.sanitizeMobileNumber(rawContact);
+    if (rawContact.isNotEmpty && !AppUserIdentity.isValidPhilippineContactNumber(rawContact)) {
       AppNotificationUI.showWarning(
         context,
-        'Please enter a valid 11-digit guardian mobile number.',
+        'Please enter a valid 11-digit guardian mobile number starting with 09 (e.g. 09123456789).',
         title: 'Invalid Contact Number',
       );
       setState(() => _isSaving = false);
@@ -272,6 +271,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
                               child: AppDateField(
                                 label: 'Birth date *',
                                 value: _birthDate,
+                                firstDate: DateTime.now().subtract(const Duration(days: 365 * 6)),
+                                lastDate: DateTime.now(),
                                 onChanged: (d) =>
                                     setState(() => _birthDate = d),
                               ),

@@ -35,7 +35,11 @@ class DashboardRepository {
     // SAM = wasting SAM (weight-for-length), not weight-for-age —
     // the clinically correct definition for this indicator.
     final samCases = activeChildren
-        .where((c) => c.wastingStatus == 'SAM')
+        .where((c) {
+          final w = ChildStatusMeta.formatStatus(c.wastingStatus);
+          final n = ChildStatusMeta.formatStatus(c.nutritionStatus);
+          return w == 'SAM' || n == 'Severely Underweight';
+        })
         .length;
 
     final enrolledCount = FeedingEnrollmentRepository()
@@ -60,7 +64,7 @@ class DashboardRepository {
         accentColor: AppColors.statAmber,
       ),
       StatCardData(
-        label: 'SAM cases',
+        label: 'SAM / Severe cases',
         value: '$samCases',
         subtitle: samCases > 0 ? 'Needs intervention' : 'No active SAM cases',
         accentColor: AppColors.statRed,
@@ -81,32 +85,50 @@ class DashboardRepository {
     return date.year == now.year && date.month == now.month;
   }
 
-  /// Real distribution across the wasting axis, computed from every
-  /// active child with at least one recorded measurement. Not-yet-weighed
-  /// children are excluded from the percentage base rather than counted
-  /// as Normal by default, which would understate real risk.
+  /// Real distribution across nutritional indicators, computed from every
+  /// active child with at least one recorded measurement.
   List<NutritionStatusItem> getNutritionBreakdown() {
     final weighedChildren = _childRepo
         .getByBarangay(_currentBarangay)
-        .where((c) => c.isActive && c.wastingStatus != 'Not weighed')
+        .where((c) => c.isActive && c.nutritionStatus != 'Not weighed')
         .toList();
 
     if (weighedChildren.isEmpty) return [];
 
-    const order = ['Normal', 'Overweight', 'MAM', 'SAM', 'Obese'];
+    const order = [
+      'Normal',
+      'Underweight',
+      'Severely Underweight',
+      'Overweight',
+      'Obese',
+      'Stunted',
+      'Severely Stunted',
+      'MAM',
+      'SAM',
+    ];
     final counts = {for (final s in order) s: 0};
     for (final c in weighedChildren) {
-      counts[c.wastingStatus] = (counts[c.wastingStatus] ?? 0) + 1;
+      final sW = ChildStatusMeta.formatStatus(c.nutritionStatus);
+      final sH = ChildStatusMeta.formatStatus(c.stuntingStatus);
+      final sV = ChildStatusMeta.formatStatus(c.wastingStatus);
+
+      if (counts.containsKey(sW)) counts[sW] = counts[sW]! + 1;
+      if (sH == 'Stunted' || sH == 'Severely Stunted') {
+        if (counts.containsKey(sH)) counts[sH] = counts[sH]! + 1;
+      }
+      if (sV == 'SAM' || sV == 'MAM') {
+        if (counts.containsKey(sV)) counts[sV] = counts[sV]! + 1;
+      }
     }
 
     final total = weighedChildren.length;
     return order
-        .where((s) => counts[s]! > 0)
+        .where((s) => (counts[s] ?? 0) > 0)
         .map(
           (s) => NutritionStatusItem(
             label: s,
             count: counts[s]!,
-            percent: (counts[s]! / total) * 100,
+            percent: ((counts[s]! / total) * 100).clamp(0, 100),
             color: ChildStatusMeta.colorFor(s),
           ),
         )

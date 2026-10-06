@@ -42,10 +42,11 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
   void initState() {
     super.initState();
     final barangay = AppUserIdentity.resolveBarangay(_settings.authUser);
-    _allChildren = _childRepo.getByBarangay(barangay);
-    if (_allChildren.isEmpty) {
-      _allChildren = _childRepo.getAll();
-    }
+    final rawList = _childRepo.getByBarangay(barangay).isNotEmpty
+        ? _childRepo.getByBarangay(barangay)
+        : _childRepo.getAll();
+    _allChildren = rawList.where((c) => c.ageInMonths >= 6 && c.ageInMonths <= 59).toList();
+
     if (widget.initialChild != null) {
       _selectedChild = widget.initialChild;
       _applyDohRulesForChild(_selectedChild);
@@ -68,7 +69,7 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
     setState(() {
       if (age < 6) {
         _dosage = 'Not Recommended (<6 mos)';
-        _doseType = 'High Risk / Sick Child';
+        _doseType = 'Routine (6-11 mos)';
       } else if (age <= 11) {
         _dosage = '100,000 IU (Blue)';
         _doseType = 'Routine (6-11 mos)';

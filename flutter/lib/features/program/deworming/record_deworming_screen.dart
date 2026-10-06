@@ -44,18 +44,15 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
     super.initState();
     _round = DewormingRepository.currentNationalRound();
     final barangay = AppUserIdentity.resolveBarangay(_settings.authUser);
-    _allChildren = _childRepo.getByBarangay(barangay);
-    if (_allChildren.isEmpty) {
-      _allChildren = _childRepo.getAll();
-    }
+    final rawList = _childRepo.getByBarangay(barangay).isNotEmpty
+        ? _childRepo.getByBarangay(barangay)
+        : _childRepo.getAll();
+    _allChildren = rawList.where((c) => c.ageInMonths >= 12 && c.ageInMonths <= 59).toList();
+
     if (widget.initialChild != null) {
       _selectedChild = widget.initialChild;
     } else {
-      // Prefer children >= 12 months
-      final eligible = _allChildren.where((c) => c.ageInMonths >= 12).toList();
-      _selectedChild = eligible.isNotEmpty
-          ? eligible.first
-          : (_allChildren.isNotEmpty ? _allChildren.first : null);
+      _selectedChild = _allChildren.isNotEmpty ? _allChildren.first : null;
     }
   }
 

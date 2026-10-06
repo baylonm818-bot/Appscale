@@ -7,7 +7,51 @@ import '../../../core/theme/app_colors.dart';
 class ChildStatusMeta {
   ChildStatusMeta._();
 
-  static Color colorFor(String status) {
+  static String formatStatus(String? status) {
+    if (status == null || status.trim().isEmpty) return 'Normal';
+    final s = status.trim().toLowerCase().replaceAll('_', ' ');
+    switch (s) {
+      case 'severely underweight':
+      case 'suw':
+        return 'Severely Underweight';
+      case 'underweight':
+      case 'uw':
+        return 'Underweight';
+      case 'severely stunted':
+      case 'sst':
+        return 'Severely Stunted';
+      case 'stunted':
+      case 'st':
+        return 'Stunted';
+      case 'tall':
+        return 'Tall';
+      case 'severely wasted':
+      case 'sam':
+        return 'SAM';
+      case 'wasted':
+      case 'mam':
+        return 'MAM';
+      case 'overweight':
+      case 'ow':
+        return 'Overweight';
+      case 'obese':
+      case 'ob':
+        return 'Obese';
+      case 'normal':
+      case 'n':
+        return 'Normal';
+      case 'not weighed':
+        return 'Not weighed';
+      default:
+        return s
+            .split(' ')
+            .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
+            .join(' ');
+    }
+  }
+
+  static Color colorFor(String rawStatus) {
+    final status = formatStatus(rawStatus);
     switch (status) {
       case 'Normal':
         return AppColors.primaryGreen;
@@ -34,7 +78,7 @@ class ChildStatusMeta {
     }
   }
 
-  static bool needsAttention(String status) => status == 'Not weighed';
+  static bool needsAttention(String status) => formatStatus(status) == 'Not weighed';
 
   static const allStatuses = [
     'All',

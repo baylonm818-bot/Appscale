@@ -57,6 +57,9 @@ class _SetFeedingScheduleScreenState extends State<SetFeedingScheduleScreen> {
       _startDate = existing.startDate;
       _ongoing = existing.endDate == null;
       _endDate = existing.endDate;
+    } else {
+      _startTimeController.text = '8:00 AM';
+      _endTimeController.text = '11:00 AM';
     }
   }
 
@@ -98,6 +101,23 @@ class _SetFeedingScheduleScreenState extends State<SetFeedingScheduleScreen> {
       );
       return;
     }
+
+    final startT = _parseTime(_startTimeController.text);
+    final endT = _parseTime(_endTimeController.text);
+    if (startT != null && endT != null) {
+      final startMins = startT.hour * 60 + startT.minute;
+      final endMins = endT.hour * 60 + endT.minute;
+      if (endMins <= startMins) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('End time must be later than start time (e.g. 8:00 AM - 11:00 AM)'),
+            backgroundColor: AppColors.statRed,
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() => _isSaving = true);
     await FeedingScheduleRepository().save(
       FeedingSchedule(

@@ -104,17 +104,47 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     );
   }
 
-  // Module 3 Requirement: "The system shall validate input data (e.g., height, weight, age) to prevent incorrect or unrealistic entries."
+  String? _getPlausibilityError(double weight, double height, double? muac) {
+    final age = widget.child.ageInMonths;
+    double minW, maxW, minH, maxH;
+    if (age <= 3) {
+      minW = 1.5; maxW = 10.0; minH = 35.0; maxH = 75.0;
+    } else if (age <= 11) {
+      minW = 2.5; maxW = 16.0; minH = 45.0; maxH = 88.0;
+    } else if (age <= 23) {
+      minW = 4.0; maxW = 22.0; minH = 55.0; maxH = 102.0;
+    } else if (age <= 59) {
+      minW = 6.0; maxW = 35.0; minH = 65.0; maxH = 130.0;
+    } else {
+      minW = 8.0; maxW = 50.0; minH = 75.0; maxH = 150.0;
+    }
+
+    if (weight < minW || weight > maxW) {
+      return 'Weight ($weight kg) is outside plausible range ($minW–$maxW kg) for a child aged $age mos.';
+    }
+    if (height < minH || height > maxH) {
+      return 'Height ($height cm) is outside plausible range ($minH–$maxH cm) for a child aged $age mos.';
+    }
+
+    final hMeters = height / 100;
+    final bmi = weight / (hMeters * hMeters);
+    if (bmi < 8.0 || bmi > 35.0) {
+      return 'Weight-to-Height combination is physiologically implausible (BMI: ${bmi.toStringAsFixed(1)} kg/m²). Please re-check entries.';
+    }
+
+    if (muac != null && (muac < 7.0 || muac > 30.0)) {
+      return 'MUAC ($muac cm) must be between 7.0 cm and 30.0 cm.';
+    }
+    return null;
+  }
+
   bool get _isFormValid {
     final w = double.tryParse(_weightController.text.trim());
     final h = double.tryParse(_heightController.text.trim());
     final m = _isMuacEligible ? double.tryParse(_muacController.text.trim()) : null;
 
     if (w == null || h == null || (_isMuacEligible && m == null)) return false;
-    if (w < 1.0 || w > 50.0) return false;
-    if (h < 35.0 || h > 140.0) return false;
-    if (_isMuacEligible && (m! < 7.0 || m > 30.0)) return false;
-    return true;
+    return _getPlausibilityError(w, h, m) == null;
   }
 
   Future<void> _handleSave() async {
@@ -131,27 +161,12 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       return;
     }
 
-    if (rawW < 1.0 || rawW > 50.0) {
+    final plausibilityError = _getPlausibilityError(rawW, rawH, rawM);
+    if (plausibilityError != null) {
       AppNotificationUI.showWarning(
         context,
-        'Weight must be realistic (between 1.0 kg and 50.0 kg).',
-        title: 'Unrealistic Weight Entry',
-      );
-      return;
-    }
-    if (rawH < 35.0 || rawH > 140.0) {
-      AppNotificationUI.showWarning(
-        context,
-        'Height must be realistic (between 35.0 cm and 140.0 cm).',
-        title: 'Unrealistic Height Entry',
-      );
-      return;
-    }
-    if (_isMuacEligible && (rawM! < 7.0 || rawM > 30.0)) {
-      AppNotificationUI.showWarning(
-        context,
-        'MUAC must be realistic (between 7.0 cm and 30.0 cm).',
-        title: 'Unrealistic MUAC Entry',
+        plausibilityError,
+        title: 'Plausibility Check Failed',
       );
       return;
     }
@@ -534,19 +549,19 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                                           : AppColors.statRed,
                                 ),
                                 StatusBadge(
-                                  label: result.weight,
+                                  label: 'WFA: ${result.weight}',
                                   color: ChildStatusMeta.colorFor(
                                     result.weight,
                                   ),
                                 ),
                                 StatusBadge(
-                                  label: result.height,
+                                  label: 'HFA: ${result.height}',
                                   color: ChildStatusMeta.colorFor(
                                     result.height,
                                   ),
                                 ),
                                 StatusBadge(
-                                  label: result.wasting,
+                                  label: 'WFH: ${result.wasting}',
                                   color: ChildStatusMeta.colorFor(
                                     result.wasting,
                                   ),

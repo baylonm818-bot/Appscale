@@ -17,24 +17,26 @@ class ChildListTile extends StatelessWidget {
       child.nutritionStatus,
     );
     final extraBadges = <Widget>[];
-    if (child.wastingStatus != 'Normal' &&
-        child.wastingStatus != 'Not weighed') {
+    final wfhFormatted = ChildStatusMeta.formatStatus(child.wastingStatus);
+    if (wfhFormatted != 'Normal' && wfhFormatted != 'Not weighed') {
       extraBadges.add(
         StatusBadge(
-          label: child.wastingStatus,
-          color: ChildStatusMeta.colorFor(child.wastingStatus),
+          label: 'WFH: $wfhFormatted',
+          color: ChildStatusMeta.colorFor(wfhFormatted),
         ),
       );
     }
-    if (child.stuntingStatus == 'Stunted' ||
-        child.stuntingStatus == 'Severely Stunted') {
+    final hfaFormatted = ChildStatusMeta.formatStatus(child.stuntingStatus);
+    if (hfaFormatted == 'Stunted' || hfaFormatted == 'Severely Stunted') {
       extraBadges.add(
         StatusBadge(
-          label: child.stuntingStatus,
-          color: ChildStatusMeta.colorFor(child.stuntingStatus),
+          label: 'HFA: $hfaFormatted',
+          color: ChildStatusMeta.colorFor(hfaFormatted),
         ),
       );
     }
+
+    final wfaFormatted = ChildStatusMeta.formatStatus(child.nutritionStatus);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -88,8 +90,8 @@ class ChildListTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     StatusBadge(
-                      label: child.nutritionStatus,
-                      color: ChildStatusMeta.colorFor(child.nutritionStatus),
+                      label: 'WFA: $wfaFormatted',
+                      color: ChildStatusMeta.colorFor(wfaFormatted),
                     ),
                     if (extraBadges.isNotEmpty) ...[
                       const SizedBox(height: 4),

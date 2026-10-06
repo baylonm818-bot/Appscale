@@ -110,17 +110,43 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
 
     setState(() => _isSaving = true);
 
-    final sanitizedContact = AppUserIdentity.sanitizeMobileNumber(
-      _contactController.text,
-    );
-    if (sanitizedContact.length < 10) {
+    final rawContact = _contactController.text.trim();
+    final sanitizedContact = AppUserIdentity.sanitizeMobileNumber(rawContact);
+    if (!AppUserIdentity.isValidPhilippineContactNumber(rawContact)) {
       AppNotificationUI.showWarning(
         context,
-        'Please enter a valid 11-digit mobile contact number.',
+        'Please enter a valid 11-digit mobile contact number starting with 09 (e.g. 09123456789).',
         title: 'Invalid Contact Number',
       );
       setState(() => _isSaving = false);
       return;
+    }
+
+    final motherAge = DateTime.now().year - _birthDate!.year;
+    if (motherAge < 18) {
+      final confirmYoungMother = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Young Mother Registered'),
+          content: Text(
+            'Mother\'s recorded age is $motherAge years old. Please confirm registration details for young lactating mother.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Edit Birth Date'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+      );
+      if (confirmYoungMother != true) {
+        setState(() => _isSaving = false);
+        return;
+      }
     }
 
     final mother = Mother(
@@ -148,9 +174,7 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
       await _motherRepo.add(mother);
     }
 
-    // Reciprocal write-back: every linked child (whether pre-existing or
-    // newly registered through the shortcut) gets its guardian.linkedMotherId
-    // set to this mother, so the link is provably true from both sides.
+    // Reciprocal write-back
     if (widget.isEditMode) {
       final currentLinkedIds = _linkedChildren.map((c) => c.id).toSet();
       for (final oldChildId in widget.existingMother!.linkedChildIds) {
@@ -179,6 +203,14 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
 
     if (!mounted) return;
     setState(() => _isSaving = false);
+
+    AppNotificationUI.showSuccess(
+      context,
+      widget.isEditMode
+          ? 'Mother profile updated successfully.'
+          : 'Lactating mother registered successfully.',
+    );
+
     Navigator.pop(context, mother);
   }
 
@@ -238,6 +270,8 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
                               child: AppDateField(
                                 label: 'Birth Date *',
                                 value: _birthDate,
+                                firstDate: DateTime(1940),
+                                lastDate: DateTime.now(),
                                 onChanged: (d) =>
                                     setState(() => _birthDate = d),
                               ),
