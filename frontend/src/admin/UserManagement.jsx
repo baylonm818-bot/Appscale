@@ -297,16 +297,6 @@ function UserManagement() {
               {GASAN_BARANGAYS.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
 
-            <select
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setActiveTab('all'); }}
-              className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#2e7d32]"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="locked">Locked</option>
-            </select>
-
             <button
               type="button"
               onClick={() => setShowArchive(!showArchive)}
