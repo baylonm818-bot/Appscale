@@ -138,7 +138,7 @@ function Profile() {
     setPicError(''); setUploadingPic(true);
     const fd = new FormData(); fd.append('profile_picture', file);
     try {
-      const res = await axiosClient.post(`/profile/${storedUser.user_id}/picture`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const res = await axiosClient.post(`/profile/${storedUser.user_id}/picture`, fd, { headers: { 'Content-Type': undefined } });
       setProfile({ ...profile, profile_picture: res.data.profile_picture });
       updateUser({ profile_picture: res.data.profile_picture });
       const updated = { ...storedUser, profile_picture: res.data.profile_picture };
