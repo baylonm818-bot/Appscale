@@ -54,9 +54,16 @@ class ReportExcelService {
     required ReportSignatory? signatory,
   }) async {
     final workbook = xls.Excel.createExcel();
-    final sheetName = matrix.reportTypeId.contains('24_59')
-        ? 'CONSOLIDATION 24-59 MOS.'
-        : 'CONSOLIDATION 0-23';
+    String sheetName = 'CONSOLIDATION 0-23';
+    if (matrix.reportTypeId == 'consolidation_24_59') {
+      sheetName = 'CONSOLIDATION 24-59 MOS.';
+    } else if (matrix.reportTypeId == 'stunted_sst') {
+      sheetName = 'CONSOLIDATION STUNTED';
+    } else if (matrix.reportTypeId == 'wasted_sw') {
+      sheetName = 'CONSOLIDATION WASTED';
+    } else if (matrix.reportTypeId == 'uw_suw') {
+      sheetName = 'CONSOLIDATION UNDERWEIGHT';
+    }
     final sheet = workbook[sheetName];
     workbook.delete('Sheet1');
 

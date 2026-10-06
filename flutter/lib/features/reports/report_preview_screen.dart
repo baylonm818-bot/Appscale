@@ -477,7 +477,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                         ],
                       ),
                     ] else ...[ 
-                      if (widget.reportType.id == 'monthly_weight_record') ...[
+                      if (widget.reportType.id == 'monthly_weight_record' || widget.reportType.id == 'quarterly_weighing') ...[
                         InkWell(
                           onTap: _pickPeriod,
                           child: Container(
