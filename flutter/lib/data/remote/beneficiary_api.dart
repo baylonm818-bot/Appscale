@@ -152,6 +152,19 @@ class BeneficiaryApi {
     return [];
   }
 
+  static Future<List<Map<String, dynamic>>> fetchNotificationsForBarangay(String barangay, String? token) async {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
+    final uri = Uri.parse('$_baseUrl/bhw/notifications');
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      final body = jsonDecode(resp.body) as Map<String, dynamic>;
+      final list = (body['notifications'] as List<dynamic>?) ?? [];
+      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return [];
+  }
+
   static Future<void> deactivateAccount(int userId, String password, String reason) async {
     final settings = SettingsRepository();
     await _post('/profile/$userId/deactivate', {

@@ -127,17 +127,21 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         BeneficiaryApi.fetchMothersForBarangay(barangay, token),
         BeneficiaryApi.fetchReferralsForBarangay(barangay, token),
         BeneficiaryApi.fetchSchedulesForBarangay(barangay, token),
+        BeneficiaryApi.fetchNotificationsForBarangay(barangay, token),
       ]);
 
-      final children  = results[0];
-      final mothers   = results[1];
-      final referrals = results[2];
-      final schedules = results[3];
+      final children      = results[0];
+      final mothers       = results[1];
+      final referrals     = results[2];
+      final schedules     = results[3];
+      final notifications = results[4];
 
-      final childBox    = Hive.box(HiveBoxes.children);
-      final motherBox   = Hive.box(HiveBoxes.mothers);
-      final referralBox = Hive.box(HiveBoxes.referrals);
-      final scheduleBox = Hive.box(HiveBoxes.programSchedule);
+      final childBox       = Hive.box(HiveBoxes.children);
+      final motherBox      = Hive.box(HiveBoxes.mothers);
+      final referralBox    = Hive.box(HiveBoxes.referrals);
+      final scheduleBox    = Hive.box(HiveBoxes.programSchedule);
+      final notifBox       = Hive.box(HiveBoxes.notifications);
+      final measurementBox = Hive.box(HiveBoxes.measurements);
 
       for (final c in children) {
         final key = (c['external_id'] ?? c['child_id']).toString();
@@ -174,6 +178,29 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           'inactiveReason': null,
           '_syncStatus': 'synced',
         });
+
+        if (c['weight_status'] != null || c['height_status'] != null || c['last_weight'] != null) {
+          final mKey = 'm_${key}_initial';
+          final weight = (c['last_weight'] as num?)?.toDouble() ?? 0.0;
+          final height = (c['last_height'] as num?)?.toDouble() ?? 0.0;
+          final dateStr = c['last_visit'] != null
+              ? (c['last_visit'] as String).split('T').first
+              : DateTime.now().toIso8601String().split('T').first;
+          measurementBox.put(mKey, {
+            'childId': key,
+            'date': dateStr,
+            'weightKg': weight,
+            'heightCm': height,
+            'muacCm': null,
+            'bilateralPittingEdema': false,
+            'weightForAgeStatus': c['weight_status'] ?? 'Normal',
+            'heightForAgeStatus': c['height_status'] ?? 'Normal',
+            'weightForLengthStatus': c['overall_status'] ?? 'Normal',
+            'customBmi': null,
+            'customBmiStatus': null,
+            '_syncStatus': 'synced',
+          });
+        }
       }
 
       for (final m in mothers) {
@@ -234,8 +261,22 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         });
       }
 
+      for (final n in notifications) {
+        final key = n['notification_id']?.toString() ?? n['id']?.toString() ?? '';
+        if (key.isEmpty) continue;
+        notifBox.put(key, {
+          'id': key,
+          'title': n['title'] as String? ?? 'Notification',
+          'message': n['message'] as String? ?? '',
+          'type': n['type'] as String? ?? 'general',
+          'referralId': null,
+          'timestamp': (n['created_at'] as String?) ?? DateTime.now().toIso8601String(),
+          'isRead': (n['is_read'] as int? ?? 0) == 1,
+        });
+      }
+
       AppDataBus.notifyChanged();
-      debugPrint('Auto-restored data from cloud database after app reinstall / empty storage.');
+      debugPrint('Auto-restored ${children.length} children, ${mothers.length} mothers, ${referrals.length} referrals, ${schedules.length} schedules, ${notifications.length} notifications from cloud database.');
     } catch (e) {
       debugPrint('Auto-restore failed (offline or server error): $e');
     }

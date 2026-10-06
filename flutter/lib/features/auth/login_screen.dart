@@ -88,23 +88,26 @@ class _LoginScreenState extends State<LoginScreen> {
             BeneficiaryApi.fetchMothersForBarangay(barangay, token),
             BeneficiaryApi.fetchReferralsForBarangay(barangay, token),
             BeneficiaryApi.fetchSchedulesForBarangay(barangay, token),
+            BeneficiaryApi.fetchNotificationsForBarangay(barangay, token),
           ]);
 
-          final children  = results[0];
-          final mothers   = results[1];
-          final referrals = results[2];
-          final schedules = results[3];
+          final children      = results[0];
+          final mothers       = results[1];
+          final referrals     = results[2];
+          final schedules     = results[3];
+          final notifications = results[4];
 
-          final childBox    = Hive.box(HiveBoxes.children);
-          final motherBox   = Hive.box(HiveBoxes.mothers);
-          final referralBox = Hive.box(HiveBoxes.referrals);
-          final scheduleBox = Hive.box(HiveBoxes.programSchedule);
+          final childBox       = Hive.box(HiveBoxes.children);
+          final motherBox      = Hive.box(HiveBoxes.mothers);
+          final referralBox    = Hive.box(HiveBoxes.referrals);
+          final scheduleBox    = Hive.box(HiveBoxes.programSchedule);
+          final notifBox       = Hive.box(HiveBoxes.notifications);
+          final measurementBox = Hive.box(HiveBoxes.measurements);
 
-          // ── Seed children (server always wins for synced records) ──
+          // ── Seed children & initial measurement records ──
           for (final c in children) {
             final key = (c['external_id'] ?? c['child_id']).toString();
             final existing = childBox.get(key) as Map?;
-            // Don't overwrite records that have unsynced local edits
             if (existing != null && existing['_syncStatus'] == 'pending') continue;
             final firstName = c['first_name'] as String? ?? '';
             final middleInitial = c['middle_initial'] as String? ?? '';
@@ -139,6 +142,30 @@ class _LoginScreenState extends State<LoginScreen> {
               'inactiveReason': null,
               '_syncStatus': 'synced',
             });
+
+            // Seed measurement entry for nutritional status history
+            if (c['weight_status'] != null || c['height_status'] != null || c['last_weight'] != null) {
+              final mKey = 'm_${key}_initial';
+              final weight = (c['last_weight'] as num?)?.toDouble() ?? 0.0;
+              final height = (c['last_height'] as num?)?.toDouble() ?? 0.0;
+              final dateStr = c['last_visit'] != null
+                  ? (c['last_visit'] as String).split('T').first
+                  : DateTime.now().toIso8601String().split('T').first;
+              measurementBox.put(mKey, {
+                'childId': key,
+                'date': dateStr,
+                'weightKg': weight,
+                'heightCm': height,
+                'muacCm': null,
+                'bilateralPittingEdema': false,
+                'weightForAgeStatus': c['weight_status'] ?? 'Normal',
+                'heightForAgeStatus': c['height_status'] ?? 'Normal',
+                'weightForLengthStatus': c['overall_status'] ?? 'Normal',
+                'customBmi': null,
+                'customBmiStatus': null,
+                '_syncStatus': 'synced',
+              });
+            }
           }
 
           // ── Seed mothers ──
@@ -208,7 +235,22 @@ class _LoginScreenState extends State<LoginScreen> {
             });
           }
 
-          debugPrint('Seeded ${children.length} children, ${mothers.length} mothers, ${referrals.length} referrals, ${schedules.length} schedules from server.');
+          // ── Seed notifications ──
+          for (final n in notifications) {
+            final key = n['notification_id']?.toString() ?? n['id']?.toString() ?? '';
+            if (key.isEmpty) continue;
+            notifBox.put(key, {
+              'id': key,
+              'title': n['title'] as String? ?? 'Notification',
+              'message': n['message'] as String? ?? '',
+              'type': n['type'] as String? ?? 'general',
+              'referralId': null,
+              'timestamp': (n['created_at'] as String?) ?? DateTime.now().toIso8601String(),
+              'isRead': (n['is_read'] as int? ?? 0) == 1,
+            });
+          }
+
+          debugPrint('Seeded ${children.length} children, ${mothers.length} mothers, ${referrals.length} referrals, ${schedules.length} schedules, ${notifications.length} notifications from server.');
         }
       } catch (seedErr) {
         // Non-fatal: proceed to main UI even if seeding failed.
