@@ -46,6 +46,8 @@ class ConsolidationComputationService {
         return _uwSuwOnly(_children(barangay));
       case 'stunted_sst':
         return _byHeightStatus(_children(barangay));
+      case 'wasted_sw':
+        return _byWastingStatus(_children(barangay));
       default:
         return {};
     }
@@ -63,6 +65,9 @@ class ConsolidationComputationService {
     }
     if (reportTypeId == 'stunted_sst') {
       return _computeStuntedMatrix(barangay, targetYear);
+    }
+    if (reportTypeId == 'wasted_sw') {
+      return _computeWastedMatrix(barangay, targetYear);
     }
     if (reportTypeId == 'uw_suw') {
       return _computeUwMatrix(barangay, targetYear);
@@ -386,6 +391,94 @@ class ConsolidationComputationService {
     );
   }
 
+  ConsolidationMatrixData _computeWastedMatrix(String barangay, int year) {
+    final children = _childRepo.getByBarangay(barangay);
+    final months = [
+      'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+      'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+    ];
+    final subHeaders = List.generate(24, (i) => i.isEven ? 'OLD' : 'NEW');
+
+    List<int> rowNormal = List.filled(24, 0);
+    List<int> rowWasted = List.filled(24, 0);
+    List<int> rowSeverelyWasted = List.filled(24, 0);
+    List<int> rowSubTotal = List.filled(24, 0);
+    List<int> rowNotWeighed = List.filled(24, 0);
+    List<int> rowOverAge = List.filled(24, 0);
+    List<int> rowMovedOut = List.filled(24, 0);
+    List<int> rowDeceased = List.filled(24, 0);
+    List<int> rowGrandTotal = List.filled(24, 0);
+
+    for (int m = 1; m <= 12; m++) {
+      final oldIdx = (m - 1) * 2;
+      final newIdx = oldIdx + 1;
+
+      for (final child in children) {
+        final age = (year - child.birthDate.year) * 12 + (m - child.birthDate.month);
+        
+        if (!child.isActive) {
+          if (child.inactiveReason == 'Transferred') {
+            rowMovedOut[newIdx]++;
+            rowMovedOut[oldIdx]++;
+          } else if (child.inactiveReason == 'Deceased') {
+            rowDeceased[newIdx]++;
+            rowDeceased[oldIdx]++;
+          } else {
+            rowOverAge[newIdx]++;
+            rowOverAge[oldIdx]++;
+          }
+          continue;
+        }
+
+        if (age < 0 || age >= 60) {
+          if (age >= 60) {
+            rowOverAge[newIdx]++;
+            rowOverAge[oldIdx]++;
+          }
+          continue;
+        }
+
+        final status = child.wastingStatus;
+        if (status == 'MAM' || status == 'Wasted') {
+          rowWasted[newIdx]++;
+          rowWasted[oldIdx]++;
+        } else if (status == 'SAM' || status == 'Severely Wasted') {
+          rowSeverelyWasted[newIdx]++;
+          rowSeverelyWasted[oldIdx]++;
+        } else {
+          rowNormal[newIdx]++;
+          rowNormal[oldIdx]++;
+        }
+      }
+
+      rowSubTotal[oldIdx] = rowNormal[oldIdx] + rowWasted[oldIdx] + rowSeverelyWasted[oldIdx];
+      rowSubTotal[newIdx] = rowNormal[newIdx] + rowWasted[newIdx] + rowSeverelyWasted[newIdx];
+
+      rowGrandTotal[oldIdx] = rowSubTotal[oldIdx] + rowNotWeighed[oldIdx] + rowOverAge[oldIdx] + rowMovedOut[oldIdx] + rowDeceased[oldIdx];
+      rowGrandTotal[newIdx] = rowSubTotal[newIdx] + rowNotWeighed[newIdx] + rowOverAge[newIdx] + rowMovedOut[newIdx] + rowDeceased[newIdx];
+    }
+
+    return ConsolidationMatrixData(
+      reportTypeId: 'wasted_sw',
+      title: 'CONSOLIDATION WASTED / SEVERELY WASTED',
+      barangay: barangay,
+      year: year,
+      mainHeaders: months,
+      subHeaders: subHeaders,
+      rows: [
+        ConsolidationRowData(label: 'NO. of NORMAL', values: rowNormal),
+        ConsolidationRowData(label: 'NO. of WASTED / MAM', values: rowWasted),
+        ConsolidationRowData(label: 'NO. of SEVERELY WASTED / SAM', values: rowSeverelyWasted),
+        ConsolidationRowData(label: 'TOTAL', values: rowSubTotal),
+        ConsolidationRowData(label: 'Hindi natimbang:', values: rowNotWeighed),
+        ConsolidationRowData(label: 'Sobra sa Edad', values: rowOverAge),
+        ConsolidationRowData(label: 'Lumipat ng Tirahan', values: rowMovedOut),
+        ConsolidationRowData(label: 'Namatay', values: rowDeceased),
+        ConsolidationRowData(label: 'TOTAL', values: rowGrandTotal),
+      ],
+    );
+  }
+
   List<Child> _children(String barangay, {int? minAge, int? maxAgeExclusive}) {
     return _childRepo.getByBarangay(barangay).where((c) {
       if (!c.isActive) return false;
@@ -460,6 +553,20 @@ class ConsolidationComputationService {
         .where((c) => c.stuntingStatus == 'Severely Stunted')
         .length,
     'Tall': children.where((c) => c.stuntingStatus == 'Tall').length,
+    'Total': children.length,
+  };
+
+  Map<String, int> _byWastingStatus(List<Child> children) => {
+    'Normal': children.where((c) => c.wastingStatus == 'Normal').length,
+    'Wasted / MAM': children
+        .where((c) => c.wastingStatus == 'MAM' || c.wastingStatus == 'Wasted')
+        .length,
+    'Severely Wasted / SAM': children
+        .where((c) => c.wastingStatus == 'SAM' || c.wastingStatus == 'Severely Wasted')
+        .length,
+    'Overweight': children
+        .where((c) => c.wastingStatus == 'Overweight')
+        .length,
     'Total': children.length,
   };
 }

@@ -22,6 +22,7 @@ class ReportTypeInfo {
 class ReportTypes {
   ReportTypes._();
 
+  // 1. Consolidation Reports
   static const consolidation0to23 = ReportTypeInfo(
     id: 'consolidation_0_23',
     title: 'Consolidation, 0–23 months',
@@ -46,6 +47,14 @@ class ReportTypes {
     category: ReportCategory.consolidation,
     formats: [ExportFormat.pdf, ExportFormat.excel],
   );
+  static const wastedSw = ReportTypeInfo(
+    id: 'wasted_sw',
+    title: 'Wasted / severely wasted',
+    category: ReportCategory.consolidation,
+    formats: [ExportFormat.pdf, ExportFormat.excel],
+  );
+
+  // 2. Individual Records
   static const monthlyWeightRecord = ReportTypeInfo(
     id: 'monthly_weight_record',
     title: 'Monthly Record of Weight & Weight Status\n(Underweight/Severely Underweight)',
@@ -64,17 +73,19 @@ class ReportTypes {
     category: ReportCategory.individualRecord,
     formats: [ExportFormat.excel],
   );
+
+  // 3. Masterlists
   static const childrenMasterlist = ReportTypeInfo(
     id: 'children_masterlist',
-    title: 'Children masterlist',
+    title: 'Children Masterlist',
     category: ReportCategory.masterlist,
-    formats: [ExportFormat.excel, ExportFormat.pdf],
+    formats: [ExportFormat.pdf, ExportFormat.excel],
   );
   static const lactatingMothersMasterlist = ReportTypeInfo(
     id: 'lactating_mothers_masterlist',
     title: 'Masterlist of Lactating Mothers',
     category: ReportCategory.masterlist,
-    formats: [ExportFormat.excel, ExportFormat.pdf],
+    formats: [ExportFormat.pdf, ExportFormat.excel],
   );
 
   static const consolidationTypes = [
@@ -82,6 +93,7 @@ class ReportTypes {
     consolidation24to59,
     underweightSuw,
     stuntedSst,
+    wastedSw,
   ];
   static const recordTypes = [
     monthlyWeightRecord,

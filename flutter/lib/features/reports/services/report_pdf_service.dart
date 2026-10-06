@@ -307,6 +307,133 @@ class ReportPdfService {
     );
   }
 
+  /// Exports Children Masterlist as an official PDF with logos header and signatories
+  Future<void> exportChildrenMasterlistPdf({
+    required String fileTitle,
+    required String barangay,
+    required int year,
+    required List<List<String>> rows,
+    required ReportSignatory? signatory,
+  }) async {
+    final doc = pw.Document();
+    final bns = (signatory?.bnsName.isNotEmpty ?? false)
+        ? signatory!.bnsName
+        : 'LORNA D. TAPAR/DAISY J. MALINAO';
+    final pb = (signatory?.punongBarangayName.isNotEmpty ?? false)
+        ? signatory!.punongBarangayName
+        : 'FELIX S. NAMBIO JR.';
+    final pbPosition = (signatory?.punongBarangayName.isNotEmpty ?? false)
+        ? 'Punong Barangay'
+        : 'Acting Punong Barangay';
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 30),
+        build: (context) => [
+          pw.Center(
+            child: pw.Builder(
+              builder: (context) {
+                pw.Widget barangayLogoWidget;
+                final logoPath = signatory?.barangayLogoPath ?? '';
+                if (logoPath.isNotEmpty) {
+                  final logoFile = File(logoPath);
+                  if (logoFile.existsSync()) {
+                    final bytes = logoFile.readAsBytesSync();
+                    final img = pw.MemoryImage(bytes);
+                    barangayLogoWidget = pw.Container(
+                      width: 42,
+                      height: 42,
+                      decoration: const pw.BoxDecoration(
+                        shape: pw.BoxShape.circle,
+                        color: PdfColors.white,
+                      ),
+                      child: pw.Image(img, fit: pw.BoxFit.contain, width: 42, height: 42),
+                    );
+                  } else {
+                    barangayLogoWidget = _logoPlaceholder('BARANGAY\nSEAL', PdfColors.teal800);
+                  }
+                } else {
+                  barangayLogoWidget = _logoPlaceholder('BARANGAY\nSEAL', PdfColors.teal800);
+                }
+
+                return pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    _logoPlaceholder('BAGONG\nPILIPINAS', PdfColors.red800),
+                    pw.SizedBox(width: 10),
+                    _logoPlaceholder('NNC', PdfColors.green800),
+                    pw.SizedBox(width: 10),
+                    _logoPlaceholder('PROVINCE\nMARINDUQUE', PdfColors.blue800),
+                    pw.SizedBox(width: 10),
+                    barangayLogoWidget,
+                    pw.SizedBox(width: 10),
+                    _logoPlaceholder('BNS\nLOGO', PdfColors.green700),
+                  ],
+                );
+              },
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Center(
+            child: pw.Text(
+              'CHILDREN MASTERLIST $year · BARANGAY ${barangay.toUpperCase()}',
+              style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+              textAlign: pw.TextAlign.center,
+            ),
+          ),
+          pw.SizedBox(height: 14),
+          pw.TableHelper.fromTextArray(
+            headers: [
+              'NO.', 'NAME OF CHILD', 'SEX', 'BIRTHDAY', 'AGE (MO)', 'GUARDIAN / PARENT', 'ADDRESS', 'NUTRITIONAL STATUS'
+            ],
+            data: rows,
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
+            cellStyle: const pw.TextStyle(fontSize: 7.5),
+            cellAlignment: pw.Alignment.centerLeft,
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+          ),
+          pw.SizedBox(height: 24),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Prepared by;', style: const pw.TextStyle(fontSize: 9)),
+                  pw.SizedBox(height: 14),
+                  pw.Text(
+                    bns,
+                    style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline),
+                  ),
+                  pw.Text('Barangay Nutrition Scholar', style: const pw.TextStyle(fontSize: 8)),
+                ],
+              ),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Noted by;', style: const pw.TextStyle(fontSize: 9)),
+                  pw.SizedBox(height: 14),
+                  pw.Text(
+                    pb,
+                    style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline),
+                  ),
+                  pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 8)),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    await Printing.sharePdf(
+      bytes: await doc.save(),
+      filename: '$fileTitle.pdf',
+    );
+  }
+
   pw.Widget _logoPlaceholder(String label, [PdfColor color = PdfColors.grey600]) {
     return pw.Container(
       width: 46,

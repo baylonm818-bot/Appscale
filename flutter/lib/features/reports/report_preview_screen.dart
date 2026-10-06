@@ -83,7 +83,6 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     final signatory = ReportSignatoryRepository().get(_currentBarangay);
 
     if (widget.reportType.id == 'lactating_mothers_masterlist') {
-      // Simple numbered-list PDF matching the official MASTERLIST OF LACTATING MOTHER form
       final motherRepo = MotherRepository();
       final mothers = motherRepo
           .getAll()
@@ -95,6 +94,31 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         barangay: _currentBarangay,
         year: _period.year,
         names: names,
+        signatory: signatory,
+      );
+    } else if (widget.reportType.id == 'children_masterlist') {
+      final childRepo = ChildRepository();
+      final children = childRepo
+          .getByBarangay(_currentBarangay)
+          .where((c) => c.isActive)
+          .toList();
+      int no = 1;
+      final rows = children.map((c) => [
+        '${no++}',
+        c.fullName,
+        c.gender,
+        _fmtDate(c.birthDate),
+        '${c.ageInMonths}',
+        c.guardian.fullName.isNotEmpty ? c.guardian.fullName : '—',
+        c.address.isNotEmpty ? c.address : 'Purok 1',
+        c.nutritionStatus,
+      ]).toList();
+
+      await ReportPdfService().exportChildrenMasterlistPdf(
+        fileTitle: 'children_masterlist_${_period.year}_$_currentBarangay',
+        barangay: _currentBarangay,
+        year: _period.year,
+        rows: rows,
         signatory: signatory,
       );
     } else {
