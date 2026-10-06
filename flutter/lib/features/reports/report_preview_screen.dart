@@ -102,23 +102,13 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           .getByBarangay(_currentBarangay)
           .where((c) => c.isActive)
           .toList();
-      int no = 1;
-      final rows = children.map((c) => [
-        '${no++}',
-        c.fullName,
-        c.gender,
-        _fmtDate(c.birthDate),
-        '${c.ageInMonths}',
-        c.guardian.fullName.isNotEmpty ? c.guardian.fullName : '—',
-        c.address.isNotEmpty ? c.address : 'Purok 1',
-        c.nutritionStatus,
-      ]).toList();
+      final names = children.map((c) => c.fullName).toList();
 
       await ReportPdfService().exportChildrenMasterlistPdf(
         fileTitle: 'children_masterlist_${_period.year}_$_currentBarangay',
         barangay: _currentBarangay,
         year: _period.year,
-        rows: rows,
+        names: names,
         signatory: signatory,
       );
     } else {

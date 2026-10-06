@@ -307,12 +307,13 @@ class ReportPdfService {
     );
   }
 
-  /// Exports Children Masterlist as an official PDF with logos header and signatories
+  /// Exports Children Masterlist as a simple portrait A4 numbered list,
+  /// matching the official masterlist form format.
   Future<void> exportChildrenMasterlistPdf({
     required String fileTitle,
     required String barangay,
     required int year,
-    required List<List<String>> rows,
+    required List<String> names,
     required ReportSignatory? signatory,
   }) async {
     final doc = pw.Document();
@@ -328,72 +329,44 @@ class ReportPdfService {
 
     doc.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 30),
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 48, vertical: 40),
         build: (context) => [
-          pw.Center(
-            child: pw.Builder(
-              builder: (context) {
-                pw.Widget barangayLogoWidget;
-                final logoPath = signatory?.barangayLogoPath ?? '';
-                if (logoPath.isNotEmpty) {
-                  final logoFile = File(logoPath);
-                  if (logoFile.existsSync()) {
-                    final bytes = logoFile.readAsBytesSync();
-                    final img = pw.MemoryImage(bytes);
-                    barangayLogoWidget = pw.Container(
-                      width: 42,
-                      height: 42,
-                      decoration: const pw.BoxDecoration(
-                        shape: pw.BoxShape.circle,
-                        color: PdfColors.white,
-                      ),
-                      child: pw.Image(img, fit: pw.BoxFit.contain, width: 42, height: 42),
-                    );
-                  } else {
-                    barangayLogoWidget = _logoPlaceholder('BARANGAY\nSEAL', PdfColors.teal800);
-                  }
-                } else {
-                  barangayLogoWidget = _logoPlaceholder('BARANGAY\nSEAL', PdfColors.teal800);
-                }
-
-                return pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.center,
-                  children: [
-                    _logoPlaceholder('BAGONG\nPILIPINAS', PdfColors.red800),
-                    pw.SizedBox(width: 10),
-                    _logoPlaceholder('NNC', PdfColors.green800),
-                    pw.SizedBox(width: 10),
-                    _logoPlaceholder('PROVINCE\nMARINDUQUE', PdfColors.blue800),
-                    pw.SizedBox(width: 10),
-                    barangayLogoWidget,
-                    pw.SizedBox(width: 10),
-                    _logoPlaceholder('BNS\nLOGO', PdfColors.green700),
-                  ],
-                );
-              },
+          // Header border top
+          pw.Container(
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(top: pw.BorderSide(width: 2)),
             ),
+            child: pw.SizedBox(height: 4),
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
+
+          // 5 logos row
+          _buildHeaderLogos(barangay, signatory),
+          pw.SizedBox(height: 16),
+
+          // Title
           pw.Center(
             child: pw.Text(
-              'CHILDREN MASTERLIST $year · BARANGAY ${barangay.toUpperCase()}',
-              style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+              'CHILDREN MASTERLIST $year',
+              style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
               textAlign: pw.TextAlign.center,
             ),
           ),
-          pw.SizedBox(height: 14),
-          pw.TableHelper.fromTextArray(
-            headers: [
-              'NO.', 'NAME OF CHILD', 'SEX', 'BIRTHDAY', 'AGE (MO)', 'GUARDIAN / PARENT', 'ADDRESS', 'NUTRITIONAL STATUS'
-            ],
-            data: rows,
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
-            cellStyle: const pw.TextStyle(fontSize: 7.5),
-            cellAlignment: pw.Alignment.centerLeft,
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-          ),
-          pw.SizedBox(height: 24),
+          pw.SizedBox(height: 16),
+
+          // Numbered list of names (centered)
+          ...names.asMap().entries.map((e) => pw.Center(
+            child: pw.Text(
+              '${e.key + 1}. ${e.value}',
+              style: const pw.TextStyle(fontSize: 11),
+              textAlign: pw.TextAlign.center,
+            ),
+          )),
+
+          pw.SizedBox(height: 32),
+
+          // Signatory block
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -401,25 +374,33 @@ class ReportPdfService {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text('Prepared by;', style: const pw.TextStyle(fontSize: 9)),
-                  pw.SizedBox(height: 14),
+                  pw.Text('Prepared by;', style: const pw.TextStyle(fontSize: 10)),
+                  pw.SizedBox(height: 16),
                   pw.Text(
                     bns,
-                    style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline),
+                    style: pw.TextStyle(
+                      fontSize: 10,
+                      fontWeight: pw.FontWeight.bold,
+                      decoration: pw.TextDecoration.underline,
+                    ),
                   ),
-                  pw.Text('Barangay Nutrition Scholar', style: const pw.TextStyle(fontSize: 8)),
+                  pw.Text('Barangay Nutrition Scholar', style: const pw.TextStyle(fontSize: 9)),
                 ],
               ),
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text('Noted by;', style: const pw.TextStyle(fontSize: 9)),
-                  pw.SizedBox(height: 14),
+                  pw.Text('Noted by;', style: const pw.TextStyle(fontSize: 10)),
+                  pw.SizedBox(height: 16),
                   pw.Text(
                     pb,
-                    style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline),
+                    style: pw.TextStyle(
+                      fontSize: 10,
+                      fontWeight: pw.FontWeight.bold,
+                      decoration: pw.TextDecoration.underline,
+                    ),
                   ),
-                  pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 8)),
+                  pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 9)),
                 ],
               ),
             ],
@@ -431,6 +412,48 @@ class ReportPdfService {
     await Printing.sharePdf(
       bytes: await doc.save(),
       filename: '$fileTitle.pdf',
+    );
+  }
+
+  pw.Widget _buildHeaderLogos(String barangay, ReportSignatory? signatory) {
+    pw.Widget barangayLogoWidget;
+    final logoPath = signatory?.barangayLogoPath ?? '';
+    if (logoPath.isNotEmpty) {
+      final logoFile = File(logoPath);
+      if (logoFile.existsSync()) {
+        final bytes = logoFile.readAsBytesSync();
+        final img = pw.MemoryImage(bytes);
+        barangayLogoWidget = pw.Container(
+          width: 46,
+          height: 46,
+          decoration: const pw.BoxDecoration(
+            shape: pw.BoxShape.circle,
+            color: PdfColors.white,
+          ),
+          child: pw.Image(img, fit: pw.BoxFit.contain, width: 46, height: 46),
+        );
+      } else {
+        barangayLogoWidget = _logoPlaceholder('BARANGAY\n${barangay.toUpperCase()}', PdfColors.teal800);
+      }
+    } else {
+      barangayLogoWidget = _logoPlaceholder('BARANGAY\n${barangay.toUpperCase()}', PdfColors.teal800);
+    }
+
+    return pw.Center(
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.center,
+        children: [
+          _logoPlaceholder('BAGONG\nPILIPINAS', PdfColors.red800),
+          pw.SizedBox(width: 10),
+          _logoPlaceholder('NNC', PdfColors.green800),
+          pw.SizedBox(width: 10),
+          _logoPlaceholder('PROVINCE\nMARINDUQUE', PdfColors.blue800),
+          pw.SizedBox(width: 10),
+          barangayLogoWidget,
+          pw.SizedBox(width: 10),
+          _logoPlaceholder('BNS\nLOGO', PdfColors.green700),
+        ],
+      ),
     );
   }
 
