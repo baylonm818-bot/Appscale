@@ -54,7 +54,7 @@ class ReportTypes {
   );
   static const quarterlyWeighing = ReportTypeInfo(
     id: 'quarterly_weighing',
-    title: 'Quarterly Full Weighing Record',
+    title: 'Quarterly Full Weighing Record\n(24–59 Months)',
     category: ReportCategory.individualRecord,
     formats: [ExportFormat.excel],
   );

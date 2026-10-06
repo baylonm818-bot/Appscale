@@ -189,31 +189,69 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           .getByBarangay(_currentBarangay)
           .where((c) => c.isActive && c.ageInMonths >= 24 && c.ageInMonths < 60)
           .toList();
-      final rows = children.map((c) {
-        final m = measurementRepo.getForChild(c.id);
-        final latest = m.isNotEmpty ? m.first : null;
-        return [
-          c.sequenceNo,
-          c.fullName,
-          _fmtDate(c.birthDate),
-          '${c.ageInMonths}',
-          latest?.weightKg.toString() ?? '—',
-          latest?.heightCm.toString() ?? '—',
-          c.nutritionStatus,
-        ];
-      }).toList();
-      return ExcelTableData(
-        headers: [
-          'Seq No',
-          'Name',
-          'DOB',
-          'Age (mo)',
-          'Weight (kg)',
-          'Height (cm)',
-          'Status',
-        ],
-        rows: rows,
-      );
+
+      // Quarter month ranges: Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec
+      final qMonths = [
+        [1, 2, 3],   // Q1
+        [4, 5, 6],   // Q2
+        [7, 8, 9],   // Q3
+        [10, 11, 12] // Q4
+      ];
+
+      final headers = <String>[
+        'NAME OF CHILD',
+        'NAME OF FATHER',
+        'DATE OF BIRTH\n(Day)',
+        'DATE OF BIRTH\n(Month)',
+        'DATE OF BIRTH\n(Year)',
+        // 4 quarters × 4 columns each
+        '1ST QTR\nDATE',   '1ST QTR\nAGE(MO)', '1ST QTR\nWT(KG)', '1ST QTR\nSTATUS',
+        '2ND QTR\nDATE',   '2ND QTR\nAGE(MO)', '2ND QTR\nWT(KG)', '2ND QTR\nSTATUS',
+        '3RD QTR\nDATE',   '3RD QTR\nAGE(MO)', '3RD QTR\nWT(KG)', '3RD QTR\nSTATUS',
+        '4TH QTR\nDATE',   '4TH QTR\nAGE(MO)', '4TH QTR\nWT(KG)', '4TH QTR\nSTATUS',
+        'REMARKS',
+      ];
+
+      List<List<String>> buildSection(List<dynamic> kids) {
+        return kids.map((c) {
+          final measurements = measurementRepo.getForChild(c.id);
+          final row = <String>[
+            c.fullName,
+            c.guardian.fullName,
+            '${c.birthDate.day}',
+            '${c.birthDate.month}',
+            '${c.birthDate.year}',
+          ];
+          for (final months in qMonths) {
+            final qRec = measurements.where((m) => months.contains(m.date.month)).toList();
+            if (qRec.isNotEmpty) {
+              final rec = qRec.first;
+              final ageAtWeighing = (rec.date.year - c.birthDate.year) * 12
+                  + (rec.date.month - c.birthDate.month);
+              row.add(_fmtDate(rec.date));
+              row.add('$ageAtWeighing');
+              row.add(rec.weightKg.toStringAsFixed(1));
+              row.add(rec.weightForAgeStatus);
+            } else {
+              row.addAll(['', '', '', '']);
+            }
+          }
+          row.add(''); // REMARKS — blank, to be filled manually
+          return row;
+        }).toList();
+      }
+
+      final boys = children.where((c) => c.gender == 'Male').toList();
+      final girls = children.where((c) => c.gender == 'Female').toList();
+
+      final allRows = <List<String>>[
+        List.filled(headers.length, 'BOYS'),
+        ...buildSection(boys),
+        List.filled(headers.length, 'GIRLS'),
+        ...buildSection(girls),
+      ];
+
+      return ExcelTableData(headers: headers, rows: allRows);
     }
 
     if (reportTypeId == 'opt_plus') {
