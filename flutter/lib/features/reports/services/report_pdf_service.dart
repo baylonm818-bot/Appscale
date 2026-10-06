@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -194,21 +195,48 @@ class ReportPdfService {
           ),
           pw.SizedBox(height: 8),
 
-          // 5 logos row (use placeholder circles since assets may not be available in pdf)
+          // 5 logos row — 4 standard placeholders + 1 user-uploaded barangay logo
           pw.Center(
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.center,
-              children: [
-                _logoPlaceholder('BAGONG\nPILIPINAS'),
-                pw.SizedBox(width: 12),
-                _logoPlaceholder('NNC'),
-                pw.SizedBox(width: 12),
-                _logoPlaceholder('PROVINCE'),
-                pw.SizedBox(width: 12),
-                _logoPlaceholder('BARANGAY'),
-                pw.SizedBox(width: 12),
-                _logoPlaceholder('BNS'),
-              ],
+            child: pw.Builder(
+              builder: (context) {
+                pw.Widget barangayLogoWidget;
+                final logoPath = signatory?.barangayLogoPath ?? '';
+                if (logoPath.isNotEmpty) {
+                  final logoFile = File(logoPath);
+                  if (logoFile.existsSync()) {
+                    final bytes = logoFile.readAsBytesSync();
+                    final img = pw.MemoryImage(bytes);
+                    barangayLogoWidget = pw.Container(
+                      width: 46,
+                      height: 46,
+                      decoration: const pw.BoxDecoration(
+                        shape: pw.BoxShape.circle,
+                        color: PdfColors.white,
+                      ),
+                      child: pw.Image(img, fit: pw.BoxFit.contain, width: 46, height: 46),
+                    );
+                  } else {
+                    barangayLogoWidget = _logoPlaceholder('BARANGAY\nSEAL', PdfColors.teal800);
+                  }
+                } else {
+                  barangayLogoWidget = _logoPlaceholder('BARANGAY\nSEAL', PdfColors.teal800);
+                }
+
+                return pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    _logoPlaceholder('BAGONG\nPILIPINAS', PdfColors.red800),
+                    pw.SizedBox(width: 10),
+                    _logoPlaceholder('NNC', PdfColors.green800),
+                    pw.SizedBox(width: 10),
+                    _logoPlaceholder('PROVINCE\nMARINDUQUE', PdfColors.blue800),
+                    pw.SizedBox(width: 10),
+                    barangayLogoWidget,
+                    pw.SizedBox(width: 10),
+                    _logoPlaceholder('BNS\nLOGO', PdfColors.green700),
+                  ],
+                );
+              },
             ),
           ),
           pw.SizedBox(height: 16),
@@ -279,18 +307,19 @@ class ReportPdfService {
     );
   }
 
-  pw.Widget _logoPlaceholder(String label) {
+  pw.Widget _logoPlaceholder(String label, [PdfColor color = PdfColors.grey600]) {
     return pw.Container(
-      width: 44,
-      height: 44,
+      width: 46,
+      height: 46,
       decoration: pw.BoxDecoration(
         shape: pw.BoxShape.circle,
+        color: color,
         border: pw.Border.all(color: PdfColors.grey400, width: 0.5),
       ),
       alignment: pw.Alignment.center,
       child: pw.Text(
         label,
-        style: const pw.TextStyle(fontSize: 5),
+        style: pw.TextStyle(fontSize: 5, color: PdfColors.white, fontWeight: pw.FontWeight.bold),
         textAlign: pw.TextAlign.center,
       ),
     );

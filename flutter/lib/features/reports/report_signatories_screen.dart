@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -24,6 +26,7 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
   final _settings = SettingsRepository();
   String _currentBarangay = '';
   String _currentBnsName = '';
+  String _barangayLogoPath = '';
   bool _isSaving = false;
 
   @override
@@ -38,6 +41,18 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
       _punongBarangayController.text = existing.punongBarangayName;
       _mnaoController.text = existing.mnaoAdminAideName;
       _dnpcController.text = existing.dnpcName;
+      _barangayLogoPath = existing.barangayLogoPath;
+    }
+  }
+
+  Future<void> _pickLogo() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+    if (picked != null) {
+      setState(() => _barangayLogoPath = picked.path);
     }
   }
 
@@ -50,6 +65,7 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
         punongBarangayName: _punongBarangayController.text.trim(),
         mnaoAdminAideName: _mnaoController.text.trim(),
         dnpcName: _dnpcController.text.trim(),
+        barangayLogoPath: _barangayLogoPath,
       ),
     );
     if (!mounted) return;
@@ -91,13 +107,108 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'These names print automatically on every report. Update only when an official changes.',
+                      'These names and logo print automatically on every report.',
                       style: AppTextStyles.body.copyWith(
                         fontSize: 12,
                         color: AppColors.textMuted,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
+
+                    // ── Barangay Logo Picker ──
+                    Text('Barangay Logo (for PDF report header)', style: AppTextStyles.label),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: _pickLogo,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _barangayLogoPath.isNotEmpty
+                                ? AppColors.primaryGreen
+                                : AppColors.border,
+                            width: _barangayLogoPath.isNotEmpty ? 2 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            // Preview
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.background,
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: _barangayLogoPath.isNotEmpty &&
+                                      File(_barangayLogoPath).existsSync()
+                                  ? Image.file(
+                                      File(_barangayLogoPath),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : const Icon(
+                                      Icons.account_balance_outlined,
+                                      size: 32,
+                                      color: AppColors.textMuted,
+                                    ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _barangayLogoPath.isNotEmpty
+                                        ? 'Logo selected ✓'
+                                        : 'Tap to choose barangay logo',
+                                    style: AppTextStyles.label.copyWith(
+                                      color: _barangayLogoPath.isNotEmpty
+                                          ? AppColors.primaryGreen
+                                          : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Pick from gallery — will appear in report header PDF',
+                                    style: AppTextStyles.body.copyWith(
+                                      fontSize: 11,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                  if (_barangayLogoPath.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    GestureDetector(
+                                      onTap: () =>
+                                          setState(() => _barangayLogoPath = ''),
+                                      child: Text(
+                                        'Remove logo',
+                                        style: AppTextStyles.body.copyWith(
+                                          fontSize: 11,
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.photo_library_outlined,
+                              color: AppColors.textMuted,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // ── Signatory Names ──
                     Text('Submitted by (BNS)', style: AppTextStyles.label),
                     const SizedBox(height: 6),
                     Container(
@@ -134,7 +245,7 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     FormActionButtons(
-                      saveLabel: 'Save Signatories',
+                      saveLabel: 'Save',
                       onSave: _save,
                       onCancel: () => Navigator.pop(context),
                       isSaving: _isSaving,

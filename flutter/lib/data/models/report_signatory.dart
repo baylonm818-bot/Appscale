@@ -4,6 +4,8 @@ class ReportSignatory {
   final String punongBarangayName;
   final String mnaoAdminAideName;
   final String dnpcName;
+  /// Local file path of the barangay logo image picked by the user.
+  final String barangayLogoPath;
 
   const ReportSignatory({
     required this.barangay,
@@ -11,6 +13,7 @@ class ReportSignatory {
     required this.punongBarangayName,
     required this.mnaoAdminAideName,
     required this.dnpcName,
+    this.barangayLogoPath = '',
   });
 
   Map<String, dynamic> toMap() => {
@@ -19,6 +22,7 @@ class ReportSignatory {
     'punongBarangayName': punongBarangayName,
     'mnaoAdminAideName': mnaoAdminAideName,
     'dnpcName': dnpcName,
+    'barangayLogoPath': barangayLogoPath,
   };
 
   factory ReportSignatory.fromMap(Map<String, dynamic> map) => ReportSignatory(
@@ -27,5 +31,6 @@ class ReportSignatory {
     punongBarangayName: map['punongBarangayName'] as String,
     mnaoAdminAideName: map['mnaoAdminAideName'] as String,
     dnpcName: map['dnpcName'] as String,
+    barangayLogoPath: (map['barangayLogoPath'] as String?) ?? '',
   );
 }
