@@ -28,7 +28,7 @@ class ReportExcelService {
 
     sheet.appendRow([xls.TextCellValue(normalizeCellValue(metadataLine))]);
     sheet.appendRow(
-      data.headers.map((h) => xls.TextCellValue(normalizeCellValue(h))).toList(),
+      data.headers.map((h) => xls.TextCellValue(normalizeCellValue(h).replaceAll('\n', ' '))).toList(),
     );
     for (final row in data.rows) {
       sheet.appendRow(
