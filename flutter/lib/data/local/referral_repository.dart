@@ -20,9 +20,17 @@ class ReferralRepository {
 
     if (existingPending.isNotEmpty) {
       final existing = existingPending.first;
-      final updated = existing.copyWith(
-        createdAt: referral.createdAt,
+      final updated = Referral(
+        id: existing.id,
+        beneficiaryType: existing.beneficiaryType,
+        beneficiaryId: existing.beneficiaryId,
+        beneficiaryName: existing.beneficiaryName,
+        barangay: existing.barangay,
+        reason: existing.reason,
+        facility: existing.facility,
         notes: referral.notes.isNotEmpty ? referral.notes : existing.notes,
+        status: existing.status,
+        createdAt: referral.createdAt,
       );
       await _box.put(updated.id, updated.toMap()..['_syncStatus'] = 'pending');
       AppDataBus.notifyChanged();
