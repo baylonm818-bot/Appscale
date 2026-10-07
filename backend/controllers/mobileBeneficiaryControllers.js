@@ -245,23 +245,6 @@ exports.upsertChild = async (req, res) => {
         resolvedEncodedBy,
       ]
     );
-      [
-        external_id || null,
-        firstName,
-        middleInitial || null,
-        lastName || '',
-        birth_date,
-        resolvedGender,
-        birth_date,
-        birth_date,
-        resolvedBarangay,
-        purok || address || 'Purok 1',
-        guardian_name || null,
-        guardian_contact || null,
-        resolvedMotherId,
-        resolvedEncodedBy,
-      ]
-    );
 
     // Automatic Notification for BHW/Admin
     try {
