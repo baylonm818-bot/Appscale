@@ -8,6 +8,7 @@ import '../../data/local/measurement_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/report_signatory_repository.dart';
 import '../../shared/utils/app_pickers.dart';
+import '../../data/models/report_signatory.dart';
 import 'report_types.dart';
 import 'services/consolidation_computation_service.dart';
 import 'services/excel_table_data.dart';
@@ -26,9 +27,16 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   final _settings = SettingsRepository();
   DateTime _period = DateTime.now();
   bool _isExporting = false;
+  int _monthlyPartIndex = 0; // 0 = JAN–JUN, 1 = JUL–DEC
 
   String get _currentBarangay =>
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
+
+  String get _currentMunicipality =>
+      _settings.authUser?['municipality']?.toString() ?? 'GASAN';
+
+  String get _currentProvince =>
+      _settings.authUser?['province']?.toString() ?? 'MARINDUQUE';
 
   Future<void> _pickPeriod() async {
     final picked = await showAppDatePicker(
@@ -41,6 +49,18 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       setState(() => _period = DateTime(picked.year, picked.month));
     }
   }
+
+  static String _mapWeightStatusCode(String status) {
+    final s = status.toLowerCase();
+    if (s.contains('severely underweight') || s == 'suw') return 'SUW';
+    if (s.contains('underweight') || s == 'uw') return 'UW';
+    if (s.contains('overweight') || s.contains('obese') || s == 'ow') return 'OW';
+    if (s.contains('normal') || s == 'n') return 'N';
+    return '';
+  }
+
+  static String _fmtDateOnly(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   Future<void> _exportConsolidationPdf() async {
     setState(() => _isExporting = true);
@@ -127,168 +147,74 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   Future<void> _exportExcel() async {
     setState(() => _isExporting = true);
-    final data = _buildExcelData(widget.reportType.id);
     final signatory = ReportSignatoryRepository().get(_currentBarangay);
+    final childRepo = ChildRepository();
+    final measurementRepo = MeasurementRepository();
 
-    int suw = 0;
-    int uw = 0;
     if (widget.reportType.id == 'monthly_weight_record') {
-      final children = ChildRepository()
+      final children = childRepo
           .getByBarangay(_currentBarangay)
-          .where((c) => c.isActive && c.ageInMonths < 24);
-      for (final c in children) {
-        if (c.nutritionStatus.toLowerCase().contains('severely underweight')) {
-          suw++;
-        } else if (c.nutritionStatus.toLowerCase().contains('underweight')) {
-          uw++;
-        }
-      }
-    }
+          .where((c) => c.isActive)
+          .toList();
 
-    await ReportExcelService().exportIndividualRecordAndShare(
-      reportTypeId: widget.reportType.id,
-      fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
-      title: widget.reportType.title,
-      barangay: _currentBarangay,
-      year: _period.year,
-      data: data,
-      signatory: signatory,
-      suwCount: suw,
-      uwCount: uw,
-    );
+      final boys = children.where((c) => c.gender == 'Male').toList()
+        ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+
+      final girls = children.where((c) => c.gender == 'Female').toList()
+        ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+
+      await ReportExcelService().exportMonthly0to23Excel(
+        fileTitle: 'Monthly_0-23_${_period.year}',
+        barangay: _currentBarangay,
+        municipality: _currentMunicipality,
+        province: _currentProvince,
+        year: _period.year,
+        boys: boys,
+        girls: girls,
+        measurementRepo: measurementRepo,
+        signatory: signatory,
+      );
+    } else if (widget.reportType.id == 'quarterly_weighing') {
+      final children = childRepo
+          .getByBarangay(_currentBarangay)
+          .where((c) => c.isActive)
+          .toList();
+
+      final boys = children.where((c) => c.gender == 'Male').toList()
+        ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+
+      final girls = children.where((c) => c.gender == 'Female').toList()
+        ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+
+      await ReportExcelService().exportQuarterlyRecord24to59Excel(
+        fileTitle: 'Quarterly_24-59_${_period.year}',
+        barangay: _currentBarangay,
+        municipality: _currentMunicipality,
+        province: _currentProvince,
+        year: _period.year,
+        boys: boys,
+        girls: girls,
+        measurementRepo: measurementRepo,
+        signatory: signatory,
+      );
+    } else {
+      final data = _buildExcelData(widget.reportType.id);
+      await ReportExcelService().exportIndividualRecordAndShare(
+        reportTypeId: widget.reportType.id,
+        fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
+        title: widget.reportType.title,
+        barangay: _currentBarangay,
+        year: _period.year,
+        data: data,
+        signatory: signatory,
+      );
+    }
     if (mounted) setState(() => _isExporting = false);
   }
 
   ExcelTableData _buildExcelData(String reportTypeId) {
     final childRepo = ChildRepository();
     final measurementRepo = MeasurementRepository();
-
-    if (reportTypeId == 'monthly_weight_record') {
-      final children = childRepo
-          .getByBarangay(_currentBarangay)
-          .where((c) => c.isActive && c.ageInMonths < 24)
-          .toList();
-
-      final monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-                          'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-
-      // Build header: NAME | AGE | DOB | then each month x3 (WT, HT, STATUS)
-      final headers = <String>[
-        'NAME OF CHILD', 'AGE\n(MO)', 'DATE OF\nBIRTH',
-        ...monthNames.expand((m) => ['$m\nWT(kg)', '$m\nHT(cm)', '$m\nSTATUS']),
-      ];
-
-      List<List<String>> buildSection(List<dynamic> kids) {
-        final rows = <List<String>>[];
-        for (final c in kids) {
-          final measurements = measurementRepo.getForChild(c.id);
-          final row = <String>[
-            c.fullName,
-            '${c.ageInMonths}',
-            _fmtDate(c.birthDate),
-          ];
-          for (int mo = 1; mo <= 12; mo++) {
-            final rec = measurements.where(
-              (m) => m.date.month == mo && m.date.year == _period.year,
-            ).toList();
-            if (rec.isNotEmpty) {
-              row.add(rec.first.weightKg.toStringAsFixed(1));
-              row.add(rec.first.heightCm.toStringAsFixed(1));
-              row.add(rec.first.bmiStatus);
-            } else {
-              row.addAll(['', '', '']);
-            }
-          }
-          rows.add(row);
-        }
-        return rows;
-      }
-
-      final boys = children.where((c) => c.gender == 'Male').toList();
-      final girls = children.where((c) => c.gender == 'Female').toList();
-
-      final allRows = <List<String>>[
-        // MALE section header
-        List.filled(headers.length, 'MALE'),
-        ...buildSection(boys),
-        // FEMALE section header
-        List.filled(headers.length, 'FEMALE'),
-        ...buildSection(girls),
-      ];
-
-      return ExcelTableData(headers: headers, rows: allRows);
-    }
-
-
-    if (reportTypeId == 'quarterly_weighing') {
-      final children = childRepo
-          .getByBarangay(_currentBarangay)
-          .where((c) => c.isActive && c.ageInMonths >= 24 && c.ageInMonths < 60)
-          .toList();
-
-      // Quarter month ranges: Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec
-      final qMonths = [
-        [1, 2, 3],   // Q1
-        [4, 5, 6],   // Q2
-        [7, 8, 9],   // Q3
-        [10, 11, 12] // Q4
-      ];
-
-      final headers = <String>[
-        'NAME OF CHILD',
-        'NAME OF FATHER',
-        'DATE OF BIRTH\n(Day)',
-        'DATE OF BIRTH\n(Month)',
-        'DATE OF BIRTH\n(Year)',
-        // 4 quarters × 4 columns each
-        '1ST QTR\nDATE',   '1ST QTR\nAGE(MO)', '1ST QTR\nWT(KG)', '1ST QTR\nSTATUS',
-        '2ND QTR\nDATE',   '2ND QTR\nAGE(MO)', '2ND QTR\nWT(KG)', '2ND QTR\nSTATUS',
-        '3RD QTR\nDATE',   '3RD QTR\nAGE(MO)', '3RD QTR\nWT(KG)', '3RD QTR\nSTATUS',
-        '4TH QTR\nDATE',   '4TH QTR\nAGE(MO)', '4TH QTR\nWT(KG)', '4TH QTR\nSTATUS',
-        'REMARKS',
-      ];
-
-      List<List<String>> buildSection(List<dynamic> kids) {
-        return kids.map((c) {
-          final measurements = measurementRepo.getForChild(c.id);
-          final row = <String>[
-            c.fullName,
-            c.guardian.fullName,
-            '${c.birthDate.day}',
-            '${c.birthDate.month}',
-            '${c.birthDate.year}',
-          ];
-          for (final months in qMonths) {
-            final qRec = measurements.where((m) => months.contains(m.date.month)).toList();
-            if (qRec.isNotEmpty) {
-              final rec = qRec.first;
-              final ageAtWeighing = (rec.date.year - c.birthDate.year) * 12
-                  + (rec.date.month - c.birthDate.month);
-              row.add(_fmtDate(rec.date));
-              row.add('$ageAtWeighing');
-              row.add(rec.weightKg.toStringAsFixed(1));
-              row.add(rec.weightForAgeStatus);
-            } else {
-              row.addAll(['', '', '', '']);
-            }
-          }
-          row.add(''); // REMARKS — blank, to be filled manually
-          return row;
-        }).toList();
-      }
-
-      final boys = children.where((c) => c.gender == 'Male').toList();
-      final girls = children.where((c) => c.gender == 'Female').toList();
-
-      final allRows = <List<String>>[
-        List.filled(headers.length, 'BOYS'),
-        ...buildSection(boys),
-        List.filled(headers.length, 'GIRLS'),
-        ...buildSection(girls),
-      ];
-
-      return ExcelTableData(headers: headers, rows: allRows);
-    }
 
     if (reportTypeId == 'opt_plus') {
       final children = childRepo
@@ -302,7 +228,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           c.sequenceNo,
           c.fullName,
           c.gender,
-          _fmtDate(c.birthDate),
+          _fmtDateOnly(c.birthDate),
           '${c.ageInMonths}',
           c.belongsToIpGroup ? 'Yes' : 'No',
           c.disability,
@@ -317,20 +243,9 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       }).toList();
       return ExcelTableData(
         headers: [
-          'Seq No',
-          'Name',
-          'Sex',
-          'DOB',
-          'Age (mo)',
-          'IP Group',
-          'Disability',
-          'Weight (kg)',
-          'Height (cm)',
-          'MUAC (cm)',
-          'Edema',
-          'Weight Status',
-          'Height Status',
-          'Wasting Status',
+          'Seq No', 'Name', 'Sex', 'DOB', 'Age (mo)', 'IP Group', 'Disability',
+          'Weight (kg)', 'Height (cm)', 'MUAC (cm)', 'Edema', 'Weight Status',
+          'Height Status', 'Wasting Status',
         ],
         rows: rows,
       );
@@ -342,37 +257,22 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       final rows = children
           .map(
             (c) => [
-              '${no++}',
-              c.fullName,
-              c.gender,
-              _fmtDate(c.birthDate),
-              '${c.ageInMonths}',
-              c.address.isNotEmpty ? c.address : 'Purok 1',
-              c.guardian.fullName,
-              c.guardian.contactNo,
-              c.nutritionStatus,
+              '${no++}', c.fullName, c.gender, _fmtDateOnly(c.birthDate),
+              '${c.ageInMonths}', c.address.isNotEmpty ? c.address : 'Purok 1',
+              c.guardian.fullName, c.guardian.contactNo, c.nutritionStatus,
               c.isActive ? 'Active' : 'Inactive',
             ],
           )
           .toList();
       return ExcelTableData(
         headers: [
-          'NO.',
-          'NAME OF CHILD',
-          'SEX',
-          'BIRTHDAY',
-          'AGE (MO)',
-          'ADDRESS',
-          'GUARDIAN NAME',
-          'GUARDIAN CONTACT',
-          'NUTRITIONAL STATUS',
-          'STATUS',
+          'NO.', 'NAME OF CHILD', 'SEX', 'BIRTHDAY', 'AGE (MO)', 'ADDRESS',
+          'GUARDIAN NAME', 'GUARDIAN CONTACT', 'NUTRITIONAL STATUS', 'STATUS',
         ],
         rows: rows,
       );
     }
 
-    // lactating_mothers_masterlist
     final mothers = MotherRepository()
         .getAll()
         .where((m) => m.barangay == _currentBarangay && m.isActive)
@@ -381,30 +281,18 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     final rows = mothers
         .map(
           (m) => [
-            '${no++}',
-            m.fullName,
-            '${m.age}',
-            m.address.isNotEmpty ? m.address : 'Purok 1',
-            m.contactNo,
-            m.breastfeedingPractice.isNotEmpty ? m.breastfeedingPractice : 'Lactating',
+            '${no++}', m.fullName, '${m.age}', m.address.isNotEmpty ? m.address : 'Purok 1',
+            m.contactNo, m.breastfeedingPractice.isNotEmpty ? m.breastfeedingPractice : 'Lactating',
           ],
         )
         .toList();
     return ExcelTableData(
       headers: [
-        'NO.',
-        'NAME OF LACTATING MOTHER',
-        'AGE',
-        'ADDRESS',
-        'CONTACT',
-        'STATUS',
+        'NO.', 'NAME OF LACTATING MOTHER', 'AGE', 'ADDRESS', 'CONTACT', 'STATUS',
       ],
       rows: rows,
     );
   }
-
-  String _fmtDate(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -468,9 +356,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                               const SizedBox(width: 8),
                               Text(
                                 'Year: ${_period.year}',
-                                style: AppTextStyles.label.copyWith(
-                                  fontSize: 13,
-                                ),
+                                style: AppTextStyles.label.copyWith(fontSize: 13),
                               ),
                             ],
                           ),
@@ -498,8 +384,9 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                           ),
                         ],
                       ),
-                    ] else ...[ 
-                      if (widget.reportType.id == 'monthly_weight_record' || widget.reportType.id == 'quarterly_weighing') ...[
+                    ] else ...[
+                      if (widget.reportType.id == 'monthly_weight_record' ||
+                          widget.reportType.id == 'quarterly_weighing') ...[
                         InkWell(
                           onTap: _pickPeriod,
                           child: Container(
@@ -653,11 +540,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               border: TableBorder.all(color: AppColors.border, width: 0.5),
               children: [
                 TableRow(
-                  decoration: BoxDecoration(color: AppColors.background),
+                  decoration: const BoxDecoration(color: AppColors.background),
                   children: mainHeaderCells,
                 ),
                 TableRow(
-                  decoration: BoxDecoration(color: AppColors.background),
+                  decoration: const BoxDecoration(color: AppColors.background),
                   children: subHeaderCells,
                 ),
                 ...matrix.rows.map(
@@ -732,27 +619,630 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   }
 
   Widget _buildRecordPreview() {
-    final data = _buildExcelData(widget.reportType.id);
+    if (widget.reportType.id == 'monthly_weight_record') {
+      return _buildMonthly0to23Preview();
+    } else if (widget.reportType.id == 'quarterly_weighing') {
+      return _buildQuarterly24to59Preview();
+    }
+    return _buildGenericRecordPreview();
+  }
+
+  // ── MONTHLY 0-23 PREVIEW (Clean simple UI + Frozen NAME column) ──
+  Widget _buildMonthly0to23Preview() {
+    final childRepo = ChildRepository();
+    final measurementRepo = MeasurementRepository();
     final signatory = ReportSignatoryRepository().get(_currentBarangay);
+
+    final children = childRepo.getByBarangay(_currentBarangay).where((c) => c.isActive).toList();
+    final boys = children.where((c) => c.gender == 'Male').toList()
+      ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+    final girls = children.where((c) => c.gender == 'Female').toList()
+      ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+
+    final startMonth = _monthlyPartIndex == 0 ? 1 : 7;
+    final endMonth = _monthlyPartIndex == 0 ? 6 : 12;
+    final monthNames = [
+      'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+      'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+    ];
+
+    Widget buildGenderTable(String sectionLabel, List<dynamic> kids) {
+      int suwCount = 0;
+      int uwCount = 0;
+
+      final dataRows = <List<String>>[];
+      for (final child in kids) {
+        final row = <String>[
+          '${child.birthDate.year}',
+          '${child.birthDate.month}',
+          '${child.birthDate.day}',
+        ];
+        final measurements = measurementRepo.getForChild(child.id);
+
+        for (int m = startMonth; m <= endMonth; m++) {
+          final totalMonths = (_period.year - child.birthDate.year) * 12 + (m - child.birthDate.month);
+          String ageStr = '';
+          String wtStr = '';
+          String statusStr = '';
+
+          if (totalMonths < 0) {
+            ageStr = '';
+          } else if (totalMonths > 23) {
+            final prevMonths = (_period.year - child.birthDate.year) * 12 + (m - 1 - child.birthDate.month);
+            if (prevMonths <= 23) {
+              ageStr = 'OA';
+            }
+          } else {
+            ageStr = '$totalMonths';
+            final recs = measurements.where((r) => r.date.year == _period.year && r.date.month == m).toList();
+            if (recs.isNotEmpty) {
+              final r = recs.first;
+              wtStr = r.weightKg.toStringAsFixed(1);
+              statusStr = _mapWeightStatusCode(r.weightForAgeStatus);
+              if (statusStr == 'SUW') suwCount++;
+              if (statusStr == 'UW') uwCount++;
+            }
+          }
+
+          row.addAll([ageStr, wtStr, statusStr]);
+        }
+        dataRows.add(row);
+      }
+
+      // Build header row 1 and row 2 widgets for right side
+      final headerRow1 = Row(
+        children: [
+          Container(
+            width: 195, // YR, MO, DAY (65 * 3)
+            height: 28,
+            alignment: Alignment.center,
+            color: AppColors.darkGreen,
+            child: const Text('DATE OF BIRTH', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+          ),
+          for (int m = startMonth; m <= endMonth; m++)
+            Container(
+              width: 195, // AGE, WT, STATUS (65 * 3)
+              height: 28,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AppColors.darkGreen,
+                border: Border(left: BorderSide(color: Colors.white24, width: 0.5)),
+              ),
+              child: Text(
+                '${monthNames[m - 1]}, ${_period.year}',
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ),
+        ],
+      );
+
+      final headerRow2 = Row(
+        children: [
+          for (final label in ['YEAR', 'MO.', 'DAY'])
+            Container(
+              width: 65,
+              height: 28,
+              alignment: Alignment.center,
+              color: AppColors.darkGreen.withValues(alpha: 0.9),
+              child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+            ),
+          for (int m = startMonth; m <= endMonth; m++) ...[
+            for (final label in ['AGE (MO)', 'WEIGHT (KGS)', 'WEIGHT STATUS'])
+              Container(
+                width: 65,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.darkGreen.withValues(alpha: 0.9),
+                  border: const Border(left: BorderSide(color: Colors.white24, width: 0.5)),
+                ),
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                ),
+              ),
+          ],
+        ],
+      );
+
+      final bnsName = signatory?.bnsName.isNotEmpty == true ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 6),
+            child: Text(
+              sectionLabel,
+              style: AppTextStyles.label.copyWith(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.darkGreen),
+            ),
+          ),
+          _buildStickyTable(
+            leftHeaderTitle: 'NAME OF CHILD',
+            leftNames: kids.map((k) => k.fullName.toString()).toList(),
+            headerWidgets: [headerRow1, headerRow2],
+            dataRightRows: dataRows,
+            colWidth: 65.0,
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('NO. OF SEVERELY UNDERWEIGHT: $suwCount', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.statRed)),
+                    const SizedBox(height: 2),
+                    Text('NO. OF UNDERWEIGHT: $uwCount', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.statAmber)),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('DATE ACCOMPLISHED: ${_fmtDateOnly(DateTime.now())}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                    const SizedBox(height: 2),
+                    Text('ACCOMPLISHED BY: $bnsName', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Center Bold Header Block
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  'MONTHLY RECORD OF WEIGHT AND WEIGHT STATUS',
+                  style: AppTextStyles.label.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'INFANTS 0-23 MONTHS',
+                  style: AppTextStyles.body.copyWith(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.darkGreen),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'PROVINCE: ${_currentProvince.toUpperCase()}  |  CITY/MUNICIPALITY: ${_currentMunicipality.toUpperCase()}  |  BARANGAY: ${_currentBarangay.toUpperCase()}',
+                  style: AppTextStyles.caption.copyWith(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.textMuted),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Part Selector Tabs
+          Row(
+            children: [
+              Expanded(
+                child: ChoiceChip(
+                  label: const Text('JAN – JUN (Part 1)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  selected: _monthlyPartIndex == 0,
+                  selectedColor: AppColors.darkGreen,
+                  labelStyle: TextStyle(color: _monthlyPartIndex == 0 ? Colors.white : AppColors.textPrimary),
+                  onSelected: (val) {
+                    if (val) setState(() => _monthlyPartIndex = 0);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ChoiceChip(
+                  label: const Text('JUL – DEC (Part 2)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  selected: _monthlyPartIndex == 1,
+                  selectedColor: AppColors.darkGreen,
+                  labelStyle: TextStyle(color: _monthlyPartIndex == 1 ? Colors.white : AppColors.textPrimary),
+                  onSelected: (val) {
+                    if (val) setState(() => _monthlyPartIndex = 1);
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Tables for Boys & Girls
+          buildGenderTable('BOYS', boys),
+          const SizedBox(height: 16),
+          buildGenderTable('GIRLS', girls),
+
+          const SizedBox(height: 16),
+          const Divider(color: AppColors.border),
+          const SizedBox(height: 8),
+
+          // Signatories
+          _buildSignatoryFooter(signatory),
+        ],
+      ),
+    );
+  }
+
+  // ── QUARTERLY 24-59 PREVIEW (Clean simple UI + Frozen NAME column) ──
+  Widget _buildQuarterly24to59Preview() {
+    final childRepo = ChildRepository();
+    final measurementRepo = MeasurementRepository();
+    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+
+    final children = childRepo.getByBarangay(_currentBarangay).where((c) => c.isActive).toList();
+    final boys = children.where((c) => c.gender == 'Male').toList()
+      ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+    final girls = children.where((c) => c.gender == 'Female').toList()
+      ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+
+    final bnsName = signatory?.bnsName.isNotEmpty == true ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+
+    final qMonths = [
+      [1, 2, 3],
+      [4, 5, 6],
+      [7, 8, 9],
+      [10, 11, 12]
+    ];
+
+    Widget buildQuarterlySection(String sectionLabel, List<dynamic> kids) {
+      final dataRows = <List<String>>[];
+
+      for (final child in kids) {
+        final row = <String>[
+          child.guardian.fullName.toString(),
+          '${child.birthDate.month}/${child.birthDate.day}/${child.birthDate.year}',
+        ];
+
+        final measurements = measurementRepo.getForChild(child.id);
+
+        final dates = <String>[];
+        final ages = <String>[];
+        final wts = <String>[];
+        final statuses = <String>[];
+
+        for (int q = 0; q < 4; q++) {
+          final months = qMonths[q];
+          final targetMonth = (q + 1) * 3;
+          final qRecs = measurements.where((m) => m.date.year == _period.year && months.contains(m.date.month)).toList();
+
+          final totalMonths = (_period.year - child.birthDate.year) * 12 + (targetMonth - child.birthDate.month);
+
+          if (qRecs.isNotEmpty) {
+            final rec = qRecs.first;
+            final ageAtWeighing = (rec.date.year - child.birthDate.year) * 12 + (rec.date.month - child.birthDate.month);
+            dates.add('${rec.date.month}/${rec.date.day}/${rec.date.year}');
+            ages.add(ageAtWeighing > 59 ? 'OA' : '$ageAtWeighing');
+            wts.add(rec.weightKg.toStringAsFixed(1));
+            statuses.add(_mapWeightStatusCode(rec.weightForAgeStatus));
+          } else {
+            dates.add('');
+            if (totalMonths > 59) {
+              final prevTargetMonth = q > 0 ? q * 3 : 1;
+              final prevMonths = (_period.year - child.birthDate.year) * 12 + (prevTargetMonth - child.birthDate.month);
+              ages.add(prevMonths <= 59 ? 'OA' : '');
+            } else if (totalMonths >= 24) {
+              ages.add('$totalMonths');
+            } else {
+              ages.add('');
+            }
+            wts.add('');
+            statuses.add('');
+          }
+        }
+
+        row.addAll(dates);
+        row.addAll(ages);
+        row.addAll(wts);
+        row.addAll(statuses);
+        row.add(''); // REMARKS
+
+        dataRows.add(row);
+      }
+
+      // Header row 1 for Quarterly
+      final headerRow1 = Row(
+        children: [
+          Container(
+            width: 140, // NAME OF FATHER/MOTHER
+            height: 28,
+            alignment: Alignment.center,
+            color: AppColors.darkGreen,
+            child: const Text('NAME OF FATHER/MOTHER', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+          ),
+          Container(
+            width: 90, // DATE OF BIRTH
+            height: 28,
+            alignment: Alignment.center,
+            color: AppColors.darkGreen,
+            child: const Text('DATE OF BIRTH', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+          ),
+          for (final sectionTitle in ['DATE OF WEIGHING', 'AGE IN MOS.', 'WEIGHT IN KLS.', 'NUTRITIONAL STATUS'])
+            Container(
+              width: 240, // 4 quarters (60 * 4)
+              height: 28,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AppColors.darkGreen,
+                border: Border(left: BorderSide(color: Colors.white24, width: 0.5)),
+              ),
+              child: Text(sectionTitle, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+            ),
+          Container(
+            width: 100, // REMARKS
+            height: 28,
+            alignment: Alignment.center,
+            color: AppColors.darkGreen,
+            child: const Text('REMARKS', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      );
+
+      // Header row 2 for Quarterly
+      final headerRow2 = Row(
+        children: [
+          Container(width: 140, height: 28, color: AppColors.darkGreen.withValues(alpha: 0.9)),
+          Container(width: 90, height: 28, color: AppColors.darkGreen.withValues(alpha: 0.9)),
+          for (int s = 0; s < 4; s++) ...[
+            for (final q in ['1ST', '2ND', '3RD', '4TH'])
+              Container(
+                width: 60,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.darkGreen.withValues(alpha: 0.9),
+                  border: const Border(left: BorderSide(color: Colors.white24, width: 0.5)),
+                ),
+                child: Text(q, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+              ),
+          ],
+          Container(width: 100, height: 28, color: AppColors.darkGreen.withValues(alpha: 0.9)),
+        ],
+      );
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Form Header Block
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('BNS FORM NO: 1-A  ·  Food and Nutrition Program', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                      const Text('Revised Boac MNC  ·  Date: January 2004', style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+                      const SizedBox(height: 4),
+                      Text('QUARTERLY FULL WEIGHING RECORD ($sectionLabel)', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.darkGreen)),
+                      Text('1. NAME OF BNS: $bnsName', style: const TextStyle(fontSize: 9)),
+                      Text('2. BARANGAY: ${_currentBarangay.toUpperCase()}', style: const TextStyle(fontSize: 9)),
+                      Text('3. MUNICIPALITY: ${_currentMunicipality.toUpperCase()}', style: const TextStyle(fontSize: 9)),
+                      Text('4. PROVINCE: ${_currentProvince.toUpperCase()}', style: const TextStyle(fontSize: 9)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Inclusive date of Weighing: 1ST | 2ND | 3RD | 4TH', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      const Text('Total no. of Families Surveyed: _____', style: TextStyle(fontSize: 9)),
+                      const Text('Total no. of Families with PS: _____', style: TextStyle(fontSize: 9)),
+                      const Text('Total no. of Families with/out PS: _____', style: TextStyle(fontSize: 9)),
+                      Text('Total no. of Children Weighed: ${kids.length}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          _buildStickyTable(
+            leftHeaderTitle: 'NAME OF CHILD / $sectionLabel',
+            leftNames: kids.map((k) => k.fullName.toString()).toList(),
+            headerWidgets: [headerRow1, headerRow2],
+            dataRightRows: dataRows,
+            colWidth: 60.0,
+            customRightWidths: const [140.0, 90.0],
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          buildQuarterlySection('BOYS', boys),
+          const SizedBox(height: 20),
+          buildQuarterlySection('GIRLS', girls),
+
+          const SizedBox(height: 16),
+          const Divider(color: AppColors.border),
+          const SizedBox(height: 8),
+
+          _buildSignatoryFooter(signatory),
+        ],
+      ),
+    );
+  }
+
+  // ── REUSABLE STICKY LEFT COLUMN TABLE WIDGET ──
+  Widget _buildStickyTable({
+    required String leftHeaderTitle,
+    required List<String> leftNames,
+    required List<Widget> headerWidgets,
+    required List<List<String>> dataRightRows,
+    required double colWidth,
+    List<double>? customRightWidths,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Sticky Left Column (NAME OF CHILD)
+          Container(
+            width: 150,
+            decoration: const BoxDecoration(
+              border: Border(right: BorderSide(color: AppColors.darkGreen, width: 1.5)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  height: 56, // Height matching 2 header rows (28 * 2)
+                  color: AppColors.darkGreen,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    leftHeaderTitle,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+                  ),
+                ),
+                ...leftNames.asMap().entries.map((e) {
+                  final idx = e.key;
+                  final name = e.value;
+                  final isEven = idx % 2 == 0;
+                  return Container(
+                    height: 36,
+                    color: isEven ? Colors.white : AppColors.background.withValues(alpha: 0.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    alignment: Alignment.centerLeft,
+                    decoration: const BoxDecoration(
+                      border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
+                    ),
+                    child: Text(
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          // Scrollable Right Columns
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...headerWidgets,
+                  ...dataRightRows.asMap().entries.map((e) {
+                    final idx = e.key;
+                    final row = e.value;
+                    final isEven = idx % 2 == 0;
+                    return Container(
+                      height: 36,
+                      color: isEven ? Colors.white : AppColors.background.withValues(alpha: 0.5),
+                      child: Row(
+                        children: row.asMap().entries.map((cellEntry) {
+                          final cIdx = cellEntry.key;
+                          final cellText = cellEntry.value;
+
+                          double width = colWidth;
+                          if (customRightWidths != null && cIdx < customRightWidths.length) {
+                            width = customRightWidths[cIdx];
+                          }
+
+                          return Container(
+                            width: width,
+                            height: 36,
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: const BoxDecoration(
+                              border: Border(
+                                right: BorderSide(color: AppColors.border, width: 0.5),
+                                bottom: BorderSide(color: AppColors.border, width: 0.5),
+                              ),
+                            ),
+                            child: Text(
+                              cellText,
+                              style: const TextStyle(fontSize: 9),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSignatoryFooter(ReportSignatory? signatory) {
     final sig1 = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
     final sig2 = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : 'FELIX S. NAMBIO JR.';
     final sig3 = (signatory?.mnaoAdminAideName.isNotEmpty ?? false) ? signatory!.mnaoAdminAideName : 'MA. THERESA F. LAUDIT';
     final sig4 = (signatory?.dnpcName.isNotEmpty ?? false) ? signatory!.dnpcName : 'MAUREEN F. LEYCO';
 
-    int suw = 0;
-    int uw = 0;
-    if (widget.reportType.id == 'monthly_weight_record') {
-      final children = ChildRepository()
-          .getByBarangay(_currentBarangay)
-          .where((c) => c.isActive && c.ageInMonths < 24);
-      for (final c in children) {
-        if (c.nutritionStatus.toLowerCase().contains('severely underweight')) {
-          suw++;
-        } else if (c.nutritionStatus.toLowerCase().contains('underweight')) {
-          uw++;
-        }
-      }
-    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildPreviewSigCol('SUBMITTED BY:', sig1, 'BNS'),
+          const SizedBox(width: 24),
+          _buildPreviewSigCol('NOTED BY:', sig2, 'PUNONG BARANGAY'),
+          const SizedBox(width: 24),
+          _buildPreviewSigCol('APPROVED BY:', sig3, 'ADMIN AIDE IV- MNAO OIC'),
+          const SizedBox(width: 24),
+          _buildPreviewSigCol('APPROVED BY:', sig4, 'DNPC'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGenericRecordPreview() {
+    final data = _buildExcelData(widget.reportType.id);
+    final signatory = ReportSignatoryRepository().get(_currentBarangay);
 
     return Container(
       decoration: BoxDecoration(
@@ -765,43 +1255,16 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      widget.reportType.title,
-                      style: AppTextStyles.label.copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Barangay $_currentBarangay',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.darkGreen,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
                 Text(
-                  'PROVINCE: MARINDUQUE  ·  CITY/MUN: GASAN  ·  YEAR: ${_period.year}',
-                  style: AppTextStyles.caption.copyWith(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
-                  ),
+                  widget.reportType.title,
+                  style: AppTextStyles.label.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'Barangay $_currentBarangay',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.darkGreen),
                 ),
               ],
             ),
@@ -811,61 +1274,37 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             scrollDirection: Axis.horizontal,
             child: Table(
               defaultColumnWidth: const IntrinsicColumnWidth(),
-              border: TableBorder.all(
-                color: AppColors.border.withValues(alpha: 0.6),
-                width: 0.5,
-              ),
+              border: TableBorder.all(color: AppColors.border.withValues(alpha: 0.6), width: 0.5),
               children: [
-                // Table Header
                 TableRow(
-                  decoration: const BoxDecoration(
-                    color: AppColors.darkGreen,
-                  ),
+                  decoration: const BoxDecoration(color: AppColors.darkGreen),
                   children: data.headers
                       .map(
                         (h) => Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           child: Text(
                             h.toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                         ),
                       )
                       .toList(),
                 ),
-                // Table Data Rows
                 ...data.rows.asMap().entries.map((entry) {
                   final idx = entry.key;
                   final row = entry.value;
-                  final isSectionHeader = row.every((val) => val == row.first) && row.first.isNotEmpty;
                   final isEven = idx % 2 == 0;
                   return TableRow(
                     decoration: BoxDecoration(
-                      color: isSectionHeader
-                          ? AppColors.darkGreen.withValues(alpha: 0.1)
-                          : (isEven ? Colors.white : AppColors.background.withValues(alpha: 0.5)),
+                      color: isEven ? Colors.white : AppColors.background.withValues(alpha: 0.5),
                     ),
                     children: row
                         .map(
                           (val) => Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 7,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                             child: Text(
                               val.toString(),
-                              style: AppTextStyles.body.copyWith(
-                                fontSize: 11,
-                                fontWeight: isSectionHeader ? FontWeight.bold : FontWeight.w400,
-                                color: isSectionHeader ? AppColors.darkGreen : AppColors.textPrimary,
-                              ),
+                              style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textPrimary),
                             ),
                           ),
                         )
@@ -875,43 +1314,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               ],
             ),
           ),
-          if (widget.reportType.id == 'monthly_weight_record') ...[
-            const Divider(color: AppColors.border),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              child: Row(
-                children: [
-                  Text(
-                    'NO. OF SEVERELY UNDERWEIGHT: $suw',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.statRed),
-                  ),
-                  const SizedBox(width: 20),
-                  Text(
-                    'NO. OF UNDERWEIGHT: $uw',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.statAmber),
-                  ),
-                ],
-              ),
-            ),
-          ],
           const Divider(color: AppColors.border),
           Padding(
             padding: const EdgeInsets.all(14),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildPreviewSigCol('SUBMITTED BY:', sig1, 'BNS'),
-                  const SizedBox(width: 24),
-                  _buildPreviewSigCol('NOTED BY:', sig2, 'PUNONG BARANGAY'),
-                  const SizedBox(width: 24),
-                  _buildPreviewSigCol('APPROVED BY:', sig3, 'ADMIN AIDE IV- MNAO OIC'),
-                  const SizedBox(width: 24),
-                  _buildPreviewSigCol('APPROVED BY:', sig4, 'DNPC'),
-                ],
-              ),
-            ),
+            child: _buildSignatoryFooter(signatory),
           ),
         ],
       ),

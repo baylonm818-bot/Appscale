@@ -57,7 +57,7 @@ class ReportTypes {
   // 2. Individual Records
   static const monthlyWeightRecord = ReportTypeInfo(
     id: 'monthly_weight_record',
-    title: 'Monthly Record of Weight & Height Status (0–23 Months)',
+    title: 'Monthly Record of Weight & Weight Status (0–23 Months)',
     category: ReportCategory.individualRecord,
     formats: [ExportFormat.excel],
   );
