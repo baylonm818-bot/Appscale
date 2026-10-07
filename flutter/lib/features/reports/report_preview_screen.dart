@@ -128,11 +128,33 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   Future<void> _exportExcel() async {
     setState(() => _isExporting = true);
     final data = _buildExcelData(widget.reportType.id);
-    await ReportExcelService().exportAndShare(
-      fileTitle: '${widget.reportType.id}_$_currentBarangay',
+    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+
+    int suw = 0;
+    int uw = 0;
+    if (widget.reportType.id == 'monthly_weight_record') {
+      final children = ChildRepository()
+          .getByBarangay(_currentBarangay)
+          .where((c) => c.isActive && c.ageInMonths < 24);
+      for (final c in children) {
+        if (c.nutritionStatus.toLowerCase().contains('severely underweight')) {
+          suw++;
+        } else if (c.nutritionStatus.toLowerCase().contains('underweight')) {
+          uw++;
+        }
+      }
+    }
+
+    await ReportExcelService().exportIndividualRecordAndShare(
+      reportTypeId: widget.reportType.id,
+      fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
+      title: widget.reportType.title,
+      barangay: _currentBarangay,
+      year: _period.year,
       data: data,
-      metadataLine:
-          '${widget.reportType.title} · Barangay: $_currentBarangay · Generated: ${DateTime.now().toString().split(' ').first}',
+      signatory: signatory,
+      suwCount: suw,
+      uwCount: uw,
     );
     if (mounted) setState(() => _isExporting = false);
   }
@@ -711,7 +733,26 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   Widget _buildRecordPreview() {
     final data = _buildExcelData(widget.reportType.id);
-    final previewRows = data.rows.take(10).toList();
+    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+    final sig1 = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+    final sig2 = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : 'FELIX S. NAMBIO JR.';
+    final sig3 = (signatory?.mnaoAdminAideName.isNotEmpty ?? false) ? signatory!.mnaoAdminAideName : 'MA. THERESA F. LAUDIT';
+    final sig4 = (signatory?.dnpcName.isNotEmpty ?? false) ? signatory!.dnpcName : 'MAUREEN F. LEYCO';
+
+    int suw = 0;
+    int uw = 0;
+    if (widget.reportType.id == 'monthly_weight_record') {
+      final children = ChildRepository()
+          .getByBarangay(_currentBarangay)
+          .where((c) => c.isActive && c.ageInMonths < 24);
+      for (final c in children) {
+        if (c.nutritionStatus.toLowerCase().contains('severely underweight')) {
+          suw++;
+        } else if (c.nutritionStatus.toLowerCase().contains('underweight')) {
+          uw++;
+        }
+      }
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -724,29 +765,42 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.all(14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Record Preview (${data.rows.length} Total)',
-                  style: AppTextStyles.label.copyWith(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Barangay $_currentBarangay',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkGreen,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      widget.reportType.title,
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Barangay $_currentBarangay',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.darkGreen,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'PROVINCE: MARINDUQUE  ·  CITY/MUN: GASAN  ·  YEAR: ${_period.year}',
+                  style: AppTextStyles.caption.copyWith(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
                   ),
                 ),
               ],
@@ -787,15 +841,16 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                       .toList(),
                 ),
                 // Table Data Rows
-                ...previewRows.asMap().entries.map((entry) {
+                ...data.rows.asMap().entries.map((entry) {
                   final idx = entry.key;
                   final row = entry.value;
+                  final isSectionHeader = row.every((val) => val == row.first) && row.first.isNotEmpty;
                   final isEven = idx % 2 == 0;
                   return TableRow(
                     decoration: BoxDecoration(
-                      color: isEven
-                          ? Colors.white
-                          : AppColors.background.withValues(alpha: 0.5),
+                      color: isSectionHeader
+                          ? AppColors.darkGreen.withValues(alpha: 0.1)
+                          : (isEven ? Colors.white : AppColors.background.withValues(alpha: 0.5)),
                     ),
                     children: row
                         .map(
@@ -808,7 +863,8 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                               val.toString(),
                               style: AppTextStyles.body.copyWith(
                                 fontSize: 11,
-                                fontWeight: FontWeight.w400,
+                                fontWeight: isSectionHeader ? FontWeight.bold : FontWeight.w400,
+                                color: isSectionHeader ? AppColors.darkGreen : AppColors.textPrimary,
                               ),
                             ),
                           ),
@@ -819,18 +875,44 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               ],
             ),
           ),
-          if (data.rows.length > 10)
+          if (widget.reportType.id == 'monthly_weight_record') ...[
+            const Divider(color: AppColors.border),
             Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                '+ ${data.rows.length - 10} more records in the exported file',
-                style: AppTextStyles.caption.copyWith(
-                  fontSize: 11,
-                  fontStyle: FontStyle.italic,
-                  color: AppColors.textMuted,
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: Row(
+                children: [
+                  Text(
+                    'NO. OF SEVERELY UNDERWEIGHT: $suw',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.statRed),
+                  ),
+                  const SizedBox(width: 20),
+                  Text(
+                    'NO. OF UNDERWEIGHT: $uw',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.statAmber),
+                  ),
+                ],
               ),
             ),
+          ],
+          const Divider(color: AppColors.border),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildPreviewSigCol('SUBMITTED BY:', sig1, 'BNS'),
+                  const SizedBox(width: 24),
+                  _buildPreviewSigCol('NOTED BY:', sig2, 'PUNONG BARANGAY'),
+                  const SizedBox(width: 24),
+                  _buildPreviewSigCol('APPROVED BY:', sig3, 'ADMIN AIDE IV- MNAO OIC'),
+                  const SizedBox(width: 24),
+                  _buildPreviewSigCol('APPROVED BY:', sig4, 'DNPC'),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

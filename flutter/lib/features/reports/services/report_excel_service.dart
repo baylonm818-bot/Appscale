@@ -48,6 +48,92 @@ class ReportExcelService {
     await Share.shareXFiles([XFile(file.path)], text: fileTitle);
   }
 
+  Future<void> exportIndividualRecordAndShare({
+    required String reportTypeId,
+    required String fileTitle,
+    required String title,
+    required String barangay,
+    required int year,
+    required ExcelTableData data,
+    required ReportSignatory? signatory,
+    int suwCount = 0,
+    int uwCount = 0,
+  }) async {
+    final workbook = xls.Excel.createExcel();
+    String sheetName = '0-23 MOS.';
+    if (reportTypeId == 'quarterly_weighing') {
+      sheetName = '24-59 MOS.';
+    } else if (reportTypeId == 'opt_plus') {
+      sheetName = 'OPT PLUS';
+    } else if (reportTypeId.contains('masterlist')) {
+      sheetName = 'MASTERLIST';
+    }
+
+    final sheet = workbook[sheetName];
+    workbook.delete('Sheet1');
+
+    // Official Form Header Block
+    sheet.appendRow([xls.TextCellValue('PROVINCE: MARINDUQUE'), xls.TextCellValue(''), xls.TextCellValue('CITY/MUNICIPALITY: GASAN'), xls.TextCellValue(''), xls.TextCellValue('BARANGAY: ${barangay.toUpperCase()}')]);
+    sheet.appendRow([xls.TextCellValue(title.toUpperCase())]);
+    sheet.appendRow([xls.TextCellValue('YEAR: $year')]);
+    sheet.appendRow([]);
+
+    // Table Headers
+    sheet.appendRow(
+      data.headers.map((h) => xls.TextCellValue(normalizeCellValue(h).replaceAll('\n', ' '))).toList(),
+    );
+
+    // Data Rows
+    for (final row in data.rows) {
+      sheet.appendRow(
+        row.map((v) => xls.TextCellValue(normalizeCellValue(v))).toList(),
+      );
+    }
+
+    // Summary counts for 0-23 Months Monthly Weight Record
+    if (reportTypeId == 'monthly_weight_record') {
+      sheet.appendRow([]);
+      sheet.appendRow([xls.TextCellValue('NO. OF SEVERELY UNDERWEIGHT: $suwCount')]);
+      sheet.appendRow([xls.TextCellValue('NO. OF UNDERWEIGHT: $uwCount')]);
+    }
+
+    // Signatory Block
+    sheet.appendRow([]);
+    sheet.appendRow([]);
+    final sig1 = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+    final sig2 = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : 'FELIX S. NAMBIO JR.';
+    final sig3 = (signatory?.mnaoAdminAideName.isNotEmpty ?? false) ? signatory!.mnaoAdminAideName : 'MA. THERESA F. LAUDIT';
+    final sig4 = (signatory?.dnpcName.isNotEmpty ?? false) ? signatory!.dnpcName : 'MAUREEN F. LEYCO';
+
+    sheet.appendRow([
+      xls.TextCellValue('SUBMITTED / ACCOMPLISHED BY:'), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue('NOTED BY:'), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue('APPROVED BY:')
+    ]);
+    sheet.appendRow([]);
+    sheet.appendRow([
+      xls.TextCellValue(sig1), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue(sig2), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue(sig3), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue(sig4)
+    ]);
+    sheet.appendRow([
+      xls.TextCellValue('BARANGAY NUTRITION SCHOLAR (BNS)'), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue('PUNONG BARANGAY'), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue('ADMIN AIDE IV- MNAO OIC'), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue('DNPC')
+    ]);
+
+    final bytes = workbook.encode();
+    if (bytes == null) return;
+
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/$fileTitle.xlsx');
+    await file.writeAsBytes(bytes);
+
+    await Share.shareXFiles([XFile(file.path)], text: fileTitle);
+  }
+
   Future<void> exportConsolidationMatrixAndShare({
     required String fileTitle,
     required ConsolidationMatrixData matrix,
