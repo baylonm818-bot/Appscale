@@ -46,23 +46,26 @@ class DashboardRepository {
         label: 'Children 0-59 months',
         value: '${activeChildren.length}',
         subtitle: childrenThisMonth > 0
-            ? '↑ $childrenThisMonth this month'
+            ? '↑ $childrenThisMonth new this month'
             : 'No new records this month',
         accentColor: const Color(0xFF1B5E20), // deep green
+        icon: Icons.child_care_rounded,
       ),
       StatCardData(
         label: 'Lactating Mothers',
         value: '${activeMothers.length}',
         subtitle: mothersThisMonth > 0
-            ? '↑ $mothersThisMonth this month'
+            ? '↑ $mothersThisMonth new this month'
             : 'No new records this month',
         accentColor: const Color(0xFF00796B), // teal
+        icon: Icons.pregnant_woman_rounded,
       ),
       StatCardData(
         label: 'SAM / Severe cases',
         value: '$samCases',
-        subtitle: samCases > 0 ? 'Needs intervention' : 'No active SAM cases',
+        subtitle: samCases > 0 ? 'Needs immediate intervention' : 'No active SAM cases',
         accentColor: const Color(0xFFC0392B), // red-terracotta
+        icon: Icons.warning_amber_rounded,
       ),
       StatCardData(
         label: 'Feeding enrollees',
@@ -71,6 +74,7 @@ class DashboardRepository {
             ? '$enrolledCount active in program'
             : 'No children enrolled yet',
         accentColor: const Color(0xFF7A8B1F), // olive
+        icon: Icons.restaurant_menu_rounded,
       ),
     ];
   }

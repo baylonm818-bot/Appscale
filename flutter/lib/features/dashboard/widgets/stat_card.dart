@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../models/dashboard_models.dart';
 
-/// Sizes itself to its own content — no forced aspect ratio. Two of these
-/// placed in an IntrinsicHeight Row will always match each other's height
-/// naturally, and neither can ever overflow regardless of device font
-/// scaling or screen density.
+/// Web-portal–style stat card: white background, large metric on the left,
+/// coloured circular icon on the right — exactly matching the Admin Dashboard.
 class StatCard extends StatelessWidget {
   final StatCardData data;
   final VoidCallback? onTap;
@@ -13,59 +12,102 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isPositiveSub = data.subtitle.startsWith('↑') ||
+        data.subtitle.contains('this month') && !data.subtitle.startsWith('No');
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: data.accentColor,
-          borderRadius: BorderRadius.circular(14),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
-              color: data.accentColor.withValues(alpha: 0.35),
-              blurRadius: 6,
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
               offset: const Offset(0, 3),
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              data.value,
-              style: AppTextStyles.h1.copyWith(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+            // Left: number + label + subtitle
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Label row (small, muted)
+                  Text(
+                    data.label,
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  // Big value
+                  Text(
+                    data.value,
+                    style: AppTextStyles.h1.copyWith(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                      height: 1.0,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  // Subtitle with optional colour indicator
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          data.subtitle,
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: 10,
+                            color: isPositiveSub
+                                ? AppColors.primaryGreen
+                                : AppColors.textMuted,
+                            fontWeight: isPositiveSub
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
-            Text(
-              data.label,
-              style: AppTextStyles.body.copyWith(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-                height: 1.2,
+            const SizedBox(width: 10),
+            // Right: coloured circular icon
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: data.accentColor.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              data.subtitle,
-              style: AppTextStyles.body.copyWith(
-                fontSize: 10,
-                color: Colors.white.withValues(alpha: 0.88),
-                height: 1.2,
+              child: Icon(
+                data.icon,
+                color: data.accentColor,
+                size: 22,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

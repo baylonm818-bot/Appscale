@@ -5,12 +5,14 @@ class StatCardData {
   final String value;
   final String subtitle;
   final Color accentColor;
+  final IconData icon;
 
   const StatCardData({
     required this.label,
     required this.value,
     required this.subtitle,
     required this.accentColor,
+    this.icon = Icons.bar_chart_rounded,
   });
 }
 
