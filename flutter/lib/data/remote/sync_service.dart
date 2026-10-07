@@ -118,9 +118,9 @@ class SyncService {
       groupedNr[childExtId]!.add({
         'childId': childExtId,
         'date': _dateOnly(nr['record_date']),
-        'weightKg': (nr['weight_kg'] as num?)?.toDouble() ?? 0.0,
-        'heightCm': (nr['height_cm'] as num?)?.toDouble() ?? 0.0,
-        'muacCm': (nr['muac_cm'] as num?)?.toDouble(),
+        'weightKg': _toDouble(nr['weight_kg']),
+        'heightCm': _toDouble(nr['height_cm']),
+        'muacCm': _toOptionalDouble(nr['muac_cm']),
         'bilateralPittingEdema': nr['bilateral_pitting_edema'] == 1 || nr['bilateral_pitting_edema'] == true,
         'weightForAgeStatus': _displayStatus(nr['weight_status']),
         'heightForAgeStatus': _displayStatus(nr['height_status']),
@@ -193,7 +193,7 @@ class SyncService {
         'barangay': r['barangay'] as String? ?? barangay,
         'facility': r['referred_to']?.toString() ?? '',
         'reason': r['reason'] as String? ?? '',
-        'notes': r['response_notes'] as String? ?? '',
+        'notes': (r['notes'] ?? r['response_notes'] ?? '').toString(),
         'status': r['status'] as String? ?? 'Pending',
         'createdAt': r['created_at'] as String? ?? DateTime.now().toIso8601String(),
         '_syncStatus': 'synced',
@@ -308,6 +308,20 @@ class SyncService {
     if (val is int) return val == 1;
     if (val is String) return val == '1' || val.toLowerCase() == 'true';
     return false;
+  }
+
+  double _toDouble(dynamic val, {double fallback = 0.0}) {
+    if (val == null) return fallback;
+    if (val is num) return val.toDouble();
+    if (val is String) return double.tryParse(val) ?? fallback;
+    return fallback;
+  }
+
+  double? _toOptionalDouble(dynamic val) {
+    if (val == null) return null;
+    if (val is num) return val.toDouble();
+    if (val is String) return double.tryParse(val);
+    return null;
   }
 }
 
