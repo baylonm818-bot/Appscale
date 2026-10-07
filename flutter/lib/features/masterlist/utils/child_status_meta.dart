@@ -68,7 +68,7 @@ class ChildStatusMeta {
       case 'Severely Stunted':
         return AppColors.statRed;
       case 'Not weighed':
-        return AppColors.statRed;
+        return AppColors.notWeighed;
       case 'SAM':
         return AppColors.statRed;
       case 'MAM':

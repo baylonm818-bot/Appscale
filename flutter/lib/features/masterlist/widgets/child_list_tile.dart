@@ -40,7 +40,7 @@ class ChildListTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
         color: needsAttention
-            ? AppColors.statRed.withValues(alpha: 0.04)
+            ? AppColors.neutralGrayBg
             : AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
@@ -52,7 +52,7 @@ class ChildListTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: needsAttention
-                    ? AppColors.statRed.withValues(alpha: 0.25)
+                    ? AppColors.neutralGray.withValues(alpha: 0.35)
                     : AppColors.border,
               ),
             ),
@@ -64,7 +64,7 @@ class ChildListTile extends StatelessWidget {
                   height: 42,
                   decoration: BoxDecoration(
                     color: needsAttention
-                        ? AppColors.statRed.withValues(alpha: 0.12)
+                        ? AppColors.neutralGray.withValues(alpha: 0.16)
                         : AppColors.primaryGreen.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
@@ -72,7 +72,7 @@ class ChildListTile extends StatelessWidget {
                   child: Text(
                     child.initials,
                     style: TextStyle(
-                      color: needsAttention ? AppColors.statRed : AppColors.darkGreen,
+                      color: needsAttention ? AppColors.neutralGray : AppColors.darkGreen,
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                     ),

@@ -146,6 +146,7 @@ class DashboardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initials = bnsName.trim().isNotEmpty ? bnsName.trim()[0].toUpperCase() : 'B';
+    final syncLabel = pendingSyncCount == 0 ? '0 pending' : '$pendingSyncCount pending';
 
     return AppGradientHeader(
       child: Row(
@@ -192,10 +193,10 @@ class DashboardHeader extends StatelessWidget {
                   const Icon(Icons.sync, color: Colors.white, size: 14),
                   const SizedBox(width: 4),
                   Text(
-                    '$pendingSyncCount',
+                    syncLabel,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

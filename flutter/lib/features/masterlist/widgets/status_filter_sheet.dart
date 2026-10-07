@@ -74,12 +74,12 @@ class _StatusFilterSheetState extends State<StatusFilterSheet> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: _filter.onlyNotWeighed
-                      ? AppColors.statRed.withValues(alpha: 0.1)
+                      ? AppColors.neutralGrayBg
                       : AppColors.background,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: _filter.onlyNotWeighed
-                        ? AppColors.statRed
+                        ? AppColors.notWeighed
                         : AppColors.border,
                   ),
                 ),
@@ -89,7 +89,7 @@ class _StatusFilterSheetState extends State<StatusFilterSheet> {
                       Icons.error_outline,
                       size: 18,
                       color: _filter.onlyNotWeighed
-                          ? AppColors.statRed
+                          ? AppColors.notWeighed
                           : AppColors.textMuted,
                     ),
                     const SizedBox(width: 8),
@@ -99,7 +99,7 @@ class _StatusFilterSheetState extends State<StatusFilterSheet> {
                         style: AppTextStyles.body.copyWith(
                           fontSize: 13,
                           color: _filter.onlyNotWeighed
-                              ? AppColors.statRed
+                              ? AppColors.notWeighed
                               : AppColors.textPrimary,
                         ),
                       ),
@@ -108,7 +108,7 @@ class _StatusFilterSheetState extends State<StatusFilterSheet> {
                       const Icon(
                         Icons.check_circle,
                         size: 18,
-                        color: AppColors.statRed,
+                        color: AppColors.notWeighed,
                       ),
                   ],
                 ),

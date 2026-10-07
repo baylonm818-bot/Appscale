@@ -19,6 +19,8 @@ import '../../shared/utils/app_user_identity.dart';
 
 import '../../data/local/notification_repository.dart';
 import '../../data/local/program_schedule_repository.dart';
+import '../../data/local/referral_repository.dart';
+import '../../data/local/measurement_repository.dart';
 import '../notifications/notifications_screen.dart';
 import '../profile/user_profile_screen.dart';
 
@@ -40,6 +42,8 @@ class _DashboardBodyState extends State<DashboardBody> {
   final _notificationRepo = NotificationRepository();
   final _childRepo = ChildRepository();
   final _motherRepo = MotherRepository();
+  final _measurementRepo = MeasurementRepository();
+  final _referralRepo = ReferralRepository();
   final _settings = SettingsRepository();
 
 
@@ -74,7 +78,10 @@ class _DashboardBodyState extends State<DashboardBody> {
               DashboardHeader(
                 bnsName: _bnsName,
                 barangayName: 'Barangay $_currentBarangay',
-                pendingSyncCount: _childRepo.pendingCount + _motherRepo.pendingCount,
+                pendingSyncCount: _childRepo.pendingCount +
+                    _motherRepo.pendingCount +
+                    _measurementRepo.pendingCount +
+                    _referralRepo.pendingCount,
                 unreadNotificationCount: unreadNotifs,
                 profileImageUrl: _settings.authUser?['profile_picture']?.toString(),
                 onSyncTap: () => Navigator.push(

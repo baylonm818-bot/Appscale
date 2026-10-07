@@ -1,3 +1,5 @@
+import '../../shared/utils/app_user_identity.dart';
+
 class Mother {
   final String id;
   final String fullName;
@@ -71,12 +73,15 @@ class Mother {
 
     final rawId = (map['id'] ?? map['external_id'] ?? map['mother_id'] ?? '').toString();
     final rawBirth = strVal('birthDate', 'birth_date');
+    final normalizedFullName = AppUserIdentity.normalizeDisplayName(
+      strVal('fullName', 'full_name').isNotEmpty
+          ? strVal('fullName', 'full_name')
+          : apiFullName,
+    );
 
     return Mother(
       id: rawId,
-      fullName: strVal('fullName', 'full_name').isNotEmpty
-          ? strVal('fullName', 'full_name')
-          : apiFullName,
+      fullName: normalizedFullName,
       birthDate: DateTime.parse(
           rawBirth.isNotEmpty ? rawBirth.split('T').first : DateTime.now().toIso8601String()),
       contactNo: strVal('contactNo', 'contact_number'),

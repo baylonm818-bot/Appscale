@@ -16,6 +16,8 @@ class AppColors {
   static const textPrimary = Color(0xFF1E1E1E);
   static const textSecondary = Color(0xFF6B6B6B);
   static const textMuted = Color(0xFF9A9A9A);
+  static const neutralGray = Color(0xFF8A8F93);
+  static const neutralGrayBg = Color(0xFFE7E9EB);
 
   static const border = Color(0xFFE0E0E0);
   static const borderFocused = primaryGreen;
@@ -27,4 +29,5 @@ class AppColors {
   static const statPurple = Color(0xFF6C4BE9);
   static const statBlue = Color(0xFF2E7FE0);
   static const statOrange = Color(0xFFEF9F27);
+  static const notWeighed = neutralGray;
 }
