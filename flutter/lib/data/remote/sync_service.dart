@@ -210,12 +210,16 @@ class SyncService {
       await scheduleBox.put(key, {
         'id': key,
         'title': s['title'] as String? ?? 'Activity',
-        'programType': s['schedule_type'] as String? ?? 'feeding',
+        'programType': _normalizeScheduleType(s['schedule_type'] as String? ?? 'Feeding'),
         'date': _dateOnly(s['schedule_date']),
         'startTime': s['schedule_time'] as String? ?? '08:00 AM',
+        'endTime': s['end_time'] as String? ?? '12:00 PM',
         'location': s['venue'] as String? ?? 'Health Center',
-        'barangay': s['barangay'] as String? ?? barangay,
+        'targetGroup': (s['target_role'] as String? ?? 'All Beneficiaries').toString(),
         'notes': s['notes'] as String? ?? '',
+        'barangay': s['barangay'] as String? ?? barangay,
+        'createdBy': (s['facilitator'] as String? ?? 'RHU Web Admin').toString(),
+        'createdAt': (s['created_at'] as String? ?? DateTime.now().toIso8601String()),
         'status': s['status'] as String? ?? 'pending',
         '_syncStatus': 'synced',
       });
@@ -282,6 +286,24 @@ class SyncService {
   String _mapGender(dynamic raw) {
     final s = (raw ?? '').toString().toLowerCase();
     return (s == 'female' || s == 'f') ? 'Female' : 'Male';
+  }
+
+  String _normalizeScheduleType(String? value) {
+    final normalized = (value ?? 'Feeding').trim();
+    switch (normalized.toLowerCase()) {
+      case 'feeding':
+        return 'Feeding';
+      case 'vitamin_a':
+      case 'vitamin a':
+        return 'Vitamin A';
+      case 'deworming':
+        return 'Deworming';
+      case 'opt_plus':
+      case 'opt plus':
+        return 'OPT Plus';
+      default:
+        return normalized.isEmpty ? 'Feeding' : normalized;
+    }
   }
 
   String _statusOrFallback(dynamic serverVal, dynamic localFallback) {
