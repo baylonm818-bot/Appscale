@@ -58,50 +58,54 @@ class ChildListTile extends StatelessWidget {
                     : AppColors.border,
               ),
             ),
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (needsAttention)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8, top: 2),
-                    child: Icon(
-                      Icons.error_outline,
-                      size: 18,
-                      color: AppColors.statRed,
-                    ),
-                  ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    if (needsAttention)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 6),
+                        child: Icon(
+                          Icons.error_outline,
+                          size: 18,
+                          color: AppColors.statRed,
+                        ),
+                      ),
+                    Expanded(
+                      child: Text(
                         child.fullName,
-                        style: AppTextStyles.label.copyWith(fontSize: 14),
+                        style: AppTextStyles.label.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${child.ageInMonths} mos · ${child.address}',
-                        style: AppTextStyles.body.copyWith(fontSize: 12),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                const SizedBox(height: 2),
+                Text(
+                  '${child.ageInMonths} mos · ${child.address.startsWith("Purok") ? child.address : "Purok ${child.address}"}',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
                     StatusBadge(
                       label: 'WFA: $wfaFormatted',
                       color: ChildStatusMeta.colorFor(wfaFormatted),
                     ),
-                    if (extraBadges.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        alignment: WrapAlignment.end,
-                        children: extraBadges,
-                      ),
-                    ],
+                    ...extraBadges,
                   ],
                 ),
               ],

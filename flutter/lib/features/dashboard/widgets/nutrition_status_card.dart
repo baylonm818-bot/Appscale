@@ -12,7 +12,7 @@ class NutritionStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: 'Nutritional Status - Children',
+      title: 'Nutritional Status (Weight-for-Age)',
       child: items.isEmpty
           ? const EmptyState(
               icon: Icons.bar_chart_outlined,

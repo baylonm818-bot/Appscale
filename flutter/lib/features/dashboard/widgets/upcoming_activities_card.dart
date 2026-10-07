@@ -16,8 +16,7 @@ class UpcomingActivitiesCard extends StatelessWidget {
       child: activities.isEmpty
           ? const EmptyState(
               icon: Icons.event_available_outlined,
-              message:
-                  'No activities scheduled yet. Once the Schedule feature is built, feeding sessions and weighing days will appear here.',
+              message: 'No upcoming activities scheduled.',
             )
           : Column(
               children: [

@@ -179,7 +179,7 @@ class _ReportsHomeScreenState extends State<ReportsHomeScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 100),
               ],
             ),
           ),

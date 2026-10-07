@@ -206,6 +206,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 100),
       ],
     );
   }
@@ -357,7 +358,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
                   ),
                 )
               : ListView.separated(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 100),
                   itemCount: filtered.length,
                   separatorBuilder: (context, index) =>
                       const SizedBox(height: 12),

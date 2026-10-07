@@ -57,13 +57,13 @@ class ReportTypes {
   // 2. Individual Records
   static const monthlyWeightRecord = ReportTypeInfo(
     id: 'monthly_weight_record',
-    title: 'Monthly Record of Weight & Weight Status\n(Underweight/Severely Underweight)',
+    title: 'Monthly Record of Weight & Weight Status (Underweight/Severely Underweight)',
     category: ReportCategory.individualRecord,
     formats: [ExportFormat.excel],
   );
   static const quarterlyWeighing = ReportTypeInfo(
     id: 'quarterly_weighing',
-    title: 'Quarterly Full Weighing Record\n(24–59 Months)',
+    title: 'Quarterly Full Weighing Record (24–59 Months)',
     category: ReportCategory.individualRecord,
     formats: [ExportFormat.excel],
   );

@@ -67,6 +67,7 @@ class _DewormingScreenState extends State<DewormingScreen>
                   .round();
 
         return Scaffold(
+          backgroundColor: AppColors.background,
           appBar: AppBar(
             title: const Text('Deworming Program'),
             backgroundColor: AppColors.darkGreen,

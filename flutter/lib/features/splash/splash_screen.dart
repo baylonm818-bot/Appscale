@@ -37,12 +37,8 @@ class _SplashScreenState extends State<SplashScreen>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
     _controller.forward();
 
-    _navigationTimer = Timer(const Duration(milliseconds: 1800), () async {
-      if (!mounted) return;
-
-      final navigator = Navigator.of(context);
-
-      // Sync all pending local records to server on app launch
+    // Fire pending sync asynchronously so splash screen never blocks on cold start network calls
+    Future.microtask(() async {
       try {
         await Future.wait([
           ChildRepository().syncPending(),
@@ -50,10 +46,14 @@ class _SplashScreenState extends State<SplashScreen>
           MeasurementRepository().syncPending(),
         ]);
       } catch (e) {
-        debugPrint('Sync pending failed on splash: $e');
+        debugPrint('Async background sync on splash: $e');
       }
-      
+    });
+
+    _navigationTimer = Timer(const Duration(milliseconds: 1200), () async {
       if (!mounted) return;
+
+      final navigator = Navigator.of(context);
 
       final settings = SettingsRepository();
 

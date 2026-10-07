@@ -32,14 +32,9 @@ class DashboardRepository {
     final mothersThisMonth = activeMothers
         .where((m) => _isThisMonth(m.createdAt))
         .length;
-    // SAM = wasting SAM (weight-for-length), not weight-for-age —
-    // the clinically correct definition for this indicator.
+    // SAM = wasting SAM (weight-for-length/height < -3SD), strictly per clinical definition.
     final samCases = activeChildren
-        .where((c) {
-          final w = ChildStatusMeta.formatStatus(c.wastingStatus);
-          final n = ChildStatusMeta.formatStatus(c.nutritionStatus);
-          return w == 'SAM' || n == 'Severely Underweight';
-        })
+        .where((c) => ChildStatusMeta.formatStatus(c.wastingStatus) == 'SAM')
         .length;
 
     final enrolledCount = FeedingEnrollmentRepository()
@@ -85,8 +80,8 @@ class DashboardRepository {
     return date.year == now.year && date.month == now.month;
   }
 
-  /// Real distribution across nutritional indicators, computed from every
-  /// active child with at least one recorded measurement.
+  /// Primary Weight-for-Age (WFA) distribution across weighed children.
+  /// Each weighed child belongs to exactly one category, so percentages sum to 100%.
   List<NutritionStatusItem> getNutritionBreakdown() {
     final weighedChildren = _childRepo
         .getByBarangay(_currentBarangay)
@@ -100,24 +95,14 @@ class DashboardRepository {
       'Underweight',
       'Severely Underweight',
       'Overweight',
-      'Obese',
-      'Stunted',
-      'Severely Stunted',
-      'MAM',
-      'SAM',
     ];
     final counts = {for (final s in order) s: 0};
     for (final c in weighedChildren) {
       final sW = ChildStatusMeta.formatStatus(c.nutritionStatus);
-      final sH = ChildStatusMeta.formatStatus(c.stuntingStatus);
-      final sV = ChildStatusMeta.formatStatus(c.wastingStatus);
-
-      if (counts.containsKey(sW)) counts[sW] = counts[sW]! + 1;
-      if (sH == 'Stunted' || sH == 'Severely Stunted') {
-        if (counts.containsKey(sH)) counts[sH] = counts[sH]! + 1;
-      }
-      if (sV == 'SAM' || sV == 'MAM') {
-        if (counts.containsKey(sV)) counts[sV] = counts[sV]! + 1;
+      if (counts.containsKey(sW)) {
+        counts[sW] = counts[sW]! + 1;
+      } else {
+        counts['Normal'] = counts['Normal']! + 1;
       }
     }
 
