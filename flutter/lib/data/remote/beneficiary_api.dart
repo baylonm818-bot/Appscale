@@ -12,10 +12,12 @@ class ApiResponse {
   final bool success;
   final int statusCode;
   final String message;
+  final Map<String, dynamic>? data;
   const ApiResponse({
     required this.success,
     required this.statusCode,
     required this.message,
+    this.data,
   });
 }
 

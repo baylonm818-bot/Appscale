@@ -95,7 +95,13 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
 
     await _referralRepo.add(referral);
     try {
-      await _referralRepo.syncToWeb(referral);
+      final res = await _referralRepo.syncToWeb(referral);
+      if (res.success) {
+        // show server confirmation including referral id if present
+        final serverId = _referralRepo.getById(referral.id)?.toMap()['server_id'];
+        final msg = serverId != null ? 'Referral submitted (ID: $serverId).' : 'Referral submitted successfully.';
+        if (mounted) AppNotificationUI.showSuccess(context, msg);
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() => _isSaving = false);

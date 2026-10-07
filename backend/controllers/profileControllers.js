@@ -50,7 +50,13 @@ exports.getProfile = async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ message: 'User not found.' });
     }
-    return res.status(200).json(rows[0]);
+    const user = rows[0];
+    const pic = user.profile_picture;
+    const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
+    user.profile_picture = pic
+      ? (pic.startsWith('http') ? pic : `${base}${pic}`)
+      : null;
+    return res.status(200).json(user);
   } catch (error) {
     console.error('Get profile error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });
@@ -69,7 +75,11 @@ exports.getProfilePictureData = async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ message: 'User not found.' });
     const picPath = rows[0].profile_picture;
     if (!picPath) return res.status(404).json({ message: 'No profile picture.' });
-    
+    // If the stored profile path is an absolute HTTP URL, return it directly
+    if (picPath.startsWith('http')) {
+      return res.status(200).json({ profile_picture: picPath });
+    }
+
     // Normalize path to prevent path traversal
     const safeRelPath = picPath.replace(/^[/\\]+/, '');
     const absPath = path.resolve(__dirname, '..', safeRelPath);
@@ -174,7 +184,9 @@ exports.uploadProfilePicture = async (req, res) => {
   try {
     const profilePicturePath = `/uploads/profile-pictures/${req.file.filename}`;
     await pool.query('UPDATE users SET profile_picture = ? WHERE user_id = ?', [profilePicturePath, id]);
-    return res.status(200).json({ message: 'Profile picture updated.', profile_picture: profilePicturePath });
+    const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
+    const fullUrl = profilePicturePath.startsWith('http') ? profilePicturePath : `${base}${profilePicturePath}`;
+    return res.status(200).json({ message: 'Profile picture updated.', profile_picture: fullUrl });
   } catch (error) {
     console.error('Upload profile picture error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });

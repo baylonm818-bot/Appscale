@@ -347,10 +347,39 @@ exports.upsertMother = async (req, res) => {
             purok || address || 'Purok 1',
             weight_kg ? Number(weight_kg) : null,
             height_cm ? Number(height_cm) : null,
+            req.body.muac_cm ? Number(req.body.muac_cm) : null,
+            null,
+            null,
+            null,
             resolvedEncodedBy,
             motherId,
           ]
         );
+        // compute bmi and muac status and update
+        try {
+          const safeWeight = req.body.weight_kg ? Number(req.body.weight_kg) : null;
+          const safeHeight = req.body.height_cm ? Number(req.body.height_cm) : null;
+          const safeMuac = req.body.muac_cm ? Number(req.body.muac_cm) : null;
+          let bmi = null;
+          let bmiStatus = null;
+          let muacStatus = null;
+          if (safeWeight && safeHeight && safeHeight > 0) {
+            bmi = Number((safeWeight / Math.pow(safeHeight / 100, 2)).toFixed(2));
+            if (bmi < 18.5) bmiStatus = 'Underweight';
+            else if (bmi < 25) bmiStatus = 'Normal';
+            else if (bmi < 30) bmiStatus = 'Overweight';
+            else bmiStatus = 'Obese';
+          }
+          if (safeMuac != null) {
+            muacStatus = safeMuac < 23 ? 'At risk' : 'Normal';
+          }
+          await pool.query(
+            'UPDATE mothers SET bmi = ?, bmi_status = ?, muac_cm = ?, muac_status = ? WHERE mother_id = ?',
+            [bmi, bmiStatus, safeMuac, muacStatus, motherId]
+          );
+        } catch (e) {
+          console.error('Post-update mother BMI computation failed:', e && e.message);
+        }
         return res.status(200).json({
           message: 'Mother updated successfully.',
           mother_id: motherId,
@@ -363,11 +392,11 @@ exports.upsertMother = async (req, res) => {
       `INSERT INTO mothers (
          external_id, first_name, middle_initial, last_name, birth_date,
          municipality, barangay, purok, contact_number, weight_kg, height_cm,
-         status, encoded_by
+         muac_cm, bmi, bmi_status, muac_status, status, encoded_by
        ) VALUES (
          ?, ?, ?, ?, ?,
          'Gasan', ?, ?, ?, ?, ?,
-         'active', ?
+         ?, ?, ?, ?, 'active', ?
        )`,
       [
         external_id || null,
@@ -380,10 +409,37 @@ exports.upsertMother = async (req, res) => {
         contact_number || null,
         weight_kg ? Number(weight_kg) : null,
         height_cm ? Number(height_cm) : null,
+        req.body.muac_cm ? Number(req.body.muac_cm) : null,
+        null,
+        null,
+        null,
         resolvedEncodedBy,
       ]
     );
 
+    // compute bmi and muac status for new mother and persist
+    try {
+      const motherId = result.insertId;
+      const safeWeight = req.body.weight_kg ? Number(req.body.weight_kg) : null;
+      const safeHeight = req.body.height_cm ? Number(req.body.height_cm) : null;
+      const safeMuac = req.body.muac_cm ? Number(req.body.muac_cm) : null;
+      let bmi = null;
+      let bmiStatus = null;
+      let muacStatus = null;
+      if (safeWeight && safeHeight && safeHeight > 0) {
+        bmi = Number((safeWeight / Math.pow(safeHeight / 100, 2)).toFixed(2));
+        if (bmi < 18.5) bmiStatus = 'Underweight';
+        else if (bmi < 25) bmiStatus = 'Normal';
+        else if (bmi < 30) bmiStatus = 'Overweight';
+        else bmiStatus = 'Obese';
+      }
+      if (safeMuac != null) {
+        muacStatus = safeMuac < 23 ? 'At risk' : 'Normal';
+      }
+      await pool.query('UPDATE mothers SET bmi = ?, bmi_status = ?, muac_status = ? WHERE mother_id = ?', [bmi, bmiStatus, muacStatus, motherId]);
+    } catch (e) {
+      console.error('Post-insert mother BMI computation failed:', e && e.message);
+    }
     return res.status(201).json({
       message: 'Mother registered successfully.',
       mother_id: result.insertId,
@@ -629,7 +685,7 @@ exports.getMobileMothers = async (req, res) => {
       `SELECT
          m.mother_id, m.external_id, m.first_name, m.middle_initial, m.last_name,
          m.birth_date, m.barangay, m.purok, m.contact_number, m.weight_kg, m.height_cm,
-         m.status
+         m.muac_cm, m.bmi, m.bmi_status, m.muac_status, m.status
        FROM mothers m
        WHERE ${where}
        ORDER BY m.first_name ASC`,
@@ -668,14 +724,43 @@ exports.getMobileSchedules = async (req, res) => {
     params.push(role);
 
     const [schedules] = await pool.query(
-      `SELECT schedule_id, title, schedule_type, schedule_date, schedule_time, venue, barangay, facilitator, notes, target_role
+      `SELECT schedule_id, title, schedule_type, schedule_date, schedule_time, venue, barangay, facilitator, notes, target_role, status
        FROM schedules
        WHERE ${where}
        ORDER BY schedule_date ASC`,
       params
     );
 
-    return res.status(200).json(schedules);
+    // Attach schedule_targets and enforce server-side visibility
+    const schedulesArr = Array.isArray(schedules) ? schedules : [];
+    const schedIds = schedulesArr.map((s) => s.schedule_id).filter(Boolean);
+    let visible = [];
+    if (schedIds.length > 0) {
+      const placeholders = schedIds.map(() => '?').join(',');
+      const [targetsRows] = await pool.query(
+        `SELECT schedule_id, target_type, target_value FROM schedule_targets WHERE schedule_id IN (${placeholders})`,
+        schedIds
+      );
+      const targetsById = {};
+      for (const t of targetsRows) {
+        targetsById[t.schedule_id] = targetsById[t.schedule_id] || [];
+        targetsById[t.schedule_id].push({ type: t.target_type, value: t.target_value });
+      }
+
+      for (const s of schedulesArr) {
+        const targets = targetsById[s.schedule_id] || [];
+        s.targets = targets;
+        // visibility: global OR barangay match OR user match
+        const isGlobal = targets.some((t) => t.type === 'global');
+        const barangayMatch = targets.some((t) => t.type === 'barangay' && t.value && String(t.value).toLowerCase() === String(barangay || '').toLowerCase());
+        const userMatch = targets.some((t) => t.type === 'user' && t.value && String(t.value) === String(req.user?.user_id));
+        if (isGlobal || barangayMatch || userMatch) {
+          visible.push(s);
+        }
+      }
+    }
+
+    return res.status(200).json(visible);
   } catch (error) {
     console.error('Get mobile schedules error:', error);
     return res.status(500).json({ message: 'Server error. Unable to load schedules.' });
@@ -822,8 +907,9 @@ exports.getMobileSync = async (req, res) => {
       ),
       pool.query(
         `SELECT m.mother_id, m.external_id, m.first_name, m.middle_initial, m.last_name,
-                m.birth_date, m.barangay, m.purok, m.contact_number,
-                m.status, m.updated_at
+          m.birth_date, m.barangay, m.purok, m.contact_number,
+          m.weight_kg, m.height_cm, m.muac_cm, m.bmi, m.bmi_status, m.muac_status,
+          m.status, m.updated_at
          FROM mothers m WHERE ${motherWhere} ORDER BY m.first_name ASC`,
         motherParams
       ),
@@ -867,11 +953,50 @@ exports.getMobileSync = async (req, res) => {
       }
     }
 
+    // Attach schedule_targets and filter schedules by visibility
+    const schedList = schedules || [];
+    const schedIds = schedList.map((s) => s.schedule_id).filter(Boolean);
+    if (schedIds.length > 0) {
+      const placeholders = schedIds.map(() => '?').join(',');
+      const [targetsRows] = await pool.query(
+        `SELECT schedule_id, target_type, target_value FROM schedule_targets WHERE schedule_id IN (${placeholders})`,
+        schedIds
+      );
+      const targetsById = {};
+      for (const t of targetsRows) {
+        targetsById[t.schedule_id] = targetsById[t.schedule_id] || [];
+        targetsById[t.schedule_id].push({ type: t.target_type, value: t.target_value });
+      }
+
+      // Filter according to requester
+      const visibleSchedules = [];
+      for (const s of schedList) {
+        const targets = targetsById[s.schedule_id] || [];
+        s.targets = targets;
+        const isGlobal = targets.some((t) => t.type === 'global');
+        const barangayMatch = targets.some((t) => t.type === 'barangay' && t.value && String(t.value).toLowerCase() === String(barangay || '').toLowerCase());
+        const userMatch = targets.some((t) => t.type === 'user' && t.value && String(t.value) === String(req.user?.user_id));
+        if (isGlobal || barangayMatch || userMatch) {
+          visibleSchedules.push(s);
+        }
+      }
+      return res.status(200).json({
+        children,
+        nutritionRecords,
+        mothers,
+        schedules: visibleSchedules,
+        referrals,
+        notifications,
+        profilePicture,
+        syncedAt: new Date().toISOString(),
+      });
+    }
+
     return res.status(200).json({
       children,
       nutritionRecords,
       mothers,
-      schedules,
+      schedules: [],
       referrals,
       notifications,
       profilePicture,

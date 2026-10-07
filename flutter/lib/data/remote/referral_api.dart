@@ -66,10 +66,15 @@ class ReferralApi {
       } catch (_) {}
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
+        final successMsg = body?['message'] as String? ?? 'Referral submitted successfully.';
+        final rid = body?['referral_id']?.toString();
+        // Return structured referral_id in the response data when available
+        final combined = rid != null ? '$successMsg (id: $rid)' : successMsg;
         return ApiResponse(
           success: true,
           statusCode: response.statusCode,
-          message: 'Referral submitted successfully.',
+          message: combined,
+          data: rid != null ? {'referral_id': rid} : null,
         );
       }
 

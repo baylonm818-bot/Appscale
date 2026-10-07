@@ -207,6 +207,8 @@ class SyncService {
       if (key.isEmpty) continue;
       final existing = scheduleBox.get(key) as Map?;
       if (existing != null && existing['_syncStatus'] == 'pending') continue;
+      // store server-provided `targets` if present so clients can show accurate visibility
+      final targets = (s['targets'] as List?) ?? [];
       await scheduleBox.put(key, {
         'id': key,
         'title': s['title'] as String? ?? 'Activity',
@@ -221,6 +223,7 @@ class SyncService {
         'createdBy': (s['facilitator'] as String? ?? 'RHU Web Admin').toString(),
         'createdAt': (s['created_at'] as String? ?? DateTime.now().toIso8601String()),
         'status': s['status'] as String? ?? 'pending',
+        'targets': targets,
         '_syncStatus': 'synced',
       });
     }

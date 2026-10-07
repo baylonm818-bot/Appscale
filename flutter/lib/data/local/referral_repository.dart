@@ -55,9 +55,25 @@ class ReferralRepository {
       if (map['_syncStatus'] == 'synced') continue;
 
       final referral = Referral.fromMap(map);
+
+      // Exponential backoff retry logic
+      final retryCount = (map['_retryCount'] as int?) ?? 0;
+      final maxRetries = 4;
+      if (retryCount >= maxRetries && map['_syncStatus'] == 'failed') {
+        errors.add('${referral.beneficiaryName}: ${map['_lastSyncError'] ?? 'Repeated failures'}');
+        continue;
+      }
+
       final res = await _trySync(referral);
       if (res != null && !res.success) {
         errors.add('${referral.beneficiaryName}: ${res.message}');
+      }
+      // If failed and will retry, wait with backoff before continuing loop
+      final updated = _box.get(referral.id) as Map?;
+      final updatedRetry = (updated?['_retryCount'] as int?) ?? 0;
+      if ((updated?['_syncStatus'] as String?) == 'failed' && updatedRetry > retryCount) {
+        final backoffMs = (1 << (updatedRetry - 1)) * 500; // 500ms, 1s, 2s, 4s
+        await Future.delayed(Duration(milliseconds: backoffMs));
       }
     }
     return errors;
@@ -68,9 +84,21 @@ class ReferralRepository {
     final existing = _box.get(referral.id) as Map?;
     final map = Map<String, dynamic>.from(existing ?? referral.toMap());
     if (res.success) {
+      // Mark as synced and capture server-assigned referral id if provided
       map['_syncStatus'] = 'synced';
       map.remove('_lastSyncError');
       map['_retryCount'] = 0;
+      try {
+        // Prefer structured id from ApiResponse.data if present
+        if (res.data != null && res.data is Map && (res.data as Map)['referral_id'] != null) {
+          map['server_id'] = (res.data as Map)['referral_id'].toString();
+        } else {
+          final idMatch = RegExp(r'id:\s*(\d+)').firstMatch(res.message);
+          if (idMatch != null) {
+            map['server_id'] = idMatch.group(1);
+          }
+        }
+      } catch (_) {}
     } else {
       map['_syncStatus'] = 'failed';
       map['_lastSyncError'] = res.message;

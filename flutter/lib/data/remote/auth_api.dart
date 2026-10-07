@@ -108,6 +108,14 @@ class AuthApi {
       throw Exception(message);
     }
 
+    // Normalize profile_picture to absolute URL if server returned relative path
+    if (body['user'] is Map && body['user']['profile_picture'] is String) {
+      final pic = (body['user']['profile_picture'] as String).trim();
+      if (pic.isNotEmpty && !RegExp(r'^https?://', caseSensitive: false).hasMatch(pic) && pic.startsWith('/')) {
+        body['user']['profile_picture'] = 'https://appscale-1.onrender.com$pic';
+      }
+    }
+
     return parseLoginResponse(body);
   }
 

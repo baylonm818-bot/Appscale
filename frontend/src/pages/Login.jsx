@@ -106,16 +106,19 @@ function LoginCard() {
       // prefer sessionStorage by default (less persistent). Only use localStorage
       // when the user explicitly opts into "remember me". Consider using
       // HttpOnly secure cookies for production to mitigate XSS risks.
-      if (rememberMe) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.user.role);
-        localStorage.setItem("user", JSON.stringify(data.user));
-      } else {
-        sessionStorage.setItem("token", data.token);
-        sessionStorage.setItem("role", data.user.role);
-        sessionStorage.setItem("user", JSON.stringify(data.user));
+      const store = rememberMe ? localStorage : sessionStorage;
+      store.setItem("token", data.token);
+      store.setItem("role", data.user.role);
+      // Normalize and persist profile picture URL if provided
+      const normalizedUser = { ...data.user };
+      if (normalizedUser.profile_picture && typeof normalizedUser.profile_picture === 'string') {
+        const pic = normalizedUser.profile_picture.trim();
+        if (pic && !/^https?:\/\//i.test(pic) && pic.startsWith('/')) {
+          normalizedUser.profile_picture = `${process.env.REACT_APP_API_BASE || API_URL}${pic}`;
+        }
       }
-      if (setUser) setUser(data.user);
+      store.setItem("user", JSON.stringify(normalizedUser));
+      if (setUser) setUser(normalizedUser);
       navigate(data.user.role === "admin" ? "/admin/dashboard" : "/bhw/dashboard", { replace: true });
     } catch (err) {
       setError(err.message);
