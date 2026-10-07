@@ -586,35 +586,43 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   }
 
   Widget _buildPreviewSigCol(String title, String name, String position) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textMuted,
+    return SizedBox(
+      width: 125,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textMuted,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          name,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            decoration: TextDecoration.underline,
+          const SizedBox(height: 6),
+          Text(
+            name,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              decoration: TextDecoration.underline,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          position,
-          style: const TextStyle(
-            fontSize: 9,
-            color: AppColors.textMuted,
+          const SizedBox(height: 2),
+          Text(
+            position,
+            style: const TextStyle(
+              fontSize: 9,
+              color: AppColors.textMuted,
+            ),
+            maxLines: 2,
+            softWrap: true,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -773,23 +781,45 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.border),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('NO. OF SEVERELY UNDERWEIGHT: $suwCount', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.statRed)),
-                    const SizedBox(height: 2),
-                    Text('NO. OF UNDERWEIGHT: $uwCount', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.statAmber)),
+                    Expanded(
+                      child: Text(
+                        'NO. OF SEVERELY UNDERWEIGHT: $suwCount',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.statRed),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'DATE ACCOMPLISHED: ${_fmtDateOnly(DateTime.now())}',
+                      style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                    ),
                   ],
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('DATE ACCOMPLISHED: ${_fmtDateOnly(DateTime.now())}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                    const SizedBox(height: 2),
-                    Text('ACCOMPLISHED BY: $bnsName', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+                    Expanded(
+                      child: Text(
+                        'NO. OF UNDERWEIGHT: $uwCount',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.statAmber),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'ACCOMPLISHED BY: $bnsName',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -840,7 +870,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             children: [
               Expanded(
                 child: ChoiceChip(
-                  label: const Text('JAN – JUN (Part 1)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('JAN – JUN (Part 1)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
                   selected: _monthlyPartIndex == 0,
                   selectedColor: AppColors.darkGreen,
                   labelStyle: TextStyle(color: _monthlyPartIndex == 0 ? Colors.white : AppColors.textPrimary),
@@ -852,7 +885,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: ChoiceChip(
-                  label: const Text('JUL – DEC (Part 2)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('JUL – DEC (Part 2)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
                   selected: _monthlyPartIndex == 1,
                   selectedColor: AppColors.darkGreen,
                   labelStyle: TextStyle(color: _monthlyPartIndex == 1 ? Colors.white : AppColors.textPrimary),

@@ -48,7 +48,7 @@ class DashboardRepository {
         subtitle: childrenThisMonth > 0
             ? '↑ $childrenThisMonth this month'
             : 'No new records this month',
-        accentColor: AppColors.primaryGreen,
+        accentColor: const Color(0xFF1B5E20), // deep green
       ),
       StatCardData(
         label: 'Lactating Mothers',
@@ -56,13 +56,13 @@ class DashboardRepository {
         subtitle: mothersThisMonth > 0
             ? '↑ $mothersThisMonth this month'
             : 'No new records this month',
-        accentColor: AppColors.statAmber,
+        accentColor: const Color(0xFF00796B), // teal
       ),
       StatCardData(
         label: 'SAM / Severe cases',
         value: '$samCases',
         subtitle: samCases > 0 ? 'Needs intervention' : 'No active SAM cases',
-        accentColor: AppColors.statRed,
+        accentColor: const Color(0xFFC0392B), // red-terracotta
       ),
       StatCardData(
         label: 'Feeding enrollees',
@@ -70,7 +70,7 @@ class DashboardRepository {
         subtitle: enrolledCount > 0
             ? '$enrolledCount active in program'
             : 'No children enrolled yet',
-        accentColor: AppColors.statPurple,
+        accentColor: const Color(0xFF7A8B1F), // olive
       ),
     ];
   }

@@ -17,8 +17,13 @@ import 'widgets/program_tile.dart';
 
 class ProgramScreen extends StatefulWidget {
   final String barangay;
+  final VoidCallback? onNavigateToHome;
 
-  const ProgramScreen({super.key, this.barangay = 'Tiguion'});
+  const ProgramScreen({
+    super.key,
+    this.barangay = 'Tiguion',
+    this.onNavigateToHome,
+  });
 
   @override
   State<ProgramScreen> createState() => _ProgramScreenState();
@@ -53,12 +58,29 @@ class _ProgramScreenState extends State<ProgramScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Programs & Schedule',
-                    style: AppTextStyles.h1.copyWith(
-                      color: Colors.white,
-                      fontSize: 20,
-                    ),
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: () {
+                          if (widget.onNavigateToHome != null) {
+                            widget.onNavigateToHome!();
+                          } else if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: const Icon(Icons.arrow_back, color: Colors.white),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Programs & Schedule',
+                          style: AppTextStyles.h1.copyWith(
+                            color: Colors.white,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Container(

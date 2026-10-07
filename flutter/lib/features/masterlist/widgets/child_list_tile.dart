@@ -57,6 +57,7 @@ class ChildListTile extends StatelessWidget {
               ),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   width: 42,
@@ -88,7 +89,7 @@ class ChildListTile extends StatelessWidget {
                           fontSize: 14.5,
                           fontWeight: FontWeight.w600,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
@@ -101,26 +102,24 @@ class ChildListTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    StatusBadge(
-                      label: 'WFA: $wfaFormatted',
-                      color: ChildStatusMeta.colorFor(wfaFormatted),
-                    ),
-                    if (secondaryLabel != null && secondaryColor != null) ...[
-                      const SizedBox(height: 4),
-                      StatusBadge(
-                        label: secondaryLabel,
-                        color: secondaryColor,
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          StatusBadge(
+                            label: 'WFA: $wfaFormatted',
+                            color: ChildStatusMeta.colorFor(wfaFormatted),
+                          ),
+                          if (secondaryLabel != null && secondaryColor != null)
+                            StatusBadge(
+                              label: secondaryLabel,
+                              color: secondaryColor,
+                            ),
+                        ],
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ],
             ),

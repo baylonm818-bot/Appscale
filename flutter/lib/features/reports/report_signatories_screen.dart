@@ -135,14 +135,36 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
                         ),
                         child: Row(
                           children: [
-                            // Preview
+                            // AppScale App Logo Preview
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                                border: Border.all(color: AppColors.primaryGreen, width: 2),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              padding: const EdgeInsets.all(8),
+                              child: Image.asset(
+                                'assets/images/appscale_logo.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Barangay Logo Preview
                             Container(
                               width: 64,
                               height: 64,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: AppColors.background,
-                                border: Border.all(color: AppColors.border),
+                                border: Border.all(
+                                  color: _barangayLogoPath.isNotEmpty
+                                      ? AppColors.primaryGreen
+                                      : AppColors.border,
+                                  width: _barangayLogoPath.isNotEmpty ? 2 : 1,
+                                ),
                               ),
                               clipBehavior: Clip.antiAlias,
                               child: _barangayLogoPath.isNotEmpty &&

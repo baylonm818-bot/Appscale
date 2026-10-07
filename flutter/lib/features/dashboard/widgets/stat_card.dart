@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../models/dashboard_models.dart';
 
@@ -21,9 +20,15 @@ class StatCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: data.accentColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: data.accentColor.withValues(alpha: 0.35),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -34,39 +39,33 @@ class StatCard extends StatelessWidget {
               style: AppTextStyles.h1.copyWith(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: Colors.white,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               data.label,
               style: AppTextStyles.body.copyWith(
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                height: 1.2,
               ),
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               data.subtitle,
               style: AppTextStyles.body.copyWith(
                 fontSize: 10,
-                color: AppColors.textMuted,
+                color: Colors.white.withValues(alpha: 0.88),
+                height: 1.2,
               ),
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 10),
-            Container(
-              height: 4,
-              decoration: BoxDecoration(
-                color: data.accentColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
             ),
           ],
         ),

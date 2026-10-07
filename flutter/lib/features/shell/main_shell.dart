@@ -73,7 +73,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         children: [
           DashboardBody(onNavigateToMasterlist: _navigateToMasterlist),
           MasterlistScreen(key: _masterlistKey),
-          const ProgramScreen(),
+          ProgramScreen(
+            onNavigateToHome: () => setState(() => _navIndex = 0),
+          ),
           const ReportsHomeScreen(),
         ],
       ),
