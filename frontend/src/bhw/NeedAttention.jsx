@@ -119,9 +119,9 @@ function NeedAttention() {
 
     if (ageFilter !== 'all') {
       list = list.filter((c) => {
-        if (ageFilter === '0-11') return c.age_in_months <= 11;
-        if (ageFilter === '12-23') return c.age_in_months >= 12 && c.age_in_months <= 23;
-        return c.age_in_months >= 24;
+        if (ageFilter === '0-23') return c.age_in_months >= 0 && c.age_in_months <= 23;
+        if (ageFilter === '24-59') return c.age_in_months >= 24 && c.age_in_months <= 59;
+        return true;
       });
     }
 
@@ -301,9 +301,8 @@ function NeedAttention() {
               className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#2e7d32]"
             >
               <option value="all">All Age Groups</option>
-              <option value="0-11">0–11 months</option>
-              <option value="12-23">12–23 months</option>
-              <option value="24+">24+ months</option>
+              <option value="0-23">0–23 months</option>
+              <option value="24-59">24–59 months</option>
             </select>
 
             <select

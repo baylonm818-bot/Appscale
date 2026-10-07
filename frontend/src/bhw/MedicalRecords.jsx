@@ -178,10 +178,9 @@ function MedicalRecords() {
     }
     if (ageFilter !== 'all') {
       list = list.filter((c) => {
-        if (ageFilter === '0-11') return c.age_in_months <= 11;
         if (ageFilter === '0-23') return c.age_in_months >= 0 && c.age_in_months <= 23;
-        if (ageFilter === '12-23') return c.age_in_months >= 12 && c.age_in_months <= 23;
-        return c.age_in_months >= 24 && c.age_in_months <= 59;
+        if (ageFilter === '24-59') return c.age_in_months >= 24 && c.age_in_months <= 59;
+        return true;
       });
     }
     return list;
