@@ -30,25 +30,39 @@ class ChildRepository {
     await _trySync(child);
   }
 
-  Future<void> syncPending() async {
-    for (final raw in _box.values) {
+  Future<List<String>> syncPending() async {
+    final errors = <String>[];
+    for (final raw in List.from(_box.values)) {
       final map = Map<String, dynamic>.from(raw as Map);
-      if (map['_syncStatus'] != 'synced') await _trySync(Child.fromMap(map));
+      if (map['_syncStatus'] != 'synced') {
+        final res = await _trySync(Child.fromMap(map));
+        if (res != null && !res.success) {
+          errors.add('${map['fullName'] ?? 'Child'}: ${res.message}');
+        }
+      }
     }
+    return errors;
   }
 
   int get pendingCount => _box.values
       .where((raw) => (raw as Map)['_syncStatus'] != 'synced')
       .length;
 
-  Future<void> _trySync(Child child) async {
-    try {
-      await BeneficiaryApi.syncChild(child);
-      final map = child.toMap()..['_syncStatus'] = 'synced';
-      await _box.put(child.id, map);
-    } catch (_) {
-      // Hive remains the source of truth until the next retry.
+  Future<ApiResponse?> _trySync(Child child) async {
+    final res = await BeneficiaryApi.syncChild(child);
+    final existing = _box.get(child.id) as Map?;
+    final map = Map<String, dynamic>.from(existing ?? child.toMap());
+    if (res.success) {
+      map['_syncStatus'] = 'synced';
+      map.remove('_lastSyncError');
+      map['_retryCount'] = 0;
+    } else {
+      map['_syncStatus'] = 'failed';
+      map['_lastSyncError'] = res.message;
+      map['_retryCount'] = ((map['_retryCount'] as int?) ?? 0) + 1;
     }
+    await _box.put(child.id, map);
+    return res;
   }
 
   List<Child> search(String query, {required String barangay, int limit = 6}) {

@@ -11,6 +11,8 @@ import '../../data/local/app_data_bus.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/mother_repository.dart';
+import '../../data/local/measurement_repository.dart';
+import '../../data/local/referral_repository.dart';
 import '../../shared/utils/app_user_identity.dart';
 import '../auth/login_screen.dart';
 
@@ -436,6 +438,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
             onPressed: () async {
+              final pendingCount = ChildRepository().pendingCount +
+                  MotherRepository().pendingCount +
+                  MeasurementRepository().pendingCount +
+                  ReferralRepository().pendingCount;
+
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
@@ -455,9 +462,43 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       ),
                     ],
                   ),
-                  content: const Text(
-                    'Are you sure you want to log out? You will need to sign in again to access your account.',
-                    style: TextStyle(fontSize: 14, color: Colors.black87),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (pendingCount > 0) ...[
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFFBEB),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFFDE68A)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded,
+                                  color: Color(0xFFD97706), size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '$pendingCount record(s) not yet synced! They will remain on this phone but will not show on the web portal until synced.',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF92400E),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const Text(
+                        'Are you sure you want to log out? You will need to sign in again to access your account.',
+                        style: TextStyle(fontSize: 14, color: Colors.black87),
+                      ),
+                    ],
                   ),
                   actions: [
                     TextButton(

@@ -6,6 +6,7 @@ import 'app_data_bus.dart';
 import 'hive_boxes.dart';
 import 'notification_repository.dart';
 import '../remote/referral_api.dart';
+import '../remote/beneficiary_api.dart';
 
 class ReferralRepository {
   Box get _box => Hive.box(HiveBoxes.referrals);
@@ -47,24 +48,46 @@ class ReferralRepository {
       .where((raw) => (raw as Map?)?['_syncStatus'] != 'synced')
       .length;
 
-  Future<void> syncPending() async {
+  Future<List<String>> syncPending() async {
+    final errors = <String>[];
     for (final raw in _box.values) {
       final map = Map<String, dynamic>.from(raw as Map);
       if (map['_syncStatus'] == 'synced') continue;
 
-      try {
-        final referral = Referral.fromMap(map);
-        await ReferralApi.submit(referral);
-        await _box.put(referral.id, {...referral.toMap(), '_syncStatus': 'synced'});
-      } catch (_) {
-        // Keep the local referral as the source of truth until the next retry.
+      final referral = Referral.fromMap(map);
+      final res = await _trySync(referral);
+      if (res != null && !res.success) {
+        errors.add('${referral.beneficiaryName}: ${res.message}');
       }
     }
+    return errors;
   }
 
-  Future<void> syncToWeb(Referral referral) async {
-    await ReferralApi.submit(referral);
-    await _box.put(referral.id, {...referral.toMap(), '_syncStatus': 'synced'});
+  Future<ApiResponse?> _trySync(Referral referral) async {
+    final res = await ReferralApi.submit(referral);
+    final existing = _box.get(referral.id) as Map?;
+    final map = Map<String, dynamic>.from(existing ?? referral.toMap());
+    if (res.success) {
+      map['_syncStatus'] = 'synced';
+      map.remove('_lastSyncError');
+      map['_retryCount'] = 0;
+    } else {
+      map['_syncStatus'] = 'failed';
+      map['_lastSyncError'] = res.message;
+      map['_retryCount'] = ((map['_retryCount'] as int?) ?? 0) + 1;
+    }
+    await _box.put(referral.id, map);
+    return res;
+  }
+
+  Future<ApiResponse> syncToWeb(Referral referral) async {
+    final res = await _trySync(referral);
+    return res ??
+        const ApiResponse(
+          success: false,
+          statusCode: 0,
+          message: 'Unknown sync error',
+        );
   }
 
   Future<void> update(Referral referral) async {

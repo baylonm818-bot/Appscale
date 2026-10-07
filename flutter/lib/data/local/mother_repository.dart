@@ -31,25 +31,39 @@ class MotherRepository {
     await _trySync(mother);
   }
 
-  Future<void> syncPending() async {
-    for (final raw in _box.values) {
+  Future<List<String>> syncPending() async {
+    final errors = <String>[];
+    for (final raw in List.from(_box.values)) {
       final map = Map<String, dynamic>.from(raw as Map);
-      if (map['_syncStatus'] != 'synced') await _trySync(Mother.fromMap(map));
+      if (map['_syncStatus'] != 'synced') {
+        final res = await _trySync(Mother.fromMap(map));
+        if (res != null && !res.success) {
+          errors.add('${map['fullName'] ?? 'Mother'}: ${res.message}');
+        }
+      }
     }
+    return errors;
   }
 
   int get pendingCount => _box.values
       .where((raw) => (raw as Map)['_syncStatus'] != 'synced')
       .length;
 
-  Future<void> _trySync(Mother mother) async {
-    try {
-      await BeneficiaryApi.syncMother(mother);
-      final map = mother.toMap()..['_syncStatus'] = 'synced';
-      await _box.put(mother.id, map);
-    } catch (_) {
-      // Hive remains the source of truth until the next retry.
+  Future<ApiResponse?> _trySync(Mother mother) async {
+    final res = await BeneficiaryApi.syncMother(mother);
+    final existing = _box.get(mother.id) as Map?;
+    final map = Map<String, dynamic>.from(existing ?? mother.toMap());
+    if (res.success) {
+      map['_syncStatus'] = 'synced';
+      map.remove('_lastSyncError');
+      map['_retryCount'] = 0;
+    } else {
+      map['_syncStatus'] = 'failed';
+      map['_lastSyncError'] = res.message;
+      map['_retryCount'] = ((map['_retryCount'] as int?) ?? 0) + 1;
     }
+    await _box.put(mother.id, map);
+    return res;
   }
 
   /// Used by the Link Mother search field — filters by barangay first,

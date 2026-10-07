@@ -8,6 +8,17 @@ import '../models/mother.dart';
 import '../models/measurement.dart';
 import '../models/program_schedule.dart';
 
+class ApiResponse {
+  final bool success;
+  final int statusCode;
+  final String message;
+  const ApiResponse({
+    required this.success,
+    required this.statusCode,
+    required this.message,
+  });
+}
+
 class BeneficiaryApi {
   BeneficiaryApi._();
 
@@ -17,14 +28,22 @@ class BeneficiaryApi {
     return kIsWeb ? 'https://appscale-1.onrender.com/api' : 'https://appscale-1.onrender.com/api';
   }
 
-  static Future<void> syncChild(Child child) async {
+  static Future<ApiResponse> syncChild(Child child) async {
     final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
     final nameParts = child.fullName.trim().split(RegExp(r'\s+'));
     final firstName = nameParts.isNotEmpty ? nameParts.first : '';
     final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
     final isEnrolled = FeedingEnrollmentRepository().isEnrolled(child.id);
 
-    await _post('/mobile/children', {
+    return _post('/mobile/children', {
       'external_id': child.id,
       'first_name': firstName,
       'last_name': lastName,
@@ -39,16 +58,24 @@ class BeneficiaryApi {
       'status': child.isActive ? 'active' : 'inactive',
       'is_enrolled': isEnrolled,
       'encoded_by': settings.authUser?['user_id'],
-    }, settings.authToken);
+    }, token);
   }
 
-  static Future<void> syncMother(Mother mother) async {
+  static Future<ApiResponse> syncMother(Mother mother) async {
     final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
     final nameParts = mother.fullName.trim().split(RegExp(r'\s+'));
     final firstName = nameParts.isNotEmpty ? nameParts.first : '';
     final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
-    await _post('/mobile/mothers', {
+    return _post('/mobile/mothers', {
       'external_id': mother.id,
       'first_name': firstName,
       'last_name': lastName,
@@ -60,12 +87,21 @@ class BeneficiaryApi {
       'linked_child_external_ids': mother.linkedChildIds,
       'status': mother.isActive ? 'active' : 'inactive',
       'encoded_by': settings.authUser?['user_id'],
-    }, settings.authToken);
+    }, token);
   }
 
-  static Future<void> syncNutritionRecord(String childExternalId, Measurement measurement) async {
+  static Future<ApiResponse> syncNutritionRecord(String childExternalId, Measurement measurement) async {
     final settings = SettingsRepository();
-    await _post('/mobile/nutrition-records', {
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+
+    return _post('/mobile/nutrition-records', {
       'child_external_id': childExternalId,
       'record_date': _date(measurement.date),
       'weight_kg': measurement.weightKg,
@@ -75,12 +111,21 @@ class BeneficiaryApi {
       'height_status': measurement.heightForAgeStatus,
       'overall_status': measurement.effectiveWastingStatus,
       'recorded_by': settings.authUser?['user_id'],
-    }, settings.authToken);
+    }, token);
   }
 
-  static Future<void> syncSchedule(ProgramSchedule schedule) async {
+  static Future<ApiResponse> syncSchedule(ProgramSchedule schedule) async {
     final settings = SettingsRepository();
-    await _post('/mobile/schedules', {
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+
+    return _post('/mobile/schedules', {
       'title': schedule.title,
       'schedule_type': schedule.programType,
       'schedule_date': _date(schedule.date),
@@ -89,7 +134,7 @@ class BeneficiaryApi {
       'barangay': schedule.barangay,
       'target_role': 'bns',
       'notes': schedule.notes,
-    }, settings.authToken);
+    }, token);
   }
 
   // Fetch helpers used to seed local Hive boxes after login
@@ -97,34 +142,33 @@ class BeneficiaryApi {
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
     final uri = Uri.parse('$_baseUrl/mobile/children?barangay=${Uri.encodeComponent(barangay)}');
-    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 5));
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 25));
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       final data = jsonDecode(resp.body) as List<dynamic>;
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     }
-    throw Exception('Failed to fetch children for barangay');
+    throw Exception('Failed to fetch children for barangay (${resp.statusCode})');
   }
 
   static Future<List<Map<String, dynamic>>> fetchMothersForBarangay(String barangay, String? token) async {
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
     final uri = Uri.parse('$_baseUrl/mobile/mothers?barangay=${Uri.encodeComponent(barangay)}');
-    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 25));
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       final data = jsonDecode(resp.body) as List<dynamic>;
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     }
-    throw Exception('Failed to fetch mothers for barangay');
+    throw Exception('Failed to fetch mothers for barangay (${resp.statusCode})');
   }
 
   static Future<List<Map<String, dynamic>>> fetchMeasurementsForBarangay(String barangay, String? token) async {
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
     final uri = Uri.parse('$_baseUrl/mobile/children?barangay=${Uri.encodeComponent(barangay)}');
-    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 25));
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       final data = jsonDecode(resp.body) as List<dynamic>;
-      // Extract nutrition records embedded in children response
       return data
           .map((e) => Map<String, dynamic>.from(e as Map))
           .where((c) => c['last_weight'] != null || c['last_height'] != null)
@@ -137,7 +181,7 @@ class BeneficiaryApi {
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
     final uri = Uri.parse('$_baseUrl/bhw/referrals');
-    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 25));
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       final data = jsonDecode(resp.body) as List<dynamic>;
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -149,7 +193,7 @@ class BeneficiaryApi {
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
     final uri = Uri.parse('$_baseUrl/schedules');
-    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 25));
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       final data = jsonDecode(resp.body) as List<dynamic>;
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -161,7 +205,7 @@ class BeneficiaryApi {
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
     final uri = Uri.parse('$_baseUrl/bhw/notifications');
-    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+    final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 25));
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       final body = jsonDecode(resp.body) as Map<String, dynamic>;
       final list = (body['notifications'] as List<dynamic>?) ?? [];
@@ -170,36 +214,71 @@ class BeneficiaryApi {
     return [];
   }
 
-  static Future<void> deactivateAccount(int userId, String password, String reason) async {
+  static Future<ApiResponse> deactivateAccount(int userId, String password, String reason) async {
     final settings = SettingsRepository();
-    await _post('/profile/$userId/deactivate', {
+    final token = settings.authToken;
+    return _post('/profile/$userId/deactivate', {
       'password': password,
       'reason': reason,
-    }, settings.authToken);
+    }, token);
   }
 
-  static Future<void> _post(
+  static Future<ApiResponse> _post(
     String path,
     Map<String, dynamic> payload,
     String? token,
   ) async {
-    final headers = <String, String>{'Content-Type': 'application/json'};
-    if (token != null && token.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $token';
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
     }
-    final response = await http
-        .post(
-          Uri.parse('$_baseUrl$path'),
-          headers: headers,
-          body: jsonEncode(payload),
-        )
-        .timeout(const Duration(seconds: 5));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      Map<String, dynamic>? body;
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl$path'),
+            headers: headers,
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 25));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return ApiResponse(
+          success: true,
+          statusCode: response.statusCode,
+          message: 'OK',
+        );
+      }
+
+      String errMsg = 'Server error (${response.statusCode})';
       try {
-        body = jsonDecode(response.body) as Map<String, dynamic>;
+        final body = jsonDecode(response.body) as Map<String, dynamic>?;
+        if (body?['message'] != null) {
+          errMsg = body!['message'].toString();
+        }
       } catch (_) {}
-      throw Exception(body?['message'] ?? 'Could not sync beneficiary.');
+
+      if (response.statusCode == 401) {
+        errMsg = 'Session expired. Please log in again.';
+      }
+
+      return ApiResponse(
+        success: false,
+        statusCode: response.statusCode,
+        message: errMsg,
+      );
+    } catch (e) {
+      return ApiResponse(
+        success: false,
+        statusCode: 0,
+        message: 'Network error: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
     }
   }
 

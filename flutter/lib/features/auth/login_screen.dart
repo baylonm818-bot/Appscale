@@ -79,7 +79,37 @@ class _LoginScreenState extends State<LoginScreen> {
         }
         await Hive.box(HiveBoxes.settings).put('last_user_id', newUserId);
 
-        if (barangay != null && barangay.isNotEmpty) {
+        if (barangay != null && barangay.isNotEmpty && mounted) {
+          // Show non-dismissible restoration dialog
+          showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                child: Row(
+                  children: [
+                    CircularProgressIndicator(color: AppColors.primaryGreen),
+                    SizedBox(width: 20),
+                    Expanded(
+                      child: Text(
+                        'Restoring your data from cloud...',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.darkGreen,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+
           final token = _settings.authToken;
           final result = await SyncService.instance.pullFromServer(
             barangay: barangay,
@@ -88,9 +118,15 @@ class _LoginScreenState extends State<LoginScreen> {
           if (!result.success) {
             debugPrint('Server pull after login partially failed: ${result.error}');
           }
+
+          if (mounted && Navigator.of(context).canPop()) {
+            Navigator.of(context).pop(); // Dismiss restoration dialog
+          }
         }
       } catch (seedErr) {
-        // Non-fatal: proceed to main UI even if seeding failed.
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
         debugPrint('Failed to seed local data after login: $seedErr');
       }
 

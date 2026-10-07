@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -8,8 +7,8 @@ import '../../data/local/mother_repository.dart';
 import '../../data/local/measurement_repository.dart';
 import '../../data/local/referral_repository.dart';
 import '../../data/local/hive_boxes.dart';
-import '../../data/local/app_data_bus.dart';
-import '../../data/remote/beneficiary_api.dart';
+import '../../data/remote/sync_service.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class SyncStatusScreen extends StatefulWidget {
   const SyncStatusScreen({super.key});
@@ -25,8 +24,10 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
   final _referrals = ReferralRepository();
   final _settings = SettingsRepository();
   bool _isSyncing = false;
+  List<String> _syncErrors = [];
   String? _message;
   String _currentBarangay = '';
+  String? _lastSyncedAt;
 
   @override
   void initState() {
@@ -35,134 +36,90 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     if (user != null && user['barangay'] != null) {
       _currentBarangay = user['barangay'].toString();
     }
+    _lastSyncedAt = Hive.box(HiveBoxes.settings).get('last_synced_at') as String?;
   }
 
-  /// Push any local pending records to server, then pull fresh data back
-  /// from the server so the BNS always sees the most up-to-date records.
+  /// Sequential, order-aware push sync followed by cloud pull sync:
+  /// 1. Children (parents)
+  /// 2. Mothers (parents)
+  /// 3. Measurements (dependent on children)
+  /// 4. Referrals (dependent on children/mothers)
+  /// 5. Pull updated cloud state
   Future<void> _syncNow() async {
     setState(() {
       _isSyncing = true;
       _message = null;
+      _syncErrors = [];
     });
+
+    final errors = <String>[];
     try {
-      // 1. Push pending local records to server (children, mothers, measurements, referrals)
-      await Future.wait([
-        _children.syncPending(),
-        _mothers.syncPending(),
-        _measurements.syncPending(),
-        _referrals.syncPending(),
-      ]);
+      // Step 1: Sync Children
+      final childErrors = await _children.syncPending();
+      errors.addAll(childErrors);
 
-      // 2. Pull fresh data from server for this barangay (re-seed)
+      // Step 2: Sync Mothers
+      final motherErrors = await _mothers.syncPending();
+      errors.addAll(motherErrors);
+
+      // Step 3: Sync Measurements
+      final measurementErrors = await _measurements.syncPending();
+      errors.addAll(measurementErrors);
+
+      // Step 4: Sync Referrals
+      final referralErrors = await _referrals.syncPending();
+      errors.addAll(referralErrors);
+
+      // Step 5: Pull fresh data from cloud backend
       final token = _settings.authToken;
-      if (_currentBarangay.isNotEmpty && token != null) {
-        try {
-          final serverChildren = await BeneficiaryApi.fetchChildrenForBarangay(
-              _currentBarangay, token);
-          final serverMothers = await BeneficiaryApi.fetchMothersForBarangay(
-              _currentBarangay, token);
-
-          final childBox = Hive.box(HiveBoxes.children);
-          final motherBox = Hive.box(HiveBoxes.mothers);
-
-          for (final c in serverChildren) {
-            final key = (c['external_id'] ?? c['child_id']).toString();
-            // Only update records that are already synced — don't overwrite local pending edits
-            final existing = childBox.get(key) as Map?;
-            if (existing == null || existing['_syncStatus'] == 'synced') {
-              final firstName = c['first_name'] as String? ?? '';
-              final middleInitial = c['middle_initial'] as String? ?? '';
-              final lastName = c['last_name'] as String? ?? '';
-              final fullName = [
-                firstName,
-                if (middleInitial.isNotEmpty) middleInitial,
-                lastName,
-              ].where((s) => s.isNotEmpty).join(' ');
-              childBox.put(key, {
-                'id': key,
-                'sequenceNo': key,
-                'fullName': fullName,
-                'birthDate': (c['birth_date'] as String?)?.split('T').first ??
-                    DateTime.now().toIso8601String(),
-                'gender': c['sex'] as String? ?? 'Male',
-                'address': c['purok'] as String? ?? '',
-                'barangay': c['barangay'] as String? ?? _currentBarangay,
-                'belongsToIpGroup': false,
-                'disability': '',
-                'guardian': {
-                  'fullName': c['guardian_name'] as String? ?? '',
-                  'relationship': 'Guardian',
-                  'contactNo': c['guardian_contact'] as String? ?? '',
-                  'linkedMotherId': null,
-                },
-                'createdAt': existing?['createdAt'] ?? DateTime.now().toIso8601String(),
-                'nutritionStatus': (c['weight_status'] != null && c['weight_status'] != 'Not weighed')
-                    ? c['weight_status']
-                    : (existing?['nutritionStatus'] ?? 'Not weighed'),
-                'stuntingStatus': (c['height_status'] != null && c['height_status'] != 'Not weighed')
-                    ? c['height_status']
-                    : (existing?['stuntingStatus'] ?? 'Not weighed'),
-                'wastingStatus': (c['overall_status'] != null && c['overall_status'] != 'Not weighed')
-                    ? c['overall_status']
-                    : (existing?['wastingStatus'] ?? 'Not weighed'),
-                'lastWeighedAt': c['last_visit'] != null
-                    ? (c['last_visit'] as String).split('T').first
-                    : existing?['lastWeighedAt'],
-                'isActive': (c['status'] as String? ?? 'active') == 'active',
-                'inactiveReason': null,
-                '_syncStatus': 'synced',
-              });
-            }
-          }
-
-          for (final m in serverMothers) {
-            final key = (m['external_id'] ?? m['mother_id']).toString();
-            final existing = motherBox.get(key) as Map?;
-            if (existing == null || existing['_syncStatus'] == 'synced') {
-              final firstName = m['first_name'] as String? ?? '';
-              final middleInitial = m['middle_initial'] as String? ?? '';
-              final lastName = m['last_name'] as String? ?? '';
-              final fullName = [
-                firstName,
-                if (middleInitial.isNotEmpty) middleInitial,
-                lastName,
-              ].where((s) => s.isNotEmpty).join(' ');
-              motherBox.put(key, {
-                'id': key,
-                'fullName': fullName,
-                'birthDate': (m['birth_date'] as String?)?.split('T').first ??
-                    DateTime.now().toIso8601String(),
-                'contactNo': m['contact_number'] as String? ?? '',
-                'address': m['purok'] as String? ?? '',
-                'barangay': m['barangay'] as String? ?? _currentBarangay,
-                'linkedChildIds': existing?['linkedChildIds'] ?? <String>[],
-                'isActive': (m['status'] as String? ?? 'active') == 'active',
-                'inactiveReason': null,
-                'createdAt': existing?['createdAt'] ?? DateTime.now().toIso8601String(),
-                '_syncStatus': 'synced',
-              });
-            }
-          }
-          AppDataBus.notifyChanged();
-        } catch (fetchErr) {
-          debugPrint('Re-seed after sync failed (non-fatal): $fetchErr');
+      if (_currentBarangay.isNotEmpty && token != null && token.isNotEmpty) {
+        final pullResult = await SyncService.instance.pullFromServer(
+          barangay: _currentBarangay,
+          token: token,
+        );
+        if (!pullResult.success && pullResult.error != null) {
+          errors.add('Cloud pull failed: ${pullResult.error}');
         }
       }
 
+      final nowIso = DateTime.now().toIso8601String();
+      await Hive.box(HiveBoxes.settings).put('last_synced_at', nowIso);
+
       if (!mounted) return;
-      final remaining = _children.pendingCount + _mothers.pendingCount + _measurements.pendingCount;
+      final remaining = _children.pendingCount +
+          _mothers.pendingCount +
+          _measurements.pendingCount +
+          _referrals.pendingCount;
+
       setState(() {
         _isSyncing = false;
-        _message = remaining == 0
-            ? '✓ All records synced and local data refreshed.'
-            : '$remaining records still pending. Check your connection and try again.';
+        _lastSyncedAt = nowIso;
+        _syncErrors = errors;
+        _message = remaining == 0 && errors.isEmpty
+            ? '✓ All records successfully synced with central database.'
+            : (remaining > 0
+                ? '$remaining record(s) remaining in queue.'
+                : 'Sync finished with warnings.');
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isSyncing = false;
-        _message = 'Sync failed: ${e.toString().replaceFirst('Exception: ', '')}';
+        _syncErrors = [...errors, 'Unexpected error: $e'];
+        _message = 'Sync interrupted.';
       });
+    }
+  }
+
+  String _formatLastSynced(String? iso) {
+    if (iso == null || iso.isEmpty) return 'Never';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final date = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      return '$date at $time';
+    } catch (_) {
+      return iso;
     }
   }
 
@@ -174,9 +131,8 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         .getAll()
         .where((m) => m.barangay == current)
         .length;
-    final referralRepo = ReferralRepository();
-    final referralCount = referralRepo.getForBarangay(current).length;
-    final referralPending = referralRepo.pendingCount;
+    final referralCount = _referrals.getForBarangay(current).length;
+    final referralPending = _referrals.pendingCount;
     final pendingCount = _children.pendingCount +
         _mothers.pendingCount +
         _measurements.pendingCount +
@@ -209,95 +165,187 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.statAmber.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppColors.statAmber.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            pendingCount == 0
-                                ? Icons.cloud_done_outlined
-                                : Icons.cloud_upload_outlined,
-                            color: AppColors.primaryGreen,
-                            size: 20,
+              child: RefreshIndicator(
+                onRefresh: _syncNow,
+                color: AppColors.primaryGreen,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Status Banner
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: pendingCount == 0
+                              ? AppColors.lightGreenBg
+                              : AppColors.statAmber.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: pendingCount == 0
+                                ? AppColors.primaryGreen.withValues(alpha: 0.4)
+                                : AppColors.statAmber.withValues(alpha: 0.4),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
                               pendingCount == 0
-                                  ? 'Hive records are synced with the central database.'
-                                  : '$pendingCount local records are waiting to sync.',
-                              style: AppTextStyles.body.copyWith(
-                                fontSize: 12,
-                                color: AppColors.darkGreen,
+                                  ? Icons.cloud_done_outlined
+                                  : Icons.cloud_upload_outlined,
+                              color: pendingCount == 0
+                                  ? AppColors.darkGreen
+                                  : AppColors.statAmber,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    pendingCount == 0
+                                        ? 'All local Hive records are in sync.'
+                                        : '$pendingCount local record(s) waiting to sync.',
+                                    style: AppTextStyles.body.copyWith(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.darkGreen,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Last synced: ${_formatLastSynced(_lastSyncedAt)}',
+                                    style: AppTextStyles.caption.copyWith(
+                                      fontSize: 11,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_message != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.sm),
-                        child: Text(
-                          _message!,
-                          style: AppTextStyles.body.copyWith(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
+                          ],
                         ),
                       ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'Local records',
-                      style: AppTextStyles.h2.copyWith(fontSize: 15),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    _row('Children', childCount,
-                        synced: childCount - _children.pendingCount),
-                    _row('Mothers', motherCount,
-                        synced: motherCount - _mothers.pendingCount),
-                    _row('Measurements', _measurements.totalCount,
-                        synced: _measurements.totalCount - _measurements.pendingCount),
-                    _row('Referrals', referralCount,
-                        synced: referralCount - referralPending),
-                    const SizedBox(height: AppSpacing.lg),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: OutlinedButton.icon(
-                        onPressed: _isSyncing ? null : _syncNow,
-                        icon: _isSyncing
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+
+                      if (_message != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.sm),
+                          child: Text(
+                            _message!,
+                            style: AppTextStyles.body.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: _syncErrors.isNotEmpty
+                                  ? AppColors.statAmber
+                                  : AppColors.darkGreen,
+                            ),
+                          ),
+                        ),
+
+                      // Error details box if any errors occurred
+                      if (_syncErrors.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFFCA5A5)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded,
+                                      color: Color(0xFFDC2626), size: 16),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Sync Issues / Errors:',
+                                    style: TextStyle(
+                                      color: Color(0xFF991B1B),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ..._syncErrors.map(
+                                (err) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Text(
+                                    '• $err',
+                                    style: const TextStyle(
+                                      color: Color(0xFF7F1D1D),
+                                      fontSize: 11,
+                                    ),
+                                  ),
                                 ),
-                              )
-                            : const Icon(Icons.sync, size: 18),
-                        label: Text(_isSyncing ? 'Syncing...' : 'Sync Now'),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.border),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Local records queue',
+                        style: AppTextStyles.h2.copyWith(fontSize: 15),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+
+                      _row(
+                        'Children',
+                        childCount,
+                        synced: childCount - _children.pendingCount,
+                      ),
+                      _row(
+                        'Mothers',
+                        motherCount,
+                        synced: motherCount - _mothers.pendingCount,
+                      ),
+                      _row(
+                        'Measurements',
+                        _measurements.totalCount,
+                        synced: _measurements.totalCount - _measurements.pendingCount,
+                      ),
+                      _row(
+                        'Referrals',
+                        referralCount,
+                        synced: referralCount - referralPending,
+                      ),
+
+                      const SizedBox(height: AppSpacing.lg),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: OutlinedButton.icon(
+                          onPressed: _isSyncing ? null : _syncNow,
+                          icon: _isSyncing
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.sync, size: 18),
+                          label: Text(_isSyncing ? 'Syncing...' : 'Sync Now'),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.border),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

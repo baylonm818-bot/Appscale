@@ -47,7 +47,9 @@ class MeasurementRepository {
 
   /// Attempts to sync all pending measurements to the server.
   /// Called automatically by [MainShell] timer and on app resume.
-  Future<void> syncPending() async {
+  /// Attempts to sync all pending measurements to the server.
+  Future<List<String>> syncPending() async {
+    final errors = <String>[];
     for (final key in _box.keys) {
       final childId = key.toString();
       final list = (_box.get(childId) as List?) ?? [];
@@ -57,13 +59,19 @@ class MeasurementRepository {
       for (final raw in list) {
         final map = Map<String, dynamic>.from(raw as Map);
         if (map['_syncStatus'] != 'synced') {
-          try {
-            final m = Measurement.fromMap(map);
-            await BeneficiaryApi.syncNutritionRecord(childId, m);
+          final m = Measurement.fromMap(map);
+          final res = await BeneficiaryApi.syncNutritionRecord(childId, m);
+          if (res.success) {
             map['_syncStatus'] = 'synced';
+            map.remove('_lastSyncError');
+            map['_retryCount'] = 0;
             anyUpdated = true;
-          } catch (_) {
-            // No internet or server error — keep as pending, retry next time
+          } else {
+            map['_syncStatus'] = 'failed';
+            map['_lastSyncError'] = res.message;
+            map['_retryCount'] = ((map['_retryCount'] as int?) ?? 0) + 1;
+            anyUpdated = true;
+            errors.add('Measurement ($childId): ${res.message}');
           }
         }
         updated.add(map);
@@ -73,14 +81,12 @@ class MeasurementRepository {
         await _box.put(childId, updated);
       }
     }
+    return errors;
   }
 
   /// Saves the measurement to local Hive storage immediately (offline-safe),
   /// then tries to sync to the server in the background.
-  /// If sync fails (no internet), the record stays as 'pending' and will
-  /// be automatically synced by the next [syncPending] call.
   Future<void> addMeasurement(String childId, Measurement measurement) async {
-    // Step 1: Save locally first — always succeeds regardless of internet
     final current = (_box.get(childId) as List?) ?? [];
     final recordDate = measurement.date.toIso8601String();
     final map = measurement.toMap()
@@ -90,36 +96,40 @@ class MeasurementRepository {
     await _box.put(childId, [...current, map]);
     AppDataBus.notifyChanged();
 
-    // Step 2: Try to sync immediately in the background
     _trySyncSingle(childId, recordDate, measurement);
   }
 
   /// Background sync attempt for a single record.
-  /// Does not throw — failure is silent and will be retried by the auto-sync timer.
   void _trySyncSingle(String childId, String recordDate, Measurement measurement) {
     Future(() async {
-      try {
-        await BeneficiaryApi.syncNutritionRecord(childId, measurement);
-        // Mark this specific record as synced in Hive
-        final list = (_box.get(childId) as List?) ?? [];
-        bool updated = false;
-        final newList = list.map((raw) {
-          final m = Map<String, dynamic>.from(raw as Map);
-          if (m['_localId'] == recordDate || m['date'] == recordDate) {
+      final res = await BeneficiaryApi.syncNutritionRecord(childId, measurement);
+      final list = (_box.get(childId) as List?) ?? [];
+      bool updated = false;
+      final newList = list.map((raw) {
+        final m = Map<String, dynamic>.from(raw as Map);
+        if (m['_localId'] == recordDate || m['date'] == recordDate) {
+          if (res.success) {
             m['_syncStatus'] = 'synced';
-            updated = true;
+            m.remove('_lastSyncError');
+            m['_retryCount'] = 0;
+          } else {
+            m['_syncStatus'] = 'failed';
+            m['_lastSyncError'] = res.message;
+            m['_retryCount'] = ((m['_retryCount'] as int?) ?? 0) + 1;
           }
-          return m;
-        }).toList();
-
-        if (updated) {
-          await _box.put(childId, newList);
-          AppDataBus.notifyChanged();
-          debugPrint('[Sync] Measurement synced to server: $recordDate');
+          updated = true;
         }
-      } catch (e) {
-        // No internet — record stays as 'pending', auto-sync timer will retry
-        debugPrint('[Sync] No internet, measurement queued locally: $e');
+        return m;
+      }).toList();
+
+      if (updated) {
+        await _box.put(childId, newList);
+        AppDataBus.notifyChanged();
+        if (res.success) {
+          debugPrint('[Sync] Measurement synced to server: $recordDate');
+        } else {
+          debugPrint('[Sync] Measurement sync failed: ${res.message}');
+        }
       }
     });
   }

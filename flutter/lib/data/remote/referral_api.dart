@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../local/hive_boxes.dart';
 import '../models/referral.dart';
+import 'beneficiary_api.dart';
 
 class ReferralApi {
   ReferralApi._();
@@ -13,17 +14,22 @@ class ReferralApi {
     return kIsWeb ? 'https://appscale-1.onrender.com/api' : 'https://appscale-1.onrender.com/api';
   }
 
-  static Future<void> submit(Referral referral) async {
+  static Future<ApiResponse> submit(Referral referral) async {
     final settings = SettingsRepository();
     final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
     final userId = settings.authUser?['user_id'];
 
     final headers = <String, String>{
       'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
     };
-    if (token != null && token.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $token';
-    }
 
     final trimmedBeneficiaryId = referral.beneficiaryId.trim();
     final payload = <String, dynamic>{
@@ -45,23 +51,40 @@ class ReferralApi {
       }
     }
 
-    final response = await http
-        .post(
-          Uri.parse('$_baseUrl/bhw/referrals'),
-          headers: headers,
-          body: jsonEncode(payload),
-        )
-        .timeout(const Duration(seconds: 5));
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/bhw/referrals'),
+            headers: headers,
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 25));
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
       Map<String, dynamic>? body;
       try {
         body = jsonDecode(response.body) as Map<String, dynamic>;
-      } catch (_) {
-        body = null;
+      } catch (_) {}
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return ApiResponse(
+          success: true,
+          statusCode: response.statusCode,
+          message: 'Referral submitted successfully.',
+        );
       }
-      throw Exception(
-        body?['message'] ?? 'Referral could not be sent to the web portal.',
+
+      final msg = body?['message'] ??
+          'HTTP ${response.statusCode}: Referral could not be sent to the web portal.';
+      return ApiResponse(
+        success: false,
+        statusCode: response.statusCode,
+        message: msg,
+      );
+    } catch (e) {
+      return ApiResponse(
+        success: false,
+        statusCode: 0,
+        message: 'Network error submitting referral: $e',
       );
     }
   }
