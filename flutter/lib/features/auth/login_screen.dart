@@ -143,6 +143,10 @@ class _LoginScreenState extends State<LoginScreen> {
               '_syncStatus': 'synced',
             });
 
+            if ((c['is_enrolled'] as int? ?? c['is_enrolled'] as bool? ?? 0) == 1 || c['is_enrolled'] == true) {
+              await Hive.box(HiveBoxes.feedingEnrollment).put(key, DateTime.now().toIso8601String());
+            }
+
             // Seed measurement entry for nutritional status history
             if (c['weight_status'] != null || c['height_status'] != null || c['last_weight'] != null) {
               final mKey = 'm_${key}_initial';

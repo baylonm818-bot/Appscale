@@ -88,7 +88,7 @@ class ChildListTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${child.ageInMonths} mos · ${child.address.startsWith("Purok") ? child.address : "Purok ${child.address}"}',
+                  '${child.ageInMonths} ${child.ageInMonths == 1 ? "mo" : "mos"} · ${child.address.isEmpty ? "Purok 1" : (child.address.startsWith("Purok") ? child.address : "Purok ${child.address}")}',
                   style: AppTextStyles.body.copyWith(
                     fontSize: 12,
                     color: AppColors.textMuted,

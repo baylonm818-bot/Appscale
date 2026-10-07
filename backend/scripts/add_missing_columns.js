@@ -7,6 +7,7 @@ const pool = require('../config/db');
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS lock_until DATETIME NULL AFTER failed_attempts");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS lock_level INT DEFAULT 0 AFTER lock_until");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivation_reason VARCHAR(255) NULL AFTER lock_level");
+    await pool.query("ALTER TABLE children ADD COLUMN IF NOT EXISTS is_enrolled TINYINT(1) DEFAULT 0 AFTER status");
 
     console.log('Checked/added missing columns on users table.');
     process.exit(0);

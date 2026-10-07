@@ -179,6 +179,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           '_syncStatus': 'synced',
         });
 
+        if ((c['is_enrolled'] as int? ?? c['is_enrolled'] as bool? ?? 0) == 1 || c['is_enrolled'] == true) {
+          await Hive.box(HiveBoxes.feedingEnrollment).put(key, DateTime.now().toIso8601String());
+        }
+
         if (c['weight_status'] != null || c['height_status'] != null || c['last_weight'] != null) {
           final mKey = 'm_${key}_initial';
           final weight = (c['last_weight'] as num?)?.toDouble() ?? 0.0;

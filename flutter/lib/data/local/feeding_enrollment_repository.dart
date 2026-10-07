@@ -12,11 +12,17 @@ class FeedingEnrollmentRepository {
 
   Future<void> enroll(String childId) async {
     await _box.put(childId, DateTime.now().toIso8601String());
+    final childRepo = ChildRepository();
+    final child = childRepo.getAll().firstWhere((c) => c.id == childId, orElse: () => throw Exception('Child not found'));
+    await childRepo.update(child);
     AppDataBus.notifyChanged();
   }
 
   Future<void> unenroll(String childId) async {
     await _box.delete(childId);
+    final childRepo = ChildRepository();
+    final child = childRepo.getAll().firstWhere((c) => c.id == childId, orElse: () => throw Exception('Child not found'));
+    await childRepo.update(child);
     AppDataBus.notifyChanged();
   }
 

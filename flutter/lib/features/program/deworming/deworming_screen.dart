@@ -40,14 +40,18 @@ class _DewormingScreenState extends State<DewormingScreen>
     super.dispose();
   }
 
+  String get _currentBarangay =>
+      Hive.box(HiveBoxes.settings).get('auth_user')?['barangay']?.toString() ??
+      widget.barangay;
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, version, childWidget) {
-        final records = _dewormingRepo.getAllForBarangay(widget.barangay);
+        final records = _dewormingRepo.getAllForBarangay(_currentBarangay);
         final allChildren = _childRepo
-            .getByBarangay(widget.barangay)
+            .getByBarangay(_currentBarangay)
             .where((c) => c.isActive)
             .toList();
         final eligibleChildren = allChildren

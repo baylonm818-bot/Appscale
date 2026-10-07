@@ -83,21 +83,22 @@ class DashboardRepository {
   /// Primary Weight-for-Age (WFA) distribution across weighed children.
   /// Each weighed child belongs to exactly one category, so percentages sum to 100%.
   List<NutritionStatusItem> getNutritionBreakdown() {
-    final weighedChildren = _childRepo
+    final allChildren = _childRepo
         .getByBarangay(_currentBarangay)
-        .where((c) => c.isActive && c.nutritionStatus != 'Not weighed')
+        .where((c) => c.isActive)
         .toList();
 
-    if (weighedChildren.isEmpty) return [];
+    if (allChildren.isEmpty) return [];
 
     const order = [
       'Normal',
       'Underweight',
       'Severely Underweight',
       'Overweight',
+      'Not weighed',
     ];
     final counts = {for (final s in order) s: 0};
-    for (final c in weighedChildren) {
+    for (final c in allChildren) {
       final sW = ChildStatusMeta.formatStatus(c.nutritionStatus);
       if (counts.containsKey(sW)) {
         counts[sW] = counts[sW]! + 1;
@@ -106,7 +107,7 @@ class DashboardRepository {
       }
     }
 
-    final total = weighedChildren.length;
+    final total = allChildren.length;
     return order
         .where((s) => (counts[s] ?? 0) > 0)
         .map(

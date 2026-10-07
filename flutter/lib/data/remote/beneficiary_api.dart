@@ -21,6 +21,7 @@ class BeneficiaryApi {
     final nameParts = child.fullName.trim().split(RegExp(r'\s+'));
     final firstName = nameParts.isNotEmpty ? nameParts.first : '';
     final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+    final isEnrolled = FeedingEnrollmentRepository().isEnrolled(child.id);
 
     await _post('/mobile/children', {
       'external_id': child.id,
@@ -34,6 +35,8 @@ class BeneficiaryApi {
       'guardian_name': child.guardian.fullName,
       'guardian_contact': child.guardian.contactNo,
       'mother_external_id': child.guardian.linkedMotherId,
+      'status': child.isActive ? 'active' : 'inactive',
+      'is_enrolled': isEnrolled,
       'encoded_by': settings.authUser?['user_id'],
     }, settings.authToken);
   }
@@ -54,6 +57,7 @@ class BeneficiaryApi {
       'address': mother.address,
       'barangay': mother.barangay,
       'linked_child_external_ids': mother.linkedChildIds,
+      'status': mother.isActive ? 'active' : 'inactive',
       'encoded_by': settings.authUser?['user_id'],
     }, settings.authToken);
   }

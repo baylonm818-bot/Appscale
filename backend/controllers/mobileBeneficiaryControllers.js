@@ -87,6 +87,8 @@ exports.upsertChild = async (req, res) => {
     guardian_contact,
     mother_external_id,
     mother_id,
+    status,
+    is_enrolled,
     encoded_by,
   } = req.body;
 
@@ -107,6 +109,8 @@ exports.upsertChild = async (req, res) => {
   const rawGender = (sex || gender || 'male').toString().trim().toLowerCase();
   const resolvedGender = (rawGender === 'f' || rawGender === 'female' || rawGender === 'girl') ? 'female' : 'male';
   const resolvedEncodedBy = encoded_by || req.user?.user_id || null;
+  const childStatus = status || 'active';
+  const enrolledVal = (is_enrolled === true || is_enrolled === 1 || is_enrolled === '1') ? 1 : 0;
 
   let firstName = first_name;
   let lastName = last_name;
@@ -176,6 +180,8 @@ exports.upsertChild = async (req, res) => {
              purok = ?,
              guardian_name = ?,
              guardian_contact = ?,
+             status = ?,
+             is_enrolled = ?,
              mother_id = COALESCE(?, mother_id),
              encoded_by = COALESCE(?, encoded_by),
              updated_at = CURRENT_TIMESTAMP
@@ -192,6 +198,8 @@ exports.upsertChild = async (req, res) => {
             purok || address || 'Purok 1',
             guardian_name || null,
             guardian_contact || null,
+            childStatus,
+            enrolledVal,
             resolvedMotherId,
             resolvedEncodedBy,
             childId,
@@ -210,14 +218,33 @@ exports.upsertChild = async (req, res) => {
       `INSERT INTO children (
          external_id, first_name, middle_initial, last_name, birth_date, sex,
          age_in_months, age_group, municipality, barangay, purok, guardian_name,
-         guardian_contact, mother_id, status, encoded_by
+         guardian_contact, mother_id, status, is_enrolled, encoded_by
        ) VALUES (
          ?, ?, ?, ?, ?, ?,
          TIMESTAMPDIFF(MONTH, ?, CURDATE()),
          CASE WHEN TIMESTAMPDIFF(MONTH, ?, CURDATE()) <= 23 THEN '0-23' ELSE '24-59' END,
          'Gasan', ?, ?, ?,
-         ?, ?, 'active', ?
+         ?, ?, ?, ?, ?
        )`,
+      [
+        external_id || null,
+        firstName,
+        middleInitial || null,
+        lastName || '',
+        birth_date,
+        resolvedGender,
+        birth_date,
+        birth_date,
+        resolvedBarangay,
+        purok || address || 'Purok 1',
+        guardian_name || null,
+        guardian_contact || null,
+        resolvedMotherId,
+        childStatus,
+        enrolledVal,
+        resolvedEncodedBy,
+      ]
+    );
       [
         external_id || null,
         firstName,
@@ -561,7 +588,7 @@ exports.getMobileChildren = async (req, res) => {
   const barangay = scope.barangay;
 
   try {
-    let where = "c.status = 'active'";
+    let where = '1=1';
     const params = [];
 
     if (barangay) {
@@ -573,7 +600,7 @@ exports.getMobileChildren = async (req, res) => {
       `SELECT
          c.child_id, c.external_id, c.first_name, c.middle_initial, c.last_name,
          c.birth_date, c.sex, c.age_in_months, c.age_group, c.barangay, c.purok,
-         c.guardian_name, c.guardian_contact, c.mother_id, c.status,
+         c.guardian_name, c.guardian_contact, c.mother_id, c.status, c.is_enrolled,
          nr.weight_kg, nr.height_cm, nr.muac_cm, nr.weight_status, nr.height_status,
          nr.overall_status, nr.record_date AS last_visit
        FROM children c
@@ -610,7 +637,7 @@ exports.getMobileMothers = async (req, res) => {
   const barangay = scope.barangay;
 
   try {
-    let where = "m.status = 'active'";
+    let where = '1=1';
     const params = [];
 
     if (barangay) {
