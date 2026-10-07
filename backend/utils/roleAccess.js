@@ -59,14 +59,16 @@ function canAccessSchedule(requester, schedule) {
   if (requesterRole === 'admin') return true;
 
   const targetRole = normalizeRole(schedule.target_role || schedule.assigned_to_role || schedule.role || '');
-  const scheduleBarangay = schedule.barangay;
+  const scheduleBarangay = String(schedule.barangay || '').trim();
+  const isGlobalSchedule = scheduleBarangay === '' || scheduleBarangay.toLowerCase() === 'all barangays' || scheduleBarangay.toLowerCase() === 'all';
+  const matchesBarangay = isGlobalSchedule || sameBarangay(requester.barangay, scheduleBarangay);
 
   if (requesterRole === 'bhw') {
-    return sameBarangay(requester.barangay, scheduleBarangay) && (targetRole === 'bhw' || targetRole === 'all' || targetRole === '');
+    return matchesBarangay && (targetRole === 'bhw' || targetRole === 'all' || targetRole === '');
   }
 
   if (requesterRole === 'bns') {
-    return sameBarangay(requester.barangay, scheduleBarangay) && (targetRole === 'bns' || targetRole === 'all' || targetRole === '');
+    return matchesBarangay && (targetRole === 'bns' || targetRole === 'all' || targetRole === '');
   }
 
   return false;

@@ -190,13 +190,28 @@ class BeneficiaryApi {
   }
 
   static Future<List<Map<String, dynamic>>> fetchSchedulesForBarangay(String barangay, String? token) async {
+    final settings = SettingsRepository();
+    final role = (settings.authUser?['role'] ?? '').toString().toLowerCase();
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
-    final uri = Uri.parse('$_baseUrl/schedules');
+
+    final uri = Uri.parse(
+      role == 'admin'
+          ? '$_baseUrl/schedule'
+          : '$_baseUrl/mobile/schedules?barangay=${Uri.encodeComponent(barangay)}',
+    );
+
     final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 25));
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
-      final data = jsonDecode(resp.body) as List<dynamic>;
-      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      final body = jsonDecode(resp.body);
+      if (body is List) {
+        return body.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      if (body is Map && body['schedules'] is List) {
+        return (body['schedules'] as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      }
     }
     return [];
   }

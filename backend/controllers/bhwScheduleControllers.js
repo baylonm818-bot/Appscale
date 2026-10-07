@@ -35,8 +35,12 @@ exports.getBhwSchedules = async (req, res) => {
               venue, barangay, assigned_to, target_role, facilitator, notes, status,
               created_by
        FROM schedules
-       WHERE barangay = ?
-         AND status != 'archived'
+       WHERE status != 'archived'
+         AND (
+           barangay = ?
+           OR barangay = 'All Barangays'
+           OR barangay IS NULL
+         )
        ORDER BY schedule_date ASC`,
       [user.barangay]
     );

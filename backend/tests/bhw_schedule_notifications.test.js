@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const bhwScheduleController = require('../controllers/bhwScheduleControllers');
 const bhwNotificationController = require('../controllers/bhwNotificationControllers');
+const { canAccessSchedule } = require('../utils/roleAccess');
 const pool = require('../config/db');
 
 function makeRes() {
@@ -128,6 +129,35 @@ test('BHW notifications are filtered to the logged-in barangay', async () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.payload.notifications.length, 1);
     assert.ok(calls.some((call) => call.sql.toLowerCase().includes('barangay') && call.params && call.params.includes('Barangay 1')));
+  } finally {
+    pool.query = originalQuery;
+  }
+});
+
+test('BHW schedule access allows all-barangay records for the same-role audience', () => {
+  const requester = { role: 'bhw', barangay: 'Barangay 1' };
+  const schedule = { barangay: 'All Barangays', target_role: 'bhw' };
+
+  assert.equal(canAccessSchedule(requester, schedule), true);
+});
+
+test('BHW schedule query includes all-barangay scope when fetching user schedules', async () => {
+  const originalQuery = pool.query;
+  const calls = [];
+
+  pool.query = async (sql, params) => {
+    calls.push({ sql, params });
+    return [[{ schedule_id: 1 }]];
+  };
+
+  try {
+    const req = { user: { role: 'bhw', barangay: 'Barangay 1' } };
+    const res = makeRes();
+
+    await bhwScheduleController.getBhwSchedules(req, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.ok(calls.some((call) => call.sql.includes("barangay = 'All Barangays'")));
   } finally {
     pool.query = originalQuery;
   }
