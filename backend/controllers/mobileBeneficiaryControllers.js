@@ -181,7 +181,6 @@ exports.upsertChild = async (req, res) => {
              guardian_name = ?,
              guardian_contact = ?,
              status = ?,
-             is_enrolled = ?,
              mother_id = COALESCE(?, mother_id),
              encoded_by = COALESCE(?, encoded_by),
              updated_at = CURRENT_TIMESTAMP
@@ -199,7 +198,6 @@ exports.upsertChild = async (req, res) => {
             guardian_name || null,
             guardian_contact || null,
             childStatus,
-            enrolledVal,
             resolvedMotherId,
             resolvedEncodedBy,
             childId,
@@ -218,13 +216,13 @@ exports.upsertChild = async (req, res) => {
       `INSERT INTO children (
          external_id, first_name, middle_initial, last_name, birth_date, sex,
          age_in_months, age_group, municipality, barangay, purok, guardian_name,
-         guardian_contact, mother_id, status, is_enrolled, encoded_by
+         guardian_contact, mother_id, status, encoded_by
        ) VALUES (
          ?, ?, ?, ?, ?, ?,
          TIMESTAMPDIFF(MONTH, ?, CURDATE()),
          CASE WHEN TIMESTAMPDIFF(MONTH, ?, CURDATE()) <= 23 THEN '0-23' ELSE '24-59' END,
          'Gasan', ?, ?, ?,
-         ?, ?, ?, ?, ?
+         ?, ?, ?, ?
        )`,
       [
         external_id || null,
@@ -241,7 +239,6 @@ exports.upsertChild = async (req, res) => {
         guardian_contact || null,
         resolvedMotherId,
         childStatus,
-        enrolledVal,
         resolvedEncodedBy,
       ]
     );
@@ -750,9 +747,7 @@ exports.getMobileNutritionRecords = async (req, res) => {
          nr.weight_status,
          nr.height_status,
          nr.overall_status,
-         nr.bilateral_pitting_edema,
-         nr.created_at,
-         nr.updated_at
+         nr.created_at
        FROM nutrition_records nr
        INNER JOIN children c ON c.child_id = nr.child_id
        WHERE ${where}
@@ -789,19 +784,19 @@ exports.getMobileSync = async (req, res) => {
 
     const role = req.user?.role || 'bns';
     const scheduleParams = [];
-    let scheduleWhere = "status = 'pending' AND schedule_date >= CURDATE()";
+    let scheduleWhere = "(status = 'pending' OR status IS NULL)";
     if (barangay) { scheduleWhere += " AND (barangay = ? OR barangay = 'All Barangays' OR barangay IS NULL)"; scheduleParams.push(barangay); }
     scheduleWhere += " AND (target_role = ? OR target_role IS NULL OR target_role = '')";
     scheduleParams.push(role);
 
-    const refParams = barangay ? [barangay] : [];
-    const refWhere = barangay ? 'r.barangay = ?' : '1=1';
+    const refParams = barangay ? [barangay, barangay, barangay] : [];
+    const refWhere = barangay ? '(c.barangay = ? OR m.barangay = ? OR ? IS NULL)' : '1=1';
 
     const [[children], [nutritionRecords], [mothers], [schedules], [referrals], [notifications]] = await Promise.all([
       pool.query(
         `SELECT c.child_id, c.external_id, c.first_name, c.middle_initial, c.last_name,
                 c.birth_date, c.sex, c.age_in_months, c.age_group, c.barangay, c.purok,
-                c.guardian_name, c.guardian_contact, c.mother_id, c.status, c.is_enrolled,
+                c.guardian_name, c.guardian_contact, c.mother_id, c.status,
                 c.updated_at,
                 nr.weight_kg AS last_weight, nr.height_cm AS last_height,
                 nr.weight_status, nr.height_status, nr.overall_status,
@@ -819,7 +814,7 @@ exports.getMobileSync = async (req, res) => {
         `SELECT nr.record_id, nr.child_id, c.external_id AS child_external_id,
                 nr.record_date, nr.weight_kg, nr.height_cm, nr.muac_cm,
                 nr.weight_status, nr.height_status, nr.overall_status,
-                nr.bilateral_pitting_edema, nr.created_at
+                nr.created_at
          FROM nutrition_records nr
          INNER JOIN children c ON c.child_id = nr.child_id
          WHERE ${nrWhere} ORDER BY nr.record_date ASC`,
@@ -840,11 +835,13 @@ exports.getMobileSync = async (req, res) => {
       ),
       pool.query(
         `SELECT r.referral_id, r.child_id, r.mother_id, r.reason, r.referred_to,
-                r.status, r.response_notes, r.barangay, r.created_at,
+                r.status, r.notes, r.created_at,
                 c.first_name AS beneficiary_first_name, c.last_name AS beneficiary_last_name,
-                c.external_id AS child_external_id
+                c.external_id AS child_external_id,
+                COALESCE(c.barangay, m.barangay) AS barangay
          FROM referrals r
          LEFT JOIN children c ON c.child_id = r.child_id
+         LEFT JOIN mothers m ON m.mother_id = r.mother_id
          WHERE ${refWhere} ORDER BY r.created_at DESC LIMIT 100`,
         refParams
       ),
