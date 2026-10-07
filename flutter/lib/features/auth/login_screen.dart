@@ -4,7 +4,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/remote/auth_api.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../../data/remote/beneficiary_api.dart';
+import '../../data/remote/sync_service.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_text_field.dart';
 import '../shell/main_shell.dart';
@@ -81,185 +81,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (barangay != null && barangay.isNotEmpty) {
           final token = _settings.authToken;
-
-          // Fetch all data in parallel for speed
-          final results = await Future.wait([
-            BeneficiaryApi.fetchChildrenForBarangay(barangay, token),
-            BeneficiaryApi.fetchMothersForBarangay(barangay, token),
-            BeneficiaryApi.fetchReferralsForBarangay(barangay, token),
-            BeneficiaryApi.fetchSchedulesForBarangay(barangay, token),
-            BeneficiaryApi.fetchNotificationsForBarangay(barangay, token),
-          ]);
-
-          final children      = results[0];
-          final mothers       = results[1];
-          final referrals     = results[2];
-          final schedules     = results[3];
-          final notifications = results[4];
-
-          final childBox       = Hive.box(HiveBoxes.children);
-          final motherBox      = Hive.box(HiveBoxes.mothers);
-          final referralBox    = Hive.box(HiveBoxes.referrals);
-          final scheduleBox    = Hive.box(HiveBoxes.programSchedule);
-          final notifBox       = Hive.box(HiveBoxes.notifications);
-          final measurementBox = Hive.box(HiveBoxes.measurements);
-
-          // ── Seed children & initial measurement records ──
-          for (final c in children) {
-            final key = (c['external_id'] ?? c['child_id']).toString();
-            final existing = childBox.get(key) as Map?;
-            if (existing != null && existing['_syncStatus'] == 'pending') continue;
-            final firstName = c['first_name'] as String? ?? '';
-            final middleInitial = c['middle_initial'] as String? ?? '';
-            final lastName = c['last_name'] as String? ?? '';
-            final fullName = [firstName, if (middleInitial.isNotEmpty) middleInitial, lastName]
-                .where((s) => s.isNotEmpty)
-                .join(' ');
-            childBox.put(key, {
-              'id': key,
-              'sequenceNo': key,
-              'fullName': fullName,
-              'birthDate': (c['birth_date'] as String?)?.split('T').first ?? DateTime.now().toIso8601String(),
-              'gender': c['sex'] as String? ?? 'Male',
-              'address': c['purok'] as String? ?? '',
-              'barangay': c['barangay'] as String? ?? barangay,
-              'belongsToIpGroup': false,
-              'disability': '',
-              'guardian': {
-                'fullName': c['guardian_name'] as String? ?? '',
-                'relationship': 'Guardian',
-                'contactNo': c['guardian_contact'] as String? ?? '',
-                'linkedMotherId': null,
-              },
-              'createdAt': DateTime.now().toIso8601String(),
-              'nutritionStatus': c['weight_status'] ?? existing?['nutritionStatus'] ?? 'Not weighed',
-              'stuntingStatus': c['height_status'] ?? existing?['stuntingStatus'] ?? 'Not weighed',
-              'wastingStatus': c['overall_status'] ?? existing?['wastingStatus'] ?? 'Not weighed',
-              'lastWeighedAt': c['last_visit'] != null
-                  ? (c['last_visit'] as String).split('T').first
-                  : existing?['lastWeighedAt'],
-              'isActive': (c['status'] as String? ?? 'active') == 'active',
-              'inactiveReason': null,
-              '_syncStatus': 'synced',
-            });
-
-            if ((c['is_enrolled'] as int? ?? c['is_enrolled'] as bool? ?? 0) == 1 || c['is_enrolled'] == true) {
-              await Hive.box(HiveBoxes.feedingEnrollment).put(key, DateTime.now().toIso8601String());
-            }
-
-            // Seed measurement entry for nutritional status history
-            if (c['weight_status'] != null || c['height_status'] != null || c['last_weight'] != null) {
-              final mKey = 'm_${key}_initial';
-              final weight = (c['last_weight'] as num?)?.toDouble() ?? 0.0;
-              final height = (c['last_height'] as num?)?.toDouble() ?? 0.0;
-              final dateStr = c['last_visit'] != null
-                  ? (c['last_visit'] as String).split('T').first
-                  : DateTime.now().toIso8601String().split('T').first;
-              measurementBox.put(mKey, {
-                'childId': key,
-                'date': dateStr,
-                'weightKg': weight,
-                'heightCm': height,
-                'muacCm': null,
-                'bilateralPittingEdema': false,
-                'weightForAgeStatus': c['weight_status'] ?? 'Normal',
-                'heightForAgeStatus': c['height_status'] ?? 'Normal',
-                'weightForLengthStatus': c['overall_status'] ?? 'Normal',
-                'customBmi': null,
-                'customBmiStatus': null,
-                '_syncStatus': 'synced',
-              });
-            }
+          final result = await SyncService.instance.pullFromServer(
+            barangay: barangay,
+            token: token ?? '',
+          );
+          if (!result.success) {
+            debugPrint('Server pull after login partially failed: ${result.error}');
           }
-
-          // ── Seed mothers ──
-          for (final m in mothers) {
-            final key = (m['external_id'] ?? m['mother_id']).toString();
-            final existing = motherBox.get(key) as Map?;
-            if (existing != null && existing['_syncStatus'] == 'pending') continue;
-            final firstName = m['first_name'] as String? ?? '';
-            final middleInitial = m['middle_initial'] as String? ?? '';
-            final lastName = m['last_name'] as String? ?? '';
-            final fullName = [firstName, if (middleInitial.isNotEmpty) middleInitial, lastName]
-                .where((s) => s.isNotEmpty)
-                .join(' ');
-            motherBox.put(key, {
-              'id': key,
-              'fullName': fullName,
-              'birthDate': (m['birth_date'] as String?)?.split('T').first ?? DateTime.now().toIso8601String(),
-              'contactNo': m['contact_number'] as String? ?? '',
-              'address': m['purok'] as String? ?? '',
-              'barangay': m['barangay'] as String? ?? barangay,
-              'linkedChildIds': <String>[],
-              'isActive': (m['status'] as String? ?? 'active') == 'active',
-              'inactiveReason': null,
-              'createdAt': DateTime.now().toIso8601String(),
-              '_syncStatus': 'synced',
-            });
-          }
-
-          // ── Seed referrals ──
-          for (final r in referrals) {
-            final key = r['referral_id']?.toString() ?? '';
-            if (key.isEmpty) continue;
-            final existing = referralBox.get(key) as Map?;
-            if (existing != null && existing['_syncStatus'] == 'pending') continue;
-            referralBox.put(key, {
-              'id': key,
-              'beneficiaryId': (r['child_id'] ?? r['mother_id'])?.toString() ?? '',
-              'beneficiaryType': r['beneficiary_type'] as String? ?? 'child',
-              'beneficiaryName': '${r['beneficiary_first_name'] ?? ''} ${r['beneficiary_last_name'] ?? ''}'.trim(),
-              'barangay': r['barangay'] as String? ?? barangay,
-              'facility': r['referred_to']?.toString() ?? '',
-              'reason': r['reason'] as String? ?? '',
-              'notes': r['response_notes'] as String? ?? '',
-              'status': r['status'] as String? ?? 'Pending',
-              'createdAt': r['created_at'] as String? ?? DateTime.now().toIso8601String(),
-              '_syncStatus': 'synced',
-            });
-          }
-
-          // ── Seed schedules ──
-          for (final s in schedules) {
-            final key = s['schedule_id']?.toString() ?? '';
-            if (key.isEmpty) continue;
-            final existing = scheduleBox.get(key) as Map?;
-            if (existing != null && existing['_syncStatus'] == 'pending') continue;
-            scheduleBox.put(key, {
-              'id': key,
-              'title': s['title'] as String? ?? 'Activity',
-              'programType': s['schedule_type'] as String? ?? 'feeding',
-              'date': (s['schedule_date'] as String?)?.split('T').first ?? DateTime.now().toIso8601String(),
-              'startTime': s['schedule_time'] as String? ?? '08:00 AM',
-              'location': s['venue'] as String? ?? 'Health Center',
-              'barangay': s['barangay'] as String? ?? barangay,
-              'notes': s['notes'] as String? ?? '',
-              'status': s['status'] as String? ?? 'pending',
-              '_syncStatus': 'synced',
-            });
-          }
-
-          // ── Seed notifications ──
-          for (final n in notifications) {
-            final key = n['notification_id']?.toString() ?? n['id']?.toString() ?? '';
-            if (key.isEmpty) continue;
-            notifBox.put(key, {
-              'id': key,
-              'title': n['title'] as String? ?? 'Notification',
-              'message': n['message'] as String? ?? '',
-              'type': n['type'] as String? ?? 'general',
-              'referralId': null,
-              'timestamp': (n['created_at'] as String?) ?? DateTime.now().toIso8601String(),
-              'isRead': (n['is_read'] as int? ?? 0) == 1,
-            });
-          }
-
-          debugPrint('Seeded ${children.length} children, ${mothers.length} mothers, ${referrals.length} referrals, ${schedules.length} schedules, ${notifications.length} notifications from server.');
         }
       } catch (seedErr) {
         // Non-fatal: proceed to main UI even if seeding failed.
         debugPrint('Failed to seed local data after login: $seedErr');
       }
+
 
 
       if (!mounted) return;

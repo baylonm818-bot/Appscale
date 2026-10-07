@@ -718,3 +718,170 @@ exports.createMobileSchedule = async (req, res) => {
     return res.status(500).json({ message: 'Unable to sync schedule to server.' });
   }
 };
+
+// ── GET NUTRITION RECORDS (full history for a barangay) ──
+exports.getMobileNutritionRecords = async (req, res) => {
+  const scope = enforceScopedBarangay(req.user, req.query.barangay || null);
+  if (!scope.allowed) {
+    return res.status(403).json({ message: 'Barangay scope mismatch.' });
+  }
+  const barangay = scope.barangay;
+  try {
+    let where = '1=1';
+    const params = [];
+    if (barangay) {
+      where += ' AND c.barangay = ?';
+      params.push(barangay);
+    }
+    const since = req.query.since;
+    if (since) {
+      where += ' AND nr.record_date >= ?';
+      params.push(since);
+    }
+    const [records] = await pool.query(
+      `SELECT
+         nr.record_id,
+         nr.child_id,
+         c.external_id AS child_external_id,
+         nr.record_date,
+         nr.weight_kg,
+         nr.height_cm,
+         nr.muac_cm,
+         nr.weight_status,
+         nr.height_status,
+         nr.overall_status,
+         nr.bilateral_pitting_edema,
+         nr.created_at,
+         nr.updated_at
+       FROM nutrition_records nr
+       INNER JOIN children c ON c.child_id = nr.child_id
+       WHERE ${where}
+       ORDER BY nr.record_date ASC`,
+      params
+    );
+    return res.status(200).json(records);
+  } catch (error) {
+    console.error('Get mobile nutrition records error:', error);
+    return res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+// ── FULL SYNC (single request returns all barangay data) ──
+exports.getMobileSync = async (req, res) => {
+  const scope = enforceScopedBarangay(req.user, req.query.barangay || null);
+  if (!scope.allowed) {
+    return res.status(403).json({ message: 'Barangay scope mismatch.' });
+  }
+  const barangay = scope.barangay;
+  const since = req.query.since || null;
+
+  try {
+    const childParams = barangay ? [barangay] : [];
+    const childWhere = barangay ? 'c.barangay = ?' : '1=1';
+
+    const nrParams = [];
+    let nrWhere = '1=1';
+    if (barangay) { nrWhere += ' AND c.barangay = ?'; nrParams.push(barangay); }
+    if (since) { nrWhere += ' AND nr.record_date >= ?'; nrParams.push(since); }
+
+    const motherParams = barangay ? [barangay] : [];
+    const motherWhere = barangay ? 'm.barangay = ?' : '1=1';
+
+    const role = req.user?.role || 'bns';
+    const scheduleParams = [];
+    let scheduleWhere = "status = 'pending' AND schedule_date >= CURDATE()";
+    if (barangay) { scheduleWhere += " AND (barangay = ? OR barangay = 'All Barangays' OR barangay IS NULL)"; scheduleParams.push(barangay); }
+    scheduleWhere += " AND (target_role = ? OR target_role IS NULL OR target_role = '')";
+    scheduleParams.push(role);
+
+    const refParams = barangay ? [barangay] : [];
+    const refWhere = barangay ? 'r.barangay = ?' : '1=1';
+
+    const [[children], [nutritionRecords], [mothers], [schedules], [referrals], [notifications]] = await Promise.all([
+      pool.query(
+        `SELECT c.child_id, c.external_id, c.first_name, c.middle_initial, c.last_name,
+                c.birth_date, c.sex, c.age_in_months, c.age_group, c.barangay, c.purok,
+                c.guardian_name, c.guardian_contact, c.mother_id, c.status, c.is_enrolled,
+                c.updated_at,
+                nr.weight_kg AS last_weight, nr.height_cm AS last_height,
+                nr.weight_status, nr.height_status, nr.overall_status,
+                nr.record_date AS last_visit
+         FROM children c
+         LEFT JOIN (
+           SELECT nr1.* FROM nutrition_records nr1
+           INNER JOIN (SELECT child_id, MAX(record_date) AS latest_date FROM nutrition_records GROUP BY child_id) latest
+           ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
+         ) nr ON nr.child_id = c.child_id
+         WHERE ${childWhere} ORDER BY c.first_name ASC`,
+        childParams
+      ),
+      pool.query(
+        `SELECT nr.record_id, nr.child_id, c.external_id AS child_external_id,
+                nr.record_date, nr.weight_kg, nr.height_cm, nr.muac_cm,
+                nr.weight_status, nr.height_status, nr.overall_status,
+                nr.bilateral_pitting_edema, nr.created_at
+         FROM nutrition_records nr
+         INNER JOIN children c ON c.child_id = nr.child_id
+         WHERE ${nrWhere} ORDER BY nr.record_date ASC`,
+        nrParams
+      ),
+      pool.query(
+        `SELECT m.mother_id, m.external_id, m.first_name, m.middle_initial, m.last_name,
+                m.birth_date, m.barangay, m.purok, m.contact_number,
+                m.status, m.updated_at
+         FROM mothers m WHERE ${motherWhere} ORDER BY m.first_name ASC`,
+        motherParams
+      ),
+      pool.query(
+        `SELECT schedule_id, title, schedule_type, schedule_date, schedule_time, venue,
+                barangay, facilitator, notes, target_role, status
+         FROM schedules WHERE ${scheduleWhere} ORDER BY schedule_date ASC`,
+        scheduleParams
+      ),
+      pool.query(
+        `SELECT r.referral_id, r.child_id, r.mother_id, r.reason, r.referred_to,
+                r.status, r.response_notes, r.barangay, r.created_at,
+                c.first_name AS beneficiary_first_name, c.last_name AS beneficiary_last_name,
+                c.external_id AS child_external_id
+         FROM referrals r
+         LEFT JOIN children c ON c.child_id = r.child_id
+         WHERE ${refWhere} ORDER BY r.created_at DESC LIMIT 100`,
+        refParams
+      ),
+      pool.query(
+        `SELECT notification_id, title, message, type, is_read, related_id, created_at
+         FROM notifications ORDER BY created_at DESC LIMIT 50`
+      ),
+    ]);
+
+    // Fetch requester's profile picture URL
+    const userId = req.user?.user_id;
+    let profilePicture = null;
+    if (userId) {
+      const [[userRow]] = await pool.query(
+        'SELECT profile_picture FROM users WHERE user_id = ? LIMIT 1',
+        [userId]
+      );
+      if (userRow?.profile_picture) {
+        const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
+        profilePicture = userRow.profile_picture.startsWith('http')
+          ? userRow.profile_picture
+          : `${base}${userRow.profile_picture}`;
+      }
+    }
+
+    return res.status(200).json({
+      children,
+      nutritionRecords,
+      mothers,
+      schedules,
+      referrals,
+      notifications,
+      profilePicture,
+      syncedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Full mobile sync error:', error);
+    return res.status(500).json({ message: 'Server error during full sync.' });
+  }
+};

@@ -267,7 +267,11 @@ exports.login = async (req, res) => {
         role: user.role,
         barangay: user.barangay,
         municipality: user.municipality,
-        profile_picture: user.profile_picture,
+        profile_picture: user.profile_picture
+          ? (user.profile_picture.startsWith('http')
+              ? user.profile_picture
+              : `${process.env.APP_BASE_URL || 'https://appscale-1.onrender.com'}${user.profile_picture}`)
+          : null,
       },
     });
   } catch (error) {
