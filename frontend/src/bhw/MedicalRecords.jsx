@@ -1035,7 +1035,7 @@ function MedicalRecords() {
                             {log.action}
                           </span>
                         </td>
-                        <td className="py-3 text-gray-600 max-w-md break-words">
+                        <td className="py-3 text-gray-600 max-w-md wrap-break-word">
                           {log.action_details || 'Medical record logged'}
                         </td>
                       </tr>
@@ -1050,7 +1050,7 @@ function MedicalRecords() {
 
       {/* ── Add Medication / Supplement / Intervention Modal ── */}
       {showAddModal && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden" onClick={() => setShowAddModal(false)}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setShowAddModal(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white">
               <div>
@@ -1168,7 +1168,7 @@ function MedicalRecords() {
 
       {/* ── Add Beneficiary Modal (Item 25 & 36) ── */}
       {showAddBeneficiaryModal && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col my-8">
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between text-white shrink-0">
               <div className="flex items-center gap-2">
