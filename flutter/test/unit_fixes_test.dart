@@ -118,6 +118,30 @@ void main() {
         expect(updated.guardian.fullName, equals('Mary Smith'));
       },
     );
+
+    test('Child age calculation accounts for day-of-month instead of month-only rounding', () {
+      final now = DateTime(2025, 3, 15);
+      final child = Child(
+        id: 'c-age-test',
+        sequenceNo: '002',
+        fullName: 'Baby With Day Boundary',
+        birthDate: DateTime(2024, 3, 31),
+        gender: 'Boy',
+        address: 'Purok 2',
+        barangay: 'San Antonio',
+        belongsToIpGroup: false,
+        disability: 'None',
+        guardian: const Guardian(
+          fullName: 'Parent Name',
+          relationship: 'Mother',
+          contactNo: '09123456789',
+        ),
+        createdAt: DateTime(2024, 3, 31),
+      );
+
+      expect(Child.monthsBetween(child.birthDate, now), equals(11));
+      expect(child.ageInMonthsAt(now), equals(11));
+    });
   });
 
   group('Referral & Notification Web Architecture Tests', () {
@@ -219,6 +243,8 @@ void main() {
       expect(AppUserIdentity.sanitizeMobileNumber('+63 912-345-6789'), equals('639123456789'));
       expect(AppUserIdentity.sanitizeMobileNumber('09ABC12345X'), equals('0912345'));
       expect(AppUserIdentity.sanitizeMobileNumber('   '), isEmpty);
+      expect(AppUserIdentity.isValidPhilippineContactNumber(''), isTrue);
+      expect(AppUserIdentity.isValidPhilippineContactNumber('+63 912-345-6789'), isTrue);
     });
   });
 

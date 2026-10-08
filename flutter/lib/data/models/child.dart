@@ -43,10 +43,15 @@ class Child {
     this.wastingStatus = 'Not weighed',
   });
 
-  int get ageInMonths {
-    final now = DateTime.now();
-    return (now.year - birthDate.year) * 12 + (now.month - birthDate.month);
+  static int monthsBetween(DateTime start, DateTime end) {
+    final monthDiff = (end.year - start.year) * 12 + (end.month - start.month);
+    final adjusted = end.day < start.day ? monthDiff - 1 : monthDiff;
+    return adjusted < 0 ? 0 : adjusted;
   }
+
+  int ageInMonthsAt(DateTime referenceDate) => monthsBetween(birthDate, referenceDate);
+
+  int get ageInMonths => ageInMonthsAt(DateTime.now());
 
   /// "2 yr. 4 mo." for a profile header, vs the shorter "28 mos" used in list rows.
   String get ageLabel {

@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Single source of truth for Hive box names, so a typo in a box name
@@ -25,26 +26,38 @@ class HiveBoxes {
   static const reportSnapshots = 'report_snapshots_box';
 
   static Future<void> init() async {
-    await Hive.initFlutter();
-    await Hive.openBox(settings);
-    await Hive.openBox(activityLog);
-    await Hive.openBox(mothers);
-    await Hive.openBox(children);
-    await Hive.openBox(measurements);
-    await Hive.openBox(motherVisits);
-    await Hive.openBox(referrals);
-    await Hive.openBox(feedingEnrollment);
-    await Hive.openBox(feedingSchedule);
-    await Hive.openBox(mealPlans);
-    await Hive.openBox(feedingAttendance);
-    await Hive.openBox(feedingFeedback);
-    await Hive.openBox(notifications);
-    await Hive.openBox(programSchedule);
-    await Hive.openBox(vitaminA);
-    await Hive.openBox(deworming);
-    await Hive.openBox(reportSignatories);
-    await Hive.openBox(reportSnapshots);
-    // Later: openBox<Child>('children_box'), openBox<Mother>('mothers_box'), etc.
+    WidgetsFlutterBinding.ensureInitialized();
+
+    if (!Hive.isBoxOpen(settings)) {
+      await Hive.initFlutter();
+    }
+
+    final boxNames = [
+      settings,
+      activityLog,
+      mothers,
+      children,
+      measurements,
+      motherVisits,
+      referrals,
+      feedingEnrollment,
+      feedingSchedule,
+      mealPlans,
+      feedingAttendance,
+      feedingFeedback,
+      notifications,
+      programSchedule,
+      vitaminA,
+      deworming,
+      reportSignatories,
+      reportSnapshots,
+    ];
+
+    for (final boxName in boxNames) {
+      if (!Hive.isBoxOpen(boxName)) {
+        await Hive.openBox(boxName);
+      }
+    }
   }
 }
 

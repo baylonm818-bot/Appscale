@@ -52,20 +52,14 @@ class AppUserIdentity {
 
   static String sanitizeMobileNumber(String? raw) {
     if (raw == null) return '';
-    var digits = raw.replaceAll(RegExp(r'\D+'), '');
-    if (digits.isEmpty) return '';
-    if (digits.length == 10 && digits.startsWith('9')) {
-      digits = '0$digits';
-    }
-    if (digits.startsWith('63') && digits.length == 12) {
-      digits = '0${digits.substring(2)}';
-    }
+    final digits = raw.replaceAll(RegExp(r'\D+'), '');
     return digits;
   }
 
   static bool isValidPhilippineContactNumber(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return false;
+    if (raw == null) return false;
+    if (raw.trim().isEmpty) return true;
     final sanitized = sanitizeMobileNumber(raw);
-    return RegExp(r'^09\d{9}$').hasMatch(sanitized);
+    return RegExp(r'^(?:09\d{9}|63\d{10})$').hasMatch(sanitized);
   }
 }

@@ -12,11 +12,14 @@ import '../../shared/utils/app_page_route.dart';
 class AddProfileSheet extends StatelessWidget {
   const AddProfileSheet({super.key});
 
-  static Future<void> show(BuildContext context) {
-    return showModalBottomSheet(
+  static Future<T?> show<T>(BuildContext context) {
+    return showModalBottomSheet<T>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: true,
+      enableDrag: true,
       builder: (_) => const AddProfileSheet(),
     );
   }
@@ -69,8 +72,13 @@ class AddProfileSheet extends StatelessWidget {
             title: 'Add Child',
             subtitle: 'Register a new child profile',
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context, appPageRoute(const AddChildScreen()));
+              final navigator = Navigator.of(context);
+              if (navigator.canPop()) {
+                navigator.pop();
+              }
+              if (context.mounted) {
+                navigator.push(appPageRoute(const AddChildScreen()));
+              }
             },
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -80,8 +88,13 @@ class AddProfileSheet extends StatelessWidget {
             title: 'Add Mother',
             subtitle: 'Register a new mother profile',
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context, appPageRoute(const AddMotherScreen()));
+              final navigator = Navigator.of(context);
+              if (navigator.canPop()) {
+                navigator.pop();
+              }
+              if (context.mounted) {
+                navigator.push(appPageRoute(const AddMotherScreen()));
+              }
             },
           ),
           const SizedBox(height: AppSpacing.lg),

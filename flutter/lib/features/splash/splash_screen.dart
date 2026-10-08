@@ -37,9 +37,11 @@ class _SplashScreenState extends State<SplashScreen>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
     _controller.forward();
 
-    // Fire pending sync asynchronously so splash screen never blocks on cold start network calls
+    // Fire pending sync asynchronously so splash screen never blocks on cold start network calls.
+    // Ensure the Hive boxes exist first so a cold launch or test harness doesn't trip a Box not found.
     Future.microtask(() async {
       try {
+        await HiveBoxes.init();
         await Future.wait([
           ChildRepository().syncPending(),
           MotherRepository().syncPending(),

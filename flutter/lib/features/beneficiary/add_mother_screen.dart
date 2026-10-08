@@ -112,7 +112,7 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
 
     final rawContact = _contactController.text.trim();
     final sanitizedContact = AppUserIdentity.sanitizeMobileNumber(rawContact);
-    if (!AppUserIdentity.isValidPhilippineContactNumber(rawContact)) {
+    if (rawContact.isNotEmpty && !AppUserIdentity.isValidPhilippineContactNumber(rawContact)) {
       AppNotificationUI.showWarning(
         context,
         'Please enter a valid 11-digit mobile contact number starting with 09 (e.g. 09123456789).',
