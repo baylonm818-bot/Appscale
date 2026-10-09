@@ -330,19 +330,18 @@ exports.createReferral = async (req, res) => {
 
 exports.getReferrals = async (req, res) => {
   const user = req.user;
-
-  // Admin can query all referrals; BHW/BNS need barangay
   const isAdmin = String(user?.role || '').toLowerCase() === 'admin';
+  const targetBarangay = user?.barangay || req.query.barangay || null;
 
-  if (!isAdmin && !user?.barangay) {
-    return res.status(400).json({ message: 'Barangay is required.' });
+  if (!isAdmin && !targetBarangay) {
+    return res.status(200).json([]);
   }
 
   try {
     const whereClause = isAdmin
       ? '1=1'
       : 'COALESCE(c.barangay, m.barangay) = ?';
-    const params = isAdmin ? [] : [user.barangay];
+    const params = isAdmin ? [] : [targetBarangay];
 
     const [referrals] = await pool.query(
       `SELECT DISTINCT
@@ -356,7 +355,7 @@ exports.getReferrals = async (req, res) => {
          CASE
            WHEN LOWER(COALESCE(r.severity, '')) = 'high' THEN 'high'
            WHEN LOWER(COALESCE(r.reason, '')) LIKE '%sam%' OR LOWER(COALESCE(r.reason, '')) LIKE '%sever%' THEN 'high'
-           WHEN nr.overall_status = 'SAM' OR nr.weight_status LIKE '%sever%' OR nr.height_status LIKE '%sever%' OR nr.wasting_status LIKE '%sever%' THEN 'high'
+           WHEN nr.overall_status = 'SAM' OR nr.weight_status LIKE '%sever%' OR nr.height_status LIKE '%sever%' THEN 'high'
            ELSE LOWER(COALESCE(r.severity, 'medium'))
          END AS severity,
          r.status,
@@ -379,7 +378,7 @@ exports.getReferrals = async (req, res) => {
        LEFT JOIN children c ON c.child_id = r.child_id
        LEFT JOIN mothers m ON m.mother_id = r.mother_id
        LEFT JOIN (
-         SELECT nr1.child_id, nr1.overall_status, nr1.weight_status, nr1.height_status, nr1.wasting_status
+         SELECT nr1.child_id, nr1.overall_status, nr1.weight_status, nr1.height_status
          FROM nutrition_records nr1
          INNER JOIN (
            SELECT child_id, MAX(record_date) AS max_date
