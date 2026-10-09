@@ -193,7 +193,7 @@ exports.createReferral = async (req, res) => {
     let finalSeverity = (severity || 'medium').toString().toLowerCase();
     if (beneficiaryType === 'child' && resolvedChildId) {
       try {
-        const [[latestNrRows]] = await pool.query(
+        const [[latest]] = await pool.query(
           `SELECT weight_status, height_status, overall_status
            FROM nutrition_records
            WHERE child_id = ?
@@ -201,7 +201,6 @@ exports.createReferral = async (req, res) => {
            LIMIT 1`,
           [resolvedChildId]
         );
-        const latest = latestNrRows[0];
         if (latest) {
           const ws = String(latest.weight_status || '').toLowerCase();
           const hs = String(latest.height_status || '').toLowerCase();
@@ -349,12 +348,17 @@ exports.getReferrals = async (req, res) => {
       `SELECT DISTINCT
          r.referral_id,
          CASE
-           WHEN c.child_id IS NOT NULL THEN 'child'
-           WHEN m.mother_id IS NOT NULL THEN 'mother'
+           WHEN r.child_id IS NOT NULL OR c.child_id IS NOT NULL THEN 'child'
+           WHEN r.mother_id IS NOT NULL OR m.mother_id IS NOT NULL THEN 'mother'
            ELSE 'child'
          END AS beneficiary_type,
          r.reason,
-         r.severity,
+         CASE
+           WHEN LOWER(COALESCE(r.severity, '')) = 'high' THEN 'high'
+           WHEN LOWER(COALESCE(r.reason, '')) LIKE '%sam%' OR LOWER(COALESCE(r.reason, '')) LIKE '%sever%' THEN 'high'
+           WHEN nr.overall_status = 'SAM' OR nr.weight_status LIKE '%sever%' OR nr.height_status LIKE '%sever%' OR nr.wasting_status LIKE '%sever%' THEN 'high'
+           ELSE LOWER(COALESCE(r.severity, 'medium'))
+         END AS severity,
          r.status,
          r.referred_by,
          r.referred_to,
@@ -374,6 +378,15 @@ exports.getReferrals = async (req, res) => {
        FROM referrals r
        LEFT JOIN children c ON c.child_id = r.child_id
        LEFT JOIN mothers m ON m.mother_id = r.mother_id
+       LEFT JOIN (
+         SELECT nr1.child_id, nr1.overall_status, nr1.weight_status, nr1.height_status, nr1.wasting_status
+         FROM nutrition_records nr1
+         INNER JOIN (
+           SELECT child_id, MAX(record_date) AS max_date
+           FROM nutrition_records
+           GROUP BY child_id
+         ) nr2 ON nr1.child_id = nr2.child_id AND nr1.record_date = nr2.max_date
+       ) nr ON nr.child_id = c.child_id
        WHERE ${whereClause}
        ORDER BY FIELD(LOWER(r.status), 'pending', 'ongoing', 'responded', 'cancelled', 'completed', 'closed'), r.created_at DESC`,
       params
@@ -387,7 +400,22 @@ exports.getReferrals = async (req, res) => {
       else if (lower === 'ongoing' || lower === 'responded') normalizedStatus = 'Ongoing';
       else if (lower === 'cancelled') normalizedStatus = 'Cancelled';
       else if (lower === 'completed' || lower === 'closed') normalizedStatus = 'Completed';
-      return { ...ref, status: normalizedStatus };
+
+      // Clean notes of duplicate "Facility: 9 Facility: ..."
+      let notes = ref.response_notes;
+      if (notes) {
+        notes = String(notes)
+          .replace(/Facility:\s*\d+\s+Facility:\s*/gi, 'Facility: ')
+          .replace(/(Facility:\s*)+/gi, 'Facility: ')
+          .trim();
+      }
+
+      return {
+        ...ref,
+        status: normalizedStatus,
+        response_notes: notes,
+        notes: notes,
+      };
     }).filter((referral) => canAccessReferral(user, referral));
 
     return res.status(200).json(allowedReferrals);

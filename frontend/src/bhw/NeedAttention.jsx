@@ -1,21 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
 import {
-  AlertCircle,
-  Phone,
   Search,
-  ArrowUpDown,
   ClipboardPlus,
   Stethoscope,
   X,
   ChevronLeft,
   ChevronRight,
-  AlertTriangle,
-  CheckCircle2,
-  Calendar,
 } from 'lucide-react';
 
 const statusColors = {
@@ -52,8 +45,6 @@ function daysSince(dateStr) {
 }
 
 function NeedAttention() {
-  const navigate = useNavigate();
-  const [error, setError] = useState('');
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
 
   // filters
@@ -83,17 +74,19 @@ function NeedAttention() {
   const [visitSubmitting, setVisitSubmitting] = useState(false);
   const [visitError, setVisitError] = useState('');
 
-  const { data, isLoading, refetch } = useQuery(
-    ['need-attention', user.barangay],
-    async () => {
+  const { data, isLoading, error: queryError, refetch } = useQuery({
+    queryKey: ['need-attention', user.barangay || ''],
+    queryFn: async () => {
       const res = await axiosClient.get('/bhw/need-attention', { params: { barangay: user.barangay } });
       return res.data || [];
     },
-    { enabled: !!user?.barangay, staleTime: 1000 * 20, cacheTime: 1000 * 60 * 2 }
-  );
+    staleTime: 1000 * 20,
+    gcTime: 1000 * 60 * 2,
+  });
 
-  const children = data || [];
-  const loading = isLoading;
+  const children = useMemo(() => (Array.isArray(data) ? data : []), [data]);
+  const loading = isLoading && !data;
+  const error = queryError ? (queryError.response?.data?.message || 'Failed to load children list.') : '';
 
   const filteredChildren = useMemo(() => {
     let list = [...children];
@@ -206,9 +199,16 @@ function NeedAttention() {
         setVisitSubmitting(false);
         return;
       }
+      const age = visitTarget.age_in_months ?? 0;
       // Vitamin A not for <6 months
-      if (serviceType === 'vitamin_a' && (visitTarget.age_in_months ?? 0) < 6) {
+      if (serviceType === 'vitamin_a' && age < 6) {
         setVisitError('Vitamin A supplementation is not indicated for infants under 6 months.');
+        setVisitSubmitting(false);
+        return;
+      }
+      // Deworming not for <12 months
+      if (serviceType === 'deworming' && age < 12) {
+        setVisitError('Deworming tablets are not indicated for infants under 12 months.');
         setVisitSubmitting(false);
         return;
       }
@@ -340,14 +340,14 @@ function NeedAttention() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed">
+          <table className="w-full text-sm table-fixed min-w-[700px]">
             <colgroup>
-              <col className="w-[28%]" />
-              <col className="w-[12%]" />
+              <col className="w-[24%]" />
+              <col className="w-[10%]" />
               <col className="w-[14%]" />
               <col className="w-[14%]" />
               <col className="w-[14%]" />
-              <col className="w-[18%]" />
+              <col className="w-[24%]" />
             </colgroup>
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80 border-b border-gray-100">
@@ -404,13 +404,13 @@ function NeedAttention() {
                           {days != null ? `${days}d ago` : 'Overdue'}
                         </p>
                       </td>
-                      <td className="px-4 py-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                      <td className="px-4 py-4 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1.5 flex-nowrap">
                           <button
                             type="button"
                             onClick={(e) => openVisitModal(c, e)}
                             aria-label={`Log visit for ${c.first_name} ${c.last_name}`}
-                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition inline-flex items-center gap-1 whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
                           >
                             <Stethoscope size={13} /> Log Visit
                           </button>
@@ -418,7 +418,7 @@ function NeedAttention() {
                             type="button"
                             onClick={(e) => openReferModal(c, e)}
                             aria-label={`Refer ${c.first_name} ${c.last_name}`}
-                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 transition inline-flex items-center gap-1 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 transition inline-flex items-center gap-1 whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                           >
                             <ClipboardPlus size={13} /> Refer
                           </button>
@@ -464,7 +464,7 @@ function NeedAttention() {
       {/* ── Log Visit Modal ── */}
       {visitTarget && createPortal(
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setVisitTarget(null)}>
-            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
                 <div>
                   <h3 className="font-bold text-base">Record Health Visit / Service</h3>
@@ -482,7 +482,14 @@ function NeedAttention() {
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Service Provided *</label>
                   <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]">
                     <option value="">Select service</option>
-                    {serviceOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    {serviceOptions
+                      .filter((opt) => {
+                        const age = visitTarget.age_in_months ?? 0;
+                        if (opt.value === 'vitamin_a' && age < 6) return false;
+                        if (opt.value === 'deworming' && age < 12) return false;
+                        return true;
+                      })
+                      .map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   </select>
                 </div>
 
@@ -521,7 +528,7 @@ function NeedAttention() {
       {/* ── Refer Modal ── */}
       {referTarget && createPortal(
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setReferTarget(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="bg-linear-to-r from-amber-600 to-orange-600 px-6 py-5 flex items-center justify-between text-white">
                 <div>
                   <h3 className="font-bold text-base">Refer Child to RHU / Doctor</h3>

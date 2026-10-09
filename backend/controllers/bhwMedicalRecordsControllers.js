@@ -2,27 +2,24 @@ const pool = require('../config/db');
 const { ensureMedicalRecordTables, buildChildServiceInsert, buildMotherServiceInsert } = require('../utils/medicalSchema');
 
 exports.getMedicalRecordsList = async (req, res) => {
-  let { barangay } = req.query;
+  let barangay = req.user?.barangay || req.query.barangay || '';
   const role = String(req.user?.role || '').toLowerCase();
 
-  // SECURITY FIX: Enforce barangay check for non-admins to prevent IDOR
-  if (role !== 'admin') {
-      if (req.user?.barangay) {
-          barangay = req.user.barangay; // Force the query to use the assigned barangay
-      } else {
-          return res.status(403).json({ message: 'Unauthorized: No assigned barangay for this user.' });
-      }
-  }
-
-  if (!barangay) {
-    return res.status(400).json({ message: 'Barangay is required.' });
+  if (role !== 'admin' && !barangay) {
+    return res.status(200).json([]);
   }
 
   try {
+    const barangayCondition = barangay && barangay !== 'All Barangays' ? 'LOWER(TRIM(c.barangay)) = LOWER(TRIM(?))' : '1=1';
+    const queryParams = barangay && barangay !== 'All Barangays' ? [barangay] : [];
+
     const [children] = await pool.query(
       `SELECT
         c.child_id, c.first_name, c.last_name, c.sex,
-        COALESCE(c.age_in_months, TIMESTAMPDIFF(MONTH, c.birth_date, CURDATE())) AS age_in_months,
+        CASE
+          WHEN c.birth_date IS NOT NULL THEN TIMESTAMPDIFF(MONTH, c.birth_date, CURDATE())
+          ELSE c.age_in_months
+        END AS age_in_months,
         c.guardian_name, c.barangay,
          nr.overall_status, nr.record_date AS last_visit, nr.weight_kg, nr.height_cm, nr.muac_cm, nr.bmi, nr.bmi_status, nr.weight_status, nr.height_status
        FROM children c
@@ -35,10 +32,37 @@ exports.getMedicalRecordsList = async (req, res) => {
            GROUP BY child_id
          ) latest ON nr1.record_id = latest.max_id
        ) nr ON nr.child_id = c.child_id
-       WHERE (LOWER(TRIM(c.barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND c.status = 'active'
+       WHERE ${barangayCondition} AND c.status = 'active'
        ORDER BY c.first_name ASC`,
-      [barangay, barangay]
+      queryParams
     );
+
+    for (const child of children) {
+      if ((child.bmi === null || child.bmi === undefined || child.bmi === '') && child.weight_kg && child.height_cm) {
+        const w = Number(child.weight_kg);
+        const h = Number(child.height_cm) / 100;
+        if (w > 0 && h > 0) {
+          child.bmi = Number((w / (h * h)).toFixed(2));
+        }
+      }
+      if ((!child.bmi_status || child.bmi_status === '' || child.bmi_status === '—' || child.bmi_status === '-') && child.bmi != null) {
+        const b = Number(child.bmi);
+        if (b < 18.5) child.bmi_status = 'Underweight';
+        else if (b < 25) child.bmi_status = 'Normal';
+        else if (b < 30) child.bmi_status = 'Overweight';
+        else child.bmi_status = 'Obese';
+      }
+      if (!child.bmi_status || child.bmi_status === '' || child.bmi_status === '—' || child.bmi_status === '-') {
+        if (child.weight_status) {
+          const ws = String(child.weight_status).toLowerCase();
+          if (ws.includes('sever') || ws.includes('under')) child.bmi_status = 'Underweight';
+          else if (ws.includes('over')) child.bmi_status = 'Overweight';
+          else if (ws.includes('obese')) child.bmi_status = 'Obese';
+          else if (ws.includes('norm')) child.bmi_status = 'Normal';
+        }
+      }
+    }
+
     return res.status(200).json(children);
   } catch (error) {
     console.error('Get medical records list error:', error);
@@ -47,22 +71,17 @@ exports.getMedicalRecordsList = async (req, res) => {
 };
 
 exports.getMothersList = async (req, res) => {
-  let { barangay } = req.query;
+  let barangay = req.user?.barangay || req.query.barangay || '';
   const role = String(req.user?.role || '').toLowerCase();
 
-  if (role !== 'admin') {
-    if (req.user?.barangay) {
-      barangay = req.user.barangay;
-    } else {
-      return res.status(403).json({ message: 'Unauthorized: No assigned barangay.' });
-    }
-  }
-
-  if (!barangay) {
-    return res.status(400).json({ message: 'Barangay is required.' });
+  if (role !== 'admin' && !barangay) {
+    return res.status(200).json([]);
   }
 
   try {
+    const barangayCondition = barangay && barangay !== 'All Barangays' ? 'LOWER(TRIM(m.barangay)) = LOWER(TRIM(?))' : '1=1';
+    const queryParams = barangay && barangay !== 'All Barangays' ? [barangay] : [];
+
     const [mothers] = await pool.query(
       `SELECT
          m.mother_id,
@@ -79,10 +98,10 @@ exports.getMothersList = async (req, res) => {
        FROM mothers m
        LEFT JOIN children c ON c.guardian_name = CONCAT(m.first_name, ' ', m.last_name)
          AND c.barangay = m.barangay AND c.status = 'active'
-       WHERE (LOWER(TRIM(m.barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND m.status = 'active'
+       WHERE ${barangayCondition} AND m.status = 'active'
        GROUP BY m.mother_id
        ORDER BY m.first_name ASC`,
-      [barangay, barangay]
+      queryParams
     );
     return res.status(200).json(mothers);
   } catch (error) {
@@ -98,7 +117,10 @@ exports.getChildMedicalHistory = async (req, res) => {
   try {
     const [[child]] = await pool.query(
       `SELECT child_id, first_name, last_name, barangay, sex,
-              COALESCE(age_in_months, TIMESTAMPDIFF(MONTH, birth_date, CURDATE())) AS age_in_months
+              CASE
+                WHEN birth_date IS NOT NULL THEN TIMESTAMPDIFF(MONTH, birth_date, CURDATE())
+                ELSE age_in_months
+              END AS age_in_months
        FROM children WHERE child_id = ?`,
       [childId]
     );
@@ -122,19 +144,28 @@ exports.getChildMedicalHistory = async (req, res) => {
     // Fill missing BMI and BMI status when possible for display convenience
     for (const rec of nutritionHistory) {
       try {
-        if ((rec.bmi === null || rec.bmi === undefined) && rec.weight_kg && rec.height_cm) {
+        if ((rec.bmi === null || rec.bmi === undefined || rec.bmi === '') && rec.weight_kg && rec.height_cm) {
           const w = Number(rec.weight_kg);
           const h = Number(rec.height_cm) / 100;
           if (w > 0 && h > 0) {
             rec.bmi = Number((w / (h * h)).toFixed(2));
           }
         }
-        if ((!rec.bmi_status || rec.bmi_status === '') && rec.bmi != null) {
+        if ((!rec.bmi_status || rec.bmi_status === '' || rec.bmi_status === '—' || rec.bmi_status === '-') && rec.bmi != null) {
           const b = Number(rec.bmi);
           if (b < 18.5) rec.bmi_status = 'Underweight';
           else if (b < 25) rec.bmi_status = 'Normal';
           else if (b < 30) rec.bmi_status = 'Overweight';
           else rec.bmi_status = 'Obese';
+        }
+        if (!rec.bmi_status || rec.bmi_status === '' || rec.bmi_status === '—' || rec.bmi_status === '-') {
+          if (rec.weight_status) {
+            const ws = String(rec.weight_status).toLowerCase();
+            if (ws.includes('sever') || ws.includes('under')) rec.bmi_status = 'Underweight';
+            else if (ws.includes('over')) rec.bmi_status = 'Overweight';
+            else if (ws.includes('obese')) rec.bmi_status = 'Obese';
+            else if (ws.includes('norm')) rec.bmi_status = 'Normal';
+          }
         }
       } catch (e) {
         // ignore per-record fill errors
@@ -202,7 +233,7 @@ exports.getMotherMedicalHistory = async (req, res) => {
     const [children] = await pool.query(
       `SELECT child_id, first_name, last_name, age_in_months, sex, status
        FROM children
-       WHERE guardian_name = CONCAT(?, ' ', ?) OR mother_id = ?`,
+       WHERE (guardian_name = CONCAT(?, ' ', ?) OR mother_id = ?) AND status = 'active'`,
       [mother.first_name, mother.last_name, motherId]
     );
 

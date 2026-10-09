@@ -317,7 +317,7 @@ exports.devLogin = async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      'SELECT * FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) OR LOWER(TRIM(username)) = LOWER(TRIM(?)) AND deleted_at IS NULL LIMIT 1',
+      'SELECT * FROM users WHERE (LOWER(TRIM(email)) = LOWER(TRIM(?)) OR LOWER(TRIM(username)) = LOWER(TRIM(?))) AND deleted_at IS NULL LIMIT 1',
       [loginIdentifier, loginIdentifier]
     );
     if (!rows || rows.length === 0) return res.status(401).json({ message: 'Invalid credentials' });

@@ -65,7 +65,6 @@ function MedicalRecords() {
   const [addBeneficiarySuccess, setAddBeneficiarySuccess] = useState('');
 
   // ── Children state ──
-  const [childError, setChildError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [ageFilter, setAgeFilter] = useState('all');
@@ -76,7 +75,6 @@ function MedicalRecords() {
   const [activeTab, setActiveTab] = useState('growth');
 
   // ── Mothers state ──
-  const [motherError, setMotherError] = useState('');
   const [motherSearch, setMotherSearch] = useState('');
   const [selectedMother, setSelectedMother] = useState(null);
   const [motherDetail, setMotherDetail] = useState(null);
@@ -85,7 +83,6 @@ function MedicalRecords() {
   const [motherActiveTab, setMotherActiveTab] = useState('services');
 
   // ── Audit Trail state ──
-  const [auditError, setAuditError] = useState('');
 
   // ── Add Intervention Modal State ──
   const [showAddModal, setShowAddModal] = useState(false);
@@ -102,17 +99,21 @@ function MedicalRecords() {
   const {
     data: childrenData,
     isLoading: childLoading,
+    error: childQueryError,
     refetch: refetchChildren,
-  } = useQuery(['medical-records', user.barangay], async () => {
-    const res = await axiosClient.get('/bhw/medical-records', { params: { barangay: user.barangay } });
-    return res.data || [];
-  }, {
-    enabled: !!user?.barangay && recordType === 'children',
+  } = useQuery({
+    queryKey: ['medical-records', user.barangay || ''],
+    queryFn: async () => {
+      const res = await axiosClient.get('/bhw/medical-records', { params: { barangay: user.barangay } });
+      return res.data || [];
+    },
+    enabled: recordType === 'children',
     staleTime: 1000 * 30,
-    cacheTime: 1000 * 60 * 2,
-    onError: () => setChildError('Failed to load registered children.'),
+    gcTime: 1000 * 60 * 2,
   });
-  const children = childrenData || [];
+  const children = useMemo(() => (Array.isArray(childrenData) ? childrenData : []), [childrenData]);
+  const childError = childQueryError ? (childQueryError.response?.data?.message || 'Failed to load registered children.') : '';
+
   useEffect(() => {
     if (children && children.length > 0 && window.innerWidth >= 1024 && !selectedChild) {
       openChild(children[0]);
@@ -120,29 +121,19 @@ function MedicalRecords() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [children]);
 
-  useEffect(() => {
-    if (recordType === 'mothers' && mothers.length === 0) {
-      fetchMothers();
-    } else if (recordType === 'audit') {
-      fetchAuditLogs();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recordType]);
-
-  const { data: mothersData, isLoading: motherLoading, refetch: refetchMothers } = useQuery(
-    ['medical-records-mothers', user.barangay],
-    async () => {
+  const { data: mothersData, isLoading: motherLoading, error: motherQueryError, refetch: _refetchMothers } = useQuery({
+    queryKey: ['medical-records-mothers', user.barangay || ''],
+    queryFn: async () => {
       const res = await axiosClient.get('/bhw/medical-records/mothers', { params: { barangay: user.barangay } });
       return res.data || [];
     },
-    {
-      enabled: !!user?.barangay && recordType === 'mothers',
-      staleTime: 1000 * 30,
-      cacheTime: 1000 * 60 * 2,
-      onError: () => setMotherError('Failed to load registered mothers.'),
-    }
-  );
-  const mothers = mothersData || [];
+    enabled: recordType === 'mothers',
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 2,
+  });
+  const mothers = useMemo(() => (Array.isArray(mothersData) ? mothersData : []), [mothersData]);
+  const motherError = motherQueryError ? (motherQueryError.response?.data?.message || 'Failed to load registered mothers.') : '';
+
   useEffect(() => {
     if (mothers && mothers.length > 0 && window.innerWidth >= 1024 && !selectedMother) {
       openMother(mothers[0]);
@@ -150,15 +141,18 @@ function MedicalRecords() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mothers]);
 
-  const { data: auditData, isLoading: auditLoading, refetch: refetchAudit } = useQuery(
-    ['medical-records-audit'],
-    async () => {
+  const { data: auditData, isLoading: auditLoading, error: auditQueryError, refetch: _refetchAudit } = useQuery({
+    queryKey: ['medical-records-audit'],
+    queryFn: async () => {
       const res = await axiosClient.get('/bhw/medical-records/audit-trail');
       return res.data || [];
     },
-    { enabled: recordType === 'audit', staleTime: 1000 * 30, cacheTime: 1000 * 60 * 2, onError: () => setAuditError('Failed to load audit trail.') }
-  );
-  const auditLogs = auditData || [];
+    enabled: recordType === 'audit',
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 2,
+  });
+  const auditLogs = useMemo(() => (Array.isArray(auditData) ? auditData : []), [auditData]);
+  const auditError = auditQueryError ? (auditQueryError.response?.data?.message || 'Failed to load audit trail.') : '';
 
   const filteredChildren = useMemo(() => {
     let list = [...children];
@@ -978,7 +972,7 @@ function MedicalRecords() {
             </div>
             <button
               type="button"
-              onClick={fetchAuditLogs}
+              onClick={() => _refetchAudit()}
               className="text-xs font-bold text-[#1b5e20] hover:text-[#154a1a] border border-gray-200 bg-white px-3 py-1.5 rounded-xl shadow-xs"
             >
               Refresh Logs
@@ -1222,7 +1216,7 @@ function MedicalRecords() {
                 axiosClient.post(endpoint, payload)
                   .then(() => {
                     setAddBeneficiarySuccess(`Successfully registered ${newFirstName} ${newLastName}!`);
-                    if (beneficiaryType === 'child') fetchChildren(); else fetchMothers();
+                    if (beneficiaryType === 'child') refetchChildren(); else _refetchMothers();
                     setNewFirstName(''); setNewMiddleInitial(''); setNewLastName(''); setNewBirthDate(''); setNewGuardianName(''); setNewGuardianContact(''); setNewPurok('');
                   })
                   .catch((err) => setAddBeneficiaryError(err.response?.data?.message || 'Failed to register beneficiary.'))

@@ -7,7 +7,7 @@ async function bootstrap() {
   const rootPass = process.env.MYSQL_ROOT_PASSWORD || '';
   const host = process.env.DB_HOST || 'localhost';
 
-  const adminEmail = process.env.BOOTSTRAP_ADMIN_EMAIL || 'admin@apscale.local';
+  const adminEmail = process.env.BOOTSTRAP_ADMIN_EMAIL || 'admin@appscale.local';
   const adminPass = process.env.BOOTSTRAP_ADMIN_PASSWORD || '12345678';
 
   try {

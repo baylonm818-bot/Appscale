@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
+import { useQuery } from '@tanstack/react-query';
 import { Users, AlertCircle, CheckCircle, Ruler, Triangle, List, CalendarDays, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
@@ -53,40 +53,55 @@ function CustomLineTooltip({ active, payload, label }) {
 }
 
 function Dashboard() {
-  const [stats, setStats] = useState(null);
-  const [activities, setActivities] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const [statsResponse, scheduleResponse] = await Promise.all([
-          axiosClient.get('/bhw/stats', { params: { barangay: user.barangay } }),
-          axiosClient.get('/bhw/schedule', { params: { barangay: user.barangay, user_id: user.user_id } }),
-        ]);
-        setStats(statsResponse.data || {});
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        setActivities((scheduleResponse.data || [])
-          .filter((activity) => activity.status === 'pending' && new Date(activity.schedule_date) >= today)
-          .sort((a, b) => new Date(a.schedule_date) - new Date(b.schedule_date))
-          .slice(0, 4));
-      } catch (err) {
-        setError('Failed to load dashboard.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboard();
-  }, [user.barangay, user.user_id]);
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
+    queryKey: ['bhw-stats', user.barangay],
+    queryFn: async () => {
+      const res = await axiosClient.get('/bhw/stats', { params: { barangay: user.barangay } });
+      return res.data || {};
+    },
+    enabled: !!user?.barangay,
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
+  });
 
-  if (loading) {
+  const { data: activitiesData, isLoading: schedLoading } = useQuery({
+    queryKey: ['bhw-dashboard-schedule', user.barangay, user.user_id],
+    queryFn: async () => {
+      const res = await axiosClient.get('/bhw/schedule', { params: { barangay: user.barangay, user_id: user.user_id } });
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return (res.data || [])
+        .filter((activity) => activity.status === 'pending' && new Date(activity.schedule_date) >= today)
+        .sort((a, b) => new Date(a.schedule_date) - new Date(b.schedule_date))
+        .slice(0, 4);
+    },
+    enabled: !!user?.barangay,
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
+  });
+
+  const activities = activitiesData || [];
+  const loading = statsLoading || schedLoading;
+  const error = statsError ? 'Failed to load dashboard.' : '';
+
+  if (loading && !stats) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
-        <p className="text-sm font-medium text-gray-400">Loading barangay dashboard…</p>
+      <div className="space-y-6">
+        <div className="h-36 rounded-2xl bg-gray-200 animate-pulse" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-28 rounded-2xl bg-white p-5 shadow-sm border border-gray-100 animate-pulse flex flex-col justify-between">
+              <div className="h-4 bg-gray-200 rounded w-1/2" />
+              <div className="h-7 bg-gray-200 rounded w-1/3" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-72 rounded-2xl bg-white p-6 shadow-sm border border-gray-100 animate-pulse" />
+          <div className="h-72 rounded-2xl bg-white p-6 shadow-sm border border-gray-100 animate-pulse" />
+        </div>
       </div>
     );
   }

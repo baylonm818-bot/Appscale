@@ -60,7 +60,7 @@ function NotificationItem({ notif, onMarkRead }) {
 
         {notif.message && (
           <div className="mt-2 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-600 leading-relaxed">
-            {notif.message}
+            {notif.message.replace(/\s*\(Status:\s*[^)]+\)/gi, '')}
           </div>
         )}
       </div>
@@ -71,12 +71,14 @@ function NotificationItem({ notif, onMarkRead }) {
 function Notifications() {
   const [activeTab, setActiveTab] = useState('all');
 
-  const { data, isLoading, isError, refetch } = useQuery(['notifications'], async () => {
-    const res = await axiosClient.get('/bhw/notifications');
-    return res.data;
-  }, {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const res = await axiosClient.get('/bhw/notifications');
+      return res.data;
+    },
     staleTime: 1000 * 20,
-    cacheTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 2,
   });
 
   const notifications = data?.notifications || [];

@@ -96,6 +96,9 @@ function App() {
           <Route path="profile" element={<BHWProfile/>} />
         </Route>
                
+        {/* Top-level route redirects for consistency */}
+        <Route path="/notifications" element={<Navigate to="/admin/notifications" replace />} />
+
         {/* Catch-all unknown routes: redirect to login / dashboard */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

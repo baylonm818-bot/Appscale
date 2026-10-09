@@ -112,19 +112,36 @@ function Profile() {
 
   useEffect(() => {
     let cancelled = false;
-    setProfileImageSrc(null);
     const pic = profile?.profile_picture;
-    if (!pic || typeof pic !== 'string' || !pic.trim()) return;
-    if (/^(data:|https?:)?\/\//i.test(pic.trim())) return;
+    if (!pic || typeof pic !== 'string' || !pic.trim()) {
+      setProfileImageSrc(null);
+      return;
+    }
+    if (/^(data:|https?:|blob:)?\/\//i.test(pic.trim()) || pic.trim().startsWith('data:') || pic.trim().startsWith('blob:')) {
+      setProfileImageSrc(pic.trim());
+      return;
+    }
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token || !profile?.user_id) return;
+    if (!token || !profile?.user_id) {
+      setProfileImageSrc(getProfileImageUrl(pic));
+      return;
+    }
     (async () => {
       try {
         const res = await fetch(`${API_ORIGIN}/api/profile/${profile.user_id}/picture/data`, { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (!cancelled) setProfileImageSrc(getProfileImageUrl(pic));
+          return;
+        }
         const j = await res.json();
-        if (!cancelled && j?.profile_picture) setProfileImageSrc(j.profile_picture);
-      } catch {}
+        if (!cancelled && j?.profile_picture) {
+          setProfileImageSrc(j.profile_picture);
+        } else if (!cancelled) {
+          setProfileImageSrc(getProfileImageUrl(pic));
+        }
+      } catch {
+        if (!cancelled) setProfileImageSrc(getProfileImageUrl(pic));
+      }
     })();
     return () => { cancelled = true; };
   }, [profile?.profile_picture, profile?.user_id]);
@@ -147,24 +164,30 @@ function Profile() {
   const handlePictureChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setPicError(''); setUploadingPic(true);
-    const fd = new FormData(); fd.append('profile_picture', file);
+    setPicError('');
+    setUploadingPic(true);
+    const localPreview = URL.createObjectURL(file);
+    setProfileImageSrc(localPreview);
+
+    const fd = new FormData();
+    fd.append('profile_picture', file);
     try {
       const res = await axiosClient.post(`/profile/${storedUser.user_id}/picture`, fd, { headers: { 'Content-Type': undefined } });
-      // Resolve server path to a full URL and append cache-busting timestamp
       const serverPath = res.data.profile_picture;
       const resolved = serverPath ? getProfileImageUrl(serverPath) : serverPath;
       const cacheBusted = resolved ? `${resolved}?t=${Date.now()}` : serverPath;
-      setProfile({ ...profile, profile_picture: cacheBusted });
-      // Immediately show the new image preview
+      setProfile((prev) => ({ ...prev, profile_picture: cacheBusted }));
       setProfileImageSrc(cacheBusted);
       if (typeof updateAvatar === 'function') {
         updateAvatar(cacheBusted);
       } else if (typeof updateUser === 'function') {
         updateUser({ profile_picture: cacheBusted });
       }
-    } catch { setPicError('Failed to upload picture.'); }
-    finally { setUploadingPic(false); }
+    } catch {
+      setPicError('Failed to upload picture.');
+    } finally {
+      setUploadingPic(false);
+    }
   };
 
   const handlePasswordChange = (e) => setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
@@ -211,33 +234,37 @@ function Profile() {
           <div className="flex items-end justify-between -mt-12 mb-4">
             {/* Avatar + camera button */}
             <div className="relative">
-              <div className="w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden bg-green-100">
-                {profile.profile_picture ? (
+              <div className="relative w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden bg-green-100">
+                {profileImageSrc || profile?.profile_picture ? (
                   <img
-                    src={profileImageSrc || getProfileImageUrl(profile.profile_picture)}
-                    alt="Profile" className="w-full h-full object-cover"
+                    src={profileImageSrc || getProfileImageUrl(profile?.profile_picture)}
+                    alt="Profile"
+                    className="w-full h-full object-cover rounded-full"
                     onError={(ev) => {
-                      const cont = ev.currentTarget.parentElement; if (!cont) return;
                       ev.currentTarget.style.display = 'none';
                       const fb = document.createElement('div');
-                      fb.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black';
+                      fb.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black rounded-full';
                       fb.textContent = getUserInitials(profile);
-                      cont.replaceChildren(fb);
+                      ev.currentTarget.parentElement?.appendChild(fb);
                     }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black">
+                  <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black rounded-full">
                     {getUserInitials(profile)}
                   </div>
                 )}
                 {uploadingPic && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-xs font-semibold">
+                  <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white text-xs font-semibold z-10 backdrop-blur-xs">
                     Uploading…
                   </div>
                 )}
               </div>
-              <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPic}
-                className="absolute bottom-0.5 right-0.5 bg-[#2e7d32] hover:bg-[#256427] p-2 rounded-full shadow-md text-white transition">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPic}
+                className="absolute bottom-0.5 right-0.5 bg-[#2e7d32] hover:bg-[#256427] p-2 rounded-full shadow-md text-white transition z-20 cursor-pointer"
+              >
                 <Camera size={13} />
               </button>
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePictureChange} className="hidden" />

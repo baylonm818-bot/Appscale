@@ -21,16 +21,14 @@ exports.getAdminStats = async (req, res) => {
     const [[{ totalChildren }]] = await pool.query(`SELECT COUNT(*) AS totalChildren FROM children WHERE status = 'active'`);
     const [[{ totalMothers }]] = await pool.query(`SELECT COUNT(*) AS totalMothers FROM mothers WHERE status = 'active'`);
     const [[{ totalBarangays }]] = await pool.query(`SELECT COUNT(DISTINCT barangay) AS totalBarangays FROM children WHERE status = 'active' AND barangay IS NOT NULL`);
-    // Exclude obvious test accounts from aggregates (emails like example.com or usernames starting with 'test')
-    const testFilter = "AND LOWER(TRIM(email)) NOT LIKE '%@example.com' AND LOWER(TRIM(username)) NOT LIKE 'test%' AND LOWER(TRIM(email)) NOT LIKE 'test%'";
-    // Compute user aggregates using the same approach as getUserStats to keep counts consistent
+    // Compute user aggregates using the same query definition as User Management
     const [[userStats]] = await pool.query(
       `SELECT
          COALESCE(SUM(CASE WHEN role IN ('bhw','bns') THEN 1 ELSE 0 END), 0) AS totalUsers,
          COALESCE(SUM(CASE WHEN role = 'bns' THEN 1 ELSE 0 END), 0) AS totalBNS,
          COALESCE(SUM(CASE WHEN role = 'bhw' THEN 1 ELSE 0 END), 0) AS totalBHW
        FROM users
-       WHERE deleted_at IS NULL AND role IN ('bhw','bns') ${testFilter}`
+       WHERE deleted_at IS NULL AND role IN ('bhw','bns')`
     );
     const totalUsers = userStats.totalUsers || 0;
     const totalBNS = userStats.totalBNS || 0;
@@ -48,7 +46,7 @@ exports.getAdminStats = async (req, res) => {
     if (hasWasting) conditionParts.push("nr.wasting_status IN ('wasted', 'severely_wasted', 'severly_wasted')");
     const malnutritionWhere = conditionParts.join(' OR ');
 
-    // Malnutrition cases grouped by barangay
+    // Malnutrition cases grouped by barangay (filtering out null / empty barangay names)
     let [malnutritionByBarangayRows] = await pool.query(
       `SELECT c.barangay, COUNT(DISTINCT c.child_id) AS cases
        FROM nutrition_records nr
@@ -58,7 +56,7 @@ exports.getAdminStats = async (req, res) => {
          GROUP BY child_id
        ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
        INNER JOIN children c ON c.child_id = nr.child_id
-       WHERE c.status = 'active' AND ${rangeFilter} AND (${malnutritionWhere})
+       WHERE c.status = 'active' AND c.barangay IS NOT NULL AND TRIM(c.barangay) <> '' AND ${rangeFilter} AND (${malnutritionWhere})
        GROUP BY c.barangay
        ORDER BY cases DESC`
     );
@@ -75,7 +73,7 @@ exports.getAdminStats = async (req, res) => {
            GROUP BY child_id
          ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
          INNER JOIN children c ON c.child_id = nr.child_id
-         WHERE c.status = 'active' AND (${malnutritionWhere})
+         WHERE c.status = 'active' AND c.barangay IS NOT NULL AND TRIM(c.barangay) <> '' AND (${malnutritionWhere})
          GROUP BY c.barangay
          ORDER BY cases DESC`
       );
@@ -119,26 +117,30 @@ exports.getAdminStats = async (req, res) => {
       severely_wasted: 0,
     };
 
+    // Classify each child into a single primary nutrition status so the sum exactly matches total active children
     nineCategoryRows.forEach((row) => {
       const ws = String(row.weight_status || '').toLowerCase();
       const hs = String(row.height_status || '').toLowerCase();
       const was = String(row.wasting_status || '').toLowerCase();
       const os = String(row.overall_status || '').toLowerCase();
 
-      let isNormal = true;
-
-      if (ws === 'underweight') { nineCategoryTrend.underweight++; isNormal = false; }
-      else if (ws === 'severely_underweight' || ws === 'severly_underweight') { nineCategoryTrend.severely_underweight++; isNormal = false; }
-      else if (ws === 'overweight') { nineCategoryTrend.overweight++; isNormal = false; }
-      else if (ws === 'obese') { nineCategoryTrend.obese++; isNormal = false; }
-
-      if (hs === 'stunted') { nineCategoryTrend.stunted++; isNormal = false; }
-      else if (hs === 'severely_stunted' || hs === 'severly_stunted') { nineCategoryTrend.severely_stunted++; isNormal = false; }
-
-      if (was === 'wasted') { nineCategoryTrend.wasted++; isNormal = false; }
-      else if (was === 'severely_wasted' || was === 'severly_wasted') { nineCategoryTrend.severely_wasted++; isNormal = false; }
-
-      if (isNormal || os === 'normal') {
+      if (ws.includes('severely') || ws.includes('severly') || os === 'sam') {
+        nineCategoryTrend.severely_underweight++;
+      } else if (hs.includes('severely') || hs.includes('severly')) {
+        nineCategoryTrend.severely_stunted++;
+      } else if (was.includes('severely') || was.includes('severly')) {
+        nineCategoryTrend.severely_wasted++;
+      } else if (ws === 'underweight' || os === 'mam') {
+        nineCategoryTrend.underweight++;
+      } else if (hs === 'stunted') {
+        nineCategoryTrend.stunted++;
+      } else if (was === 'wasted') {
+        nineCategoryTrend.wasted++;
+      } else if (ws === 'obese' || os === 'obese') {
+        nineCategoryTrend.obese++;
+      } else if (ws === 'overweight' || os === 'overweight') {
+        nineCategoryTrend.overweight++;
+      } else {
         nineCategoryTrend.normal++;
       }
     });

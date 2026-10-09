@@ -29,7 +29,7 @@ exports.getNotifications = async (req, res) => {
     const scopedWhere = buildScopedNotificationWhere(userBarangay);
     const [notifications] = await pool.query(
       `SELECT n.notification_id, n.title, n.message, n.type, n.is_read, n.created_at
-       ${scopedWhere}
+       ${scopedWhere} AND n.type <> 'system' AND n.title NOT LIKE 'Data Synced%'
        ORDER BY n.created_at DESC
        LIMIT 50`,
       [userBarangay, userBarangay, `%${userBarangay}%`, `%${userBarangay}%`]

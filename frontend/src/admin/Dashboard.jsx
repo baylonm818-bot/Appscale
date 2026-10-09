@@ -28,6 +28,20 @@ const statusLabels = {
   obese: 'Obese',
 };
 
+function formatScheduleTime(timeStr) {
+  if (!timeStr) return '';
+  const parts = String(timeStr).trim().split(':');
+  if (parts.length >= 2) {
+    let hours = parseInt(parts[0], 10);
+    const minutes = parts[1].padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${hours}:${minutes} ${ampm}`;
+  }
+  return timeStr;
+}
+
 function StatCard({ icon: Icon, label, value, sublabel, to }) {
   const content = (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100/80 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
@@ -111,7 +125,7 @@ function Dashboard() {
   const trends = stats.nineCategoryTrend || {};
   const totalEvaluated = Object.values(trends).reduce((sum, n) => sum + (Number(n) || 0), 0) || 1;
   const maxTrend = Math.max(...Object.values(trends).map(Number), 1);
-  const overviewData = (stats.malnutritionByBarangay || []).slice(0, 6);
+  const overviewData = stats.malnutritionByBarangay || [];
 
   return (
     <div className="space-y-6">
@@ -315,9 +329,9 @@ function Dashboard() {
                   key={act.schedule_id}
                   className="flex items-start gap-3.5 p-4 rounded-xl bg-gray-50/70 border border-gray-100 hover:bg-green-50/40 hover:border-green-200 transition-all"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0 shadow-xs">
-                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{month}</span>
-                    <span className="text-lg font-black leading-none">{day}</span>
+                  <div className="w-12 h-12 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0 shadow-xs text-center">
+                    <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">{month} {d.getFullYear()}</span>
+                    <span className="text-base font-black leading-none">{day}</span>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -327,7 +341,9 @@ function Dashboard() {
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1 truncate">
-                      {act.barangay || 'All Barangays'} {act.venue && `· ${act.venue}`}
+                      {act.barangay || 'All Barangays'}
+                      {act.venue && ` · ${act.venue}`}
+                      {act.schedule_time && ` · ${formatScheduleTime(act.schedule_time)}`}
                     </p>
                     {act.target_role && (
                       <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">

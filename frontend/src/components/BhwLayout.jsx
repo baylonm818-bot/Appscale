@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import logo from '../assets/logo.png';
@@ -42,6 +42,8 @@ function BHWLayout() {
   const { user: authUser } = useAuth();
   const user = authUser || JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
   const [profileImageSrc, setProfileImageSrc] = useState(null);
+  const notificationRootRef = useRef(null);
+  const profileRootRef = useRef(null);
 
   const fetchUnreadCount = useCallback(async () => {
     // indicate loading state
@@ -78,11 +80,30 @@ function BHWLayout() {
     window.addEventListener('notifications:updated', handleNotificationsUpdated);
     const poll = window.setInterval(fetchUnreadCount, 15000);
 
+    // Close menus on route change
+    setIsNotificationMenuOpen(false);
+    setIsProfileMenuOpen(false);
+
     return () => {
       window.removeEventListener('notifications:updated', handleNotificationsUpdated);
       window.clearInterval(poll);
     };
   }, [fetchUnreadCount, location.pathname]);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const onDocClick = (ev) => {
+      const t = ev.target;
+      if (notificationRootRef.current && !notificationRootRef.current.contains(t)) {
+        setIsNotificationMenuOpen(false);
+      }
+      if (profileRootRef.current && !profileRootRef.current.contains(t)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -200,7 +221,7 @@ function BHWLayout() {
           <button
             type="button"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-1.5 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition"
+            className="md:hidden p-1.5 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition"
           >
             {isSidebarOpen ? <X size={18} /> : <Menu size={20} />}
           </button>
@@ -272,7 +293,7 @@ function BHWLayout() {
           </div>
 
           <div className="relative flex items-center gap-3">
-            <div className="relative">
+            <div ref={notificationRootRef} className="relative">
               <button
                 type="button"
                 aria-label="Notifications"
@@ -350,57 +371,62 @@ function BHWLayout() {
               )}
             </div>
 
-            <button
-              type="button"
-              aria-label="Open profile menu"
-              aria-expanded={isProfileMenuOpen}
-              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-              className="flex items-center gap-2 rounded-full p-1 pr-2 transition hover:bg-green-50"
-            >
-              <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-sm font-bold text-gray-900 shadow-sm ring-2 ring-green-100">
-                {user?.profile_picture ? (
-                  <img
-                    src={profileImageSrc || getProfileImageUrl(user.profile_picture)}
-                    alt="Profile"
-                    className="h-full w-full object-cover rounded-full"
-                    onError={(event) => {
-                      const container = event.currentTarget.parentElement;
-                      if (!container) return;
-                      event.currentTarget.style.display = 'none';
-                      container.textContent = getUserInitials(user);
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white text-2xl font-black">{getUserInitials(user)}</div>
-                )}
-              </span>
-            </button>
+            <div ref={profileRootRef} className="relative">
+              <button
+                type="button"
+                aria-label="Open profile menu"
+                aria-expanded={isProfileMenuOpen}
+                onClick={() => {
+                  setIsProfileMenuOpen(!isProfileMenuOpen);
+                  setIsNotificationMenuOpen(false);
+                }}
+                className="flex items-center gap-2 rounded-full p-1 pr-2 transition hover:bg-green-50"
+              >
+                <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-sm font-bold text-gray-900 shadow-sm ring-2 ring-green-100">
+                  {user?.profile_picture ? (
+                    <img
+                      src={profileImageSrc || getProfileImageUrl(user.profile_picture)}
+                      alt="Profile"
+                      className="h-full w-full object-cover rounded-full"
+                      onError={(event) => {
+                        const container = event.currentTarget.parentElement;
+                        if (!container) return;
+                        event.currentTarget.style.display = 'none';
+                        container.textContent = getUserInitials(user);
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white text-2xl font-black">{getUserInitials(user)}</div>
+                  )}
+                </span>
+              </button>
 
-            {isProfileMenuOpen && (
-              <div className="absolute right-0 top-14 z-100 w-56 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-black/15">
-                <div className="border-b border-gray-100 px-3 py-2">
-                  <p className="truncate text-sm font-bold text-gray-900">{user?.full_name || user?.username || "Health Worker"}</p>
-                  <p className="truncate text-xs text-gray-400">{user?.email || "Health Worker account"}</p>
+              {isProfileMenuOpen && (
+                <div className="absolute right-0 top-14 z-100 w-56 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-black/15">
+                  <div className="border-b border-gray-100 px-3 py-2">
+                    <p className="truncate text-sm font-bold text-gray-900">{user?.full_name || user?.username || "Health Worker"}</p>
+                    <p className="truncate text-xs text-gray-400">{user?.email || "Health Worker account"}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      navigate('/bhw/profile');
+                    }}
+                    className="mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-800 transition"
+                  >
+                    View profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition"
+                  >
+                    Logout
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsProfileMenuOpen(false);
-                    navigate('/bhw/profile');
-                  }}
-                  className="mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-800 transition"
-                >
-                  View profile
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50 transition"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 

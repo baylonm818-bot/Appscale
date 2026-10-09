@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
-import { Users, Archive, Plus, Search, Shield, Lock, Unlock, RefreshCw, X, ChevronRight, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Users, Archive, Plus, Search, Shield, Lock, Unlock, X, ChevronDown } from 'lucide-react';
 
 const GASAN_BARANGAYS = [
   'Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang',
@@ -450,14 +450,14 @@ function UserManagement() {
                             <button
                               type="button"
                               onClick={() => setStatusConfirm({ user: u, action: u.status === 'active' ? 'lock' : 'unlock' })}
-                              title={u.status === 'active' ? 'Lock Account' : 'Unlock Account'}
+                              title={u.status === 'active' ? 'Deactivate Account' : 'Activate Account'}
                               className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-2xs whitespace-nowrap ${
                                 u.status === 'active'
                                   ? 'text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100'
                                   : 'text-green-700 border border-green-200 bg-green-50 hover:bg-green-100'
                               }`}
                             >
-                              {u.status === 'active' ? 'Lock' : 'Unlock'}
+                              {u.status === 'active' ? 'Deactivate' : 'Activate'}
                             </button>
                             <button
                               type="button"
@@ -490,10 +490,10 @@ function UserManagement() {
 
             {/* Header */}
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
-              <div
-                className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
-                onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
-              >
+              <div>
+                <h2 className="text-base font-bold text-white">
+                  {editingUser ? (viewOnly ? 'User Account Profile' : 'Edit User Account') : `Add New ${form.role.toUpperCase()}`}
+                </h2>
                 <p className="text-white/70 text-xs mt-0.5">
                   {editingUser ? 'Account & Barangay assignment details' : 'Fill in the credentials to register an account'}
                 </p>
@@ -644,7 +644,7 @@ function UserManagement() {
               </div>
               <div>
                 <h3 className="text-base font-bold text-gray-900">
-                  {statusConfirm.action === 'lock' ? 'Deactivate / Lock User Account' : 'Activate / Unlock User Account'}
+                  {statusConfirm.action === 'lock' ? 'Deactivate User Account' : 'Activate User Account'}
                 </h3>
                 <p className="text-xs text-gray-500">
                   Account status management

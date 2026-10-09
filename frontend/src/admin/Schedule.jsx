@@ -52,6 +52,20 @@ function SummaryCard({ icon, label, value, sublabel, isActive, onClick }) {
   );
 }
 
+function formatScheduleTime(timeStr) {
+  if (!timeStr) return '';
+  const parts = String(timeStr).trim().split(':');
+  if (parts.length >= 2) {
+    let hours = parseInt(parts[0], 10);
+    const minutes = parts[1].padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${hours}:${minutes} ${ampm}`;
+  }
+  return timeStr;
+}
+
 /* ── Activity Row ── */
 function ActivityRow({ activity, onCancel, onComplete, onArchive }) {
   const date  = new Date(activity.schedule_date);
@@ -62,9 +76,9 @@ function ActivityRow({ activity, onCancel, onComplete, onArchive }) {
   return (
     <div className="flex flex-col gap-3 px-6 py-4 hover:bg-green-50/30 transition-colors border-b border-gray-50 last:border-0 sm:flex-row sm:items-center sm:gap-5">
       {/* Date box */}
-      <div className="flex flex-col items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white shrink-0 shadow-sm">
-        <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{month}</span>
-        <span className="text-xl font-black leading-none">{day}</span>
+      <div className="flex flex-col items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white shrink-0 shadow-sm text-center">
+        <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">{month} {date.getFullYear()}</span>
+        <span className="text-base font-black leading-none">{day}</span>
       </div>
 
       {/* Info */}
@@ -82,7 +96,7 @@ function ActivityRow({ activity, onCancel, onComplete, onArchive }) {
           {activity.venue && ` · ${activity.venue}`}
           {activity.assigned_name && ` · ${activity.assigned_name}`}
           {activity.facilitator && ` · ${activity.facilitator}`}
-          {activity.schedule_time && ` · ${activity.schedule_time}`}
+          {activity.schedule_time && ` · ${formatScheduleTime(activity.schedule_time)}`}
         </p>
       </div>
 
@@ -271,7 +285,7 @@ function Schedule() {
       {showModal && createPortal(
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[88vh] flex flex-col">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
             {/* Modal header */}
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">

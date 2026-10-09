@@ -1,28 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpDown, X, CheckCircle2, Clock, AlertTriangle, ChevronRight, RefreshCw } from 'lucide-react';
-
-const severityColors = {
-  low: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200',
-  medium: 'bg-amber-100 text-amber-800 ring-1 ring-amber-200',
-  high: 'bg-red-100 text-red-800 ring-1 ring-red-200',
-};
+import { X } from 'lucide-react';
 
 const severityPriority = { high: 0, medium: 1, low: 2 };
-
-// Module 4 Requirement: "The system shall allow BHW to update referral status (Pending, Ongoing, Cancelled, Completed)."
-const statusColors = {
-  Pending: 'bg-amber-100 text-amber-800 ring-1 ring-amber-200',
-  Ongoing: 'bg-blue-100 text-blue-800 ring-1 ring-blue-200',
-  Cancelled: 'bg-gray-100 text-gray-700 ring-1 ring-gray-300',
-  Completed: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200',
-  // Backward compatibility
-  pending: 'bg-amber-100 text-amber-800 ring-1 ring-amber-200',
-  responded: 'bg-blue-100 text-blue-800 ring-1 ring-blue-200',
-  closed: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200',
-};
 
 const serviceOptions = [
   { value: '', label: 'General Follow-up / Health Consultation' },
@@ -33,8 +15,6 @@ const serviceOptions = [
 ];
 
 function Referrals() {
-  const [error, setError] = useState('');
-
   let user = {};
   try {
     user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
@@ -56,23 +36,19 @@ function Referrals() {
   const [actionSubmitting, setActionSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
 
-  const { data, isLoading, refetch } = useQuery(
-    ['referrals', user.barangay],
-    async () => {
-      if (!user?.barangay) throw new Error('No barangay');
+  const { data, isLoading, error: queryError, refetch } = useQuery({
+    queryKey: ['referrals', user.barangay || ''],
+    queryFn: async () => {
       const res = await axiosClient.get('/bhw/referrals', { params: { barangay: user.barangay } });
       return res.data || [];
     },
-    {
-      enabled: !!user?.barangay,
-      staleTime: 1000 * 20,
-      cacheTime: 1000 * 60 * 2,
-      refetchInterval: 12000,
-      onError: () => setError('Failed to load referrals.'),
-    }
-  );
-  const referrals = data || [];
-  const loading = isLoading;
+    staleTime: 1000 * 20,
+    gcTime: 1000 * 60 * 2,
+    refetchInterval: 12000,
+  });
+  const referrals = useMemo(() => (Array.isArray(data) ? data : []), [data]);
+  const loading = isLoading && !data;
+  const error = queryError ? (queryError.response?.data?.message || 'Failed to load referrals.') : '';
 
   const normalizeStatus = (s) => {
     const lower = String(s || '').toLowerCase();
@@ -127,7 +103,7 @@ function Referrals() {
       });
       setActionTarget(null);
       await refetch();
-    } catch (err) {
+    } catch (_err) {
       setActionError('Failed to update referral status. Please try again.');
     } finally {
       setActionSubmitting(false);
@@ -139,62 +115,145 @@ function Referrals() {
   const highSevCount = referrals.filter((r) => r.severity === 'high').length;
   const completedCount = referrals.filter((r) => normalizeStatus(r.status) === 'Completed').length;
 
+  if (loading) {
+    return (
+      <div className="space-y-6 bg-gray-50 min-h-screen p-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-24 rounded-2xl bg-white p-4 shadow-sm border border-gray-100 animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-20 rounded-xl bg-white p-4 shadow-sm border border-gray-100 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <main role="main" aria-label="Referrals" className="space-y-6 bg-gray-50 min-h-screen p-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3 font-medium">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <button
+          type="button"
+          onClick={() => { setStatusFilter('all'); setSeverityFilter('all'); }}
+          className={`text-left rounded-2xl p-4 shadow-sm border transition cursor-pointer ${
+            statusFilter === 'all' && severityFilter === 'all'
+              ? 'bg-green-50 border-green-300 ring-2 ring-green-600'
+              : 'bg-white border-gray-100 hover:border-gray-200'
+          }`}
+        >
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Referrals</p>
           <p className="text-2xl font-black text-gray-800 mt-1">{referrals.length}</p>
           <p className="text-[11px] text-gray-400">All cases</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-amber-100">
+        </button>
+        <button
+          type="button"
+          onClick={() => { setStatusFilter('Pending'); setSeverityFilter('all'); }}
+          className={`text-left rounded-2xl p-4 shadow-sm border transition cursor-pointer ${
+            statusFilter === 'Pending' && severityFilter === 'all'
+              ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-500'
+              : 'bg-white border-amber-100 hover:border-amber-200'
+          }`}
+        >
           <p className="text-[11px] font-semibold text-amber-600 uppercase tracking-wider">Pending</p>
           <p className="text-2xl font-black text-amber-600 mt-1">{pendingCount}</p>
           <p className="text-[11px] text-amber-600">Awaiting action</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
+        </button>
+        <button
+          type="button"
+          onClick={() => { setStatusFilter('Ongoing'); setSeverityFilter('all'); }}
+          className={`text-left rounded-2xl p-4 shadow-sm border transition cursor-pointer ${
+            statusFilter === 'Ongoing' && severityFilter === 'all'
+              ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-500'
+              : 'bg-white border-blue-100 hover:border-blue-200'
+          }`}
+        >
           <p className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider">Ongoing</p>
           <p className="text-2xl font-black text-blue-600 mt-1">{ongoingCount}</p>
           <p className="text-[11px] text-blue-600">In-progress</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-red-100">
+        </button>
+        <button
+          type="button"
+          onClick={() => { setSeverityFilter('high'); setStatusFilter('all'); }}
+          className={`text-left rounded-2xl p-4 shadow-sm border transition cursor-pointer ${
+            severityFilter === 'high'
+              ? 'bg-red-50 border-red-300 ring-2 ring-red-500'
+              : 'bg-white border-red-100 hover:border-red-200'
+          }`}
+        >
           <p className="text-[11px] font-semibold text-red-600 uppercase tracking-wider">High Severity</p>
           <p className="text-2xl font-black text-red-600 mt-1">{highSevCount}</p>
           <p className="text-[11px] text-red-600">Urgent cases</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-emerald-100">
+        </button>
+        <button
+          type="button"
+          onClick={() => { setStatusFilter('Completed'); setSeverityFilter('all'); }}
+          className={`text-left rounded-2xl p-4 shadow-sm border transition cursor-pointer ${
+            statusFilter === 'Completed' && severityFilter === 'all'
+              ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500'
+              : 'bg-white border-emerald-100 hover:border-emerald-200'
+          }`}
+        >
           <p className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider">Completed</p>
           <p className="text-2xl font-black text-emerald-600 mt-1">{completedCount}</p>
           <p className="text-[11px] text-emerald-600">Resolved</p>
-        </div>
+        </button>
       </div>
 
       <div className="divide-y divide-gray-50 p-4 space-y-3">
         {filteredReferrals.length === 0 ? (
           <div className="p-12 text-center text-gray-400 text-xs">No referrals found matching the selected filters.</div>
         ) : (
-          filteredReferrals.map((r) => (
-            <div key={r.referral_id} className="p-4 rounded-xl border border-gray-100 hover:border-gray-200 transition bg-white space-y-2.5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-sm text-gray-900">{(r.beneficiary_first_name || '') + ' ' + (r.beneficiary_last_name || '')}</span>
-                    <span className="text-[11px] text-gray-400">{new Date(r.created_at).toLocaleDateString()}</span>
+          filteredReferrals.map((r) => {
+            const isChild = r.child_id != null || r.beneficiary_type === 'child';
+            const typeLabel = isChild ? 'Child Health Referral' : 'Maternal Health Referral';
+            const cleanNote = r.notes ? String(r.notes).replace(/Facility:\s*\d+\s+Facility:\s*/gi, 'Facility: ').replace(/(Facility:\s*)+/gi, 'Facility: ').trim() : '';
+            const sev = String(r.severity || 'medium').toLowerCase();
+            const sevClass = sev === 'high' ? 'bg-red-100 text-red-800 border-red-200' : sev === 'low' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200';
+            const normStatus = normalizeStatus(r.status);
+            const statusClass = normStatus === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : normStatus === 'Ongoing' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200';
+
+            return (
+              <div key={r.referral_id} className="p-4 rounded-xl border border-gray-100 hover:border-gray-200 transition bg-white space-y-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-sm text-gray-900">{(r.beneficiary_first_name || '') + ' ' + (r.beneficiary_last_name || '')}</span>
+                      <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${isChild ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-pink-50 text-pink-700 border-pink-200'}`}>
+                        {typeLabel}
+                      </span>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${sevClass}`}>
+                        {sev} severity
+                      </span>
+                      <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${statusClass}`}>
+                        {normStatus}
+                      </span>
+                      <span className="text-[11px] text-gray-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                    </div>
+                    {r.reason && <p className="text-xs text-gray-800 font-medium">Reason: {r.reason}</p>}
+                    {cleanNote && <p className="text-xs text-gray-600 italic">"{cleanNote}"</p>}
                   </div>
-                  {r.notes && <p className="text-xs text-gray-600 mt-1 italic">"{r.notes}"</p>}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button aria-label={`Update status for ${r.beneficiary_first_name} ${r.beneficiary_last_name}`} type="button" onClick={() => openActionModal(r)} className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-white">Update Status</button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button aria-label={`Update status for ${r.beneficiary_first_name} ${r.beneficiary_last_name}`} type="button" onClick={() => openActionModal(r)} className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-white">Update Status</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
       {actionTarget && createPortal(
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setActionTarget(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
               <div>
                 <h3 className="font-bold text-base">Update Referral Status</h3>

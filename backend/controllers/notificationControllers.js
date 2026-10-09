@@ -43,7 +43,7 @@ exports.getNotifications = async (req, res) => {
            VALUES (?, ?, 'schedule', FALSE, ?, NOW())`,
           [
             `Scheduled: ${s.title}`,
-            `${(s.schedule_type || 'Activity').toUpperCase()} on ${dateStr} at ${loc} (Status: ${s.status || 'pending'}).`,
+            `${(s.schedule_type || 'Activity').toUpperCase()} on ${dateStr} at ${loc}.`,
             s.schedule_id,
           ]
         );

@@ -100,7 +100,7 @@ exports.createChildService = async (req, res) => {
       const os = normalizeNutritionStatus(calculated.overallStatus);
 
       const [existing] = await pool.query(
-        'SELECT nutrition_record_id FROM nutrition_records WHERE child_id = ? AND record_date = ? LIMIT 1',
+        'SELECT record_id FROM nutrition_records WHERE child_id = ? AND record_date = ? LIMIT 1',
         [child_id, service_date]
       );
 
@@ -134,17 +134,16 @@ exports.createChildService = async (req, res) => {
 };
 
 exports.getNeedAttention = async (req, res) => {
-  const { barangay } = req.query;
+  const role = String(req.user?.role || '').toLowerCase();
+  let barangay = req.query.barangay || req.user?.barangay || null;
 
-  if (!barangay) {
+  if (!barangay && role !== 'admin') {
     return res.status(400).json({ message: 'Barangay is required.' });
   }
 
   try {
-    const role = String(req.user?.role || '').toLowerCase();
     const [[{ cnt }]] = await pool.query(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-      [process.env.DB_DATABASE || process.env.DB_NAME || 'appscale_db', 'nutrition_records', 'wasting_status']
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'nutrition_records' AND COLUMN_NAME = 'wasting_status'`
     );
     const hasWasting = Number(cnt) > 0;
 
@@ -153,8 +152,7 @@ exports.getNeedAttention = async (req, res) => {
 
     if (role === 'bns') {
       const [[{ encodedCount }]] = await pool.query(
-        `SELECT COUNT(*) AS encodedCount FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-        [process.env.DB_DATABASE || process.env.DB_NAME || 'appscale_db', 'children', 'encoded_by']
+        `SELECT COUNT(*) AS encodedCount FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'children' AND COLUMN_NAME = 'encoded_by'`
       );
 
       if (Number(encodedCount) > 0) {
@@ -171,6 +169,9 @@ exports.getNeedAttention = async (req, res) => {
     ];
     if (hasWasting) selectCols.splice(10, 0, 'nr.wasting_status');
 
+    const barangayCondition = barangay ? 'c.barangay = ?' : '1=1';
+    const queryParams = barangay ? [barangay, ...childScopeParams] : [...childScopeParams];
+
     const [children] = await pool.query(
       `SELECT ${selectCols.join(', ')}
        FROM children c
@@ -183,7 +184,7 @@ exports.getNeedAttention = async (req, res) => {
            GROUP BY child_id
          ) latest ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
        ) nr ON nr.child_id = c.child_id
-       WHERE c.barangay = ?
+       WHERE ${barangayCondition}
          AND c.status = 'active'
          ${childScopeClause}
          AND (
@@ -195,7 +196,7 @@ exports.getNeedAttention = async (req, res) => {
        ORDER BY
          FIELD(nr.overall_status, 'SAM', 'MAM') ASC,
          nr.record_date ASC`,
-      [barangay, ...childScopeParams]
+      queryParams
     );
     return res.status(200).json(children);
   } catch (error) {

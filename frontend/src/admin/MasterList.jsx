@@ -1,18 +1,24 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
-import { Users, Search, Baby, Heart, X, MapPin, FileText, Printer } from 'lucide-react';
+import { Users, Search, Baby, Heart, X, MapPin, FileText, ChevronDown } from 'lucide-react';
 import ReportPreviewModal from '../components/ui/ReportPreviewModal';
 
 /* ── Status badge config ── */
 const STATUS_CONFIG = {
-  normal:      { label: 'Normal',      cls: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200' },
-  MAM:         { label: 'MAM',         cls: 'bg-amber-100  text-amber-700  ring-1 ring-amber-200'  },
-  SAM:         { label: 'SAM',         cls: 'bg-red-100    text-red-700    ring-1 ring-red-200'    },
-  overweight:  { label: 'Overweight',  cls: 'bg-orange-100 text-orange-700 ring-1 ring-orange-200' },
-  obese:       { label: 'Obese',       cls: 'bg-purple-100  text-purple-700  ring-1 ring-purple-200'  },
-  graduate:    { label: 'Graduate',    cls: 'bg-blue-100   text-blue-700   ring-1 ring-blue-200'   },
-  no_record:   { label: 'No Record',   cls: 'bg-gray-100   text-gray-500   ring-1 ring-gray-200'   },
+  normal:               { label: 'Normal',                cls: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200' },
+  underweight:          { label: 'Underweight',           cls: 'bg-amber-100  text-amber-700  ring-1 ring-amber-200'  },
+  severely_underweight: { label: 'Severely Underweight',  cls: 'bg-red-100    text-red-700    ring-1 ring-red-200'    },
+  stunted:              { label: 'Stunted',               cls: 'bg-orange-100 text-orange-700 ring-1 ring-orange-200' },
+  severely_stunted:     { label: 'Severely Stunted',      cls: 'bg-red-100    text-red-700    ring-1 ring-red-200'    },
+  wasted:               { label: 'Wasted',                cls: 'bg-rose-100   text-rose-700   ring-1 ring-rose-200'   },
+  severely_wasted:      { label: 'Severely Wasted',       cls: 'bg-red-100    text-red-700    ring-1 ring-red-200'    },
+  MAM:                  { label: 'MAM',                   cls: 'bg-amber-100  text-amber-700  ring-1 ring-amber-200'  },
+  SAM:                  { label: 'SAM',                   cls: 'bg-red-100    text-red-700    ring-1 ring-red-200'    },
+  overweight:           { label: 'Overweight',            cls: 'bg-blue-100   text-blue-700   ring-1 ring-blue-200'   },
+  obese:                { label: 'Obese',                 cls: 'bg-purple-100 text-purple-700 ring-1 ring-purple-200'  },
+  graduate:             { label: 'Graduate',              cls: 'bg-teal-100   text-teal-700   ring-1 ring-teal-200'   },
+  no_record:            { label: 'No Record',             cls: 'bg-gray-100   text-gray-500   ring-1 ring-gray-200'   },
 };
 
 function StatusBadge({ status }) {
@@ -74,10 +80,6 @@ function Masterlist() {
   const [ageFilter, setAgeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedPerson, setSelectedPerson] = useState(null);
-
-  // Role-based access: only BNS can preview/export reports
-  const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
-  const isBns = user.role === 'bns';
 
   // Report Modal state (Item 30 & 34)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -152,12 +154,17 @@ function Masterlist() {
       if (ageFilter === '24-59') return age >= 24 && age <= 59;
       return true;
     })
-    .filter((c) =>
-      statusFilter === 'all' ||
-      (statusFilter === 'graduate' && c.status === 'graduate') ||
-      (statusFilter === 'no_record' && !c.overall_status && c.status !== 'graduate') ||
-      c.overall_status === statusFilter
-    )
+    .filter((c) => {
+      if (statusFilter === 'all') return true;
+      if (statusFilter === 'graduate') return c.status === 'graduate';
+      if (statusFilter === 'no_record') return !c.overall_status && c.status !== 'graduate';
+      const os = String(c.overall_status || '').toLowerCase();
+      const ws = String(c.weight_status || '').toLowerCase();
+      const hs = String(c.height_status || '').toLowerCase();
+      const was = String(c.wasting_status || '').toLowerCase();
+      const sf = statusFilter.toLowerCase();
+      return os === sf || ws === sf || hs === sf || was === sf;
+    })
     .filter((c) =>
       !search ||
       `${c.first_name ?? ''} ${c.last_name ?? ''}`.toLowerCase().includes(search.toLowerCase()) ||
@@ -279,32 +286,49 @@ function Masterlist() {
             )}
 
             {/* Status dropdown */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-600 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition font-medium"
-            >
-              {activeTab === 'children' ? (
-                <>
-                  <option value="all">All Status</option>
-                  <option value="normal">Normal</option>
-                  <option value="MAM">MAM</option>
-                  <option value="SAM">SAM</option>
-                  <option value="overweight">Overweight</option>
-                  <option value="obese">Obese</option>
-                  <option value="graduate">Graduate</option>
-                  <option value="no_record">No Record</option>
-                </>
-              ) : (
-                <>
-                  <option value="all">All Status</option>
-                  <option value="completed">Completed</option>
-                </>
-              )}
-            </select>
+            <div className="relative inline-flex items-center">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="appearance-none bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-8 py-2.5 text-xs font-semibold text-gray-700 outline-none hover:bg-gray-100/70 focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition cursor-pointer shadow-2xs"
+              >
+                {activeTab === 'children' ? (
+                  <>
+                    <option value="all">All Status</option>
+                    <option value="normal">Normal</option>
+                    <option value="underweight">Underweight</option>
+                    <option value="severely_underweight">Severely Underweight</option>
+                    <option value="stunted">Stunted</option>
+                    <option value="severely_stunted">Severely Stunted</option>
+                    <option value="wasted">Wasted</option>
+                    <option value="severely_wasted">Severely Wasted</option>
+                    <option value="MAM">MAM</option>
+                    <option value="SAM">SAM</option>
+                    <option value="overweight">Overweight</option>
+                    <option value="obese">Obese</option>
+                    <option value="graduate">Graduate</option>
+                    <option value="no_record">No Record</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="all">All Status</option>
+                    <option value="completed">Completed</option>
+                  </>
+                )}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 text-gray-400 pointer-events-none" />
+            </div>
           </div>
 
-
+          {/* Export / Preview Report Button */}
+          <button
+            type="button"
+            onClick={handleOpenReportPreview}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white text-xs font-bold shadow-sm hover:opacity-95 transition cursor-pointer shrink-0"
+          >
+            <FileText size={15} />
+            Preview & Export Report
+          </button>
         </div>
 
         {/* Result count */}

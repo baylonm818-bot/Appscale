@@ -46,6 +46,18 @@ const TYPE_CONFIG = {
     light: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
     icon: ShieldAlert,
   },
+  alert: {
+    label: "Alert",
+    color: "bg-amber-600",
+    light: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+    icon: Bell,
+  },
+  referral: {
+    label: "Referral",
+    color: "bg-rose-600",
+    light: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+    icon: ExternalLink,
+  },
 };
 
 function NotificationItem({ notif, onMarkRead }) {
@@ -96,7 +108,7 @@ function NotificationItem({ notif, onMarkRead }) {
 
         {notif.message && (
           <div className="mt-2.5 bg-gray-50/80 border border-gray-100 rounded-xl px-4 py-2.5 text-xs text-gray-700 leading-relaxed">
-            {notif.message}
+            {notif.message.replace(/\s*\(Status:\s*[^)]+\)/gi, '')}
           </div>
         )}
 
@@ -180,12 +192,14 @@ function Notifications() {
 
   const scheduleCount = notifications.filter((n) => n.type?.toLowerCase() === "schedule").length;
   const accountCount = notifications.filter((n) => ["account", "system"].includes(n.type?.toLowerCase())).length;
+  const alertReferralCount = notifications.filter((n) => ["alert", "referral"].includes(n.type?.toLowerCase())).length;
 
   const tabs = [
-    { key: "all",      label: "All",               count: notifications.length },
-    { key: "unread",   label: "Unread",            count: unreadCount },
-    { key: "schedule", label: "Schedules",         count: scheduleCount },
-    { key: "account",  label: "Accounts & System", count: accountCount },
+    { key: "all",            label: "All",                 count: notifications.length },
+    { key: "unread",         label: "Unread",              count: unreadCount },
+    { key: "schedule",       label: "Schedules",           count: scheduleCount },
+    { key: "account",        label: "Accounts & System",   count: accountCount },
+    { key: "alerts_referrals", label: "Alerts & Referrals", count: alertReferralCount },
   ];
 
   const filtered = notifications.filter((n) => {
@@ -193,6 +207,7 @@ function Notifications() {
     if (activeTab === "unread") return !n.is_read;
     if (activeTab === "schedule") return n.type?.toLowerCase() === "schedule";
     if (activeTab === "account") return ["account", "system"].includes(n.type?.toLowerCase());
+    if (activeTab === "alerts_referrals") return ["alert", "referral"].includes(n.type?.toLowerCase());
     return n.type?.toLowerCase() === activeTab;
   });
 
