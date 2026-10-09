@@ -16,7 +16,7 @@ import BHWLayout from './components/BhwLayout';
 import BHWDashboard from './bhw/Dashboard';
 import BHWSchedule from './bhw/Schedule';
 import BHWNeedAttention from './bhw/NeedAttention';
-import BHWReferrals from './bhw/Refferals';
+import BHWReferrals from './bhw/Referrals';
 import BHWMedicalRecords from './bhw/MedicalRecords';
 import BHWNotifications from './bhw/Notification';
 import BHWProfile from './bhw/Profile';

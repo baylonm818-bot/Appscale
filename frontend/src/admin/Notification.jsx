@@ -214,7 +214,7 @@ function Notifications() {
                   Loading…
                 </span>
               ) : (
-                (unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : "All notifications caught up")
+                (unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : 'All notifications caught up')
               )}
             </p>
           </div>
@@ -235,28 +235,29 @@ function Notifications() {
         {/* Tab pills */}
         <div className="flex gap-2 px-6 py-3.5 border-b border-gray-100 overflow-x-auto bg-gray-50/60">
             {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === tab.key
-                  ? "bg-[#2e7d32] text-white shadow-sm"
-                  : "text-gray-600 hover:bg-white bg-transparent"
-              }`}
-            >
-              <span>{tab.label}</span>
-              {!loading && tab.count !== undefined && (
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    activeTab === tab.key ? "bg-white/25 text-white" : "bg-gray-200/80 text-gray-700"
-                  }`}
-                >
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  activeTab === tab.key
+                    ? "bg-[#2e7d32] text-white shadow-sm"
+                    : "text-gray-600 hover:bg-white bg-transparent"
+                }`}
+              >
+                <span>{tab.label}</span>
+                {/* Only show counts when not loading to avoid flicker and incorrect zero counts */}
+                {!loading && tab.count !== undefined && (
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      activeTab === tab.key ? "bg-white/25 text-white" : "bg-gray-200/80 text-gray-700"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
         </div>
 
         {/* List */}

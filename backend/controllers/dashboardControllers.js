@@ -21,7 +21,20 @@ exports.getAdminStats = async (req, res) => {
     const [[{ totalChildren }]] = await pool.query(`SELECT COUNT(*) AS totalChildren FROM children WHERE status = 'active'`);
     const [[{ totalMothers }]] = await pool.query(`SELECT COUNT(*) AS totalMothers FROM mothers WHERE status = 'active'`);
     const [[{ totalBarangays }]] = await pool.query(`SELECT COUNT(DISTINCT barangay) AS totalBarangays FROM children WHERE status = 'active' AND barangay IS NOT NULL`);
-    const [[{ totalUsers }]] = await pool.query(`SELECT COUNT(*) AS totalUsers FROM users WHERE role IN ('bhw', 'bns') AND status = 'active' AND deleted_at IS NULL`);
+    // Exclude obvious test accounts from aggregates (emails like example.com or usernames starting with 'test')
+    const testFilter = "AND LOWER(TRIM(email)) NOT LIKE '%@example.com' AND LOWER(TRIM(username)) NOT LIKE 'test%' AND LOWER(TRIM(email)) NOT LIKE 'test%'";
+    // Compute user aggregates using the same approach as getUserStats to keep counts consistent
+    const [[userStats]] = await pool.query(
+      `SELECT
+         COALESCE(SUM(CASE WHEN role IN ('bhw','bns') THEN 1 ELSE 0 END), 0) AS totalUsers,
+         COALESCE(SUM(CASE WHEN role = 'bns' THEN 1 ELSE 0 END), 0) AS totalBNS,
+         COALESCE(SUM(CASE WHEN role = 'bhw' THEN 1 ELSE 0 END), 0) AS totalBHW
+       FROM users
+       WHERE deleted_at IS NULL AND role IN ('bhw','bns') ${testFilter}`
+    );
+    const totalUsers = userStats.totalUsers || 0;
+    const totalBNS = userStats.totalBNS || 0;
+    const totalBHW = userStats.totalBHW || 0;
 
     // Check if optional columns exist
     const hasWasting = await hasColumn('nutrition_records', 'wasting_status');
@@ -135,6 +148,8 @@ exports.getAdminStats = async (req, res) => {
       totalMothers: totalMothers || 0,
       totalBarangays: totalBarangays || 0,
       totalUsers: totalUsers || 0,
+      totalBNS,
+      totalBHW,
       nineCategoryTrend,
       malnutritionByBarangay: malnutritionByBarangayRows,
       malnutritionOverviewFallback,

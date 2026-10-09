@@ -34,7 +34,7 @@ function BHWLayout() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(null);
   const [notificationPreview, setNotificationPreview] = useState([]);
   
   const navigate = useNavigate();
@@ -44,12 +44,15 @@ function BHWLayout() {
   const [profileImageSrc, setProfileImageSrc] = useState(null);
 
   const fetchUnreadCount = useCallback(async () => {
+    // indicate loading state
+    setUnreadNotifications(null);
     try {
       const response = await axiosClient.get('/bhw/notifications');
       const notifications = response.data?.notifications || [];
       setUnreadNotifications(Number(response.data?.unreadCount || 0));
       setNotificationPreview(notifications.slice(0, 4));
     } catch {
+      // on error show empty preview and zero (loaded)
       setUnreadNotifications(0);
       setNotificationPreview([]);
     }
@@ -359,7 +362,7 @@ function BHWLayout() {
                   <img
                     src={profileImageSrc || getProfileImageUrl(user.profile_picture)}
                     alt="Profile"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover rounded-full"
                     onError={(event) => {
                       const container = event.currentTarget.parentElement;
                       if (!container) return;
@@ -368,7 +371,7 @@ function BHWLayout() {
                     }}
                   />
                 ) : (
-                  getUserInitials(user)
+                  <div className="w-full h-full flex items-center justify-center text-white text-2xl font-black">{getUserInitials(user)}</div>
                 )}
               </span>
             </button>

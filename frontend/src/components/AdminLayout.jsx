@@ -33,6 +33,7 @@ function AdminLayout() {
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(null);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [notificationPreview, setNotificationPreview] = useState([]);
   
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ function AdminLayout() {
   const profileRootRef = useRef(null);
 
   const fetchUnreadCount = useCallback(async () => {
+    setNotificationsLoading(true);
     try {
       const response = await axiosClient.get('/notifications');
       const notifications = (response.data?.notifications || []);
@@ -50,6 +52,8 @@ function AdminLayout() {
     } catch {
       setUnreadNotifications(0);
       setNotificationPreview([]);
+    } finally {
+      setNotificationsLoading(false);
     }
   }, []);
 
@@ -263,11 +267,11 @@ function AdminLayout() {
                 className="relative flex h-10 w-10 items-center justify-center rounded-full text-green-800 transition hover:bg-green-50"
               >
                 <Bell size={19} />
-                {unreadNotifications !== null && unreadNotifications > 0 && (
+                {notificationsLoading ? null : (unreadNotifications !== null && unreadNotifications > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                     {unreadNotifications > 99 ? '99+' : unreadNotifications}
                   </span>
-                )}
+                ))}
               </button>
 
               {isNotificationMenuOpen && (
@@ -342,16 +346,19 @@ function AdminLayout() {
                   <img
                     src={getProfileImageUrl(user.profile_picture)}
                     alt="Profile"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover rounded-full"
                     onError={(event) => {
                       const container = event.currentTarget.parentElement;
                       if (!container) return;
                       event.currentTarget.style.display = 'none';
-                      container.textContent = getUserInitials(user);
+                      const initials = document.createElement('div');
+                      initials.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black';
+                      initials.textContent = getUserInitials(user);
+                      container.replaceChildren(initials);
                     }}
                   />
                 ) : (
-                  getUserInitials(user)
+                  <div className="w-full h-full flex items-center justify-center text-white text-2xl font-black">{getUserInitials(user)}</div>
                 )}
               </span>
               </button>

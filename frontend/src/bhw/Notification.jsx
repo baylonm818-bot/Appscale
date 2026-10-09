@@ -19,21 +19,21 @@ function formatDate(dateString) {
   });
 }
 
-const TYPE_CONFIG = {
-  referral:     { label: "Referral",     color: "bg-blue-500",    light: "bg-blue-50 text-blue-700"    },
-  malnutrition: { label: "Malnutrition", color: "bg-red-500",     light: "bg-red-50 text-red-700"      },
-  schedule:     { label: "Schedule",     color: "bg-emerald-500", light: "bg-emerald-50 text-emerald-700" },
-};
+  const TYPE_CONFIG = {
+    referral:     { label: "Referral",     color: "bg-blue-500",    light: "bg-blue-50 text-blue-700"    },
+    malnutrition: { label: "Malnutrition", color: "bg-red-500",     light: "bg-red-50 text-red-700"      },
+    schedule:     { label: "Schedule",     color: "bg-emerald-500", light: "bg-emerald-50 text-emerald-700" },
+  };
 
 function NotificationItem({ notif, onMarkRead }) {
-  const cfg = TYPE_CONFIG[notif.type?.toLowerCase()] || { color: "bg-green-600", light: "bg-green-50 text-green-700" };
-  const initial = (notif.type?.[0] || "N").toUpperCase();
+  const typeKey = (notif.type || '').toLowerCase();
+  const cfg = TYPE_CONFIG[typeKey] || { color: 'bg-green-600', light: 'bg-green-50 text-green-700' };
+  const initial = (notif.title?.charAt(0) || 'N').toUpperCase();
 
   return (
     <div
       onClick={() => !notif.is_read && onMarkRead(notif.notification_id)}
-      className={`flex gap-4 px-6 py-4 border-b border-gray-50 last:border-0 transition-colors
-        ${!notif.is_read ? "bg-green-50/50 cursor-pointer hover:bg-green-50" : "hover:bg-gray-50/60"}`}
+      className={`flex gap-4 px-6 py-4 border-b border-gray-50 last:border-0 transition-colors ${!notif.is_read ? 'bg-green-50/50 cursor-pointer hover:bg-green-50' : 'hover:bg-gray-50/60'}`}
     >
       <div className={`shrink-0 w-10 h-10 rounded-full ${cfg.color} flex items-center justify-center text-white text-sm font-bold shadow-xs`}>
         {initial}
@@ -44,7 +44,7 @@ function NotificationItem({ notif, onMarkRead }) {
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold text-gray-800 leading-snug">{notif.title}</p>
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide ${cfg.light}`}>
-              {notif.type || "General"}
+              {cfg.label || (notif.type || 'General')}
             </span>
           </div>
           {!notif.is_read && (
@@ -125,7 +125,14 @@ function Notifications() {
           <div>
             <h1 className="text-lg font-bold text-white">Barangay Notifications</h1>
             <p className="text-white/70 text-xs mt-0.5">
-              {unreadCount > 0 ? `${unreadCount} unread alerts` : "All caught up"}
+              {isLoading ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  Loading…
+                </span>
+              ) : (
+                (unreadCount > 0 ? `${unreadCount} unread alert${unreadCount === 1 ? '' : 's'}` : 'All caught up')
+              )}
             </p>
           </div>
           {unreadCount > 0 && (
@@ -144,16 +151,13 @@ function Notifications() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all
-                ${activeTab === tab.key
-                  ? "bg-[#2e7d32] text-white shadow-xs"
-                  : "text-gray-500 hover:bg-gray-100"
-                }`}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                activeTab === tab.key ? 'bg-[#2e7d32] text-white shadow-xs' : 'text-gray-500 hover:bg-gray-100'
+              }`}
             >
               {tab.label}
-              {tab.count !== undefined && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold
-                  ${activeTab === tab.key ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"}`}>
+              {!isLoading && tab.count !== undefined && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === tab.key ? 'bg-white/25 text-white' : 'bg-gray-200 text-gray-600'}`}>
                   {tab.count}
                 </span>
               )}

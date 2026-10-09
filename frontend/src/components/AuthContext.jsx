@@ -23,7 +23,13 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   const updateAvatar = (newAvatarUrl) => {
-    setUser((prev) => ({ ...prev, profile_picture: newAvatarUrl }));
+    setUser((prev) => {
+      const updated = { ...prev, profile_picture: newAvatarUrl };
+      if (localStorage.getItem('user')) localStorage.setItem('user', JSON.stringify(updated));
+      if (sessionStorage.getItem('user')) sessionStorage.setItem('user', JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('user:updated'));
+      return updated;
+    });
   };
 
   const updateUser = (updates) => {

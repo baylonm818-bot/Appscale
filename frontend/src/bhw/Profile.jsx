@@ -61,7 +61,7 @@ const inputCls = "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm
 
 function Profile() {
   const storedUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
-  const { updateUser } = useAuth();
+  const { updateUser, updateAvatar } = useAuth();
 
   const [profile, setProfile]   = useState(null);
   const [loading, setLoading]   = useState(true);
@@ -139,11 +139,16 @@ function Profile() {
     const fd = new FormData(); fd.append('profile_picture', file);
     try {
       const res = await axiosClient.post(`/profile/${storedUser.user_id}/picture`, fd, { headers: { 'Content-Type': undefined } });
-      setProfile({ ...profile, profile_picture: res.data.profile_picture });
-      updateUser({ profile_picture: res.data.profile_picture });
-      const updated = { ...storedUser, profile_picture: res.data.profile_picture };
-      if (localStorage.getItem('user'))   localStorage.setItem('user', JSON.stringify(updated));
-      if (sessionStorage.getItem('user')) sessionStorage.setItem('user', JSON.stringify(updated));
+      const serverPath = res.data.profile_picture;
+      const resolved = serverPath ? getProfileImageUrl(serverPath) : serverPath;
+      const cacheBusted = resolved ? `${resolved}?t=${Date.now()}` : serverPath;
+      setProfile({ ...profile, profile_picture: cacheBusted });
+      setProfileImageSrc(cacheBusted);
+      if (typeof updateAvatar === 'function') {
+        updateAvatar(cacheBusted);
+      } else if (typeof updateUser === 'function') {
+        updateUser({ profile_picture: cacheBusted });
+      }
     } catch { setPicError('Failed to upload profile picture.'); }
     finally { setUploadingPic(false); }
   };

@@ -8,9 +8,11 @@ exports.getUsers = async (req, res) => {
     const role = String(req.user?.role || '').toLowerCase();
     const barangay = req.user?.barangay;
 
+    // Exclude common test accounts from regular listings unless explicitly requesting archived/test entries
+    const testFilter = "AND LOWER(TRIM(email)) NOT LIKE '%@example.com' AND LOWER(TRIM(username)) NOT LIKE 'test%' AND LOWER(TRIM(email)) NOT LIKE 'test%'";
     let baseQuery = `SELECT user_id, first_name, middle_initial, last_name, email, username, role, municipality, barangay, status, created_at, deleted_at 
       FROM users 
-      WHERE ${includeArchived ? '1 = 1' : 'deleted_at IS NULL'} AND role IN ('bhw', 'bns')`;
+      WHERE ${includeArchived ? '1 = 1' : 'deleted_at IS NULL'} AND role IN ('bhw', 'bns') ${includeArchived ? '' : testFilter}`;
     const params = [];
 
     if (role === 'bhw' && barangay) {
@@ -36,7 +38,9 @@ exports.getUserStats = async (req, res) => {
     const role = String(req.user?.role || '').toLowerCase();
     const barangay = req.user?.barangay;
 
-    let whereClause = "deleted_at IS NULL AND role IN ('bhw', 'bns')";
+    // Exclude obvious test accounts from stats
+    const testFilter = "AND LOWER(TRIM(email)) NOT LIKE '%@example.com' AND LOWER(TRIM(username)) NOT LIKE 'test%' AND LOWER(TRIM(email)) NOT LIKE 'test%'";
+    let whereClause = "deleted_at IS NULL AND role IN ('bhw', 'bns')" + (req.query.includeArchived === 'true' ? '' : ` ${testFilter}`);
     const params = [];
 
     if (role === 'bhw' && barangay) {

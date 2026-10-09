@@ -132,11 +132,11 @@ function Dashboard() {
       </div>
 
       {/* ── 4 Stat Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={Users}
           label="Total Health Workers"
-          value={stats.totalUsers}
+            value={stats.totalUsers}
           sublabel="Active BHW & BNS staff"
           to="/admin/users"
         />

@@ -35,9 +35,10 @@ exports.getNotifications = async (req, res) => {
       [userBarangay, userBarangay, `%${userBarangay}%`, `%${userBarangay}%`]
     );
 
+    // Exclude system/auto-sync notifications for BHW users
     const [[{ unreadCount }]] = await pool.query(
       `SELECT COUNT(*) AS unreadCount
-       ${scopedWhere}`,
+       ${scopedWhere} AND n.is_read = FALSE AND n.type <> 'system' AND n.title NOT LIKE 'Data Synced%'`,
       [userBarangay, userBarangay, `%${userBarangay}%`, `%${userBarangay}%`]
     );
 
@@ -94,10 +95,11 @@ exports.markAllAsRead = async (req, res) => {
        LEFT JOIN mothers m ON m.mother_id = r.mother_id
        SET n.is_read = TRUE
        WHERE n.is_read = FALSE
-         AND ((n.type = 'schedule' AND s.barangay = ?)
-           OR (n.type = 'referral' AND COALESCE(c.barangay, m.barangay) = ?)
-           OR (n.title LIKE ?)
-           OR (n.message LIKE ?))`,
+        AND ((n.type = 'schedule' AND s.barangay = ?)
+          OR (n.type = 'referral' AND COALESCE(c.barangay, m.barangay) = ?)
+          OR (n.title LIKE ?)
+          OR (n.message LIKE ?))
+        AND n.type <> 'system' AND n.title NOT LIKE 'Data Synced%'`,
       [userBarangay, userBarangay, `%${userBarangay}%`, `%${userBarangay}%`]
     );
     return res.status(200).json({ message: 'All marked as read.' });
