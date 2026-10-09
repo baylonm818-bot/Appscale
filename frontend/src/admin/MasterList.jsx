@@ -237,9 +237,9 @@ function Masterlist() {
 
         {/* Search + filters bar */}
         <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
-          <div className="flex flex-wrap gap-3 items-center flex-1 min-w-[300px]">
+          <div className="flex flex-wrap gap-3 items-center flex-1 min-w-75">
             {/* Search */}
-            <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 flex-1 min-w-[200px] border border-gray-100 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition">
+            <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 flex-1 min-w-50 border border-gray-100 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition">
               <Search size={15} className="text-gray-400 shrink-0" />
               <input
                 type="text"
@@ -447,7 +447,7 @@ function Masterlist() {
       {/* Detail Modal — Full Screen Overlay Portal */}
       {selectedPerson && createPortal(
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-9999 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedPerson(null); }}
         >
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>

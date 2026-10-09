@@ -282,7 +282,7 @@ function Schedule() {
       {/* ── Centered Add Schedule Modal Popup ── */}
       {showModal && createPortal(
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden animate-in fade-in duration-200"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[88vh] flex flex-col transform transition-all scale-100">

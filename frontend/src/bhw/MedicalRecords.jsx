@@ -295,7 +295,7 @@ function MedicalRecords() {
     .reverse();
 
   return (
-    <div className="space-y-4">
+    <main role="main" aria-label="Medical Records" className="space-y-4 bg-gray-50 min-h-screen p-6">
 
       {/* ── Record Type Toggle & Action Bar ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1381,7 +1381,7 @@ function MedicalRecords() {
         barangay={user.barangay || 'Community'}
       />
 
-    </div>
+    </main>
   );
 }
 

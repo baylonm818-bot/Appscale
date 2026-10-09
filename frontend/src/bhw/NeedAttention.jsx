@@ -251,7 +251,7 @@ function NeedAttention() {
   const overdueCount = children.filter((c) => (daysSince(c.last_visit) ?? 999) > 30).length;
 
   return (
-    <div className="space-y-6">
+    <main role="main" aria-label="Need Attention" className="space-y-6 bg-gray-50 min-h-screen p-6">
 
       {/* ── Summary Counters ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -281,12 +281,13 @@ function NeedAttention() {
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
 
         {/* Filter bar */}
-        <div className="p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+            <div className="p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-1 min-w-60 items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 border border-gray-100 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition">
             <Search size={16} className="text-gray-400 shrink-0" />
             <input
               type="text"
               placeholder="Search child by name or guardian…"
+              aria-label="Search child by name or guardian"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="outline-none text-sm w-full bg-transparent text-gray-700 placeholder-gray-400"
@@ -350,12 +351,12 @@ function NeedAttention() {
             </colgroup>
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80 border-b border-gray-100">
-                <th className="px-6 py-3.5">Child & Guardian</th>
-                <th className="px-4 py-3.5">Age</th>
-                <th className="px-4 py-3.5">Weight / Height</th>
-                <th className="px-4 py-3.5 text-center">Nutrition Status</th>
-                <th className="px-4 py-3.5">Last Visit</th>
-                <th className="px-4 py-3.5 text-center">Interventions</th>
+                <th scope="col" className="px-6 py-3.5">Child & Guardian</th>
+                <th scope="col" className="px-4 py-3.5">Age</th>
+                <th scope="col" className="px-4 py-3.5">Weight / Height</th>
+                <th scope="col" className="px-4 py-3.5 text-center">Nutrition Status</th>
+                <th scope="col" className="px-4 py-3.5">Last Visit</th>
+                <th scope="col" className="px-4 py-3.5 text-center">Interventions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -408,14 +409,16 @@ function NeedAttention() {
                           <button
                             type="button"
                             onClick={(e) => openVisitModal(c, e)}
-                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition inline-flex items-center gap-1"
+                            aria-label={`Log visit for ${c.first_name} ${c.last_name}`}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
                           >
                             <Stethoscope size={13} /> Log Visit
                           </button>
                           <button
                             type="button"
                             onClick={(e) => openReferModal(c, e)}
-                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 transition inline-flex items-center gap-1 whitespace-nowrap"
+                            aria-label={`Refer ${c.first_name} ${c.last_name}`}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 transition inline-flex items-center gap-1 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                           >
                             <ClipboardPlus size={13} /> Refer
                           </button>
@@ -460,8 +463,8 @@ function NeedAttention() {
 
       {/* ── Log Visit Modal ── */}
       {visitTarget && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden" onClick={() => setVisitTarget(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setVisitTarget(null)}>
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
                 <div>
                   <h3 className="font-bold text-base">Record Health Visit / Service</h3>
@@ -517,7 +520,7 @@ function NeedAttention() {
 
       {/* ── Refer Modal ── */}
       {referTarget && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden" onClick={() => setReferTarget(null)}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setReferTarget(null)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="bg-linear-to-r from-amber-600 to-orange-600 px-6 py-5 flex items-center justify-between text-white">
                 <div>
@@ -557,7 +560,7 @@ function NeedAttention() {
         document.body
       )}
 
-    </div>
+    </main>
   );
 }
 

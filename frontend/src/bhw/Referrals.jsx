@@ -140,7 +140,7 @@ function Referrals() {
   const completedCount = referrals.filter((r) => normalizeStatus(r.status) === 'Completed').length;
 
   return (
-    <div className="space-y-6">
+    <main role="main" aria-label="Referrals" className="space-y-6 bg-gray-50 min-h-screen p-6">
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Referrals</p>
@@ -184,7 +184,7 @@ function Referrals() {
                   {r.notes && <p className="text-xs text-gray-600 mt-1 italic">"{r.notes}"</p>}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <button type="button" onClick={() => openActionModal(r)} className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs">Update Status</button>
+                  <button aria-label={`Update status for ${r.beneficiary_first_name} ${r.beneficiary_last_name}`} type="button" onClick={() => openActionModal(r)} className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-white">Update Status</button>
                 </div>
               </div>
             </div>
@@ -193,7 +193,7 @@ function Referrals() {
       </div>
 
       {actionTarget && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden" onClick={() => setActionTarget(null)}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setActionTarget(null)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
               <div>
@@ -240,7 +240,7 @@ function Referrals() {
           </div>
         </div>, document.body
       )}
-    </div>
+    </main>
   );
 }
 

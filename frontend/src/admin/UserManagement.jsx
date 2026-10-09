@@ -379,14 +379,14 @@ function UserManagement() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[780px]">
+          <table className="w-full text-sm min-w-195">
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80 border-b border-gray-100">
                 <th className="px-6 py-3.5 w-[28%]">Name</th>
                 <th className="px-4 py-3.5 w-[16%]">Barangay</th>
                 <th className="px-4 py-3.5 text-center w-[12%]">Role</th>
                 <th className="px-4 py-3.5 text-center w-[12%]">Status</th>
-                <th className="px-4 py-3.5 text-center min-w-[220px]">Actions</th>
+                <th className="px-4 py-3.5 text-center min-w-55">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -427,7 +427,7 @@ function UserManagement() {
                         {u.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-center min-w-[220px]">
+                    <td className="px-4 py-3.5 text-center min-w-55">
                       <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                         <button
                           type="button"
@@ -483,17 +483,17 @@ function UserManagement() {
       {/* ── User Modal ── */}
       {showModal && createPortal(
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[88vh] flex flex-col">
 
             {/* Header */}
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-base font-bold text-white">
-                  {editingUser ? (viewOnly ? 'User Account Profile' : 'Edit User Account') : `Add New ${form.role.toUpperCase()}`}
-                </h2>
+              <div
+                className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+                onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+              >
                 <p className="text-white/70 text-xs mt-0.5">
                   {editingUser ? 'Account & Barangay assignment details' : 'Fill in the credentials to register an account'}
                 </p>
@@ -632,7 +632,7 @@ function UserManagement() {
       {/* ── Status Change Confirmation Modal (Are you sure?) ── */}
       {statusConfirm && createPortal(
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setStatusConfirm(null); }}
         >
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[85vh] flex flex-col">
@@ -702,7 +702,7 @@ function UserManagement() {
       {/* ── Archive Confirmation Modal ── */}
       {archiveConfirm && createPortal(
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-9999 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setArchiveConfirm(null); }}
         >
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[85vh] flex flex-col">

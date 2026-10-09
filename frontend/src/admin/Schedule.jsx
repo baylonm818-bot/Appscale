@@ -76,7 +76,7 @@ function ActivityRow({ activity, onCancel, onComplete, onArchive }) {
           </span>
           <StatusBadge status={status} />
         </div>
-        <p className="text-xs text-gray-400 mt-1 break-words">
+        <p className="text-xs text-gray-400 mt-1 wrap-break-word">
           {activity.barangay || 'All Barangays'}
           {activity.target_role && ` · For ${activity.target_role.toUpperCase()}s`}
           {activity.venue && ` · ${activity.venue}`}
@@ -269,7 +269,7 @@ function Schedule() {
 
       {/* ── Add Schedule Modal ── */}
       {showModal && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[88vh] flex flex-col">
 
