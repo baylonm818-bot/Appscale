@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../api/axiosClient";
+import { useQuery } from '@tanstack/react-query';
 
 function timeAgo(dateString) {
   const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
@@ -68,36 +69,23 @@ function NotificationItem({ notif, onMarkRead }) {
 }
 
 function Notifications() {
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount]     = useState(0);
-  const [activeTab, setActiveTab]         = useState("all");
-  const [loading, setLoading]             = useState(true);
+  const [activeTab, setActiveTab] = useState('all');
 
-  const fetchNotifications = async () => {
-    setLoading(true);
-    try {
-      const res = await axiosClient.get('/bhw/notifications');
-      setNotifications(res.data.notifications || []);
-      setUnreadCount(res.data.unreadCount || 0);
-      window.dispatchEvent(new CustomEvent('notifications:updated'));
-    } catch (err) {
-      console.error("Failed to fetch notifications:", err);
-      setNotifications([]);
-      setUnreadCount(0);
-      window.dispatchEvent(new CustomEvent('notifications:updated'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading, isError, refetch } = useQuery(['notifications'], async () => {
+    const res = await axiosClient.get('/bhw/notifications');
+    return res.data;
+  }, {
+    staleTime: 1000 * 20,
+    cacheTime: 1000 * 60 * 2,
+  });
 
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
+  const notifications = data?.notifications || [];
+  const unreadCount = data?.unreadCount || 0;
 
   const handleMarkAllRead = async () => {
     try {
       await axiosClient.patch('/bhw/notifications/read-all');
-      fetchNotifications();
+      await refetch();
       window.dispatchEvent(new CustomEvent('notifications:updated'));
     } catch (err) {
       console.error(err);
@@ -107,7 +95,7 @@ function Notifications() {
   const handleMarkRead = async (id) => {
     try {
       await axiosClient.patch(`/bhw/notifications/${id}/read`);
-      fetchNotifications();
+      await refetch();
       window.dispatchEvent(new CustomEvent('notifications:updated'));
     } catch (err) {
       console.error(err);
@@ -175,10 +163,17 @@ function Notifications() {
 
         {/* List */}
         <div className="max-h-150 overflow-y-auto">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="w-8 h-8 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
-              <p className="text-sm text-gray-400">Loading notifications…</p>
+          {isLoading ? (
+            <div className="space-y-3 p-4">
+              {[1,2,3,4].map((i) => (
+                <div key={i} className="animate-pulse flex gap-4 items-center px-4 py-3">
+                  <div className="w-10 h-10 rounded-full bg-gray-200" />
+                  <div className="flex-1">
+                    <div className="h-3 bg-gray-200 rounded w-3/5 mb-2" />
+                    <div className="h-3 bg-gray-200 rounded w-2/5" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">

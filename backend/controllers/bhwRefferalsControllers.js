@@ -184,7 +184,37 @@ exports.createReferral = async (req, res) => {
       return res.status(400).json({ message: 'Could not determine referring user. Please log in again.' });
     }
 
-    const referralNotes = [facility ? `Facility: ${facility}` : '', notes || ''].filter(Boolean).join('\n');
+    // Ensure facility tag not duplicated when facility includes label
+    const facilityName = facility ? String(facility).replace(/^(Facility:\s*)/i, '').trim() : '';
+    const referralNotes = [facilityName ? `Facility: ${facilityName}` : '', notes || ''].filter(Boolean).join('\n');
+
+    // Determine final severity: prefer explicit severity, but for child referrals
+    // override to 'high' when the latest nutrition record indicates SAM or severe statuses.
+    let finalSeverity = (severity || 'medium').toString().toLowerCase();
+    if (beneficiaryType === 'child' && resolvedChildId) {
+      try {
+        const [[latestNrRows]] = await pool.query(
+          `SELECT weight_status, height_status, overall_status
+           FROM nutrition_records
+           WHERE child_id = ?
+           ORDER BY record_date DESC
+           LIMIT 1`,
+          [resolvedChildId]
+        );
+        const latest = latestNrRows[0];
+        if (latest) {
+          const ws = String(latest.weight_status || '').toLowerCase();
+          const hs = String(latest.height_status || '').toLowerCase();
+          const os = String(latest.overall_status || '').toLowerCase();
+          if (os === 'sam' || ws.includes('sever') || hs.includes('sever')) {
+            finalSeverity = 'high';
+          }
+        }
+      } catch (e) {
+        // if query fails, continue with provided/default severity
+        console.error('Could not fetch latest nutrition record for severity determination:', e.message);
+      }
+    }
 
     const conn = await pool.getConnection();
     try {
@@ -244,7 +274,7 @@ exports.createReferral = async (req, res) => {
         referringUserId,
         referringUserId,
         reason,
-        severity || 'medium',
+        finalSeverity || 'medium',
         'Pending',
         referralNotes || null,
       );

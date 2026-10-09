@@ -139,10 +139,8 @@ function Notifications() {
     setLoading(true);
     try {
       const res = await axiosClient.get("/notifications");
-      // Explicitly filter out any legacy referral or malnutrition notifications
-      const fetched = (res.data.notifications || []).filter(
-        (n) => n.type?.toLowerCase() !== "referral" && n.type?.toLowerCase() !== "malnutrition"
-      );
+      // Notifications are returned already filtered by backend for role-specific exclusions
+      const fetched = res.data.notifications || [];
       setNotifications(fetched);
       setUnreadCount(res.data.unreadCount || 0);
       window.dispatchEvent(new CustomEvent('notifications:updated'));
@@ -210,7 +208,14 @@ function Notifications() {
               <h1 className="text-lg font-bold text-white">Admin Notifications</h1>
             </div>
             <p className="text-white/80 text-xs mt-0.5">
-              {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : "All notifications caught up"}
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  Loading…
+                </span>
+              ) : (
+                (unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : "All notifications caught up")
+              )}
             </p>
           </div>
 
@@ -229,7 +234,7 @@ function Notifications() {
 
         {/* Tab pills */}
         <div className="flex gap-2 px-6 py-3.5 border-b border-gray-100 overflow-x-auto bg-gray-50/60">
-          {tabs.map((tab) => (
+            {tabs.map((tab) => (
             <button
               key={tab.key}
               type="button"
@@ -241,7 +246,7 @@ function Notifications() {
               }`}
             >
               <span>{tab.label}</span>
-              {tab.count !== undefined && (
+              {!loading && tab.count !== undefined && (
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                     activeTab === tab.key ? "bg-white/25 text-white" : "bg-gray-200/80 text-gray-700"

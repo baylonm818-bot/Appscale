@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
+import { useQuery } from '@tanstack/react-query';
 import {
   FileText,
   Search,
@@ -64,8 +65,6 @@ function MedicalRecords() {
   const [addBeneficiarySuccess, setAddBeneficiarySuccess] = useState('');
 
   // ── Children state ──
-  const [children, setChildren] = useState([]);
-  const [childLoading, setChildLoading] = useState(true);
   const [childError, setChildError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -77,8 +76,6 @@ function MedicalRecords() {
   const [activeTab, setActiveTab] = useState('growth');
 
   // ── Mothers state ──
-  const [mothers, setMothers] = useState([]);
-  const [motherLoading, setMotherLoading] = useState(false);
   const [motherError, setMotherError] = useState('');
   const [motherSearch, setMotherSearch] = useState('');
   const [selectedMother, setSelectedMother] = useState(null);
@@ -88,8 +85,6 @@ function MedicalRecords() {
   const [motherActiveTab, setMotherActiveTab] = useState('services');
 
   // ── Audit Trail state ──
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState('');
 
   // ── Add Intervention Modal State ──
@@ -104,26 +99,26 @@ function MedicalRecords() {
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
 
-  const fetchChildren = async () => {
-    try {
-      const response = await axiosClient.get('/bhw/medical-records', {
-        params: { barangay: user.barangay },
-      });
-      setChildren(response.data || []);
-      if (response.data && response.data.length > 0 && window.innerWidth >= 1024 && !selectedChild) {
-        openChild(response.data[0]);
-      }
-    } catch {
-      setChildError('Failed to load registered children.');
-    } finally {
-      setChildLoading(false);
-    }
-  };
-
+  const {
+    data: childrenData,
+    isLoading: childLoading,
+    refetch: refetchChildren,
+  } = useQuery(['medical-records', user.barangay], async () => {
+    const res = await axiosClient.get('/bhw/medical-records', { params: { barangay: user.barangay } });
+    return res.data || [];
+  }, {
+    enabled: !!user?.barangay && recordType === 'children',
+    staleTime: 1000 * 30,
+    cacheTime: 1000 * 60 * 2,
+    onError: () => setChildError('Failed to load registered children.'),
+  });
+  const children = childrenData || [];
   useEffect(() => {
-    fetchChildren();
+    if (children && children.length > 0 && window.innerWidth >= 1024 && !selectedChild) {
+      openChild(children[0]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [children]);
 
   useEffect(() => {
     if (recordType === 'mothers' && mothers.length === 0) {
@@ -134,35 +129,36 @@ function MedicalRecords() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordType]);
 
-  const fetchMothers = async () => {
-    setMotherLoading(true);
-    try {
-      const res = await axiosClient.get('/bhw/medical-records/mothers', {
-        params: { barangay: user.barangay },
-      });
-      setMothers(res.data || []);
-      if (res.data && res.data.length > 0 && window.innerWidth >= 1024 && !selectedMother) {
-        openMother(res.data[0]);
-      }
-    } catch {
-      setMotherError('Failed to load registered mothers.');
-    } finally {
-      setMotherLoading(false);
+  const { data: mothersData, isLoading: motherLoading, refetch: refetchMothers } = useQuery(
+    ['medical-records-mothers', user.barangay],
+    async () => {
+      const res = await axiosClient.get('/bhw/medical-records/mothers', { params: { barangay: user.barangay } });
+      return res.data || [];
+    },
+    {
+      enabled: !!user?.barangay && recordType === 'mothers',
+      staleTime: 1000 * 30,
+      cacheTime: 1000 * 60 * 2,
+      onError: () => setMotherError('Failed to load registered mothers.'),
     }
-  };
+  );
+  const mothers = mothersData || [];
+  useEffect(() => {
+    if (mothers && mothers.length > 0 && window.innerWidth >= 1024 && !selectedMother) {
+      openMother(mothers[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mothers]);
 
-  const fetchAuditLogs = async () => {
-    setAuditLoading(true);
-    setAuditError('');
-    try {
+  const { data: auditData, isLoading: auditLoading, refetch: refetchAudit } = useQuery(
+    ['medical-records-audit'],
+    async () => {
       const res = await axiosClient.get('/bhw/medical-records/audit-trail');
-      setAuditLogs(res.data || []);
-    } catch {
-      setAuditError('Failed to load audit trail.');
-    } finally {
-      setAuditLoading(false);
-    }
-  };
+      return res.data || [];
+    },
+    { enabled: recordType === 'audit', staleTime: 1000 * 30, cacheTime: 1000 * 60 * 2, onError: () => setAuditError('Failed to load audit trail.') }
+  );
+  const auditLogs = auditData || [];
 
   const filteredChildren = useMemo(() => {
     let list = [...children];
@@ -1066,7 +1062,7 @@ function MedicalRecords() {
               </button>
             </div>
 
-            <form onSubmit={submitIntervention} className="p-6 space-y-3.5">
+            <form onSubmit={submitIntervention} className="p-6 space-y-3.5 overflow-y-auto flex-1">
               {modalError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{modalError}</div>}
 
               <div>
@@ -1144,23 +1140,24 @@ function MedicalRecords() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={modalSubmitting || !serviceName.trim()}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-60"
-                >
-                  {modalSubmitting ? 'Saving…' : 'Record Entry'}
-                </button>
-              </div>
             </form>
+            <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-2 sticky bottom-0">
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={modalSubmitting || !serviceName.trim()}
+                onClick={submitIntervention}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-60"
+              >
+                {modalSubmitting ? 'Saving…' : 'Record Entry'}
+              </button>
+            </div>
           </div>
         </div>,
         document.body

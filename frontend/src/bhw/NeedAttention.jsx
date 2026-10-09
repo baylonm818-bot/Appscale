@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
+import { useQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
   Phone,
@@ -52,8 +53,6 @@ function daysSince(dateStr) {
 
 function NeedAttention() {
   const navigate = useNavigate();
-  const [children, setChildren] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
 
@@ -84,22 +83,17 @@ function NeedAttention() {
   const [visitSubmitting, setVisitSubmitting] = useState(false);
   const [visitError, setVisitError] = useState('');
 
-  const fetchData = async () => {
-    try {
-      const response = await axiosClient.get('/bhw/need-attention', {
-        params: { barangay: user.barangay },
-      });
-      setChildren(response.data || []);
-    } catch {
-      setError('Failed to load attention list.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading, refetch } = useQuery(
+    ['need-attention', user.barangay],
+    async () => {
+      const res = await axiosClient.get('/bhw/need-attention', { params: { barangay: user.barangay } });
+      return res.data || [];
+    },
+    { enabled: !!user?.barangay, staleTime: 1000 * 20, cacheTime: 1000 * 60 * 2 }
+  );
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const children = data || [];
+  const loading = isLoading;
 
   const filteredChildren = useMemo(() => {
     let list = [...children];
@@ -156,7 +150,14 @@ function NeedAttention() {
   const openReferModal = (child, e) => {
     e.stopPropagation();
     setReferTarget(child);
-    setReferSeverity('medium');
+    // Default severity from child's nutrition status
+    if (child.overall_status === 'SAM' || child.weight_status === 'severely_underweight' || child.height_status === 'severely_stunted') {
+      setReferSeverity('high');
+    } else if (child.overall_status === 'MAM' || child.weight_status === 'underweight' || child.height_status === 'stunted') {
+      setReferSeverity('medium');
+    } else {
+      setReferSeverity('low');
+    }
     setReferReason('');
     setReferError('');
   };
@@ -173,6 +174,7 @@ function NeedAttention() {
         referred_by: user.user_id,
       });
       setReferTarget(null);
+      await refetch();
       alert('Referral submitted successfully.');
     } catch {
       setReferError('Failed to submit referral. Please try again.');
@@ -185,7 +187,8 @@ function NeedAttention() {
     e.stopPropagation();
     setVisitTarget(child);
     setVisitDate(new Date().toISOString().slice(0, 10));
-    setServiceType('vitamin_a');
+    // start with placeholder selection
+    setServiceType('');
     setVisitWeight(child.weight_kg || '');
     setVisitHeight(child.height_cm || '');
     setVisitNotes('');
@@ -197,6 +200,18 @@ function NeedAttention() {
     setVisitSubmitting(true);
     setVisitError('');
     try {
+      // Validate service selection
+      if (!serviceType) {
+        setVisitError('Please select a service before saving.');
+        setVisitSubmitting(false);
+        return;
+      }
+      // Vitamin A not for <6 months
+      if (serviceType === 'vitamin_a' && (visitTarget.age_in_months ?? 0) < 6) {
+        setVisitError('Vitamin A supplementation is not indicated for infants under 6 months.');
+        setVisitSubmitting(false);
+        return;
+      }
       await axiosClient.post('/bhw/need-attention/child-services', {
         child_id: visitTarget.child_id,
         service_date: visitDate,
@@ -206,13 +221,7 @@ function NeedAttention() {
         height_cm: visitHeight || null,
         notes: visitNotes,
       });
-      setChildren((prev) =>
-        prev.map((c) =>
-          c.child_id === visitTarget.child_id
-            ? { ...c, last_visit: visitDate, weight_kg: visitWeight || c.weight_kg, height_cm: visitHeight || c.height_cm }
-            : c
-        )
-      );
+      await refetch();
       setVisitTarget(null);
       alert('Health service recorded successfully.');
     } catch {
@@ -224,9 +233,13 @@ function NeedAttention() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
-        <p className="text-sm font-medium text-gray-400">Loading attention cases…</p>
+      <div className="space-y-3 p-6">
+        {[1,2,3].map(i => (
+          <div key={i} className="animate-pulse bg-white rounded-xl p-4">
+            <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
+            <div className="h-3 bg-gray-200 rounded w-2/3" />
+          </div>
+        ))}
       </div>
     );
   }
@@ -402,7 +415,7 @@ function NeedAttention() {
                           <button
                             type="button"
                             onClick={(e) => openReferModal(c, e)}
-                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 transition inline-flex items-center gap-1"
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 transition inline-flex items-center gap-1 whitespace-nowrap"
                           >
                             <ClipboardPlus size={13} /> Refer
                           </button>
@@ -449,54 +462,54 @@ function NeedAttention() {
       {visitTarget && createPortal(
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden" onClick={() => setVisitTarget(null)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
-              <div>
-                <h3 className="font-bold text-base">Record Health Visit / Service</h3>
-                <p className="text-xs text-white/70 mt-0.5">{visitTarget.first_name} {visitTarget.last_name}</p>
-              </div>
-              <button onClick={() => setVisitTarget(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white">
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-3.5 overflow-y-auto flex-1">
-              {visitError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{visitError}</div>}
-
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Service Provided *</label>
-                <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]">
-                  {serviceOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Visit Date *</label>
-                <input type="date" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">New Weight (kg)</label>
-                  <input type="number" step="0.1" placeholder="e.g. 10.5" value={visitWeight} onChange={(e) => setVisitWeight(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]" />
+                  <h3 className="font-bold text-base">Record Health Visit / Service</h3>
+                  <p className="text-xs text-white/70 mt-0.5">{visitTarget.first_name} {visitTarget.last_name}</p>
                 </div>
+                <button onClick={() => setVisitTarget(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-3.5 overflow-y-auto flex-1">
+                {visitError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{visitError}</div>}
+
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">New Height (cm)</label>
-                  <input type="number" step="0.1" placeholder="e.g. 82.0" value={visitHeight} onChange={(e) => setVisitHeight(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]" />
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Service Provided *</label>
+                  <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]">
+                    <option value="">Select service</option>
+                    {serviceOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Visit Date *</label>
+                  <input type="date" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">New Weight (kg)</label>
+                    <input type="number" step="0.1" placeholder="e.g. 10.5" value={visitWeight} onChange={(e) => setVisitWeight(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">New Height (cm)</label>
+                    <input type="number" step="0.1" placeholder="e.g. 82.0" value={visitHeight} onChange={(e) => setVisitHeight(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Observation / Notes</label>
+                  <textarea rows={2} placeholder="Optional notes regarding child response, health condition…" value={visitNotes} onChange={(e) => setVisitNotes(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] resize-none" />
                 </div>
               </div>
-
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Observation / Notes</label>
-                <textarea rows={2} placeholder="Optional notes regarding child response, health condition…" value={visitNotes} onChange={(e) => setVisitNotes(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] resize-none" />
-              </div>
-
-              <div className="flex gap-3 pt-2">
+              <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-2 sticky bottom-0">
                 <button type="button" onClick={() => setVisitTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">Cancel</button>
                 <button type="button" disabled={visitSubmitting} onClick={submitVisit} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-60">
                   {visitSubmitting ? 'Saving…' : 'Save Service'}
                 </button>
               </div>
-            </div>
           </div>
         </div>,
         document.body
@@ -506,40 +519,39 @@ function NeedAttention() {
       {referTarget && createPortal(
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden" onClick={() => setReferTarget(null)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-linear-to-r from-amber-600 to-orange-600 px-6 py-5 flex items-center justify-between text-white">
-              <div>
-                <h3 className="font-bold text-base">Refer Child to RHU / Doctor</h3>
-                <p className="text-xs text-white/80 mt-0.5">{referTarget.first_name} {referTarget.last_name}</p>
-              </div>
-              <button onClick={() => setReferTarget(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white">
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-3.5">
-              {referError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{referError}</div>}
-
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Severity Level *</label>
-                <select value={referSeverity} onChange={(e) => setReferSeverity(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-600">
-                  <option value="low">Low — Routine checkup</option>
-                  <option value="medium">Medium — Growth faltering / MAM</option>
-                  <option value="high">High (Urgent) — SAM / Severe health concern</option>
-                </select>
+              <div className="bg-linear-to-r from-amber-600 to-orange-600 px-6 py-5 flex items-center justify-between text-white">
+                <div>
+                  <h3 className="font-bold text-base">Refer Child to RHU / Doctor</h3>
+                  <p className="text-xs text-white/80 mt-0.5">{referTarget.first_name} {referTarget.last_name}</p>
+                </div>
+                <button onClick={() => setReferTarget(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white">
+                  <X size={16} />
+                </button>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Reason for Referral *</label>
-                <textarea rows={3} placeholder="Describe current condition, symptoms, or why RHU medical evaluation is recommended…" value={referReason} onChange={(e) => setReferReason(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-600 resize-none" />
-              </div>
+              <div className="p-6 space-y-3.5 overflow-y-auto flex-1">
+                {referError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{referError}</div>}
 
-              <div className="flex gap-3 pt-2">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Severity Level *</label>
+                  <select value={referSeverity} onChange={(e) => setReferSeverity(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-600">
+                    <option value="low">Low — Routine checkup</option>
+                    <option value="medium">Medium — Growth faltering / MAM</option>
+                    <option value="high">High (Urgent) — SAM / Severe health concern</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Reason for Referral *</label>
+                  <textarea rows={3} placeholder="Describe current condition, symptoms, or why RHU medical evaluation is recommended…" value={referReason} onChange={(e) => setReferReason(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-600 resize-none" />
+                </div>
+              </div>
+              <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-2 sticky bottom-0">
                 <button type="button" onClick={() => setReferTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">Cancel</button>
                 <button type="button" disabled={referSubmitting} onClick={submitReferral} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-60">
                   {referSubmitting ? 'Submitting…' : 'Submit Referral'}
                 </button>
               </div>
-            </div>
           </div>
         </div>,
         document.body

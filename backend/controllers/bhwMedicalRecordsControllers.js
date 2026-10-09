@@ -21,7 +21,9 @@ exports.getMedicalRecordsList = async (req, res) => {
   try {
     const [children] = await pool.query(
       `SELECT
-         c.child_id, c.first_name, c.last_name, c.sex, c.age_in_months, c.guardian_name, c.barangay,
+        c.child_id, c.first_name, c.last_name, c.sex,
+        COALESCE(c.age_in_months, TIMESTAMPDIFF(MONTH, c.birth_date, CURDATE())) AS age_in_months,
+        c.guardian_name, c.barangay,
          nr.overall_status, nr.record_date AS last_visit, nr.weight_kg, nr.height_cm, nr.muac_cm, nr.bmi, nr.bmi_status, nr.weight_status, nr.height_status
        FROM children c
        LEFT JOIN (
@@ -95,7 +97,9 @@ exports.getChildMedicalHistory = async (req, res) => {
 
   try {
     const [[child]] = await pool.query(
-      'SELECT child_id, first_name, last_name, barangay, age_in_months, sex FROM children WHERE child_id = ?',
+      `SELECT child_id, first_name, last_name, barangay, sex,
+              COALESCE(age_in_months, TIMESTAMPDIFF(MONTH, birth_date, CURDATE())) AS age_in_months
+       FROM children WHERE child_id = ?`,
       [childId]
     );
     if (!child) return res.status(404).json({ message: 'Child not found.' });
@@ -114,6 +118,28 @@ exports.getChildMedicalHistory = async (req, res) => {
        ORDER BY record_date DESC`,
       [childId]
     );
+
+    // Fill missing BMI and BMI status when possible for display convenience
+    for (const rec of nutritionHistory) {
+      try {
+        if ((rec.bmi === null || rec.bmi === undefined) && rec.weight_kg && rec.height_cm) {
+          const w = Number(rec.weight_kg);
+          const h = Number(rec.height_cm) / 100;
+          if (w > 0 && h > 0) {
+            rec.bmi = Number((w / (h * h)).toFixed(2));
+          }
+        }
+        if ((!rec.bmi_status || rec.bmi_status === '') && rec.bmi != null) {
+          const b = Number(rec.bmi);
+          if (b < 18.5) rec.bmi_status = 'Underweight';
+          else if (b < 25) rec.bmi_status = 'Normal';
+          else if (b < 30) rec.bmi_status = 'Overweight';
+          else rec.bmi_status = 'Obese';
+        }
+      } catch (e) {
+        // ignore per-record fill errors
+      }
+    }
 
     const [servicesHistory] = await pool.query(
       `SELECT cs.service_id, cs.service_date, cs.service_type, cs.service_name, cs.dosage,

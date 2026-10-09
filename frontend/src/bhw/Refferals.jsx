@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowUpDown, X, CheckCircle2, Clock, AlertTriangle, ChevronRight, RefreshCw } from 'lucide-react';
 
 const severityColors = {
@@ -32,8 +33,6 @@ const serviceOptions = [
 ];
 
 function Referrals() {
-  const [referrals, setReferrals] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   let user = {};
@@ -57,35 +56,23 @@ function Referrals() {
   const [actionSubmitting, setActionSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
 
-  const fetchData = async (isBackground = false) => {
-    if (!user?.barangay) {
-      setError('No barangay is assigned to this account.');
-      setLoading(false);
-      return;
+  const { data, isLoading, refetch } = useQuery(
+    ['referrals', user.barangay],
+    async () => {
+      if (!user?.barangay) throw new Error('No barangay');
+      const res = await axiosClient.get('/bhw/referrals', { params: { barangay: user.barangay } });
+      return res.data || [];
+    },
+    {
+      enabled: !!user?.barangay,
+      staleTime: 1000 * 20,
+      cacheTime: 1000 * 60 * 2,
+      refetchInterval: 12000,
+      onError: () => setError('Failed to load referrals.'),
     }
-
-    try {
-      const response = await axiosClient.get('/bhw/referrals', {
-        params: { barangay: user.barangay },
-      });
-      setReferrals(response.data || []);
-      setError('');
-    } catch {
-      if (!isBackground) setError('Failed to load referrals.');
-    } finally {
-      if (!isBackground) setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-    // Real-time automatic polling every 12 seconds
-    // Module 4: "The system shall send real-time notifications to Barangay Health Workers (BHW) upon receiving referrals from BNS."
-    const interval = setInterval(() => {
-      fetchData(true);
-    }, 12000);
-    return () => clearInterval(interval);
-  }, []);
+  );
+  const referrals = data || [];
+  const loading = isLoading;
 
   const normalizeStatus = (s) => {
     const lower = String(s || '').toLowerCase();
@@ -140,7 +127,7 @@ function Referrals() {
         provided_by: user.first_name ? `${user.first_name} ${user.last_name || ''}` : 'BHW',
       });
       setActionTarget(null);
-      fetchData();
+      await refetch();
     } catch {
       setActionError('Failed to update referral status. Please try again.');
     } finally {
@@ -161,9 +148,13 @@ function Referrals() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
-        <p className="text-sm font-medium text-gray-400">Loading referrals…</p>
+      <div className="space-y-3 p-6">
+        {[1,2,3].map(i => (
+          <div key={i} className="animate-pulse bg-white rounded-xl p-4">
+            <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
+            <div className="h-3 bg-gray-200 rounded w-2/3" />
+          </div>
+        ))}
       </div>
     );
   }
@@ -387,22 +378,22 @@ function Referrals() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setActionTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={actionSubmitting}
-                  onClick={submitStatusUpdate}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-60"
-                >
-                  {actionSubmitting ? 'Saving…' : 'Save Status'}
-                </button>
-              </div>
             </div>
-          </div>
-        </div>,
+            <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-2 sticky bottom-0">
+              <button type="button" onClick={() => setActionTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={actionSubmitting}
+                onClick={submitStatusUpdate}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-60"
+              >
+                {actionSubmitting ? 'Saving…' : 'Save Status'}
+              </button>
+            </div>
+            </div>
+          </div>,
         document.body
       )}
 

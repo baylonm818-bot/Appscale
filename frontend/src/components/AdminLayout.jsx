@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from 'framer-motion';
 import logo from '../assets/logo.png';
 import { useAuth } from '../components/AuthContext';
@@ -32,20 +32,20 @@ function AdminLayout() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(null);
   const [notificationPreview, setNotificationPreview] = useState([]);
   
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const notificationRootRef = useRef(null);
+  const profileRootRef = useRef(null);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
       const response = await axiosClient.get('/notifications');
-      const notifications = (response.data?.notifications || []).filter(
-        (n) => n.type?.toLowerCase() !== 'referral' && n.type?.toLowerCase() !== 'malnutrition'
-      );
-      setUnreadNotifications(Number(response.data?.unreadCount || 0));
+      const notifications = (response.data?.notifications || []);
+      setUnreadNotifications(response.data?.unreadCount ?? 0);
       setNotificationPreview(notifications.slice(0, 4));
     } catch {
       setUnreadNotifications(0);
@@ -63,21 +63,38 @@ function AdminLayout() {
     }
   }, [fetchUnreadCount]);
 
+  // Close dropdowns on route change and listen for external updates
   useEffect(() => {
     fetchUnreadCount();
 
-    const handleNotificationsUpdated = () => {
-      fetchUnreadCount();
-    };
-
+    const handleNotificationsUpdated = () => fetchUnreadCount();
     window.addEventListener('notifications:updated', handleNotificationsUpdated);
     const poll = window.setInterval(fetchUnreadCount, 15000);
+
+    // Close menus on route change
+    setIsNotificationMenuOpen(false);
+    setIsProfileMenuOpen(false);
 
     return () => {
       window.removeEventListener('notifications:updated', handleNotificationsUpdated);
       window.clearInterval(poll);
     };
   }, [fetchUnreadCount, location.pathname]);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const onDocClick = (ev) => {
+      const t = ev.target;
+      if (notificationRootRef.current && !notificationRootRef.current.contains(t)) {
+        setIsNotificationMenuOpen(false);
+      }
+      if (profileRootRef.current && !profileRootRef.current.contains(t)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, []);
 
   const doLogout = useCallback(() => {
     localStorage.removeItem('token');
@@ -162,7 +179,7 @@ function AdminLayout() {
           <button
             type="button"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-1.5 rounded-xl hover:bg-green-50 text-gray-600 hover:text-green-800 transition"
+            className="md:hidden p-1.5 rounded-xl hover:bg-green-50 text-gray-600 hover:text-green-800 transition"
           >
             {isSidebarOpen ? <X size={18} /> : <Menu size={20} />}
           </button>
@@ -234,7 +251,7 @@ function AdminLayout() {
           </div>
 
           <div className="relative flex items-center gap-3">
-            <div className="relative">
+            <div ref={notificationRootRef} className="relative">
               <button
                 type="button"
                 aria-label="Notifications"
@@ -246,7 +263,7 @@ function AdminLayout() {
                 className="relative flex h-10 w-10 items-center justify-center rounded-full text-green-800 transition hover:bg-green-50"
               >
                 <Bell size={19} />
-                {unreadNotifications > 0 && (
+                {unreadNotifications !== null && unreadNotifications > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                     {unreadNotifications > 99 ? '99+' : unreadNotifications}
                   </span>
@@ -257,14 +274,14 @@ function AdminLayout() {
                 <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-black/15">
                   <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
                     <p className="text-sm font-bold text-gray-900">Notifications</p>
-                    {unreadNotifications > 0 && (
+                    {unreadNotifications !== null && unreadNotifications > 0 && (
                       <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800">
                         {unreadNotifications} new
                       </span>
                     )}
                   </div>
 
-                  {unreadNotifications > 0 && (
+                  {unreadNotifications !== null && unreadNotifications > 0 && (
                     <button
                       type="button"
                       onClick={handleMarkAllRead}
@@ -312,7 +329,8 @@ function AdminLayout() {
               )}
             </div>
 
-            <button
+            <div ref={profileRootRef} className="relative">
+              <button
               type="button"
               aria-label="Open profile menu"
               aria-expanded={isProfileMenuOpen}
@@ -336,10 +354,10 @@ function AdminLayout() {
                   getUserInitials(user)
                 )}
               </span>
-            </button>
+              </button>
 
-            {isProfileMenuOpen && (
-              <div className="absolute right-0 top-14 z-100 w-56 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-black/15">
+              {isProfileMenuOpen && (
+                <div className="absolute right-0 top-14 z-100 w-56 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-black/15">
                 <div className="border-b border-gray-100 px-3 py-2">
                   <p className="truncate text-sm font-bold text-gray-900">{user?.full_name || user?.username || "Admin"}</p>
                   <p className="truncate text-xs text-gray-400">{user?.email || "Administrator account"}</p>
@@ -361,8 +379,9 @@ function AdminLayout() {
                 >
                   Logout
                 </button>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
