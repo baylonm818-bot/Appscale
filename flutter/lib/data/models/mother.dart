@@ -131,6 +131,15 @@ class Mother {
 
   String get ageLabel => '$age yrs. old';
 
+  String get formattedAddress {
+    final trimmed = address.trim();
+    if (trimmed.isEmpty) return 'Purok 1';
+    if (RegExp(r'^\d+$').hasMatch(trimmed)) {
+      return 'Purok $trimmed';
+    }
+    return trimmed;
+  }
+
   String get initials {
     final parts = fullName.trim().split(RegExp(r'\s+'));
     if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();

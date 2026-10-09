@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/child.dart';
@@ -13,7 +14,10 @@ class ChildRepository {
     final map = child.toMap()..['_syncStatus'] = 'pending';
     await _box.put(child.id, map);
     AppDataBus.notifyChanged();
-    await _trySync(child);
+    _trySync(child).catchError((e) {
+      debugPrint('Background child sync error: $e');
+      return null;
+    });
     return child;
   }
 
@@ -27,7 +31,10 @@ class ChildRepository {
     final map = child.toMap()..['_syncStatus'] = 'pending';
     await _box.put(child.id, map);
     AppDataBus.notifyChanged();
-    await _trySync(child);
+    _trySync(child).catchError((e) {
+      debugPrint('Background child sync error: $e');
+      return null;
+    });
   }
 
   Future<List<String>> syncPending() async {

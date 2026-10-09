@@ -92,7 +92,7 @@ class ChildrenTab extends StatelessWidget {
                               style: AppTextStyles.label.copyWith(fontSize: 14),
                             ),
                             Text(
-                              '${child.ageInMonths} mos · ${child.address}',
+                              '${child.ageLabel} · ${child.formattedAddress}',
                               style: AppTextStyles.body.copyWith(fontSize: 12),
                             ),
                           ],

@@ -116,7 +116,7 @@ class MotherProfileHeader extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      mother.address,
+                      mother.formattedAddress,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.85),
                         fontSize: 12,

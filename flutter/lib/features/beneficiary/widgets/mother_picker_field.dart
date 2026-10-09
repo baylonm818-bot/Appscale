@@ -228,7 +228,7 @@ class _ResultTile extends StatelessWidget {
                 children: [
                   Text(mother.fullName, style: AppTextStyles.label),
                   Text(
-                    mother.address,
+                    mother.formattedAddress,
                     style: AppTextStyles.body.copyWith(fontSize: 11),
                   ),
                 ],
@@ -280,7 +280,7 @@ class _SelectedMotherCard extends StatelessWidget {
                   children: [
                     Text(mother.fullName, style: AppTextStyles.label),
                     Text(
-                      mother.address,
+                      mother.formattedAddress,
                       style: AppTextStyles.body.copyWith(fontSize: 11),
                     ),
                   ],

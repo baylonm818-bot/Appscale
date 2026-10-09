@@ -4,6 +4,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/hive_boxes.dart';
+import '../../data/models/child.dart';
 import '../../data/local/measurement_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/report_signatory_repository.dart';
@@ -963,7 +964,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
           if (qRecs.isNotEmpty) {
             final rec = qRecs.first;
-            final ageAtWeighing = (rec.date.year - child.birthDate.year) * 12 + (rec.date.month - child.birthDate.month);
+            final ageAtWeighing = Child.monthsBetween(child.birthDate, rec.date);
             dates.add('${rec.date.month}/${rec.date.day}/${rec.date.year}');
             ages.add(ageAtWeighing > 59 ? 'OA' : '$ageAtWeighing');
             wts.add(rec.weightKg.toStringAsFixed(1));

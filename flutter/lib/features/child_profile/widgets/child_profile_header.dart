@@ -110,7 +110,7 @@ class ChildProfileHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${child.ageLabel} · ${child.address}',
+                      '${child.ageLabel} · ${child.formattedAddress}',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.85),
                         fontSize: 12,

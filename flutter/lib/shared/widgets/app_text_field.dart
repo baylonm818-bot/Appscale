@@ -13,6 +13,11 @@ class AppTextField extends StatefulWidget {
   final int maxLines;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
+  final String? errorText;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onFieldSubmitted;
 
   const AppTextField({
     super.key,
@@ -25,6 +30,11 @@ class AppTextField extends StatefulWidget {
     this.maxLines = 1,
     this.keyboardType,
     this.inputFormatters,
+    this.errorText,
+    this.textInputAction,
+    this.autofillHints,
+    this.onChanged,
+    this.onFieldSubmitted,
   });
 
   @override
@@ -59,6 +69,10 @@ class _AppTextFieldState extends State<AppTextField> {
           obscureText: _obscure,
           keyboardType: resolvedKeyboardType,
           inputFormatters: resolvedFormatters,
+          textInputAction: widget.textInputAction,
+          autofillHints: widget.autofillHints,
+          onChanged: widget.onChanged,
+          onSubmitted: widget.onFieldSubmitted,
           style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
           maxLines: widget.isPassword ? 1 : widget.maxLines,
           decoration: InputDecoration(
@@ -83,20 +97,37 @@ class _AppTextFieldState extends State<AppTextField> {
               vertical: 14,
               horizontal: 14,
             ),
+            errorText: widget.errorText,
+            errorMaxLines: 3,
+            errorStyle: const TextStyle(
+              color: AppColors.statRed,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: AppColors.border),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: BorderSide(
+                color: widget.errorText != null ? AppColors.statRed : AppColors.border,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(
-                color: AppColors.borderFocused,
+              borderSide: BorderSide(
+                color: widget.errorText != null ? AppColors.statRed : AppColors.borderFocused,
                 width: 1.4,
               ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.statRed, width: 1.2),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.statRed, width: 1.4),
             ),
           ),
         ),

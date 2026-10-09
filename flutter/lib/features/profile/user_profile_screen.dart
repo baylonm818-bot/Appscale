@@ -37,9 +37,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     final pickedFile = await ImagePicker().pickImage(
       source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 1200,
-      maxHeight: 1200,
+      imageQuality: 80,
+      maxWidth: 512,
+      maxHeight: 512,
     );
     if (pickedFile == null) return;
 
@@ -47,6 +47,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final updatedUser = Map<String, dynamic>.from(settings.authUser ?? {});
     updatedUser['profile_picture'] = pickedFile.path;
     await settings.setAuthUser(updatedUser);
+    await settings.setPendingProfilePicturePath(pickedFile.path);
     AppDataBus.notifyChanged();
     if (mounted) setState(() {});
 
@@ -66,9 +67,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         await http.MultipartFile.fromPath('profile_picture', pickedFile.path),
       );
 
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-      if (response.statusCode >= 200 && response.statusCode < 300) {
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+      final responseBody = await streamedResponse.stream.bytesToString();
+      if (streamedResponse.statusCode >= 200 && streamedResponse.statusCode < 300) {
         final parsed = responseBody.isEmpty
             ? <String, dynamic>{}
             : Map<String, dynamic>.from(jsonDecode(responseBody) as Map);
@@ -77,22 +78,38 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           final serverUser = Map<String, dynamic>.from(settings.authUser ?? {});
           serverUser['profile_picture'] = uploadedPath.toString();
           await settings.setAuthUser(serverUser);
+          await settings.setPendingProfilePicturePath(null);
           AppDataBus.notifyChanged();
         }
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Profile picture updated.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile photo updated and saved to server.'),
+            backgroundColor: AppColors.primaryGreen,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       } else {
-        final parsed = jsonDecode(responseBody);
-        final message = (parsed is Map && parsed['message'] is String)
-            ? parsed['message'] as String
-            : 'Unable to upload profile picture to server.';
-        debugPrint('Profile picture upload warning: $message');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Photo saved to device. Will sync to server when connected.'),
+            backgroundColor: AppColors.statAmber,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } catch (error) {
       debugPrint('Profile picture upload exception: $error');
-      // Local image path remains saved so picture is still visible offline
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Photo saved to device. Will sync to server when connected.'),
+            backgroundColor: AppColors.statAmber,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isUploadingPicture = false);
@@ -240,15 +257,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         Positioned.fill(
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.35),
+                              color: Colors.black.withValues(alpha: 0.45),
                               shape: BoxShape.circle,
                             ),
                             child: const Center(
                               child: SizedBox(
-                                width: 20,
-                                height: 20,
+                                width: 28,
+                                height: 28,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                                  strokeWidth: 2.5,
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                     Colors.white,
                                   ),
@@ -256,24 +273,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               ),
                             ),
                           ),
-                        )
-                      else
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: AppColors.primaryGreen,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 14,
-                            ),
+                        ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: _isUploadingPicture
+                                ? AppColors.textMuted
+                                : AppColors.primaryGreen,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 14,
                           ),
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -403,7 +422,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 _buildInfoRow(
                   Icons.offline_bolt_outlined,
                   'Storage Mode',
-                  'Offline-First (Encrypted Hive)',
+                  'Offline-First (Encrypted device storage)',
                 ),
                 const Divider(height: 1, color: AppColors.border),
                 _buildInfoRow(

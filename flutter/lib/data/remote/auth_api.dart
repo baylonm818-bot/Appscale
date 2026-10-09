@@ -100,7 +100,7 @@ class AuthApi {
       Uri.parse('$_baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email.trim(), 'password': password}),
-    );
+    ).timeout(const Duration(seconds: 15));
 
     final body = _decodeJson(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -124,7 +124,7 @@ class AuthApi {
       Uri.parse('$_baseUrl/auth/forgot-password'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email.trim()}),
-    );
+    ).timeout(const Duration(seconds: 15));
 
     final body = _decodeJson(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -171,5 +171,32 @@ class AuthApi {
     }
 
     return (body['message'] ?? 'Password reset successful.').toString();
+  }
+
+  static Future<Map<String, dynamic>?> uploadProfilePicture({
+    required String userId,
+    required String filePath,
+    required String token,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$_baseUrl/profile/$userId/picture'),
+    );
+    if (token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+    request.files.add(
+      await http.MultipartFile.fromPath('profile_picture', filePath),
+    );
+
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+    final responseBody = await streamedResponse.stream.bytesToString();
+    if (streamedResponse.statusCode >= 200 && streamedResponse.statusCode < 300) {
+      final parsed = responseBody.isEmpty
+          ? <String, dynamic>{}
+          : Map<String, dynamic>.from(jsonDecode(responseBody) as Map);
+      return parsed;
+    }
+    return null;
   }
 }

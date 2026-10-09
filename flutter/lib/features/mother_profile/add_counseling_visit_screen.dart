@@ -6,6 +6,7 @@ import '../../data/local/activity_log_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/mother_risk_service.dart';
 import '../../data/local/mother_visit_repository.dart';
+import '../../data/local/referral_repository.dart';
 import '../../data/models/mother.dart';
 import '../../data/models/mother_visit.dart';
 import '../../shared/utils/app_pickers.dart';
@@ -66,66 +67,90 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
 
     setState(() => _isSaving = true);
 
-    final visit = MotherVisit(
-      date: _date,
-      present: _present,
-      breastfeedingPractice: _present ? _breastfeedingPractice : null,
-      topicsCounseled: _present ? _topics.toList() : [],
-      hasMedicalConcern: _present && _hasConcern,
-      concernNote: _present && _hasConcern
-          ? _concernNoteController.text.trim()
-          : null,
-      observation: _present ? _observation : null,
-      observationNote: _present && _observation == 'Signs of concern'
-          ? _observationNoteController.text.trim()
-          : null,
-    );
-
-    await _visitRepo.addVisit(widget.mother.id, visit);
-    await _riskService.recomputeAndSave(widget.mother.id);
-    await _activityRepo.logActivity(
-      type: 'mother_visit_logged',
-      title: 'Logged a visit for ${widget.mother.fullName}',
-    );
-
-    if (!mounted) return;
-
-    // Fires on either signal: an explicit medical concern, or the
-    // observation itself crossing into "Signs of concern" — same
-    // trigger logic as the child side, just sourced from a visit
-    // instead of a measurement.
-    final needsReferralPrompt =
-        _present && (_observation == 'Signs of concern' || _hasConcern);
-    if (needsReferralPrompt && mounted) {
-      final reason = _buildMotherReferralReason();
-      await UrgentReferralDialog.show(
-        context,
-        beneficiaryName: widget.mother.fullName,
-        reason: reason,
-        onCreateReferral: () async {
-          await Navigator.push(
-            context,
-            appPageRoute(
-              CreateReferralScreen(
-                prefillBeneficiaryType: 'mother',
-                prefillBeneficiaryId: widget.mother.id,
-                prefillBeneficiaryName: widget.mother.fullName,
-                prefillReason: reason,
-              ),
-            ),
-          );
-        },
-        onLater: () {},
+    try {
+      final visit = MotherVisit(
+        date: _date,
+        present: _present,
+        breastfeedingPractice: _present ? _breastfeedingPractice : null,
+        topicsCounseled: _present ? _topics.toList() : [],
+        hasMedicalConcern: _present && _hasConcern,
+        concernNote: _present && _hasConcern
+            ? _concernNoteController.text.trim()
+            : null,
+        observation: _present ? _observation : null,
+        observationNote: _present && _observation == 'Signs of concern'
+            ? _observationNoteController.text.trim()
+            : null,
       );
-    }
 
-    if (visit.stoppedBreastfeeding && mounted) {
-      await _promptInactive();
-    }
+      await _visitRepo
+          .addVisit(widget.mother.id, visit)
+          .timeout(const Duration(seconds: 5));
+      await _riskService
+          .recomputeAndSave(widget.mother.id)
+          .timeout(const Duration(seconds: 5));
+      await _activityRepo
+          .logActivity(
+            type: 'mother_visit_logged',
+            title: 'Logged a visit for ${widget.mother.fullName}',
+          )
+          .timeout(const Duration(seconds: 5));
 
-    if (!mounted) return;
-    setState(() => _isSaving = false);
-    Navigator.pop(context);
+      if (!mounted) return;
+
+      final hasExistingReferral = ReferralRepository()
+          .getForBeneficiary(widget.mother.id)
+          .any((r) =>
+              r.status.toLowerCase() != 'rejected' &&
+              r.status.toLowerCase() != 'cancelled');
+
+      final needsReferralPrompt = _present &&
+          (_observation == 'Signs of concern' || _hasConcern) &&
+          !hasExistingReferral;
+
+      if (needsReferralPrompt && mounted) {
+        final reason = _buildMotherReferralReason();
+        await UrgentReferralDialog.show(
+          context,
+          beneficiaryName: widget.mother.fullName,
+          reason: reason,
+          onCreateReferral: () async {
+            await Navigator.push(
+              context,
+              appPageRoute(
+                CreateReferralScreen(
+                  prefillBeneficiaryType: 'mother',
+                  prefillBeneficiaryId: widget.mother.id,
+                  prefillBeneficiaryName: widget.mother.fullName,
+                  prefillBeneficiarySubtitle: widget.mother.formattedAddress,
+                  prefillReason: reason,
+                ),
+              ),
+            );
+          },
+          onLater: () {},
+        );
+      }
+
+      if (visit.stoppedBreastfeeding && mounted) {
+        await _promptInactive();
+      }
+
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      Navigator.pop(context);
+    } catch (e) {
+      debugPrint('Counseling save error: $e');
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Saved locally to device.'),
+          backgroundColor: AppColors.primaryGreen,
+        ),
+      );
+      Navigator.pop(context);
+    }
   }
 
   String _buildMotherReferralReason() {

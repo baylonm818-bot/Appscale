@@ -52,7 +52,7 @@ class _ReferralBeneficiaryFieldState extends State<ReferralBeneficiaryField> {
                 (c) => ReferralBeneficiaryResult(
                   id: c.id,
                   name: c.fullName,
-                  subtitle: '${c.ageInMonths} mos · ${c.address}',
+                  subtitle: '${c.ageLabel} · ${c.formattedAddress}',
                 ),
               )
         : MotherRepository()
@@ -61,7 +61,7 @@ class _ReferralBeneficiaryFieldState extends State<ReferralBeneficiaryField> {
                 (m) => ReferralBeneficiaryResult(
                   id: m.id,
                   name: m.fullName,
-                  subtitle: m.address,
+                  subtitle: m.formattedAddress,
                 ),
               );
     setState(() {

@@ -3,6 +3,7 @@ import 'package:excel/excel.dart' as xls;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../data/local/measurement_repository.dart';
+import '../../../data/models/child.dart';
 import '../../../data/models/report_signatory.dart';
 import 'consolidation_computation_service.dart';
 import 'excel_table_data.dart';
@@ -444,7 +445,7 @@ class ReportExcelService {
 
           if (qRecs.isNotEmpty) {
             final rec = qRecs.first;
-            final ageAtWeighing = (rec.date.year - child.birthDate.year) * 12 + (rec.date.month - child.birthDate.month);
+            final ageAtWeighing = Child.monthsBetween(child.birthDate, rec.date);
             dateStr = '${rec.date.month}/${rec.date.day}/${rec.date.year}';
             if (ageAtWeighing > 59) {
               ageStr = 'OA';

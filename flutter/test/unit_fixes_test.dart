@@ -9,6 +9,7 @@ import 'package:appscalev3/data/models/deworming_record.dart';
 import 'package:appscalev3/data/models/program_schedule.dart';
 import 'package:appscalev3/data/local/vitamin_a_repository.dart';
 import 'package:appscalev3/data/local/deworming_repository.dart';
+import 'package:appscalev3/data/growth_standards/measurement_validator.dart';
 import 'package:appscalev3/shared/utils/app_user_identity.dart';
 
 void main() {
@@ -315,6 +316,118 @@ void main() {
       expect(restored.title, equals('Community Deworming Day'));
       expect(restored.programType, equals('Deworming'));
       expect(restored.createdBy, equals('RHU Web Admin'));
+    });
+  });
+
+  group('Priority 1: Age Calculation & Edge Cases', () {
+    test('Born 2026-07-31 evaluated on 2026-10-08 is exactly 2 completed months', () {
+      final birth = DateTime(2026, 7, 31);
+      final asOf = DateTime(2026, 10, 8);
+      expect(Child.monthsBetween(birth, asOf), equals(2));
+    });
+
+    test('Born 2026-09-30 evaluated on 2026-10-08 is 0 completed months (1 wk 1 day)', () {
+      final birth = DateTime(2026, 9, 30);
+      final asOf = DateTime(2026, 10, 8);
+      expect(Child.monthsBetween(birth, asOf), equals(0));
+      expect(Child.ageDisplayAt(birth, asOf: asOf), equals('1 wk 1 day'));
+    });
+
+    test('Month-end leap year calculation (Jan 31 to Feb 29 leap year)', () {
+      final birth = DateTime(2024, 1, 31);
+      final feb28 = DateTime(2024, 2, 28);
+      final feb29 = DateTime(2024, 2, 29);
+      expect(Child.monthsBetween(birth, feb28), equals(0));
+      expect(Child.monthsBetween(birth, feb29), equals(1));
+    });
+
+    test('Month-end non-leap year calculation (Jan 31 to Feb 28 non-leap year)', () {
+      final birth = DateTime(2023, 1, 31);
+      final feb27 = DateTime(2023, 2, 27);
+      final feb28 = DateTime(2023, 2, 28);
+      expect(Child.monthsBetween(birth, feb27), equals(0));
+      expect(Child.monthsBetween(birth, feb28), equals(1));
+    });
+
+    test('Infant age formatting shows weeks and days for under 1 month', () {
+      final now = DateTime(2026, 10, 10);
+      expect(Child.ageDisplayAt(DateTime(2026, 10, 8), asOf: now), equals('2 days'));
+      expect(Child.ageDisplayAt(DateTime(2026, 9, 26), asOf: now), equals('2 wks'));
+      expect(Child.ageDisplayAt(DateTime(2026, 9, 10), asOf: now), equals('1 mo.'));
+      expect(Child.ageDisplayAt(DateTime(2026, 7, 10), asOf: now), equals('3 mos'));
+    });
+  });
+
+  group('Priority 1: Measurement Validator & Plausibility', () {
+    test('Comma decimal parsing works properly', () {
+      expect(MeasurementValidator.parseDecimal('12,5'), equals(12.5));
+      expect(MeasurementValidator.parseDecimal('85,25'), equals(85.25));
+      expect(MeasurementValidator.parseDecimal('12.5'), equals(12.5));
+      expect(MeasurementValidator.parseDecimal(''), isNull);
+    });
+
+    test('Rejects implausible 25 kg weight for a 1-month-old', () {
+      final err = MeasurementValidator.validateWeight(25.0, 1);
+      expect(err, isNotNull);
+      expect(err, contains('outside plausible range'));
+    });
+
+    test('Accepts normal 4.5 kg weight for a 1-month-old', () {
+      final err = MeasurementValidator.validateWeight(4.5, 1);
+      expect(err, isNull);
+    });
+
+    test('Rejects 35 cm height for a 3-month-old', () {
+      final err = MeasurementValidator.validateHeight(35.0, 3);
+      expect(err, isNotNull);
+      expect(err, contains('outside plausible range'));
+    });
+
+    test('Rejects decreasing height compared to previous entry', () {
+      final err = MeasurementValidator.validateHeight(
+        58.0,
+        4,
+        previousHeightCm: 60.0,
+      );
+      expect(err, isNotNull);
+      expect(err, contains('cannot decrease'));
+    });
+
+    test('Accepts valid increasing height', () {
+      final err = MeasurementValidator.validateHeight(
+        62.0,
+        4,
+        previousHeightCm: 60.0,
+      );
+      expect(err, isNull);
+    });
+
+    test('MUAC applicability and plausibility by age', () {
+      expect(MeasurementValidator.isMuacApplicable(3), isFalse);
+      expect(MeasurementValidator.isMuacApplicable(6), isTrue);
+      expect(MeasurementValidator.validateMuac(14.0, 3), isNull);
+      final err = MeasurementValidator.validateMuac(4.0, 12);
+      expect(err, isNotNull);
+      expect(err, contains('outside plausible range'));
+    });
+  });
+
+  group('Priority 4: Address formatting', () {
+    test('Raw number is formatted as Purok X', () {
+      final child = Child(
+        id: 'c-addr',
+        sequenceNo: '001',
+        fullName: 'Test Child',
+        birthDate: DateTime(2025, 1, 1),
+        gender: 'Boy',
+        address: '4',
+        barangay: 'Tiguion',
+        belongsToIpGroup: false,
+        disability: '',
+        guardian: const Guardian(fullName: 'Mother', relationship: 'Mother', contactNo: ''),
+        createdAt: DateTime(2025, 1, 1),
+      );
+      expect(child.formattedAddress, equals('Purok 4'));
     });
   });
 }

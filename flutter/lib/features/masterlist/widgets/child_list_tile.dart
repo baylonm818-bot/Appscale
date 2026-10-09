@@ -31,10 +31,8 @@ class ChildListTile extends StatelessWidget {
       secondaryColor = ChildStatusMeta.colorFor(hfaFormatted);
     }
 
-    final ageStr = '${child.ageInMonths} ${child.ageInMonths == 1 ? "mo" : "mos"}';
-    final addressStr = child.address.isEmpty
-        ? 'Purok 1'
-        : (child.address.startsWith("Purok") ? child.address : "Purok ${child.address}");
+    final ageStr = child.ageDisplay;
+    final addressStr = child.formattedAddress;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),

@@ -189,7 +189,7 @@ class _ChildPickerFieldState extends State<ChildPickerField> {
                         children: [
                           Text(child.fullName, style: AppTextStyles.label),
                           Text(
-                            '${child.ageInMonths} mos · ${child.address}',
+                            '${child.ageLabel} · ${child.formattedAddress}',
                             style: AppTextStyles.body.copyWith(fontSize: 11),
                           ),
                         ],

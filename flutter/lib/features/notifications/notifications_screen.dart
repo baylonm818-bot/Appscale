@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -17,9 +18,15 @@ class NotificationsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final notificationRepo = NotificationRepository();
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
         child: Column(
           children: [
             Container(
@@ -177,6 +184,7 @@ class NotificationsScreen extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

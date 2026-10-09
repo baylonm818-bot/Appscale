@@ -71,7 +71,7 @@ class MotherListTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        mother.address.isEmpty ? 'Purok 1' : (mother.address.startsWith("Purok") ? mother.address : "Purok ${mother.address}"),
+                        mother.formattedAddress,
                         style: AppTextStyles.body.copyWith(
                           fontSize: 12,
                           color: AppColors.textMuted,

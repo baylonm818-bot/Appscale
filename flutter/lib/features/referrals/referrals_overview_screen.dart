@@ -96,7 +96,7 @@ class ReferralsOverviewScreen extends StatelessWidget {
                           ...childrenNeeding.map(
                             (c) => _NeedsReferralTile(
                               name: c.fullName,
-                              subtitle: '${c.ageInMonths} mos · ${c.address}',
+                              subtitle: '${c.ageLabel} · ${c.formattedAddress}',
                               reason:
                                   [
                                         c.nutritionStatus,
@@ -117,7 +117,7 @@ class ReferralsOverviewScreen extends StatelessWidget {
                                     prefillBeneficiaryId: c.id,
                                     prefillBeneficiaryName: c.fullName,
                                     prefillBeneficiarySubtitle:
-                                        '${c.ageInMonths} mos · ${c.address}',
+                                        '${c.ageLabel} · ${c.formattedAddress}',
                                   ),
                                 ),
                               ),
@@ -126,7 +126,7 @@ class ReferralsOverviewScreen extends StatelessWidget {
                           ...mothersNeeding.map(
                             (m) => _NeedsReferralTile(
                               name: m.fullName,
-                              subtitle: m.address,
+                              subtitle: m.formattedAddress,
                               reason: 'At-risk',
                               onCreate: () => Navigator.push(
                                 context,

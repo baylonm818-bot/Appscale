@@ -110,9 +110,17 @@ class SettingsRepository {
   Future<void> setAuthUser(Map<String, dynamic>? value) =>
       value == null ? _box.delete('auth_user') : _box.put('auth_user', value);
 
+  String? get pendingProfilePicturePath =>
+      _box.get('pending_profile_picture');
+  Future<void> setPendingProfilePicturePath(String? path) =>
+      path == null
+          ? _box.delete('pending_profile_picture')
+          : _box.put('pending_profile_picture', path);
+
   Future<void> clearSession() async {
     await _box.delete('auth_token');
     await _box.delete('auth_user');
     await _box.delete('session_expires_at');
+    await _box.delete('pending_profile_picture');
   }
 }

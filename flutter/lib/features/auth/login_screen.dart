@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/hive_boxes.dart';
@@ -24,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _rememberMe = false;
   bool _isLoading = false;
+  String _loginPhase = 'Login';
   String _loginError = '';
 
   @override
@@ -47,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _loginError = '';
       _isLoading = true;
+      _loginPhase = 'Signing in...';
     });
 
     try {
@@ -80,7 +83,11 @@ class _LoginScreenState extends State<LoginScreen> {
         await Hive.box(HiveBoxes.settings).put('last_user_id', newUserId);
 
         if (barangay != null && barangay.isNotEmpty && mounted) {
-          // Show non-dismissible restoration dialog
+          setState(() {
+            _loginPhase = 'Restoring your data...';
+          });
+
+          // Show non-dismissible restoration dialog with properly sized and styled indicator
           showDialog<void>(
             context: context,
             barrierDismissible: false,
@@ -89,10 +96,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: AppColors.primaryGreen),
+                    SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+                      ),
+                    ),
                     SizedBox(width: 20),
                     Expanded(
                       child: Text(
@@ -111,10 +126,13 @@ class _LoginScreenState extends State<LoginScreen> {
           );
 
           final token = _settings.authToken;
-          final result = await SyncService.instance.pullFromServer(
-            barangay: barangay,
-            token: token ?? '',
-          );
+          final result = await SyncService.instance
+              .pullFromServer(
+                barangay: barangay,
+                token: token ?? '',
+              )
+              .timeout(const Duration(seconds: 15));
+
           if (!result.success) {
             debugPrint('Server pull after login partially failed: ${result.error}');
           }
@@ -129,8 +147,6 @@ class _LoginScreenState extends State<LoginScreen> {
         }
         debugPrint('Failed to seed local data after login: $seedErr');
       }
-
-
 
       if (!mounted) return;
       Navigator.of(
@@ -153,184 +169,202 @@ class _LoginScreenState extends State<LoginScreen> {
             : raw.replaceFirst('Exception: ', '');
       });
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _loginPhase = 'Login';
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return Scaffold(
-      backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(24, 16, 24, bottomInset + 24),
-          child: Column(
-            children: [
-              const SizedBox(height: 16),
-              Image.asset('assets/images/appscale_logo.png', width: 80),
-              const SizedBox(height: 8),
-              Text('BNS Health Monitoring', style: AppTextStyles.h1),
-              const SizedBox(height: 4),
-              Text(
-                'Barangay Nutrition Scholar Portal',
-                style: AppTextStyles.body.copyWith(
-                  color: AppColors.darkGreen,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.location_on,
-                    size: 14,
-                    color: AppColors.textMuted,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: true,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(24, 16, 24, bottomInset + 24),
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                Image.asset('assets/images/appscale_logo.png', width: 80),
+                const SizedBox(height: 8),
+                Text('BNS Health Monitoring', style: AppTextStyles.h1),
+                const SizedBox(height: 4),
+                Text(
+                  'Barangay Nutrition Scholar Portal',
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.darkGreen,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(width: 4),
-                  Text('Municipality of Gasan', style: AppTextStyles.body),
-                ],
-              ),
-              const SizedBox(height: 28),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (_loginError.isNotEmpty)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF2F2),
-                          border: Border.all(color: const Color(0xFFFCA5A5)),
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red.withValues(alpha: 0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFFEE2E2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.error_outline_rounded,
-                                color: Color(0xFFDC2626),
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _loginError,
-                                style: const TextStyle(
-                                  color: Color(0xFF991B1B),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.3,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    Text('Welcome BNS!', style: AppTextStyles.h2),
-                    const SizedBox(height: 16),
-                    AppTextField(
-                      label: 'Email',
-                      hint: 'Enter email address',
-                      icon: Icons.person_outline,
-                      controller: _emailController,
+                    const Icon(
+                      Icons.location_on,
+                      size: 14,
+                      color: AppColors.textMuted,
                     ),
-                    const SizedBox(height: 14),
-                    AppTextField(
-                      label: 'Password',
-                      hint: 'Enter password',
-                      icon: Icons.lock_outline,
-                      isPassword: true,
-                      controller: _passwordController,
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: Checkbox(
-                                value: _rememberMe,
-                                activeColor: AppColors.primaryGreen,
-                                onChanged: (v) =>
-                                    setState(() => _rememberMe = v ?? false),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Remember Me',
-                              style: AppTextStyles.body,
-                              softWrap: false,
-                            ),
-                          ],
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const ForgotPasswordScreen(),
-                              ),
-                            );
-                          },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(
-                            'Forgot Password?',
-                            style: AppTextStyles.body.copyWith(
-                              color: AppColors.darkGreen,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    AppButton(
-                      label: 'Login',
-                      onPressed: _handleLogin,
-                      isLoading: _isLoading,
-                    ),
+                    const SizedBox(width: 4),
+                    Text('Municipality of Gasan', style: AppTextStyles.body),
                   ],
                 ),
-              ),
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 28),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_loginError.isNotEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            border: Border.all(color: const Color(0xFFFCA5A5)),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withValues(alpha: 0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFEE2E2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: Color(0xFFDC2626),
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _loginError,
+                                  style: const TextStyle(
+                                    color: Color(0xFF991B1B),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      Text('Welcome BNS!', style: AppTextStyles.h2),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Email',
+                        hint: 'Enter email address',
+                        icon: Icons.person_outline,
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.email, AutofillHints.username],
+                        textInputAction: TextInputAction.next,
+                      ),
+                      const SizedBox(height: 14),
+                      AppTextField(
+                        label: 'Password',
+                        hint: 'Enter password',
+                        icon: Icons.lock_outline,
+                        isPassword: true,
+                        controller: _passwordController,
+                        autofillHints: const [AutofillHints.password],
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _handleLogin(),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: Checkbox(
+                                  value: _rememberMe,
+                                  activeColor: AppColors.primaryGreen,
+                                  onChanged: (v) =>
+                                      setState(() => _rememberMe = v ?? false),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Remember Me',
+                                style: AppTextStyles.body,
+                                softWrap: false,
+                              ),
+                            ],
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPasswordScreen(),
+                                ),
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              'Forgot Password?',
+                              style: AppTextStyles.body.copyWith(
+                                color: AppColors.darkGreen,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      AppButton(
+                        label: _isLoading ? _loginPhase : 'Login',
+                        onPressed: _handleLogin,
+                        isLoading: _isLoading,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),

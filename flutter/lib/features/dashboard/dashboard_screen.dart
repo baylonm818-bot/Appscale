@@ -51,12 +51,20 @@ class _DashboardBodyState extends State<DashboardBody> {
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
   String get _bnsName => AppUserIdentity.resolveDisplayName(_settings.authUser);
 
+  final _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     _notificationRepo.seedInitialIfEmpty();
     ProgramScheduleRepository().seedInitialIfEmpty(_currentBarangay);
     AutoGraduationService().runForBarangay(_currentBarangay);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -73,6 +81,7 @@ class _DashboardBodyState extends State<DashboardBody> {
         return RefreshIndicator(
           onRefresh: () async => AppDataBus.notifyChanged(),
           child: ListView(
+            controller: _scrollController,
             padding: EdgeInsets.zero,
             children: [
               DashboardHeader(
@@ -117,7 +126,7 @@ class _DashboardBodyState extends State<DashboardBody> {
                     UpcomingActivitiesCard(activities: upcoming),
                     const SizedBox(height: AppSpacing.lg),
                     RecentActivityCard(entries: recent),
-                    const SizedBox(height: 100),
+                    const SizedBox(height: 120),
                   ],
                 ),
               ),

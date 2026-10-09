@@ -61,7 +61,7 @@ class InfoTab extends StatelessWidget {
                 DetailRow(
                   icon: Icons.location_on_outlined,
                   label: 'Address',
-                  value: mother.address,
+                  value: mother.formattedAddress,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 DetailRow(

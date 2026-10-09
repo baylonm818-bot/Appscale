@@ -4,10 +4,12 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/growth_standards/growth_classifier.dart';
+import '../../data/growth_standards/measurement_validator.dart';
 import '../../data/local/activity_log_repository.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/measurement_repository.dart';
 import '../../data/local/notification_repository.dart';
+import '../../data/local/referral_repository.dart';
 import '../../data/models/app_notification.dart';
 import '../../data/models/child.dart';
 import '../../data/models/measurement.dart';
@@ -21,7 +23,6 @@ import '../masterlist/utils/child_status_meta.dart';
 import '../masterlist/widgets/status_badge.dart';
 import '../referrals/create_referral_screen.dart';
 import '../../shared/utils/app_page_route.dart';
-import '../../shared/utils/app_notifications.dart';
 import '../../shared/widgets/urgent_referral_dialog.dart';
 
 class AddMeasurementScreen extends StatefulWidget {
@@ -47,6 +48,10 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
   final _heightController = TextEditingController();
   final _muacController = TextEditingController();
 
+  String? _weightError;
+  String? _heightError;
+  String? _muacError;
+
   DateTime _monthYear = DateTime.now();
   bool _edema = false;
   bool _isSaving = false;
@@ -58,12 +63,35 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
   bool get _isMuacEligible => widget.child.ageInMonths >= 6;
 
-  // Computed live as the BNS types — this is what feeds the preview card,
-  // matching the wireframe's "Auto-computed Nutritional Status" behavior.
-  // Module 3: Automatically identify nutritional status based on result of computed BMI & WHO standards.
-  ({String weight, String height, String wasting, double bmi, String bmiStatus})? get _liveResult {
-    final w = double.tryParse(_weightController.text);
-    final h = double.tryParse(_heightController.text);
+  void _validateInputsLive() {
+    final w = MeasurementValidator.parseDecimal(_weightController.text);
+    final h = MeasurementValidator.parseDecimal(_heightController.text);
+    final m = _isMuacEligible
+        ? MeasurementValidator.parseDecimal(_muacController.text)
+        : null;
+
+    setState(() {
+      _weightError = w != null
+          ? MeasurementValidator.validateWeight(w, widget.child.ageInMonths)
+          : null;
+      _heightError = h != null
+          ? MeasurementValidator.validateHeight(
+              h,
+              widget.child.ageInMonths,
+              previousHeightCm: _previousEntry?.heightCm,
+            )
+          : null;
+      _muacError = (m != null && _isMuacEligible)
+          ? MeasurementValidator.validateMuac(m, widget.child.ageInMonths)
+          : null;
+    });
+  }
+
+  // Computed live as the BNS types — this feeds the preview card.
+  ({String weight, String height, String wasting, double bmi, String bmiStatus})?
+      get _liveResult {
+    final w = MeasurementValidator.parseDecimal(_weightController.text);
+    final h = MeasurementValidator.parseDecimal(_heightController.text);
     if (w == null || h == null || h <= 0) return null;
 
     final weightStatus = GrowthClassifier.classifyWeightForAge(
@@ -104,84 +132,53 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     );
   }
 
-  String? _getPlausibilityError(double weight, double height, double? muac) {
-    final age = widget.child.ageInMonths;
-    double minW, maxW, minH, maxH;
-    if (age <= 3) {
-      minW = 1.5; maxW = 10.0; minH = 35.0; maxH = 75.0;
-    } else if (age <= 11) {
-      minW = 2.5; maxW = 16.0; minH = 45.0; maxH = 88.0;
-    } else if (age <= 23) {
-      minW = 4.0; maxW = 22.0; minH = 55.0; maxH = 102.0;
-    } else if (age <= 59) {
-      minW = 6.0; maxW = 35.0; minH = 65.0; maxH = 130.0;
-    } else {
-      minW = 8.0; maxW = 50.0; minH = 75.0; maxH = 150.0;
-    }
-
-    if (weight < minW || weight > maxW) {
-      return 'Weight ($weight kg) is outside plausible range ($minW–$maxW kg) for a child aged $age mos.';
-    }
-    if (height < minH || height > maxH) {
-      return 'Height ($height cm) is outside plausible range ($minH–$maxH cm) for a child aged $age mos.';
-    }
-
-    final hMeters = height / 100;
-    final bmi = weight / (hMeters * hMeters);
-    if (bmi < 8.0 || bmi > 35.0) {
-      return 'Weight-to-Height combination is physiologically implausible (BMI: ${bmi.toStringAsFixed(1)} kg/m²). Please re-check entries.';
-    }
-
-    if (muac != null && (muac < 7.0 || muac > 30.0)) {
-      return 'MUAC ($muac cm) must be between 7.0 cm and 30.0 cm.';
-    }
-    return null;
-  }
-
-  bool get _isFormValid {
-    final w = double.tryParse(_weightController.text.trim());
-    final h = double.tryParse(_heightController.text.trim());
-    final m = _isMuacEligible ? double.tryParse(_muacController.text.trim()) : null;
-
-    if (w == null || h == null || (_isMuacEligible && m == null)) return false;
-    return _getPlausibilityError(w, h, m) == null;
-  }
-
   Future<void> _handleSave() async {
-    final rawW = double.tryParse(_weightController.text.trim());
-    final rawH = double.tryParse(_heightController.text.trim());
-    final rawM = _isMuacEligible ? double.tryParse(_muacController.text.trim()) : null;
+    final rawW = MeasurementValidator.parseDecimal(_weightController.text);
+    final rawH = MeasurementValidator.parseDecimal(_heightController.text);
+    final rawM = _isMuacEligible
+        ? MeasurementValidator.parseDecimal(_muacController.text)
+        : null;
 
-    if (rawW == null || rawH == null || (_isMuacEligible && rawM == null)) {
-      AppNotificationUI.showWarning(
-        context,
-        'Please enter valid numeric values for weight, height, and MUAC.',
-        title: 'Invalid Input',
-      );
+    setState(() {
+      _weightError = rawW == null
+          ? 'Enter weight'
+          : MeasurementValidator.validateWeight(rawW, widget.child.ageInMonths);
+      _heightError = rawH == null
+          ? 'Enter height'
+          : MeasurementValidator.validateHeight(
+              rawH,
+              widget.child.ageInMonths,
+              previousHeightCm: _previousEntry?.heightCm,
+            );
+      _muacError = _isMuacEligible
+          ? (rawM == null
+              ? 'Enter MUAC'
+              : MeasurementValidator.validateMuac(rawM, widget.child.ageInMonths))
+          : null;
+    });
+
+    if (rawW == null ||
+        rawH == null ||
+        (_isMuacEligible && rawM == null) ||
+        _weightError != null ||
+        _heightError != null ||
+        _muacError != null) {
       return;
     }
 
-    final plausibilityError = _getPlausibilityError(rawW, rawH, rawM);
+    final plausibilityError = MeasurementValidator.validatePlausibility(
+      weight: rawW,
+      height: rawH,
+      muac: rawM,
+      ageMonths: widget.child.ageInMonths,
+      previousHeightCm: _previousEntry?.heightCm,
+    );
     if (plausibilityError != null) {
-      AppNotificationUI.showWarning(
-        context,
-        plausibilityError,
-        title: 'Plausibility Check Failed',
-      );
-      return;
-    }
-
-    final previewWeight = rawW;
-    final previewHeight = rawH;
-    final previewMuac = rawM;
-    final previewStatus = _liveResult;
-
-    if (!_isFormValid) {
-      AppNotificationUI.showWarning(
-        context,
-        'Please ensure all entries are realistic (Weight: 1-50kg, Height: 35-140cm, MUAC: 7-30cm).',
-        title: 'Validation Error',
-      );
+      setState(() {
+        if (_heightError == null && _weightError == null) {
+          _heightError = plausibilityError;
+        }
+      });
       return;
     }
 
@@ -193,16 +190,16 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Weight: ${previewWeight.toStringAsFixed(1)} kg'),
-            Text('Height: ${previewHeight.toStringAsFixed(1)} cm'),
-            if (previewMuac != null) Text('MUAC: ${previewMuac.toStringAsFixed(1)} cm'),
+            Text('Weight: ${rawW.toStringAsFixed(1)} kg'),
+            Text('Height: ${rawH.toStringAsFixed(1)} cm'),
+            if (rawM != null) Text('MUAC: ${rawM.toStringAsFixed(1)} cm'),
             const SizedBox(height: 8),
             const Text('Auto-computed nutritional status:'),
-            if (previewStatus != null) ...[
-              Text('Computed BMI: ${previewStatus.bmi} kg/m² (${previewStatus.bmiStatus})'),
-              Text('Weight-for-age: ${previewStatus.weight}'),
-              Text('Height-for-age: ${previewStatus.height}'),
-              Text('Wasting: ${previewStatus.wasting}'),
+            if (_liveResult != null) ...[
+              Text('Computed BMI: ${_liveResult!.bmi} kg/m² (${_liveResult!.bmiStatus})'),
+              Text('Weight-for-age: ${_liveResult!.weight}'),
+              Text('Height-for-age: ${_liveResult!.height}'),
+              Text('Wasting: ${_liveResult!.wasting}'),
             ],
           ],
         ),
@@ -223,9 +220,9 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
     setState(() => _isSaving = true);
 
-    final w = previewWeight;
-    final h = previewHeight;
-    final muac = previewMuac;
+    final w = rawW;
+    final h = rawH;
+    final muac = rawM;
 
     final weightStatus = GrowthClassifier.classifyWeightForAge(
       weightKg: w,
@@ -252,8 +249,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       weightForAgeStatus: weightStatus,
       heightForAgeStatus: heightStatus,
       weightForLengthStatus: wastingStatus,
-      customBmi: previewStatus?.bmi,
-      customBmiStatus: previewStatus?.bmiStatus,
+      customBmi: _liveResult?.bmi,
+      customBmiStatus: _liveResult?.bmiStatus,
     );
 
     await _measurementRepo.addMeasurement(widget.child.id, measurement);
@@ -273,14 +270,22 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     );
 
     // Module 3: Notify BNS if there are beneficiaries at high risk of nutritional concerns
-    if (measurement.isSevere || measurement.bmiStatus == 'Obese') {
+    final hasExistingReferral = ReferralRepository()
+        .getForBeneficiary(widget.child.id)
+        .any((r) =>
+            r.status.toLowerCase() != 'rejected' &&
+            r.status.toLowerCase() != 'cancelled');
+
+    if ((measurement.isSevere || measurement.bmiStatus == 'Obese') &&
+        !hasExistingReferral) {
       final severeReason = _buildSevereReason(measurement);
       await NotificationRepository().add(
         AppNotification(
           id: NotificationRepository.generateId(),
           title: 'High Risk Alert: ${widget.child.fullName}',
-          message: '${widget.child.fullName} is at high risk of nutritional concerns: $severeReason (Computed BMI: ${measurement.bmi} kg/m²). Referral to BHW recommended.',
-          timestamp: DateTime.now(),
+          message:
+              '${widget.child.fullName} is at high risk of nutritional concerns: $severeReason (Computed BMI: ${measurement.bmi} kg/m²). Referral to BHW recommended.',
+          timestamp: DateTime.now().toUtc(),
           isRead: false,
           referralId: widget.child.id,
           type: 'urgent',
@@ -291,7 +296,9 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     if (!mounted) return;
     setState(() => _isSaving = false);
 
-    if (measurement.isSevere && widget.showReferralPrompt) {
+    if (measurement.isSevere &&
+        widget.showReferralPrompt &&
+        !hasExistingReferral) {
       await _showReferralPrompt(measurement, updatedChild);
       return;
     }
@@ -317,7 +324,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
               prefillBeneficiaryId: widget.child.id,
               prefillBeneficiaryName: widget.child.fullName,
               prefillBeneficiarySubtitle:
-                  '${widget.child.ageInMonths} mos · ${widget.child.address}',
+                  '${widget.child.ageLabel} · ${widget.child.formattedAddress}',
               prefillReason: reason,
             ),
           ),
@@ -416,7 +423,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                                 ),
                               ),
                               Text(
-                                '${widget.child.ageInMonths} mos · ${widget.child.address}',
+                                '${widget.child.ageLabel} · ${widget.child.formattedAddress}',
                                 style: AppTextStyles.body.copyWith(
                                   fontSize: 12,
                                 ),
@@ -436,6 +443,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                           onChanged: (d) => setState(() => _monthYear = d),
                         ),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               child: AppTextField(
@@ -443,9 +451,11 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                                 hint: 'e.g. 12.5',
                                 icon: Icons.monitor_weight_outlined,
                                 controller: _weightController,
+                                errorText: _weightError,
+                                onChanged: (_) => _validateInputsLive(),
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [
-                                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                                 ],
                               ),
                             ),
@@ -456,9 +466,11 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                                 hint: 'e.g. 85',
                                 icon: Icons.straighten_outlined,
                                 controller: _heightController,
+                                errorText: _heightError,
+                                onChanged: (_) => _validateInputsLive(),
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [
-                                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                                 ],
                               ),
                             ),
@@ -470,9 +482,11 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                             hint: 'Mid-upper arm circumference',
                             icon: Icons.favorite_outline,
                             controller: _muacController,
+                            errorText: _muacError,
+                            onChanged: (_) => _validateInputsLive(),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                             ],
                           ),
                           Text(
@@ -589,11 +603,14 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                             label: 'Height',
                             value: '${_previousEntry!.heightCm} cm',
                           ),
-                          if (_previousEntry!.muacCm != null)
-                            _PreviousStat(
-                              label: 'MUAC',
-                              value: '${_previousEntry!.muacCm} cm',
-                            ),
+                          _PreviousStat(
+                            label: 'MUAC',
+                            value: (_previousEntry!.muacCm == null ||
+                                    _previousEntry!.muacCm == 0.0 ||
+                                    widget.child.ageInMonths < 6)
+                                ? 'N/A'
+                                : '${_previousEntry!.muacCm} cm',
+                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -629,8 +646,23 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     );
   }
 
+  static const _monthAbbr = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
+  ];
+
   String _formatMonthYear(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}';
+      '${_monthAbbr[d.month - 1]} ${d.year}';
 
   @override
   void dispose() {
