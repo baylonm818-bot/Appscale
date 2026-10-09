@@ -225,143 +225,152 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Malnutrition Overview by Barangay */}
+        {/* Upcoming Scheduled Activities */}
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
           <div>
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+            <div className="flex items-center justify-between gap-3 mb-1">
               <div>
-                <h3 className="font-bold text-gray-900 text-base">Malnutrition Cases by Barangay</h3>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {stats.malnutritionOverviewFallback
-                    ? 'Showing all recorded historical cases'
-                    : 'Barangays with high at-risk/malnutrition records'}
-                </p>
+                <h3 className="font-bold text-gray-900 text-base">Upcoming Scheduled Activities</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Municipal & barangay health schedules</p>
               </div>
-
-              {/* Time range selector */}
-              <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-                {['3M', '6M', '1Y'].map((range) => (
-                  <button
-                    key={range}
-                    type="button"
-                    onClick={() => setTimeRange(range)}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                      timeRange === range
-                        ? 'bg-[#2e7d32] text-white shadow-xs'
-                        : 'text-gray-500 hover:text-gray-900'
-                    }`}
-                  >
-                    {range}
-                  </button>
-                ))}
-              </div>
+              <Link
+                to="/admin/schedule"
+                className="text-xs font-bold text-[#2e7d32] bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5"
+              >
+                Manage <ArrowRight size={13} />
+              </Link>
             </div>
 
-            <div className="mt-4">
-              {overviewData.length > 0 ? (
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={overviewData} margin={{ top: 12, right: 12, left: -20, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                      <XAxis
-                        dataKey="barangay"
-                        tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        tick={{ fontSize: 11, fill: '#9ca3af' }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip content={<CustomBarTooltip />} />
-                      <Bar dataKey="cases" fill="#2e7d32" radius={[6, 6, 0, 0]} barSize={32} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+            <div className="mt-4 space-y-3 max-h-[340px] overflow-y-auto pr-1">
+              {stats.upcomingActivities && stats.upcomingActivities.length > 0 ? (
+                stats.upcomingActivities.map((act) => {
+                  const d = new Date(act.schedule_date);
+                  const month = d.toLocaleString('en-US', { month: 'short' });
+                  const day = d.getDate();
+
+                  return (
+                    <div
+                      key={act.schedule_id}
+                      className="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50/70 border border-gray-100 hover:bg-green-50/40 hover:border-green-200 transition-all"
+                    >
+                      <div className="w-11 h-11 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0 shadow-xs text-center">
+                        <span className="text-[8px] font-bold uppercase tracking-wider opacity-80">{month} {d.getFullYear()}</span>
+                        <span className="text-sm font-black leading-none">{day}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">{act.title}</p>
+                          <span className="text-[9px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                            {act.schedule_type?.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                          {act.barangay || 'All Barangays'}
+                          {act.venue && ` · ${act.venue}`}
+                          {act.schedule_time && ` · ${formatScheduleTime(act.schedule_time)}`}
+                        </p>
+                        {act.target_role && (
+                          <p className="text-[10px] font-semibold text-emerald-700 mt-0.5">
+                            For {act.target_role.toUpperCase()}s
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-2">
-                  <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                    <CheckCircle2 size={24} />
-                  </div>
-                  <p className="text-sm font-semibold text-gray-600">No active malnutrition cases recorded</p>
-                  <p className="text-xs text-gray-400">All registered children are in normal growth status.</p>
+                <div className="text-center py-10 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                  <Calendar className="mx-auto text-gray-300 mb-2" size={28} />
+                  <p className="text-sm font-semibold text-gray-600">No upcoming activities scheduled</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Create a schedule activity to notify barangay workers.</p>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between text-xs text-gray-400">
-            <span>Filtered by: {timeRange === '3M' ? 'Last 3 Months' : timeRange === '6M' ? 'Last 6 Months' : 'Past Year'}</span>
+          <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between text-xs text-gray-400">
+            <span>Synchronized with municipal calendar</span>
             <Link to="/admin/schedule" className="font-semibold text-[#2e7d32] hover:underline inline-flex items-center gap-1">
-              Plan Feeding / Visit <ArrowRight size={12} />
+              View Schedule <ArrowRight size={12} />
             </Link>
           </div>
         </div>
 
       </div>
 
-      {/* ── Upcoming Scheduled Activities ── */}
-      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-bold text-gray-900 text-base">Upcoming Scheduled Activities</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Municipal & barangay health schedules</p>
+      {/* ── Malnutrition Cases by Barangay (Full Width) ── */}
+      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+            <div>
+              <h3 className="font-bold text-gray-900 text-base">Malnutrition Cases by Barangay</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {stats.malnutritionOverviewFallback
+                  ? 'Showing all recorded historical cases'
+                  : 'Barangays with high at-risk/malnutrition records'}
+              </p>
+            </div>
+
+            {/* Time range selector */}
+            <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+              {['3M', '6M', '1Y'].map((range) => (
+                <button
+                  key={range}
+                  type="button"
+                  onClick={() => setTimeRange(range)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    timeRange === range
+                      ? 'bg-[#2e7d32] text-white shadow-xs'
+                      : 'text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
           </div>
-          <Link
-            to="/admin/schedule"
-            className="text-xs font-bold text-[#2e7d32] bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5"
-          >
-            Manage Schedule <ArrowRight size={13} />
-          </Link>
+
+          <div className="mt-4">
+            {overviewData.length > 0 ? (
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={overviewData} margin={{ top: 16, right: 16, left: -10, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <XAxis
+                      dataKey="barangay"
+                      tick={{ fontSize: 12, fill: '#4b5563', fontWeight: 600 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 11, fill: '#9ca3af' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip content={<CustomBarTooltip />} />
+                    <Bar dataKey="cases" fill="#2e7d32" radius={[6, 6, 0, 0]} barSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-2">
+                <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                  <CheckCircle2 size={24} />
+                </div>
+                <p className="text-sm font-semibold text-gray-600">No active malnutrition cases recorded</p>
+                <p className="text-xs text-gray-400">All registered children are in normal growth status.</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {stats.upcomingActivities && stats.upcomingActivities.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {stats.upcomingActivities.map((act) => {
-              const d = new Date(act.schedule_date);
-              const month = d.toLocaleString('en-US', { month: 'short' });
-              const day = d.getDate();
-
-              return (
-                <div
-                  key={act.schedule_id}
-                  className="flex items-start gap-3.5 p-4 rounded-xl bg-gray-50/70 border border-gray-100 hover:bg-green-50/40 hover:border-green-200 transition-all"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0 shadow-xs text-center">
-                    <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">{month} {d.getFullYear()}</span>
-                    <span className="text-base font-black leading-none">{day}</span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="text-sm font-bold text-gray-900 truncate">{act.title}</p>
-                      <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                        {act.schedule_type?.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1 truncate">
-                      {act.barangay || 'All Barangays'}
-                      {act.venue && ` · ${act.venue}`}
-                      {act.schedule_time && ` · ${formatScheduleTime(act.schedule_time)}`}
-                    </p>
-                    {act.target_role && (
-                      <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
-                        For {act.target_role.toUpperCase()}s
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-10 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-            <Calendar className="mx-auto text-gray-300 mb-2" size={28} />
-            <p className="text-sm font-semibold text-gray-600">No upcoming activities scheduled</p>
-            <p className="text-xs text-gray-400 mt-0.5">Create a schedule activity to notify barangay workers.</p>
-          </div>
-        )}
+        <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between text-xs text-gray-400">
+          <span>Filtered by: {timeRange === '3M' ? 'Last 3 Months' : timeRange === '6M' ? 'Last 6 Months' : 'Past Year'}</span>
+          <Link to="/admin/schedule" className="font-semibold text-[#2e7d32] hover:underline inline-flex items-center gap-1">
+            Plan Feeding / Visit <ArrowRight size={12} />
+          </Link>
+        </div>
       </div>
 
     </div>
