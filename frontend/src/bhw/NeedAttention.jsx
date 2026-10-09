@@ -340,7 +340,7 @@ function NeedAttention() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed min-w-[700px]">
+          <table className="w-full text-sm table-fixed min-w-175">
             <colgroup>
               <col className="w-[24%]" />
               <col className="w-[10%]" />

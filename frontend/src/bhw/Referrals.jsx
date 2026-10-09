@@ -208,6 +208,79 @@ function Referrals() {
         </button>
       </div>
 
+      {/* ── Status Tabs & Sort Controls ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-xs">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => { setStatusFilter('all'); setSeverityFilter('all'); }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+              statusFilter === 'all' && severityFilter === 'all'
+                ? 'bg-[#1b5e20] text-white shadow-xs'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            All Cases ({referrals.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => { setStatusFilter('Pending'); setSeverityFilter('all'); }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              statusFilter === 'Pending' && severityFilter === 'all'
+                ? 'bg-amber-500 text-white shadow-xs'
+                : 'text-amber-700 hover:bg-amber-50'
+            }`}
+          >
+            Pending ({pendingCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => { setStatusFilter('Ongoing'); setSeverityFilter('all'); }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              statusFilter === 'Ongoing' && severityFilter === 'all'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-blue-700 hover:bg-blue-50'
+            }`}
+          >
+            Ongoing ({ongoingCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => { setStatusFilter('Completed'); setSeverityFilter('all'); }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              statusFilter === 'Completed' && severityFilter === 'all'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-emerald-700 hover:bg-emerald-50'
+            }`}
+          >
+            Completed ({completedCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSeverityFilter('high'); setStatusFilter('all'); }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              severityFilter === 'high'
+                ? 'bg-red-600 text-white shadow-xs'
+                : 'text-red-700 hover:bg-red-50'
+            }`}
+          >
+            High Severity ({highSevCount})
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-gray-500">Sort by:</label>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-gray-700 focus:outline-none focus:border-[#2e7d32]"
+          >
+            <option value="severity">Severity (High first)</option>
+            <option value="date">Date (Newest first)</option>
+          </select>
+        </div>
+      </div>
+
       <div className="divide-y divide-gray-50 p-4 space-y-3">
         {filteredReferrals.length === 0 ? (
           <div className="p-12 text-center text-gray-400 text-xs">No referrals found matching the selected filters.</div>
