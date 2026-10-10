@@ -37,7 +37,7 @@ test('login rejects a non-existent admin alias with a generic invalid-credential
   assert.equal(res.payload.message, 'Incorrect email or password.');
 });
 
-test('admin account locks after repeated failed login attempts', async () => {
+test('BHW account locks after repeated failed login attempts', async () => {
   const pool = require('../config/db');
   const bcrypt = require('bcrypt');
   const originalQuery = pool.query;
@@ -45,12 +45,12 @@ test('admin account locks after repeated failed login attempts', async () => {
 
   const user = {
     user_id: 99,
-    username: 'admin.locktest',
+    username: 'bhw.locktest',
     email: 'locktest@apscale.local',
     password_hash: passwordHash,
     first_name: 'Lock',
     last_name: 'Tester',
-    role: 'admin',
+    role: 'bhw',
     status: 'active',
     failed_attempts: 0,
     barangay: 'Barangay 1',

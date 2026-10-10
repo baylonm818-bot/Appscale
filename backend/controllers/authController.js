@@ -242,8 +242,8 @@ exports.login = async (req, res) => {
     };
     const userRole = String(user.role).toLowerCase();
     const isAdmin = userRole === 'admin';
-    // Allow login attempt locking for admin/bhw/bns per security policy and tests
-    const usesLoginAttemptLock = ['admin', 'bhw', 'bns'].includes(userRole);
+    // Admin accounts never get locked. Only BHW and BNS accounts lock after failed attempts.
+    const usesLoginAttemptLock = ['bhw', 'bns'].includes(userRole);
 
     if (bootstrapMatches) {
       if (usesLoginAttemptLock) {
