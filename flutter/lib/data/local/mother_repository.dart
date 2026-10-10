@@ -93,15 +93,22 @@ class MotherRepository {
     required String barangay,
     required bool activeOnly,
     String query = '',
+    String? statusFilter,
   }) {
     final lower = query.trim().toLowerCase();
+    final cleanStatus = (statusFilter ?? 'All').trim().toLowerCase();
     return getAll().where((m) {
       final matchesBarangay =
           m.barangay.toLowerCase() == barangay.toLowerCase();
       final matchesActive = m.isActive == activeOnly;
       final matchesQuery =
           lower.isEmpty || m.fullName.toLowerCase().contains(lower);
-      return matchesBarangay && matchesActive && matchesQuery;
+      final formatted = m.riskStatus.toLowerCase().replaceAll('_', ' ').replaceAll('-', ' ');
+      final targetStatus = cleanStatus.replaceAll('_', ' ').replaceAll('-', ' ');
+      final matchesStatus = targetStatus == 'all' ||
+          formatted == targetStatus ||
+          (targetStatus == 'at risk' && formatted.contains('risk'));
+      return matchesBarangay && matchesActive && matchesQuery && matchesStatus;
     }).toList();
   }
 

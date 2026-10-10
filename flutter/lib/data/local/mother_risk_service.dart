@@ -15,13 +15,22 @@ class MotherRiskService {
     if (mother == null) return;
 
     final visits = _visitRepo.getForMother(motherId);
-    if (visits.isEmpty) return; // no visits yet — leave defaults untouched
+    if (visits.isEmpty) {
+      if (mother.riskStatus != 'Not visited') {
+        await _motherRepo.update(mother.copyWith(riskStatus: 'Not visited'));
+      }
+      return;
+    }
 
-    final latest = visits.first;
+    final presentVisits = visits.where((v) => v.present).toList();
+    if (presentVisits.isEmpty) {
+      if (mother.riskStatus != 'Not visited') {
+        await _motherRepo.update(mother.copyWith(riskStatus: 'Not visited'));
+      }
+      return;
+    }
 
-    // A missed visit is not an observation — it doesn't change risk status
-    // or breastfeeding practice, it just sits in the log as a missed entry.
-    if (!latest.present) return;
+    final latest = presentVisits.first;
 
     final newRisk = latest.observation == 'Signs of concern'
         ? 'At-risk'

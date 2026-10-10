@@ -214,7 +214,10 @@ class _VitaminAScreenState extends State<VitaminAScreen>
     Color color,
   ) {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 10,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -222,6 +225,7 @@ class _VitaminAScreenState extends State<VitaminAScreen>
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             title,
@@ -229,6 +233,8 @@ class _VitaminAScreenState extends State<VitaminAScreen>
               fontSize: 10,
               color: AppColors.textMuted,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
           Text(
@@ -236,7 +242,15 @@ class _VitaminAScreenState extends State<VitaminAScreen>
             style: AppTextStyles.h2.copyWith(fontSize: 18, color: color),
           ),
           const SizedBox(height: 2),
-          Text(subtitle, style: AppTextStyles.caption.copyWith(fontSize: 9)),
+          Text(
+            subtitle,
+            style: AppTextStyles.caption.copyWith(
+              fontSize: 9,
+              height: 1.15,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );

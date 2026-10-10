@@ -25,7 +25,13 @@ exports.getProfile = async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ message: 'User not found.' });
     }
-    return res.status(200).json(rows[0]);
+    const user = rows[0];
+    const pic = user.profile_picture;
+    const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
+    user.profile_picture = pic
+      ? (pic.startsWith('http') ? pic : `${base}${pic}`)
+      : null;
+    return res.status(200).json(user);
   } catch (error) {
     console.error('Get profile error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });

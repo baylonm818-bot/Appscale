@@ -13,10 +13,11 @@ class MotherListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final formattedStatus = MotherStatusMeta.formatStatus(mother.riskStatus);
     final color = mother.isActive
-        ? MotherStatusMeta.colorFor(mother.riskStatus)
+        ? MotherStatusMeta.colorFor(formattedStatus)
         : AppColors.textMuted;
-    final label = mother.isActive ? mother.riskStatus : 'Inactive';
+    final label = mother.isActive ? formattedStatus : 'Inactive';
 
     final initials = mother.fullName.trim().split(RegExp(r'\s+')).length >= 2
         ? (mother.fullName.trim().split(RegExp(r'\s+'))[0][0] + mother.fullName.trim().split(RegExp(r'\s+'))[1][0]).toUpperCase()

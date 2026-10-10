@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../data/local/mother_visit_repository.dart';
+import '../../../data/local/referral_repository.dart';
 import '../../../data/models/mother.dart';
 import '../../masterlist/utils/mother_status_meta.dart';
 import '../../masterlist/widgets/status_badge.dart';
+import '../../referrals/widgets/referral_detail_sheet.dart';
 
 const _kAccent = Color(0xFF1B5E20);
 const _kAccentDark = Color(0xFF2E7D32);
@@ -27,6 +30,11 @@ class MotherProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasVisits =
+        MotherVisitRepository().getForMother(mother.id).isNotEmpty;
+    final activeReferral =
+        ReferralRepository().getActiveForBeneficiary(mother.id);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -40,7 +48,7 @@ class MotherProfileHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Single row: arrow -> title -> Add visit -> Referral -> overflow menu.
+          // Single row: arrow -> title -> Add visit -> Referral/Referred -> overflow menu.
           Row(
             children: [
               InkWell(
@@ -54,7 +62,7 @@ class MotherProfileHeader extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Mother Profile',
+                  'Mother',
                   style: AppTextStyles.h2.copyWith(color: Colors.white),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -64,8 +72,18 @@ class MotherProfileHeader extends StatelessWidget {
               if (mother.isActive) ...[
                 _AddVisitButton(onPressed: onAddVisitPressed),
                 const SizedBox(width: 6),
-                _ReferralButton(onPressed: onReferralPressed),
-                const SizedBox(width: 6),
+                if (hasVisits && activeReferral == null) ...[
+                  _ReferralButton(onPressed: onReferralPressed),
+                  const SizedBox(width: 6),
+                ] else if (activeReferral != null) ...[
+                  _ReferredBadge(
+                    onPressed: () => ReferralDetailSheet.show(
+                      context,
+                      referral: activeReferral,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
               ],
               _OverflowMenu(
                 isActive: mother.isActive,
@@ -281,3 +299,39 @@ class _ReferralButton extends StatelessWidget {
     );
   }
 }
+
+class _ReferredBadge extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _ReferredBadge({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.amber.shade800,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(20),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle_outline, color: Colors.white, size: 14),
+              SizedBox(width: 4),
+              Text(
+                'Referred',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

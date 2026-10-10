@@ -11,35 +11,66 @@ class ChildListTile extends StatelessWidget {
 
   const ChildListTile({super.key, required this.child, required this.onTap});
 
+  int _severityRank(String status) {
+    final s = status.toLowerCase();
+    if (s == 'sam' || s.contains('severely') || s == 'sst' || s == 'suw') return 0;
+    if (s == 'mam' || s == 'underweight' || s == 'stunted' || s == 'obese' || s == 'overweight' || s == 'uw' || s == 'st' || s == 'ob' || s == 'ow') return 1;
+    if (s == 'normal' || s == 'tall' || s == 'n') return 2;
+    if (s == 'not weighed') return 3;
+    return 4;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final needsAttention = ChildStatusMeta.needsAttention(
-      child.nutritionStatus,
-    );
-    final wfaFormatted = ChildStatusMeta.formatStatus(child.nutritionStatus);
-    final wfhFormatted = ChildStatusMeta.formatStatus(child.wastingStatus);
-    final hfaFormatted = ChildStatusMeta.formatStatus(child.stuntingStatus);
+    final isNotWeighed = child.nutritionStatus.trim().toLowerCase() == 'not weighed' ||
+        child.nutritionStatus.trim().isEmpty;
 
-    String? secondaryLabel;
-    Color? secondaryColor;
+    final List<_StatusChipData> chips = [];
 
-    if (wfhFormatted == 'SAM' || wfhFormatted == 'MAM') {
-      secondaryLabel = 'WFH: $wfhFormatted';
-      secondaryColor = ChildStatusMeta.colorFor(wfhFormatted);
-    } else if (hfaFormatted == 'Stunted' || hfaFormatted == 'Severely Stunted') {
-      secondaryLabel = 'HFA: $hfaFormatted';
-      secondaryColor = ChildStatusMeta.colorFor(hfaFormatted);
+    if (isNotWeighed) {
+      chips.add(_StatusChipData(
+        label: 'Not weighed',
+        color: AppColors.notWeighed,
+        severity: 3,
+      ));
+    } else {
+      final wfaFormatted = ChildStatusMeta.formatStatus(child.nutritionStatus);
+      chips.add(_StatusChipData(
+        label: 'WFA: $wfaFormatted',
+        color: ChildStatusMeta.colorFor(wfaFormatted),
+        severity: _severityRank(wfaFormatted),
+      ));
+
+      if (child.stuntingStatus.isNotEmpty &&
+          child.stuntingStatus.toLowerCase() != 'not weighed') {
+        final hfaFormatted = ChildStatusMeta.formatStatus(child.stuntingStatus);
+        chips.add(_StatusChipData(
+          label: 'HFA: $hfaFormatted',
+          color: ChildStatusMeta.colorFor(hfaFormatted),
+          severity: _severityRank(hfaFormatted),
+        ));
+      }
+
+      if (child.wastingStatus.isNotEmpty &&
+          child.wastingStatus.toLowerCase() != 'not weighed') {
+        final wfhFormatted = ChildStatusMeta.formatStatus(child.wastingStatus);
+        chips.add(_StatusChipData(
+          label: 'WFH: $wfhFormatted',
+          color: ChildStatusMeta.colorFor(wfhFormatted),
+          severity: _severityRank(wfhFormatted),
+        ));
+      }
+
+      // Sort so most severe status (lowest rank number) appears first
+      chips.sort((a, b) => a.severity.compareTo(b.severity));
     }
 
-    final ageStr = child.ageDisplay;
-    final addressStr = child.formattedAddress;
+    final topColor = chips.isNotEmpty ? chips.first.color : AppColors.primaryGreen;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: needsAttention
-            ? AppColors.neutralGrayBg
-            : AppColors.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -49,28 +80,39 @@ class ChildListTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: needsAttention
-                    ? AppColors.neutralGray.withValues(alpha: 0.35)
-                    : AppColors.border,
+                color: isNotWeighed
+                    ? AppColors.border
+                    : topColor.withValues(alpha: 0.35),
+                width: isNotWeighed ? 1.0 : 1.2,
               ),
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: needsAttention
-                        ? AppColors.neutralGray.withValues(alpha: 0.16)
-                        : AppColors.primaryGreen.withValues(alpha: 0.1),
+                    color: isNotWeighed
+                        ? AppColors.notWeighed.withValues(alpha: 0.15)
+                        : topColor.withValues(alpha: 0.14),
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isNotWeighed
+                          ? AppColors.notWeighed.withValues(alpha: 0.4)
+                          : topColor.withValues(alpha: 0.6),
+                      width: 1.5,
+                    ),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     child.initials,
                     style: TextStyle(
-                      color: needsAttention ? AppColors.neutralGray : AppColors.darkGreen,
+                      color: isNotWeighed
+                          ? AppColors.textMuted
+                          : (topColor == AppColors.primaryGreen
+                              ? AppColors.darkGreen
+                              : topColor),
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                     ),
@@ -86,13 +128,12 @@ class ChildListTile extends StatelessWidget {
                         style: AppTextStyles.label.copyWith(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '$ageStr · $addressStr',
+                        '${child.ageDisplay} · ${child.formattedAddress}',
                         style: AppTextStyles.body.copyWith(
                           fontSize: 12,
                           color: AppColors.textMuted,
@@ -104,20 +145,20 @@ class ChildListTile extends StatelessWidget {
                       Wrap(
                         spacing: 6,
                         runSpacing: 4,
-                        children: [
-                          StatusBadge(
-                            label: 'WFA: $wfaFormatted',
-                            color: ChildStatusMeta.colorFor(wfaFormatted),
-                          ),
-                          if (secondaryLabel != null && secondaryColor != null)
-                            StatusBadge(
-                              label: secondaryLabel,
-                              color: secondaryColor,
-                            ),
-                        ],
+                        children: chips
+                            .map((chip) => StatusBadge(
+                                  label: chip.label,
+                                  color: chip.color,
+                                ))
+                            .toList(),
                       ),
                     ],
                   ),
+                ),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppColors.textMuted,
                 ),
               ],
             ),
@@ -126,4 +167,16 @@ class ChildListTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _StatusChipData {
+  final String label;
+  final Color color;
+  final int severity;
+
+  _StatusChipData({
+    required this.label,
+    required this.color,
+    required this.severity,
+  });
 }

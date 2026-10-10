@@ -28,7 +28,7 @@ class Mother {
     required this.belongsToIpGroup,
     required this.disability,
     required this.createdAt,
-    this.riskStatus = 'Normal',
+    this.riskStatus = 'Not visited',
     this.isActive = true,
     this.inactiveReason,
     this.linkedChildIds = const [],
@@ -95,7 +95,7 @@ class Mother {
           : DateTime.now(),
       riskStatus: strVal('riskStatus', 'risk_status').isNotEmpty
           ? strVal('riskStatus', 'risk_status')
-          : 'Normal',
+          : 'Not visited',
       isActive: map['isActive'] != null
           ? map['isActive'] as bool
           : (map['status'] as String? ?? 'active') == 'active',

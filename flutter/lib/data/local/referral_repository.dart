@@ -188,6 +188,18 @@ class ReferralRepository {
     return list;
   }
 
+  /// Returns the latest active (Pending, Ongoing, In Progress, Responded) referral
+  /// for a given beneficiary if one exists.
+  Referral? getActiveForBeneficiary(String beneficiaryId) {
+    const activeStatuses = {'pending', 'in progress', 'ongoing', 'responded'};
+    final list = getAll().where((r) =>
+        r.beneficiaryId == beneficiaryId &&
+        activeStatuses.contains(r.status.trim().toLowerCase())
+    ).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list.isNotEmpty ? list.first : null;
+  }
+
   /// Barangay-wide view for the Dashboard entry point — pending and
   /// in-progress cases surface first, since those are what a BNS
   /// actually needs to act on.

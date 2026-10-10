@@ -215,37 +215,72 @@ exports.createReferral = async (req, res) => {
       }
     }
 
+    // ── Enforce that beneficiary has recorded visits/measurements ──────────
+    if (beneficiaryType === 'mother' && resolvedMotherId) {
+      const [[motherRecord]] = await pool.query(
+        `SELECT m.weight_kg, m.height_cm, m.muac_cm,
+                (SELECT COUNT(*) FROM mother_services WHERE mother_id = m.mother_id) AS service_count
+         FROM mothers m
+         WHERE m.mother_id = ?`,
+        [resolvedMotherId]
+      );
+      const hasMotherVisits = motherRecord && (
+        motherRecord.weight_kg != null ||
+        motherRecord.height_cm != null ||
+        motherRecord.muac_cm != null ||
+        Number(motherRecord.service_count) > 0
+      );
+      if (!hasMotherVisits) {
+        return res.status(400).json({
+          message: 'Cannot create referral: Mother has no recorded visits or health records.',
+        });
+      }
+    } else if (beneficiaryType === 'child' && resolvedChildId) {
+      const [[childRecord]] = await pool.query(
+        `SELECT (SELECT COUNT(*) FROM nutrition_records WHERE child_id = ?) AS record_count,
+                (SELECT COUNT(*) FROM child_services WHERE child_id = ?) AS service_count`,
+        [resolvedChildId, resolvedChildId]
+      );
+      const hasChildVisits = childRecord && (
+        Number(childRecord.record_count) > 0 ||
+        Number(childRecord.service_count) > 0
+      );
+      if (!hasChildVisits) {
+        return res.status(400).json({
+          message: 'Cannot create referral: Child has no recorded measurements or health records.',
+        });
+      }
+    }
+
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
 
-      // ── Duplicate check (case-insensitive status) ─────────────────────────
+      // ── Active referral check (prevent duplicate active referrals) ──────────
       const [existing] = await conn.query(
-        `SELECT referral_id
+        `SELECT referral_id, status
          FROM referrals
-         WHERE LOWER(status) IN ('pending', 'ongoing', 'responded')
+         WHERE LOWER(status) IN ('pending', 'ongoing', 'responded', 'in progress')
            AND (
              (? IS NOT NULL AND child_id = ?)
              OR (? IS NOT NULL AND mother_id = ?)
            )
-           AND LOWER(TRIM(reason)) = LOWER(TRIM(?))
          LIMIT 1`,
         [
           resolvedChildId,
           resolvedChildId,
           resolvedMotherId,
           resolvedMotherId,
-          reason,
         ]
       );
 
-      if (existing[0]) {
+      if (existing.length > 0) {
         await conn.rollback();
         conn.release();
-        return res.status(200).json({
-          message: 'Referral already exists for this beneficiary and reason.',
+        return res.status(400).json({
+          message: 'This beneficiary already has an active referral in progress.',
           referral_id: existing[0].referral_id,
-          duplicate: true,
+          status: existing[0].status,
         });
       }
 

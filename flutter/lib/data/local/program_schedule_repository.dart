@@ -22,8 +22,20 @@ class ProgramScheduleRepository {
     for (final e in _box.values) {
       final map = Map<String, dynamic>.from(e as Map);
       final b = (map['barangay'] ?? '').toString().trim().toLowerCase();
+      final status = (map['status'] ?? 'pending').toString().trim().toLowerCase();
 
-      final barangayMatch = b == target || target.isEmpty || b.isEmpty;
+      // Exclude archived, completed, or cancelled activities
+      if (status == 'archived' || status == 'done' || status == 'cancelled' || status == 'completed') {
+        continue;
+      }
+
+      final barangayMatch = b == target ||
+          target.isEmpty ||
+          b.isEmpty ||
+          b == 'all' ||
+          b == 'all barangays' ||
+          b == 'all_barangays' ||
+          b == 'all barangay';
       if (!barangayMatch) continue;
 
       // If server provided explicit targets, use them to determine final visibility
@@ -36,11 +48,11 @@ class ProgramScheduleRepository {
             final t = Map<String, dynamic>.from(tRaw as Map);
             final type = (t['type'] ?? '').toString();
             final value = (t['value'] ?? '').toString().toLowerCase();
-            if (type == 'global') {
+            if (type == 'global' || value == 'all' || value == 'all barangays') {
               targetsVisible = true;
               break;
             }
-            if (type == 'barangay' && value == target) {
+            if (type == 'barangay' && (value == target || value == 'all' || value == 'all barangays')) {
               targetsVisible = true;
               break;
             }

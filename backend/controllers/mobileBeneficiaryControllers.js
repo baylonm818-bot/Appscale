@@ -709,18 +709,18 @@ exports.getMobileSchedules = async (req, res) => {
   }
 
   const barangay = scope.barangay;
-  const role = req.user?.role || 'bns';
+  const role = (req.user?.role || 'bns').toLowerCase();
 
   try {
-    let where = "status = 'pending' AND schedule_date >= CURDATE()";
+    let where = "(status = 'pending' OR status IS NULL) AND (schedule_date >= CURDATE() OR schedule_date IS NULL)";
     const params = [];
 
     if (barangay) {
-      where += " AND (barangay = ? OR barangay = 'All Barangays' OR barangay IS NULL)";
+      where += " AND (barangay = ? OR barangay = 'All Barangays' OR barangay = 'All' OR barangay IS NULL)";
       params.push(barangay);
     }
 
-    where += " AND (target_role = ? OR target_role IS NULL OR target_role = '')";
+    where += " AND (target_role = ? OR target_role = 'all' OR target_role = 'All' OR target_role = 'All Beneficiaries' OR target_role IS NULL OR target_role = '')";
     params.push(role);
 
     const [schedules] = await pool.query(
@@ -750,14 +750,20 @@ exports.getMobileSchedules = async (req, res) => {
       for (const s of schedulesArr) {
         const targets = targetsById[s.schedule_id] || [];
         s.targets = targets;
-        // visibility: global OR barangay match OR user match
-        const isGlobal = targets.some((t) => t.type === 'global');
-        const barangayMatch = targets.some((t) => t.type === 'barangay' && t.value && String(t.value).toLowerCase() === String(barangay || '').toLowerCase());
-        const userMatch = targets.some((t) => t.type === 'user' && t.value && String(t.value) === String(req.user?.user_id));
-        if (isGlobal || barangayMatch || userMatch) {
+        if (targets.length === 0) {
+          // No granular targets specified: SQL query already validated barangay and target_role
           visible.push(s);
+        } else {
+          const isGlobal = targets.some((t) => t.type === 'global' || t.value === 'all' || t.value === 'All Barangays');
+          const barangayMatch = targets.some((t) => t.type === 'barangay' && t.value && (String(t.value).toLowerCase() === String(barangay || '').toLowerCase() || String(t.value).toLowerCase() === 'all' || String(t.value).toLowerCase() === 'all barangays'));
+          const userMatch = targets.some((t) => t.type === 'user' && t.value && String(t.value) === String(req.user?.user_id));
+          if (isGlobal || barangayMatch || userMatch) {
+            visible.push(s);
+          }
         }
       }
+    } else {
+      visible = schedulesArr;
     }
 
     return res.status(200).json(visible);
@@ -867,11 +873,11 @@ exports.getMobileSync = async (req, res) => {
     const motherParams = barangay ? [barangay] : [];
     const motherWhere = barangay ? 'm.barangay = ?' : '1=1';
 
-    const role = req.user?.role || 'bns';
+    const role = (req.user?.role || 'bns').toLowerCase();
     const scheduleParams = [];
-    let scheduleWhere = "(status = 'pending' OR status IS NULL)";
-    if (barangay) { scheduleWhere += " AND (barangay = ? OR barangay = 'All Barangays' OR barangay IS NULL)"; scheduleParams.push(barangay); }
-    scheduleWhere += " AND (target_role = ? OR target_role IS NULL OR target_role = '')";
+    let scheduleWhere = "(status = 'pending' OR status IS NULL) AND (schedule_date >= CURDATE() OR schedule_date IS NULL)";
+    if (barangay) { scheduleWhere += " AND (barangay = ? OR barangay = 'All Barangays' OR barangay = 'All' OR barangay IS NULL)"; scheduleParams.push(barangay); }
+    scheduleWhere += " AND (target_role = ? OR target_role = 'all' OR target_role = 'All' OR target_role = 'All Beneficiaries' OR target_role IS NULL OR target_role = '')";
     scheduleParams.push(role);
 
     const refParams = barangay ? [barangay, barangay, barangay] : [];
@@ -956,6 +962,7 @@ exports.getMobileSync = async (req, res) => {
     // Attach schedule_targets and filter schedules by visibility
     const schedList = schedules || [];
     const schedIds = schedList.map((s) => s.schedule_id).filter(Boolean);
+    let visibleSchedules = [];
     if (schedIds.length > 0) {
       const placeholders = schedIds.map(() => '?').join(',');
       const [targetsRows] = await pool.query(
@@ -969,34 +976,29 @@ exports.getMobileSync = async (req, res) => {
       }
 
       // Filter according to requester
-      const visibleSchedules = [];
       for (const s of schedList) {
         const targets = targetsById[s.schedule_id] || [];
         s.targets = targets;
-        const isGlobal = targets.some((t) => t.type === 'global');
-        const barangayMatch = targets.some((t) => t.type === 'barangay' && t.value && String(t.value).toLowerCase() === String(barangay || '').toLowerCase());
-        const userMatch = targets.some((t) => t.type === 'user' && t.value && String(t.value) === String(req.user?.user_id));
-        if (isGlobal || barangayMatch || userMatch) {
+        if (targets.length === 0) {
           visibleSchedules.push(s);
+        } else {
+          const isGlobal = targets.some((t) => t.type === 'global' || t.value === 'all' || t.value === 'All Barangays');
+          const barangayMatch = targets.some((t) => t.type === 'barangay' && t.value && (String(t.value).toLowerCase() === String(barangay || '').toLowerCase() || String(t.value).toLowerCase() === 'all' || String(t.value).toLowerCase() === 'all barangays'));
+          const userMatch = targets.some((t) => t.type === 'user' && t.value && String(t.value) === String(req.user?.user_id));
+          if (isGlobal || barangayMatch || userMatch) {
+            visibleSchedules.push(s);
+          }
         }
       }
-      return res.status(200).json({
-        children,
-        nutritionRecords,
-        mothers,
-        schedules: visibleSchedules,
-        referrals,
-        notifications,
-        profilePicture,
-        syncedAt: new Date().toISOString(),
-      });
+    } else {
+      visibleSchedules = schedList;
     }
 
     return res.status(200).json({
       children,
       nutritionRecords,
       mothers,
-      schedules: [],
+      schedules: visibleSchedules,
       referrals,
       notifications,
       profilePicture,
