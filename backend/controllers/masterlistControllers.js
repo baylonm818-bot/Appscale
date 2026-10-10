@@ -143,6 +143,14 @@ exports.transferBeneficiary = async (req, res) => {
       [table, entityId, JSON.stringify(record), req.user?.user_id || null]
     );
 
+    try {
+      await pool.query(
+        `INSERT INTO transfer_history (entity_type, entity_id, from_barangay, to_barangay, transferred_by, reason, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [entityType, entityId, record.barangay || fromBarangay, targetBarangay, req.user?.user_id || null, reason || 'Transferred by admin', null]
+      );
+    } catch (_) {}
+
     await pool.query(
       `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
        VALUES (?, ?, 'system', FALSE, ?, NOW())`,

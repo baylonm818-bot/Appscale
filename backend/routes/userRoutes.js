@@ -6,7 +6,7 @@ const roleCheck = require('../middleware/roleMiddleware');
 // Admin manages accounts; BHW may view and update same-barangay staff records
 router.get('/', roleCheck(['admin', 'bhw']), getUsers);
 router.post('/', roleCheck(['admin']), createUsers);
-router.put('/:user_id', roleCheck(['admin', 'bhw']), updateUser);
+router.put('/:user_id', roleCheck(['admin']), updateUser);
 router.patch('/:user_id/status', roleCheck(['admin']), updateUserStatus);
 router.patch('/:user_id/archive', roleCheck(['admin']), archiveUser);
 router.patch('/:user_id/restore', roleCheck(['admin']), restoreUser);

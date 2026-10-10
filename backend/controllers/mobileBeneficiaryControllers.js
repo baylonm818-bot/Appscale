@@ -898,7 +898,7 @@ exports.getMobileSync = async (req, res) => {
     const refParams = barangay ? [barangay, barangay, barangay] : [];
     const refWhere = barangay ? '(c.barangay = ? OR m.barangay = ? OR ? IS NULL)' : '1=1';
 
-    const [[children], [nutritionRecords], [mothers], [schedules], [referrals], [notifications]] = await Promise.all([
+    const [[children], [nutritionRecords], [mothers], [motherServices], [schedules], [referrals], [notifications]] = await Promise.all([
       pool.query(
         `SELECT c.child_id, c.external_id, c.first_name, c.middle_initial, c.last_name,
                 c.birth_date, c.sex, c.age_in_months, c.age_group, c.barangay, c.purok,
@@ -932,6 +932,14 @@ exports.getMobileSync = async (req, res) => {
           m.weight_kg, m.height_cm, m.muac_cm, m.bmi, m.bmi_status, m.muac_status,
           m.status, m.updated_at
          FROM mothers m WHERE ${motherWhere} ORDER BY m.first_name ASC`,
+        motherParams
+      ),
+      pool.query(
+        `SELECT ms.service_id, ms.mother_id, m.external_id AS mother_external_id,
+                ms.service_type, ms.service_name, ms.service_date, ms.provided_by, ms.notes
+         FROM mother_services ms
+         INNER JOIN mothers m ON m.mother_id = ms.mother_id
+         WHERE ${motherWhere} ORDER BY ms.service_date ASC`,
         motherParams
       ),
       pool.query(
@@ -1023,6 +1031,7 @@ exports.getMobileSync = async (req, res) => {
       children,
       nutritionRecords,
       mothers,
+      motherServices: motherServices || [],
       schedules: visibleSchedules,
       referrals,
       notifications,

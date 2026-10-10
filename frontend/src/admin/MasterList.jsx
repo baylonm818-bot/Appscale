@@ -85,6 +85,36 @@ function Masterlist() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportData, setReportData] = useState(null);
 
+  // Transfer state
+  const [showTransferUI, setShowTransferUI] = useState(false);
+  const [targetBarangay, setTargetBarangay] = useState('');
+  const [transferReason, setTransferReason] = useState('');
+  const [transferMsg, setTransferMsg] = useState('');
+
+  const handleTransfer = async () => {
+    if (!targetBarangay || !selectedPerson) return;
+    try {
+      const entityType = selectedPerson._type;
+      const entityId = entityType === 'child' ? selectedPerson.child_id : selectedPerson.mother_id;
+      await axiosClient.post('/masterlist/transfer', {
+        entityType,
+        entityId,
+        targetBarangay,
+        targetBnsUserId: 1,
+        reason: transferReason || 'Transfer by admin',
+      });
+      setTransferMsg('Beneficiary transferred successfully!');
+      setTimeout(() => {
+        setSelectedPerson(null);
+        setShowTransferUI(false);
+        setTransferMsg('');
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      setTransferMsg(err.response?.data?.message || 'Failed to transfer beneficiary.');
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -332,15 +362,6 @@ function Masterlist() {
             </div>
           </div>
 
-          {/* Export / Preview Report Button */}
-          <button
-            type="button"
-            onClick={handleOpenReportPreview}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white text-xs font-bold shadow-sm hover:opacity-95 transition cursor-pointer shrink-0"
-          >
-            <FileText size={15} />
-            Preview & Export Report
-          </button>
         </div>
 
         {/* Result count */}
@@ -566,13 +587,68 @@ function Masterlist() {
                   </div>
                 </>
               )}
+
+              {showTransferUI && (
+                <div className="py-3 border-t border-gray-100 space-y-3">
+                  <p className="text-xs font-bold text-gray-700 uppercase tracking-wider">Transfer to Another Barangay</p>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Destination Barangay</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Antipolo, Bangwayin, Dili"
+                      value={targetBarangay}
+                      onChange={(e) => setTargetBarangay(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Reason for Transfer</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Moved residence"
+                      value={transferReason}
+                      onChange={(e) => setTransferReason(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  {transferMsg && (
+                    <p className={`text-xs font-semibold ${transferMsg.includes('successfully') ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {transferMsg}
+                    </p>
+                  )}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleTransfer}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold text-white bg-green-700 hover:bg-green-800 transition"
+                    >
+                      Confirm Transfer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowTransferUI(false)}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal footer */}
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 shrink-0">
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 shrink-0 flex gap-2">
+              {!showTransferUI && (
+                <button
+                  onClick={() => setShowTransferUI(true)}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:opacity-90 transition cursor-pointer"
+                >
+                  Transfer Beneficiary
+                </button>
+              )}
               <button
-                onClick={() => setSelectedPerson(null)}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold text-[#2e7d32] border-2 border-green-200 hover:bg-green-50 transition cursor-pointer"
+                onClick={() => { setSelectedPerson(null); setShowTransferUI(false); setTransferMsg(''); }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-[#2e7d32] border-2 border-green-200 hover:bg-green-50 transition cursor-pointer"
               >
                 Close
               </button>

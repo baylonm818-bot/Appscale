@@ -412,6 +412,23 @@ exports.getReferrals = async (req, res) => {
       params
     );
 
+    const referralIds = referrals.map(r => r.referral_id).filter(Boolean);
+    let itemsByReferral = {};
+    if (referralIds.length > 0) {
+      try {
+        const [itemsRows] = await pool.query(
+          `SELECT referral_id, item_name, quantity, unit, given_at
+           FROM referral_items
+           WHERE referral_id IN (${referralIds.map(() => '?').join(',')})`,
+          referralIds
+        );
+        for (const item of itemsRows) {
+          itemsByReferral[item.referral_id] = itemsByReferral[item.referral_id] || [];
+          itemsByReferral[item.referral_id].push(item);
+        }
+      } catch (_) {}
+    }
+
     const allowedReferrals = referrals.map((ref) => {
       // Normalize status labels for display
       let normalizedStatus = ref.status;
@@ -435,6 +452,7 @@ exports.getReferrals = async (req, res) => {
         status: normalizedStatus,
         response_notes: notes,
         notes: notes,
+        items_given: itemsByReferral[ref.referral_id] || [],
       };
     }).filter((referral) => canAccessReferral(user, referral));
 
@@ -447,7 +465,7 @@ exports.getReferrals = async (req, res) => {
 
 exports.updateReferralStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, response_notes, service_type, service_date, provided_by } = req.body;
+  const { status, response_notes, service_type, service_date, provided_by, items_given, item_name, quantity, unit } = req.body;
 
   const statusMap = {
     pending: 'Pending',
@@ -465,7 +483,13 @@ exports.updateReferralStatus = async (req, res) => {
 
   try {
     const [[referral]] = await pool.query(
-      'SELECT child_id, mother_id FROM referrals WHERE referral_id = ?',
+      `SELECT r.child_id, r.mother_id,
+              COALESCE(c.first_name, m.first_name) AS first_name,
+              COALESCE(c.last_name, m.last_name) AS last_name
+       FROM referrals r
+       LEFT JOIN children c ON c.child_id = r.child_id
+       LEFT JOIN mothers m ON m.mother_id = r.mother_id
+       WHERE r.referral_id = ?`,
       [id]
     );
     if (!referral) return res.status(404).json({ message: 'Referral not found.' });
@@ -488,6 +512,44 @@ exports.updateReferralStatus = async (req, res) => {
          VALUES (?, ?, ?, ?)`,
         [referral.child_id, serviceLabels[service_type], service_date, provided_by]
       );
+    } else if (normalizedStatus === 'Ongoing' && serviceLabels[service_type] && service_date && provided_by && referral.mother_id) {
+      await pool.query(
+        `INSERT INTO mother_services (mother_id, service_type, service_date, provided_by)
+         VALUES (?, ?, ?, ?)`,
+        [referral.mother_id, serviceLabels[service_type], service_date, provided_by]
+      );
+    }
+
+    // Save items/supplies given if provided
+    const itemsToSave = Array.isArray(items_given) ? items_given : (item_name ? [{ item_name, quantity, unit }] : []);
+    for (const item of itemsToSave) {
+      if (item && item.item_name) {
+        await pool.query(
+          `INSERT INTO referral_items (referral_id, item_name, quantity, unit, given_by, notes)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [id, item.item_name, item.quantity || 1, item.unit || 'pcs', req.user?.user_id || null, response_notes || null]
+        );
+      }
+    }
+
+    // Log in medical_records_audit_trail
+    try {
+      const benType = referral.child_id ? 'child' : 'mother';
+      const benId = referral.child_id || referral.mother_id || 0;
+      const benName = `${referral.first_name || ''} ${referral.last_name || ''}`.trim();
+      const modifierName = `${req.user?.first_name || ''} ${req.user?.last_name || ''}`.trim() || 'BHW';
+      const actionDetails = itemsToSave.length > 0
+        ? `Status updated to ${normalizedStatus}. Supplies given: ${itemsToSave.map(i => `${i.quantity || 1} ${i.unit || ''} ${i.item_name}`).join(', ')}`
+        : `Status updated to ${normalizedStatus}. Notes: ${response_notes || 'None'}`;
+
+      await pool.query(
+        `INSERT INTO medical_records_audit_trail
+         (record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name, action, action_details, modified_by, modifier_name, timestamp)
+         VALUES ('referral', ?, ?, ?, ?, 'update_status', ?, ?, ?, NOW())`,
+        [id, benType, benId, benName, actionDetails, req.user?.user_id || null, modifierName]
+      );
+    } catch (auditErr) {
+      console.warn('Non-fatal referral audit trail insert error:', auditErr.message);
     }
 
     return res.status(200).json({ message: 'Referral status updated.', status: normalizedStatus });
