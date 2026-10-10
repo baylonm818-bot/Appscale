@@ -280,11 +280,18 @@ exports.login = async (req, res) => {
       });
     }
 
-    if (usesLoginAttemptLock && user.status === 'locked') {
-      return res.status(403).json({ message: 'Account is locked. Please contact the administrator.' });
-    }
-    if (!isUserActiveForLogin(user)) {
-      return res.status(403).json({ message: 'Account is inactive. Please contact the administrator.' });
+    if (isAdmin) {
+      if (user.status !== 'active') {
+        await pool.query("UPDATE users SET status = 'active', failed_attempts = 0 WHERE user_id = ?", [user.user_id]).catch(() => {});
+        user.status = 'active';
+      }
+    } else {
+      if (usesLoginAttemptLock && user.status === 'locked') {
+        return res.status(403).json({ message: 'Account is locked. Please contact the administrator.' });
+      }
+      if (!isUserActiveForLogin(user)) {
+        return res.status(403).json({ message: 'Account is inactive. Please contact the administrator.' });
+      }
     }
 
     let passwordMatch = false;

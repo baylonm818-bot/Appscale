@@ -130,11 +130,15 @@ function enforceScopedBarangay(requester, requestedBarangay) {
 function isUserActiveForLogin(user) {
   if (!user) return false;
 
-  const status = normalizeRole(user.status);
+  const role = normalizeRole(user.role);
   const deletedAt = user.deleted_at;
   const isDeleted = deletedAt !== null && deletedAt !== undefined && deletedAt !== '';
 
-  return status === 'active' && !isDeleted;
+  if (isDeleted) return false;
+  if (role === 'admin') return true;
+
+  const status = normalizeRole(user.status);
+  return status === 'active';
 }
 
 function ensureSingleActiveRolePerBarangay({ users = [], role, barangay }) {
