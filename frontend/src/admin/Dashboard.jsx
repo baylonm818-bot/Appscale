@@ -252,7 +252,7 @@ function Dashboard() {
               </Link>
             </div>
 
-            <div className="mt-4 space-y-3 max-h-[340px] overflow-y-auto pr-1">
+            <div className="mt-4 space-y-3 max-h-85 overflow-y-auto pr-1">
               {stats.upcomingActivities && stats.upcomingActivities.length > 0 ? (
                 stats.upcomingActivities.map((act) => {
                   const d = new Date(act.schedule_date);

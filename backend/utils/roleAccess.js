@@ -107,6 +107,46 @@ function enforceScopedBarangay(requester, requestedBarangay) {
   return { allowed: true, barangay: assignedBarangay };
 }
 
+function isUserActiveForLogin(user) {
+  if (!user) return false;
+
+  const status = normalizeRole(user.status);
+  const deletedAt = user.deleted_at;
+  const isDeleted = deletedAt !== null && deletedAt !== undefined && deletedAt !== '';
+
+  return status === 'active' && !isDeleted;
+}
+
+function ensureSingleActiveRolePerBarangay({ users = [], role, barangay }) {
+  const targetRole = normalizeRole(role);
+
+  if (!['bns', 'bhw'].includes(targetRole)) {
+    return { allowed: true, message: 'ok' };
+  }
+
+  const normalizedBarangay = String(barangay || '').trim();
+  if (!normalizedBarangay) {
+    return { allowed: true, message: 'ok' };
+  }
+
+  const hasActiveSameRole = (users || []).some((user) => {
+    const userRole = normalizeRole(user.role);
+    const userBarangay = String(user.barangay || '').trim();
+    const isSameBarangay = sameBarangay(userBarangay, normalizedBarangay);
+    return userRole === targetRole && isSameBarangay && isUserActiveForLogin(user);
+  });
+
+  if (hasActiveSameRole) {
+    const label = targetRole.toUpperCase();
+    return {
+      allowed: false,
+      message: `This barangay already has an active ${label}. Deactivate or lock the existing ${label} before adding a replacement.`,
+    };
+  }
+
+  return { allowed: true, message: 'ok' };
+}
+
 module.exports = {
   normalizeRole,
   sameBarangay,
@@ -116,4 +156,6 @@ module.exports = {
   canAccessSchedule,
   canAccessReferral,
   enforceScopedBarangay,
+  isUserActiveForLogin,
+  ensureSingleActiveRolePerBarangay,
 };

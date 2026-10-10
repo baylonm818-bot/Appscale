@@ -49,6 +49,23 @@ class Measurement {
   String get effectiveWastingStatus =>
       bilateralPittingEdema ? 'SAM' : weightForLengthStatus;
 
+  /// WHO/NNC classification is age-aware: children under 24 months are
+  /// classified using weight-for-length while older children use BMI.
+  String statusForAgeMonths(int ageMonths) {
+    if (ageMonths <= 23) return effectiveWastingStatus;
+
+    if (customBmiStatus != null && customBmiStatus!.isNotEmpty) {
+      return customBmiStatus!;
+    }
+
+    final val = bmi;
+    if (val <= 0) return 'Unknown';
+    if (val < 18.5) return 'Underweight';
+    if (val < 25.0) return 'Normal';
+    if (val < 30.0) return 'Overweight';
+    return 'Obese';
+  }
+
   bool get isSevere =>
       weightForAgeStatus == 'Severely Underweight' ||
       heightForAgeStatus == 'Severely Stunted' ||

@@ -43,3 +43,37 @@ test('Referral visibility follows barangay and assignment rules', () => {
   assert.equal(canAccessReferral({ user_id: 10, role: 'bns', barangay: 'Tiguion' }, { barangay: 'San Isidro', referred_by: 12 }), false);
   assert.equal(canAccessReferral({ user_id: 1, role: 'admin' }, { barangay: 'Tiguion', referred_by: 7 }), true);
 });
+
+test('A barangay can only have one active BNS and one active BHW', () => {
+  const { ensureSingleActiveRolePerBarangay } = require('../utils/roleAccess');
+
+  const users = [
+    { role: 'bns', barangay: 'Tiguion', status: 'active', deleted_at: null },
+    { role: 'bhw', barangay: 'Tiguion', status: 'active', deleted_at: null },
+  ];
+
+  assert.deepEqual(ensureSingleActiveRolePerBarangay({ users, role: 'bns', barangay: 'Tiguion' }), {
+    allowed: false,
+    message: 'This barangay already has an active BNS. Deactivate or lock the existing BNS before adding a replacement.',
+  });
+
+  assert.deepEqual(ensureSingleActiveRolePerBarangay({ users, role: 'bhw', barangay: 'Tiguion' }), {
+    allowed: false,
+    message: 'This barangay already has an active BHW. Deactivate or lock the existing BHW before adding a replacement.',
+  });
+
+  assert.deepEqual(ensureSingleActiveRolePerBarangay({
+    users: [{ role: 'bns', barangay: 'Tiguion', status: 'inactive', deleted_at: null }],
+    role: 'bns',
+    barangay: 'Tiguion',
+  }), { allowed: true, message: 'ok' });
+});
+
+test('Deactivated users are denied by the role access contract', () => {
+  const { isUserActiveForLogin } = require('../utils/roleAccess');
+
+  assert.equal(isUserActiveForLogin({ status: 'active', deleted_at: null }), true);
+  assert.equal(isUserActiveForLogin({ status: 'inactive', deleted_at: null }), false);
+  assert.equal(isUserActiveForLogin({ status: 'locked', deleted_at: null }), false);
+  assert.equal(isUserActiveForLogin({ status: 'active', deleted_at: '2024-01-01' }), false);
+});

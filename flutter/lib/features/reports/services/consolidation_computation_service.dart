@@ -1,6 +1,7 @@
 import '../../../data/local/child_repository.dart';
 import '../../../data/local/measurement_repository.dart';
 import '../../../data/models/child.dart';
+import '../../../data/models/measurement.dart';
 
 class ConsolidationRowData {
   final String label;
@@ -129,8 +130,14 @@ class ConsolidationComputationService {
         final thisMonthMs = measurements.where((mRec) => mRec.date.year == year && mRec.date.month == m).toList();
         final prevMs = measurements.where((mRec) => mRec.date.year < year || (mRec.date.year == year && mRec.date.month < m)).toList();
 
-        final statusNew = thisMonthMs.isNotEmpty ? thisMonthMs.first.bmiStatus : child.nutritionStatus;
-        final statusOld = prevMs.isNotEmpty ? prevMs.first.bmiStatus : 'Normal';
+        final statusNew = _reportStatusForChildAndMeasurement(
+          child,
+          thisMonthMs.isNotEmpty ? thisMonthMs.first : null,
+        );
+        final statusOld = _reportStatusForChildAndMeasurement(
+          child,
+          prevMs.isNotEmpty ? prevMs.first : null,
+        );
 
         // Fill OLD column
         if (statusOld == 'Underweight') {
@@ -188,6 +195,25 @@ class ConsolidationComputationService {
         ConsolidationRowData(label: 'TOTAL', values: rowGrandTotal),
       ],
     );
+  }
+
+  String _reportStatusForChildAndMeasurement(Child child, dynamic measurement) {
+    if (measurement == null) return 'Normal';
+
+    final inferred = measurement is Measurement
+        ? measurement.statusForAgeMonths(child.ageInMonthsAt(measurement.date))
+        : measurement['weightForAgeStatus'] ?? 'Normal';
+
+    switch (inferred) {
+      case 'SAM':
+      case 'Severely Underweight':
+        return 'Severely Underweight';
+      case 'MAM':
+      case 'Underweight':
+        return 'Underweight';
+      default:
+        return 'Normal';
+    }
   }
 
   ConsolidationMatrixData _compute24to59Matrix(String barangay, int year) {

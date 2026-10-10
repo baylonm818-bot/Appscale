@@ -218,37 +218,23 @@ exports.createReferral = async (req, res) => {
     // ── Enforce that beneficiary has recorded visits/measurements ──────────
     if (beneficiaryType === 'mother' && resolvedMotherId) {
       const [[motherRecord]] = await pool.query(
-        `SELECT m.weight_kg, m.height_cm, m.muac_cm,
-                (SELECT COUNT(*) FROM mother_services WHERE mother_id = m.mother_id) AS service_count
+        `SELECT m.mother_id, m.first_name, m.last_name, m.barangay
          FROM mothers m
          WHERE m.mother_id = ?`,
         [resolvedMotherId]
       );
-      const hasMotherVisits = motherRecord && (
-        motherRecord.weight_kg != null ||
-        motherRecord.height_cm != null ||
-        motherRecord.muac_cm != null ||
-        Number(motherRecord.service_count) > 0
-      );
-      if (!hasMotherVisits) {
-        return res.status(400).json({
-          message: 'Cannot create referral: Mother has no recorded visits or health records.',
-        });
+      if (!motherRecord) {
+        return res.status(404).json({ message: 'Mother not found.' });
       }
     } else if (beneficiaryType === 'child' && resolvedChildId) {
       const [[childRecord]] = await pool.query(
-        `SELECT (SELECT COUNT(*) FROM nutrition_records WHERE child_id = ?) AS record_count,
-                (SELECT COUNT(*) FROM child_services WHERE child_id = ?) AS service_count`,
-        [resolvedChildId, resolvedChildId]
+        `SELECT c.child_id, c.first_name, c.last_name, c.barangay
+         FROM children c
+         WHERE c.child_id = ?`,
+        [resolvedChildId]
       );
-      const hasChildVisits = childRecord && (
-        Number(childRecord.record_count) > 0 ||
-        Number(childRecord.service_count) > 0
-      );
-      if (!hasChildVisits) {
-        return res.status(400).json({
-          message: 'Cannot create referral: Child has no recorded measurements or health records.',
-        });
+      if (!childRecord) {
+        return res.status(404).json({ message: 'Child not found.' });
       }
     }
 

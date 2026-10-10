@@ -1,4 +1,6 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:appscalev3/data/growth_standards/growth_classifier.dart';
 import 'package:appscalev3/data/models/referral.dart';
 import 'package:appscalev3/data/models/child.dart';
@@ -9,8 +11,11 @@ import 'package:appscalev3/data/models/deworming_record.dart';
 import 'package:appscalev3/data/models/program_schedule.dart';
 import 'package:appscalev3/data/local/vitamin_a_repository.dart';
 import 'package:appscalev3/data/local/deworming_repository.dart';
+import 'package:appscalev3/data/local/hive_boxes.dart';
 import 'package:appscalev3/data/growth_standards/measurement_validator.dart';
+import 'package:appscalev3/features/reports/services/consolidation_computation_service.dart';
 import 'package:appscalev3/shared/utils/app_user_identity.dart';
+import 'package:appscalev3/data/models/measurement.dart';
 
 void main() {
   group('Item 4: GrowthClassifier Tests', () {
@@ -169,6 +174,97 @@ void main() {
 
       final markedRead = restored.copyWith(isRead: true);
       expect(markedRead.isRead, isTrue);
+    });
+  });
+
+  group('Measurement classification tests', () {
+    test('Infants use weight-for-length status instead of BMI for wasting classification', () {
+      final infant = Measurement(
+        date: DateTime(2026, 3, 1),
+        weightKg: 7.2,
+        heightCm: 66.0,
+        muacCm: 11.5,
+        bilateralPittingEdema: false,
+        weightForAgeStatus: 'Underweight',
+        heightForAgeStatus: 'Normal',
+        weightForLengthStatus: 'SAM',
+        customBmi: 16.5,
+        customBmiStatus: 'Normal',
+      );
+
+      expect(infant.statusForAgeMonths(11), equals('SAM'));
+      expect(infant.statusForAgeMonths(30), equals('Normal'));
+      expect(infant.effectiveWastingStatus, equals('SAM'));
+    });
+  });
+
+  group('Report consolidation logic', () {
+    test('0-23 month consolidation uses the measurement-date weight-for-length status for infants', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (MethodCall methodCall) async {
+          if (methodCall.method == 'getApplicationDocumentsDirectory') {
+            return '/tmp';
+          }
+          return null;
+        },
+      );
+      await Hive.initFlutter();
+      await Hive.openBox(HiveBoxes.children);
+      await Hive.openBox(HiveBoxes.measurements);
+
+      final childBox = Hive.box(HiveBoxes.children);
+      final measurementBox = Hive.box(HiveBoxes.measurements);
+      await childBox.clear();
+      await measurementBox.clear();
+
+      final child = Child(
+        id: 'child-0-23-report',
+        sequenceNo: '001',
+        fullName: 'Infant Report Test',
+        birthDate: DateTime(2025, 1, 10),
+        gender: 'Boy',
+        address: 'Purok 1',
+        barangay: 'Tiguion',
+        belongsToIpGroup: false,
+        disability: 'None',
+        guardian: const Guardian(
+          fullName: 'Parent Name',
+          relationship: 'Mother',
+          contactNo: '09999999999',
+        ),
+        createdAt: DateTime(2025, 1, 10),
+        nutritionStatus: 'Normal',
+        stuntingStatus: 'Normal',
+        wastingStatus: 'Normal',
+      );
+
+      await childBox.put(child.id, child.toMap()..['_syncStatus'] = 'synced');
+
+      final measurement = Measurement(
+        date: DateTime(2026, 1, 15),
+        weightKg: 7.6,
+        heightCm: 66.0,
+        muacCm: 11.0,
+        bilateralPittingEdema: false,
+        weightForAgeStatus: 'Normal',
+        heightForAgeStatus: 'Normal',
+        weightForLengthStatus: 'SAM',
+        customBmi: 17.4,
+        customBmiStatus: 'Normal',
+      );
+
+      await measurementBox.put(child.id, [measurement.toMap()..['_syncStatus'] = 'synced']);
+
+      final matrix = ConsolidationComputationService().computeMatrix(
+        'consolidation_0_23',
+        'Tiguion',
+        year: 2026,
+      );
+
+      expect(matrix.rows[2].values[1], greaterThan(0));
+      expect(matrix.rows[2].values[1], equals(1));
     });
   });
 

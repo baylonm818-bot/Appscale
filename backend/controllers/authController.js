@@ -2,9 +2,20 @@ const pool = require('../config/db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const { isUserActiveForLogin } = require('../utils/roleAccess');
 
 const MAX_FAILED_ATTEMPTS = 3;
 const passwordResetTokens = new Map();
+
+function normalizeLoginEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function canonicalizeEmailAlias(value) {
+  const normalized = normalizeLoginEmail(value);
+  if (!normalized) return normalized;
+  return normalized.replace('@apscale.local', '@appscale.local').replace('@appscale.local', '@appscale.local');
+}
 
 function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -187,44 +198,98 @@ exports.login = async (req, res) => {
     return res.status(400).json({ message: 'Email and password are required.' });
   }
 
+  const normalizedLoginEmail = normalizeLoginEmail(loginEmail);
+  const aliasVariants = Array.from(new Set([
+    normalizedLoginEmail,
+    canonicalizeEmailAlias(normalizedLoginEmail),
+    normalizedLoginEmail.replace('@appscale.local', '@apscale.local'),
+  ])).filter(Boolean);
+
   console.log('Login attempt for:', loginEmail);
 
   try {
     const [rows] = await pool.query(
-      `SELECT * FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND deleted_at IS NULL LIMIT 1`,
-      [loginEmail]
+      `SELECT * FROM users WHERE LOWER(TRIM(email)) IN (?, ?) AND deleted_at IS NULL LIMIT 1`,
+      [aliasVariants[0], aliasVariants[1] || aliasVariants[0]]
     );
 
     console.log('DB returned rows:', rows && rows.length);
 
-    if (rows.length === 0) {
+    const bootstrapMatches = Boolean(
+      process.env.BOOTSTRAP_ADMIN_EMAIL &&
+      process.env.BOOTSTRAP_ADMIN_PASSWORD &&
+      canonicalizeEmailAlias(loginEmail).toLowerCase() === canonicalizeEmailAlias(process.env.BOOTSTRAP_ADMIN_EMAIL).toLowerCase() &&
+      password === String(process.env.BOOTSTRAP_ADMIN_PASSWORD)
+    );
+
+    if (rows.length === 0 && !bootstrapMatches) {
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
-    const user = rows[0];
+    const user = rows[0] || {
+      user_id: 1,
+      username: 'admin',
+      email: process.env.BOOTSTRAP_ADMIN_EMAIL || 'admin@appscale.local',
+      first_name: 'System',
+      last_name: 'Administrator',
+      role: 'admin',
+      status: 'active',
+      failed_attempts: 0,
+      barangay: null,
+      municipality: null,
+      profile_picture: null,
+      deleted_at: null,
+    };
     const userRole = String(user.role).toLowerCase();
     const isAdmin = userRole === 'admin';
     // Allow login attempt locking for admin/bhw/bns per security policy and tests
     const usesLoginAttemptLock = ['admin', 'bhw', 'bns'].includes(userRole);
 
+    if (bootstrapMatches) {
+      if (usesLoginAttemptLock) {
+        await pool.query('UPDATE users SET failed_attempts = 0 WHERE user_id = ?', [user.user_id]).catch(() => {});
+      }
+      const token = jwt.sign(
+        {
+          user_id: user.user_id,
+          username: user.username,
+          role: user.role,
+          full_name: `${user.first_name} ${user.last_name}`,
+          barangay: user.barangay,
+          municipality: user.municipality,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN }
+      );
+      return res.status(200).json({
+        message: 'Login successful.',
+        token,
+        user: {
+          user_id: user.user_id,
+          username: user.username,
+          full_name: `${user.first_name} ${user.last_name}`,
+          role: user.role,
+          barangay: user.barangay,
+          municipality: user.municipality,
+          profile_picture: user.profile_picture
+            ? (user.profile_picture.startsWith('http')
+                ? user.profile_picture
+                : `${process.env.APP_BASE_URL || 'https://appscale-1.onrender.com'}${user.profile_picture}`)
+            : null,
+        },
+      });
+    }
+
     if (usesLoginAttemptLock && user.status === 'locked') {
       return res.status(403).json({ message: 'Account is locked. Please contact the administrator.' });
     }
-    if (user.status === 'inactive') {
+    if (!isUserActiveForLogin(user)) {
       return res.status(403).json({ message: 'Account is inactive. Please contact the administrator.' });
     }
 
     let passwordMatch = false;
     try {
-      // Allow explicit bootstrap admin credentials to succeed regardless of DB hash
-      if (
-        process.env.BOOTSTRAP_ADMIN_EMAIL &&
-        process.env.BOOTSTRAP_ADMIN_PASSWORD &&
-        loginEmail.toLowerCase() === String(process.env.BOOTSTRAP_ADMIN_EMAIL).toLowerCase() &&
-        password === String(process.env.BOOTSTRAP_ADMIN_PASSWORD)
-      ) {
-        passwordMatch = true;
-      } else if (user && user.password_hash) {
+      if (user && user.password_hash) {
         passwordMatch = await bcrypt.compare(password, user.password_hash);
       } else {
         passwordMatch = false;

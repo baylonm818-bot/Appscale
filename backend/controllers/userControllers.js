@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 const bcrypt = require('bcrypt');
-const { canViewUserList, canEditUser } = require('../utils/roleAccess');
+const { canViewUserList, canEditUser, ensureSingleActiveRolePerBarangay } = require('../utils/roleAccess');
 
 exports.getUsers = async (req, res) => {
   try {
@@ -78,30 +78,12 @@ exports.getUserStats = async (req, res) => {
         const finalUsername = (username && username.trim()) ? username.trim() : email.trim();
 
         try{
-            if (role === 'bns') {
-                const [[existingBarangayBns]] = await pool.query(
-                    `SELECT COUNT(*) AS count
-                     FROM users
-                     WHERE role = 'bns' AND LOWER(TRIM(barangay)) = LOWER(TRIM(?))
-                       AND status = 'active' AND deleted_at IS NULL`,
-                    [barangay]
-                );
-                if (existingBarangayBns.count > 0) {
-                    return res.status(409).json({ message: 'This barangay already has an active BNS. Deactivate or lock the existing BNS before adding a replacement.' });
-                }
-            }
-
-            if (role === 'bhw') {
-                const [[existingBarangayBhw]] = await pool.query(
-                    `SELECT COUNT(*) AS count
-                     FROM users
-                     WHERE role = 'bhw' AND LOWER(TRIM(barangay)) = LOWER(TRIM(?))
-                       AND status = 'active' AND deleted_at IS NULL`,
-                    [barangay]
-                );
-                if (existingBarangayBhw.count > 0) {
-                    return res.status(409).json({ message: 'This barangay already has an active BHW. Deactivate or lock the existing BHW before adding a replacement.' });
-                }
+            const [existingUsers] = await pool.query(
+                `SELECT role, barangay, status, deleted_at FROM users WHERE deleted_at IS NULL AND status = 'active'`
+            );
+            const activeRoleGuard = ensureSingleActiveRolePerBarangay({ users: existingUsers, role, barangay });
+            if (!activeRoleGuard.allowed) {
+                return res.status(409).json({ message: activeRoleGuard.message });
             }
 
             const [existingUser] = await pool.query('SELECT * FROM users WHERE email = ? OR username = ?', [email, finalUsername]);
@@ -141,30 +123,15 @@ exports.updateUser = async (req, res) => {
       return res.status(403).json({ message: 'You can only edit users in your own barangay.' });
     }
 
-    if (role === 'bns') {
-      const [[existingBarangayBns]] = await pool.query(
-        `SELECT COUNT(*) AS count
-         FROM users
-         WHERE role = 'bns' AND LOWER(TRIM(barangay)) = LOWER(TRIM(?))
-           AND status = 'active' AND deleted_at IS NULL AND user_id <> ?`,
-        [barangay, user_id]
-      );
-      if (existingBarangayBns.count > 0) {
-        return res.status(409).json({ message: 'This barangay already has an active BNS. Deactivate or lock the existing BNS before assigning another one.' });
-      }
-    }
-
-    if (role === 'bhw') {
-      const [[existingBarangayBhw]] = await pool.query(
-        `SELECT COUNT(*) AS count
-         FROM users
-         WHERE role = 'bhw' AND LOWER(TRIM(barangay)) = LOWER(TRIM(?))
-           AND status = 'active' AND deleted_at IS NULL AND user_id <> ?`,
-        [barangay, user_id]
-      );
-      if (existingBarangayBhw.count > 0) {
-        return res.status(409).json({ message: 'This barangay already has an active BHW. Deactivate or lock the existing BHW before assigning another one.' });
-      }
+    const [existingUsers] = await pool.query(
+      `SELECT user_id, role, barangay, status, deleted_at
+       FROM users
+       WHERE deleted_at IS NULL AND status = 'active' AND user_id <> ?`,
+      [user_id]
+    );
+    const activeRoleGuard = ensureSingleActiveRolePerBarangay({ users: existingUsers, role, barangay });
+    if (!activeRoleGuard.allowed) {
+      return res.status(409).json({ message: activeRoleGuard.message });
     }
 
     const finalUsername = (username && username.trim()) ? username.trim() : email.trim();
