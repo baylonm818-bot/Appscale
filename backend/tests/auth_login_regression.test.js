@@ -34,7 +34,7 @@ test('login rejects a non-existent admin alias with a generic invalid-credential
   await authController.login(req, res);
 
   assert.equal(res.statusCode, 401);
-  assert.equal(res.payload.message, 'Invalid email or password.');
+  assert.equal(res.payload.message, 'Incorrect email or password.');
 });
 
 test('admin account locks after repeated failed login attempts', async () => {
@@ -83,8 +83,8 @@ test('admin account locks after repeated failed login attempts', async () => {
 
     const second = makeRes();
     await authController.login({ body: { email: user.email, password: 'wrong-pass-2' } }, second);
-    assert.equal(second.statusCode, 429);
-    assert.match(second.payload.message, /Please wait 30 second\(s\) before trying again\./);
+    assert.equal(second.statusCode, 401);
+    assert.equal(second.payload.message, 'Incorrect email or password.');
   } finally {
     pool.query = originalQuery;
   }

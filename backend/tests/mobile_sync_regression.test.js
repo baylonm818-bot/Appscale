@@ -77,7 +77,7 @@ test('BHW visit log with weight and height creates a nutrition record for the gr
     if (sql.includes('INSERT INTO child_services')) {
       return [{ insertId: 222 }];
     }
-    if (sql.includes('SELECT nutrition_record_id FROM nutrition_records')) {
+    if (sql.includes('FROM nutrition_records') && sql.includes('SELECT')) {
       return [[]];
     }
     if (sql.includes('INSERT INTO nutrition_records')) {

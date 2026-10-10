@@ -223,7 +223,7 @@ exports.login = async (req, res) => {
     );
 
     if (rows.length === 0 && !bootstrapMatches) {
-      return res.status(401).json({ message: 'Invalid email or password.' });
+      return res.status(401).json({ message: 'Incorrect email or password.' });
     }
 
     const user = rows[0] || {
@@ -311,20 +311,14 @@ exports.login = async (req, res) => {
           return res.status(403).json({ message: 'Account locked due to too many failed attempts.' });
         }
 
-        // Implement short wait-rate limiting: after 2+ failed attempts, inform client to wait
-        if (newFailedAttempts >= 2) {
-          await pool.query('UPDATE users SET failed_attempts = ? WHERE user_id = ?', [newFailedAttempts, user.user_id]);
-          return res.status(429).json({ message: 'Please wait 30 second(s) before trying again.' });
-        }
-
-        // Otherwise increment and return generic invalid message with remaining attempts
+        // Return plain invalid/incorrect credentials message without rate limit timer or countdown
         await pool.query('UPDATE users SET failed_attempts = ? WHERE user_id = ?', [newFailedAttempts, user.user_id]);
-        return res.status(401).json({ message: `Invalid email or password. ${MAX_FAILED_ATTEMPTS - newFailedAttempts} attempt(s) remaining.` });
+        return res.status(401).json({ message: 'Incorrect email or password.' });
       }
 
       // Non-locked roles
       await pool.query('UPDATE users SET failed_attempts = ? WHERE user_id = ?', [newFailedAttempts, user.user_id]);
-      return res.status(401).json({ message: 'Invalid email or password.' });
+      return res.status(401).json({ message: 'Incorrect email or password.' });
     }
 
     if (usesLoginAttemptLock) {
