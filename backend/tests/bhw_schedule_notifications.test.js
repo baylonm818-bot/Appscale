@@ -162,3 +162,40 @@ test('BHW schedule query includes all-barangay scope when fetching user schedule
     pool.query = originalQuery;
   }
 });
+
+test('shared notification controller filters system sync rows without invalid table alias usage', async () => {
+  const notificationController = require('../controllers/notificationControllers');
+  const originalQuery = pool.query;
+  const calls = [];
+
+  pool.query = async (sql, params) => {
+    calls.push({ sql, params });
+
+    if (sql.includes('COUNT(*) AS unreadCount')) {
+      return [[{ unreadCount: 1 }]];
+    }
+
+    return [[{
+      notification_id: 5,
+      title: 'Vaccination Day',
+      message: 'Barangay activity',
+      type: 'schedule',
+      is_read: false,
+      created_at: '2026-09-29T00:00:00Z'
+    }]];
+  };
+
+  try {
+    const req = { user: { role: 'bhw' } };
+    const res = makeRes();
+
+    await notificationController.getNotifications(req, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.payload.notifications.length, 1);
+    assert.ok(calls.some((call) => call.sql.includes('FROM notifications n')));
+    assert.ok(!calls.some((call) => call.sql.includes('n.type <>') && !call.sql.includes('FROM notifications n')));
+  } finally {
+    pool.query = originalQuery;
+  }
+});

@@ -78,7 +78,7 @@ exports.createBhwSchedule = async (req, res) => {
         schedule_time || null,
         venue || null,
         user.barangay,
-        user.role,          // target_role = role of creator so same-role same-barangay sees it
+        user.role === 'bhw' ? 'bns' : 'bhw', // target_role = partner role (BHW→BNS sees it, BNS→BHW sees it)
         facilitator || null,
         notes || null,
         user.user_id,

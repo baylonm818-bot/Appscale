@@ -87,6 +87,26 @@ function canAccessReferral(requester, referral) {
   return false;
 }
 
+function canAccessMasterlistItem(requester, item) {
+  if (!requester || !item) return false;
+  if (normalizeRole(requester.role) === 'admin') return true;
+
+  const requesterRole = normalizeRole(requester.role);
+  if (requesterRole === 'bhw' || requesterRole === 'bns') {
+    return sameBarangay(requester.barangay, item.barangay);
+  }
+
+  return false;
+}
+
+function canTransferBeneficiary(requester, fromBarangay, toBarangay) {
+  if (!requester) return false;
+  if (normalizeRole(requester.role) === 'admin') return true;
+
+  if (!fromBarangay || !toBarangay) return false;
+  return sameBarangay(requester.barangay, fromBarangay) && sameBarangay(requester.barangay, toBarangay);
+}
+
 function enforceScopedBarangay(requester, requestedBarangay) {
   if (!requester) return { allowed: false, reason: 'missing_requester' };
 
@@ -155,6 +175,8 @@ module.exports = {
   canEditUser,
   canAccessSchedule,
   canAccessReferral,
+  canAccessMasterlistItem,
+  canTransferBeneficiary,
   enforceScopedBarangay,
   isUserActiveForLogin,
   ensureSingleActiveRolePerBarangay,

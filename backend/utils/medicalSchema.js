@@ -94,6 +94,40 @@ async function ensureMedicalRecordTables(pool) {
         )
       `,
     },
+    {
+      name: 'referral_items',
+      sql: `
+        CREATE TABLE IF NOT EXISTS referral_items (
+          referral_item_id INT AUTO_INCREMENT PRIMARY KEY,
+          referral_id INT NOT NULL,
+          item_name VARCHAR(150) NOT NULL,
+          quantity DECIMAL(10,2) DEFAULT 1,
+          unit VARCHAR(50) NULL,
+          given_by INT NULL,
+          given_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          notes TEXT NULL,
+          FOREIGN KEY (referral_id) REFERENCES referrals (referral_id) ON DELETE CASCADE,
+          FOREIGN KEY (given_by) REFERENCES users (user_id) ON DELETE SET NULL
+        )
+      `,
+    },
+    {
+      name: 'transfer_history',
+      sql: `
+        CREATE TABLE IF NOT EXISTS transfer_history (
+          transfer_id INT AUTO_INCREMENT PRIMARY KEY,
+          entity_type VARCHAR(20) NOT NULL,
+          entity_id INT NOT NULL,
+          from_barangay VARCHAR(100) NULL,
+          to_barangay VARCHAR(100) NOT NULL,
+          transferred_by INT NULL,
+          transferred_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          reason TEXT NULL,
+          notes TEXT NULL,
+          FOREIGN KEY (transferred_by) REFERENCES users (user_id) ON DELETE SET NULL
+        )
+      `,
+    },
   ];
 
   for (const table of tableDefinitions) {

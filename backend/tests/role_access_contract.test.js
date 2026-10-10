@@ -77,3 +77,41 @@ test('Deactivated users are denied by the role access contract', () => {
   assert.equal(isUserActiveForLogin({ status: 'locked', deleted_at: null }), false);
   assert.equal(isUserActiveForLogin({ status: 'active', deleted_at: '2024-01-01' }), false);
 });
+
+test('Role middleware rejects inactive users and wrong-role access consistently', () => {
+  const roleMiddleware = require('../middleware/roleMiddleware');
+
+  let called = false;
+  const activeReq = { user: { role: 'bhw', status: 'active' } };
+  const inactiveReq = { user: { role: 'bns', status: 'inactive' } };
+  const wrongRoleReq = { user: { role: 'bns', status: 'active' } };
+
+  const res = {
+    status(code) {
+      this.code = code;
+      return this;
+    },
+    json(payload) {
+      this.payload = payload;
+      return this;
+    },
+  };
+
+  roleMiddleware(['bhw'])(activeReq, res, () => { called = true; });
+  assert.equal(called, true);
+  assert.equal(res.code, undefined);
+
+  const inactiveRes = {
+    status(code) { this.code = code; return this; },
+    json(payload) { this.payload = payload; return this; },
+  };
+  roleMiddleware(['bhw', 'bns'])(inactiveReq, inactiveRes, () => { called = true; });
+  assert.equal(inactiveRes.code, 401);
+
+  const wrongRes = {
+    status(code) { this.code = code; return this; },
+    json(payload) { this.payload = payload; return this; },
+  };
+  roleMiddleware(['bhw'])(wrongRoleReq, wrongRes, () => { called = true; });
+  assert.equal(wrongRes.code, 403);
+});

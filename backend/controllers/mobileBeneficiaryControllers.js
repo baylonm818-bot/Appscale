@@ -248,10 +248,10 @@ exports.upsertChild = async (req, res) => {
       const childName = `${firstName} ${lastName || ''}`.trim();
       await pool.query(
         `INSERT INTO notifications (title, message, type, is_read, created_at)
-         VALUES (?, ?, 'system', FALSE, NOW())`,
+         VALUES (?, ?, 'child', FALSE, NOW())`,
         [
-          `Data Synced Automatically: ${childName}`,
-          `Child beneficiary ${childName} in Barangay ${resolvedBarangay} was automatically synced and added to the masterlist.`,
+          `New Child Registered: ${childName}`,
+          `Child beneficiary ${childName} in Barangay ${resolvedBarangay} was added to the masterlist.`,
         ]
       );
     } catch (notifErr) {
@@ -436,10 +436,25 @@ exports.upsertMother = async (req, res) => {
       if (safeMuac != null) {
         muacStatus = safeMuac < 23 ? 'At risk' : 'Normal';
       }
-      await pool.query('UPDATE mothers SET bmi = ?, bmi_status = ?, muac_status = ? WHERE mother_id = ?', [bmi, bmiStatus, muacStatus, motherId]);
     } catch (e) {
       console.error('Post-insert mother BMI computation failed:', e && e.message);
     }
+
+    // Automatic Notification for BHW/Admin on new mother registration
+    try {
+      const motherName = `${firstName} ${lastName || ''}`.trim();
+      await pool.query(
+        `INSERT INTO notifications (title, message, type, is_read, created_at)
+         VALUES (?, ?, 'mother', FALSE, NOW())`,
+        [
+          `New Mother Registered: ${motherName}`,
+          `Mother beneficiary ${motherName} in Barangay ${resolvedBarangay} was added to the masterlist.`,
+        ]
+      );
+    } catch (notifErr) {
+      console.error('Auto-sync mother notification error (non-fatal):', notifErr && notifErr.message);
+    }
+
     return res.status(201).json({
       message: 'Mother registered successfully.',
       mother_id: result.insertId,
@@ -794,7 +809,7 @@ exports.createMobileSchedule = async (req, res) => {
        (title, schedule_type, schedule_date, schedule_time, venue, barangay, target_role, notes, status, facilitator)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'BNS Mobile')`,
       [title, schedule_type, schedule_date, schedule_time || null, venue || null,
-       resolvedBarangay || null, target_role || 'bns', notes || null]
+       resolvedBarangay || null, target_role || 'bhw', notes || null]
     );
 
     return res.status(201).json({ 
@@ -938,8 +953,18 @@ exports.getMobileSync = async (req, res) => {
         refParams
       ),
       pool.query(
-        `SELECT notification_id, title, message, type, is_read, related_id, created_at
-         FROM notifications ORDER BY created_at DESC LIMIT 50`
+        `SELECT DISTINCT n.notification_id, n.title, n.message, n.type, n.is_read, n.related_id, n.created_at
+         FROM notifications n
+         LEFT JOIN schedules s ON n.type = 'schedule' AND n.related_id = s.schedule_id
+         LEFT JOIN referrals r ON n.type = 'referral' AND n.related_id = r.referral_id
+         LEFT JOIN children c ON c.child_id = r.child_id
+         LEFT JOIN mothers m ON m.mother_id = r.mother_id
+         WHERE ? IS NULL OR TRIM(?) = ''
+            OR s.barangay = ? OR s.barangay = 'All Barangays'
+            OR COALESCE(c.barangay, m.barangay) = ?
+            OR n.title LIKE ? OR n.message LIKE ?
+         ORDER BY n.created_at DESC LIMIT 50`,
+        [barangay, barangay, barangay, barangay, `%${barangay}%`, `%${barangay}%`]
       ),
     ]);
 

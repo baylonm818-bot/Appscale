@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { canAccessMasterlistItem, canTransferBeneficiary } = require('../utils/roleAccess');
 
 exports.getMasterlistStats = async (req, res) => {
   try {
@@ -30,6 +31,11 @@ exports.getMasterlistStats = async (req, res) => {
 
 exports.getChildren = async (req, res) => {
   try {
+    const role = String(req.user?.role || '').toLowerCase();
+    const barangay = req.user?.barangay;
+    const whereClause = role === 'admin' ? '1=1' : 'LOWER(TRIM(c.barangay)) = LOWER(TRIM(?))';
+    const params = role === 'admin' ? [] : [barangay];
+
     const [children] = await pool.query(
       `SELECT
          c.child_id, c.first_name, c.last_name, c.sex, c.age_in_months,
@@ -50,9 +56,12 @@ exports.getChildren = async (req, res) => {
            GROUP BY child_id
          ) nr2 ON nr1.record_id = nr2.max_id
        ) nr ON nr.child_id = c.child_id
-       ORDER BY c.first_name ASC`
+       WHERE ${whereClause}
+       ORDER BY c.first_name ASC`, params
     );
-    return res.status(200).json(children);
+
+    const filtered = children.filter((child) => canAccessMasterlistItem(req.user, child));
+    return res.status(200).json(filtered);
   } catch (error) {
     console.error('Get children error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });
@@ -61,11 +70,17 @@ exports.getChildren = async (req, res) => {
 
 exports.getMothers = async (req, res) => {
   try {
+    const role = String(req.user?.role || '').toLowerCase();
+    const barangay = req.user?.barangay;
+    const whereClause = role === 'admin' ? '1=1' : 'LOWER(TRIM(m.barangay)) = LOWER(TRIM(?))';
+    const params = role === 'admin' ? [] : [barangay];
+
     const [mothers] = await pool.query(
-      `SELECT mother_id, first_name, last_name, barangay, contact_number, status, child_id,
-              (status = 'inactive') AS is_completed
-       FROM mothers
-       ORDER BY first_name ASC`
+      `SELECT m.mother_id, m.first_name, m.last_name, m.barangay, m.contact_number, m.status, m.child_id,
+              (m.status = 'inactive') AS is_completed
+       FROM mothers m
+       WHERE ${whereClause}
+       ORDER BY m.first_name ASC`, params
     );
 
     const [linkedChildren] = await pool.query(
@@ -77,21 +92,66 @@ exports.getMothers = async (req, res) => {
          END AS age_group,
          barangay, status
        FROM children
-       WHERE mother_id IS NOT NULL
-       ORDER BY first_name ASC`
+       WHERE ${role === 'admin' ? '1=1' : 'LOWER(TRIM(barangay)) = LOWER(TRIM(?))'}
+       ORDER BY first_name ASC`, role === 'admin' ? [] : [barangay]
     );
 
-    const mothersWithChildren = mothers.map((mother) => ({
-      ...mother,
-      is_completed: Boolean(mother.is_completed),
-      linked_children: linkedChildren.filter(
-        (child) => child.mother_id === mother.mother_id || child.child_id === mother.child_id
-      ),
-    }));
+    const mothersWithChildren = mothers
+      .filter((mother) => canAccessMasterlistItem(req.user, mother))
+      .map((mother) => ({
+        ...mother,
+        is_completed: Boolean(mother.is_completed),
+        linked_children: linkedChildren.filter(
+          (child) => child.mother_id === mother.mother_id || child.child_id === mother.child_id
+        ),
+      }));
 
     return res.status(200).json(mothersWithChildren);
   } catch (error) {
     console.error('Get mothers error:', error);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+exports.transferBeneficiary = async (req, res) => {
+  const { entityType, entityId, targetBarangay, targetBnsUserId, reason } = req.body;
+
+  if (!entityType || !entityId || !targetBarangay || !targetBnsUserId) {
+    return res.status(400).json({ message: 'Entity type, id, destination barangay, and target BNS are required.' });
+  }
+
+  const role = String(req.user?.role || '').toLowerCase();
+  const fromBarangay = req.user?.barangay || null;
+
+  if (role !== 'admin' && !canTransferBeneficiary(req.user, fromBarangay, targetBarangay)) {
+    return res.status(403).json({ message: 'You can only transfer records within your own barangay.' });
+  }
+
+  try {
+    const table = entityType === 'mother' ? 'mothers' : 'children';
+    const idColumn = entityType === 'mother' ? 'mother_id' : 'child_id';
+    const [[record]] = await pool.query(`SELECT * FROM ${table} WHERE ${idColumn} = ? LIMIT 1`, [entityId]);
+    if (!record) {
+      return res.status(404).json({ message: 'Beneficiary not found.' });
+    }
+
+    await pool.query(`UPDATE ${table} SET barangay = ?, updated_at = NOW() WHERE ${idColumn} = ?`, [targetBarangay, entityId]);
+
+    await pool.query(
+      `INSERT INTO archive_records (table_name, record_id, snapshot, reason, archived_by, archived_at)
+       VALUES (?, ?, ?, 'transfer', ?, NOW())`,
+      [table, entityId, JSON.stringify(record), req.user?.user_id || null]
+    );
+
+    await pool.query(
+      `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
+       VALUES (?, ?, 'system', FALSE, ?, NOW())`,
+      [`Beneficiary transferred: ${record.first_name || 'Record'} ${record.last_name || ''}`.trim(), `A ${entityType} record moved from ${record.barangay || fromBarangay} to ${targetBarangay}.`, entityId]
+    );
+
+    return res.status(200).json({ message: 'Beneficiary transferred successfully.' });
+  } catch (error) {
+    console.error('Transfer beneficiary error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };

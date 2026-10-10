@@ -1,5 +1,9 @@
 const pool = require('../config/db');
 
+function bhwNotificationExclusionClause(alias = 'n') {
+  return `(${alias}.type <> 'system' AND ${alias}.title NOT LIKE 'Data Synced%' AND ${alias}.title NOT LIKE 'Data Synced Automatically%')`;
+}
+
 // Ensure table exists on initialization
 (async () => {
   try {
@@ -56,25 +60,23 @@ exports.getNotifications = async (req, res) => {
     const role = String(req.user?.role || '').toLowerCase();
 
     // Build conditional WHERE clause depending on role. Keep referral/malnutrition/schedule notifications.
-    let whereClause = "";
+    let whereClause = '';
     if (role === 'bhw') {
-      // Exclude system/auto-sync records for BHW users
-      whereClause = "WHERE type <> 'system' AND title NOT LIKE 'Data Synced%'";
+      whereClause = `WHERE n.type <> 'system' AND n.title NOT LIKE 'Data Synced%' AND n.title NOT LIKE 'Data Synced Automatically%'`;
     }
 
     const [notifications] = await pool.query(
-      `SELECT notification_id, title, message, type, is_read, created_at
-       FROM notifications
+      `SELECT n.notification_id, n.title, n.message, n.type, n.is_read, n.created_at
+       FROM notifications n
        ${whereClause}
-       ORDER BY created_at DESC
+       ORDER BY n.created_at DESC
        LIMIT 50`
     );
 
     const [[{ unreadCount }]] = await pool.query(
       `SELECT COUNT(*) AS unreadCount
-       FROM notifications
-       ${whereClause ? whereClause + ' AND' : 'WHERE'} is_read = FALSE
-       ${role === 'bhw' ? "AND type <> 'system' AND title NOT LIKE 'Data Synced%'" : ''}`
+       FROM notifications n
+       ${whereClause ? whereClause + ' AND' : 'WHERE'} n.is_read = FALSE`
     );
 
     return res.status(200).json({ notifications, unreadCount });
@@ -100,7 +102,12 @@ exports.markAllAsRead = async (req, res) => {
     const role = String(req.user?.role || '').toLowerCase();
     if (role === 'bhw') {
       await pool.query(
-        "UPDATE notifications SET is_read = TRUE WHERE is_read = FALSE AND type <> 'system' AND title NOT LIKE 'Data Synced%'"
+        `UPDATE notifications
+         SET is_read = TRUE
+         WHERE is_read = FALSE
+           AND type <> 'system'
+           AND title NOT LIKE 'Data Synced%'
+           AND title NOT LIKE 'Data Synced Automatically%'`
       );
     } else {
       await pool.query(

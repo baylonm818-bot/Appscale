@@ -1,5 +1,9 @@
 const pool = require('../config/db');
 
+function bhwNotificationExclusionClause(alias = 'n') {
+  return `(${alias}.type <> 'system' AND ${alias}.title NOT LIKE 'Data Synced%' AND ${alias}.title NOT LIKE 'Data Synced Automatically%')`;
+}
+
 function buildScopedNotificationWhere(userBarangay) {
   const barangayLike = `%${userBarangay}%`;
 
@@ -29,16 +33,15 @@ exports.getNotifications = async (req, res) => {
     const scopedWhere = buildScopedNotificationWhere(userBarangay);
     const [notifications] = await pool.query(
       `SELECT n.notification_id, n.title, n.message, n.type, n.is_read, n.created_at
-       ${scopedWhere} AND n.type <> 'system' AND n.title NOT LIKE 'Data Synced%'
+       ${scopedWhere} AND ${bhwNotificationExclusionClause()}
        ORDER BY n.created_at DESC
        LIMIT 50`,
       [userBarangay, userBarangay, `%${userBarangay}%`, `%${userBarangay}%`]
     );
 
-    // Exclude system/auto-sync notifications for BHW users
     const [[{ unreadCount }]] = await pool.query(
       `SELECT COUNT(*) AS unreadCount
-       ${scopedWhere} AND n.is_read = FALSE AND n.type <> 'system' AND n.title NOT LIKE 'Data Synced%'`,
+       ${scopedWhere} AND n.is_read = FALSE AND ${bhwNotificationExclusionClause()}`,
       [userBarangay, userBarangay, `%${userBarangay}%`, `%${userBarangay}%`]
     );
 
@@ -99,7 +102,7 @@ exports.markAllAsRead = async (req, res) => {
           OR (n.type = 'referral' AND COALESCE(c.barangay, m.barangay) = ?)
           OR (n.title LIKE ?)
           OR (n.message LIKE ?))
-        AND n.type <> 'system' AND n.title NOT LIKE 'Data Synced%'`,
+        AND ${bhwNotificationExclusionClause()}`,
       [userBarangay, userBarangay, `%${userBarangay}%`, `%${userBarangay}%`]
     );
     return res.status(200).json({ message: 'All marked as read.' });

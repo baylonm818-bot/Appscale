@@ -30,7 +30,8 @@ exports.getScheduleStats = async (req, res) => {
          SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS upcoming,
          SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS completed,
          SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) AS archived
-       FROM schedules`
+       FROM schedules s
+       WHERE s.created_by IS NULL OR s.created_by IN (SELECT user_id FROM users WHERE LOWER(role) = 'admin')`
     );
     return res.status(200).json(stats);
   } catch (error) {
@@ -47,6 +48,7 @@ exports.getSchedules = async (req, res) => {
               CONCAT(u.first_name, ' ', u.last_name) AS assigned_name
        FROM schedules s
        LEFT JOIN users u ON u.user_id = s.assigned_to
+       WHERE s.created_by IS NULL OR s.created_by IN (SELECT user_id FROM users WHERE LOWER(role) = 'admin')
        ORDER BY s.schedule_date ASC`
     );
     return res.status(200).json(schedules);
@@ -69,12 +71,13 @@ exports.createSchedule = async (req, res) => {
   }
 
   try {
+    const adminUserId = req.user?.user_id || null;
     const [result] = await pool.query(
       `INSERT INTO schedules
-       (title, schedule_type, schedule_date, schedule_time, venue, barangay, assigned_to, target_role, facilitator, notes, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+       (title, schedule_type, schedule_date, schedule_time, venue, barangay, assigned_to, target_role, facilitator, notes, status, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
       [title, schedule_type, schedule_date, schedule_time || null, venue || null,
-       barangay || null, assigned_to || null, target_role || null, facilitator || null, notes || null]
+       barangay || null, assigned_to || null, target_role || null, facilitator || null, notes || null, adminUserId]
     );
 
     try {

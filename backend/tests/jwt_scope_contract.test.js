@@ -50,6 +50,40 @@ const jwt = require('jsonwebtoken');
     assert.equal(capturedPayload.barangay, 'Barangay 1', 'JWT payload must include assigned barangay for BHW access');
     assert.equal(capturedPayload.municipality, 'Municipality A', 'JWT payload should include municipality context');
     assert.equal(res.body.user.barangay, 'Barangay 1', 'login response should send barangay to the frontend');
+
+    // inactive users must not retain access with a valid-looking JWT
+    const originalVerify = jwt.verify;
+    const originalPoolQuery = pool.query;
+    jwt.verify = () => ({ user_id: 99, role: 'bhw', barangay: 'Barangay 2', municipality: 'Municipality B' });
+    pool.query = async () => [[{ user_id: 99, role: 'bhw', barangay: 'Barangay 2', status: 'inactive', deleted_at: null }]];
+
+    const inactiveReq = {
+      method: 'GET',
+      path: '/api/users',
+      headers: { authorization: 'Bearer fake-token' },
+    };
+    const inactiveRes = {
+      status(code) {
+        this.code = code;
+        return this;
+      },
+      json(body) {
+        this.body = body;
+        return this;
+      },
+    };
+
+    await new Promise((resolve) => {
+      const next = () => resolve();
+      const wrapped = require('../middleware/jwtMiddleware');
+      wrapped(inactiveReq, inactiveRes, next);
+    });
+
+    assert.equal(inactiveRes.code, 401, 'inactive user JWT should be rejected');
+    assert.match(String(inactiveRes.body.message || ''), /inactive|invalid/i, 'inactive account response should explain the rejection');
+
+    jwt.verify = originalVerify;
+    pool.query = originalPoolQuery;
     console.log('jwt_scope_contract.test: PASS');
   } catch (error) {
     console.error('jwt_scope_contract.test: FAIL');
