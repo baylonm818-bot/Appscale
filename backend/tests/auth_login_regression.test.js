@@ -37,6 +37,63 @@ test('login rejects a non-existent admin alias with a generic invalid-credential
   assert.equal(res.payload.message, 'Incorrect email or password.');
 });
 
+test('admin account locks after repeated failed login attempts', async () => {
+  const pool = require('../config/db');
+  const bcrypt = require('bcrypt');
+  const originalQuery = pool.query;
+  const passwordHash = await bcrypt.hash('correct-password', 10);
+
+  const user = {
+    user_id: 111,
+    username: 'admin.locktest',
+    email: 'adminlock@apscale.local',
+    password_hash: passwordHash,
+    first_name: 'Admin',
+    last_name: 'Locktester',
+    role: 'admin',
+    status: 'active',
+    failed_attempts: 0,
+    barangay: null,
+    municipality: null,
+    profile_picture: null,
+    deleted_at: null,
+  };
+
+  pool.query = async (sql, params) => {
+    if (sql.includes('SELECT * FROM users')) {
+      return [[user]];
+    }
+    if (sql.includes('UPDATE users SET failed_attempts')) {
+      const values = Array.isArray(params) ? params : [];
+      if (values.length >= 2) {
+        user.failed_attempts = Number(values[0]);
+        if (values.length >= 4) {
+          user.status = values[1];
+        }
+      }
+      return [{ affectedRows: 1 }];
+    }
+    return [[{ ok: true }]];
+  };
+
+  try {
+    for (let i = 1; i <= 4; i++) {
+      const res = makeRes();
+      await authController.login({ body: { email: user.email, password: `wrong-pass-${i}` } }, res);
+      assert.equal(res.statusCode, 401);
+      assert.equal(res.payload.message, 'Incorrect email or password.');
+    }
+
+    const fifth = makeRes();
+    await authController.login({ body: { email: user.email, password: 'wrong-pass-5' } }, fifth);
+    assert.equal(fifth.statusCode, 403);
+    assert.equal(fifth.payload.message, 'Account locked due to too many failed attempts.');
+    assert.equal(user.status, 'locked');
+  } finally {
+    pool.query = originalQuery;
+  }
+});
+
 test('BHW account locks after repeated failed login attempts', async () => {
   const pool = require('../config/db');
   const bcrypt = require('bcrypt');
@@ -89,7 +146,6 @@ test('BHW account locks after repeated failed login attempts', async () => {
     pool.query = originalQuery;
   }
 });
-
 test('mother referrals are accepted and saved as mother beneficiaries', async () => {
   const pool = require('../config/db');
   const originalQuery = pool.query;
