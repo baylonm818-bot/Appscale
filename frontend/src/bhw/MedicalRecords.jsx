@@ -336,9 +336,17 @@ function MedicalRecords() {
       {recordType === 'children' && (
         <>
           {childLoading ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
-              <p className="text-sm font-medium text-gray-400">Loading medical records…</p>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3 animate-pulse">
+                <div className="h-9 bg-gray-200 rounded-xl" />
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-16 bg-gray-100 rounded-xl" />
+                ))}
+              </div>
+              <div className="lg:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4 animate-pulse">
+                <div className="h-8 bg-gray-200 rounded-xl w-1/3" />
+                <div className="h-64 bg-gray-100 rounded-xl" />
+              </div>
             </div>
           ) : childError ? (
             <p className="text-red-600 p-6">{childError}</p>
@@ -512,7 +520,10 @@ function MedicalRecords() {
 
                     <div className="p-6">
                       {detailLoading ? (
-                        <div className="py-16 text-center text-gray-400 text-xs">Loading records…</div>
+                        <div className="space-y-4 animate-pulse">
+                          <div className="h-44 bg-gray-100 rounded-xl" />
+                          <div className="h-24 bg-gray-100 rounded-xl" />
+                        </div>
                       ) : detailError ? (
                         <div className="p-4 bg-red-50 text-red-700 text-xs rounded-xl font-medium">{detailError}</div>
                       ) : (
@@ -675,9 +686,17 @@ function MedicalRecords() {
       {recordType === 'mothers' && (
         <>
           {motherLoading ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
-              <p className="text-sm font-medium text-gray-400">Loading mothers records…</p>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3 animate-pulse">
+                <div className="h-9 bg-gray-200 rounded-xl" />
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-16 bg-gray-100 rounded-xl" />
+                ))}
+              </div>
+              <div className="lg:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4 animate-pulse">
+                <div className="h-8 bg-gray-200 rounded-xl w-1/3" />
+                <div className="h-64 bg-gray-100 rounded-xl" />
+              </div>
             </div>
           ) : motherError ? (
             <p className="text-red-600 p-6">{motherError}</p>
@@ -823,7 +842,10 @@ function MedicalRecords() {
 
                     <div className="p-6">
                       {motherDetailLoading ? (
-                        <div className="py-16 text-center text-gray-400 text-xs">Loading mother medical records…</div>
+                        <div className="space-y-4 animate-pulse">
+                          <div className="h-44 bg-gray-100 rounded-xl" />
+                          <div className="h-24 bg-gray-100 rounded-xl" />
+                        </div>
                       ) : motherDetailError ? (
                         <div className="p-4 bg-red-50 text-red-700 text-xs rounded-xl font-medium">{motherDetailError}</div>
                       ) : (
@@ -981,7 +1003,11 @@ function MedicalRecords() {
 
           <div className="p-6">
             {auditLoading ? (
-              <div className="py-16 text-center text-gray-400 text-xs">Loading audit trail…</div>
+              <div className="space-y-3 animate-pulse">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-10 bg-gray-100 rounded-lg" />
+                ))}
+              </div>
             ) : auditError ? (
               <div className="p-4 bg-red-50 text-red-700 text-xs rounded-xl font-medium">{auditError}</div>
             ) : auditLogs.length === 0 ? (

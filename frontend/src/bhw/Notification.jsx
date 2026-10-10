@@ -128,10 +128,7 @@ function Notifications() {
             <h1 className="text-lg font-bold text-white">Barangay Notifications</h1>
             <p className="text-white/70 text-xs mt-0.5">
               {isLoading ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  Loading…
-                </span>
+                <span className="inline-block w-20 h-3.5 bg-white/30 rounded-full animate-pulse align-middle" />
               ) : (
                 (unreadCount > 0 ? `${unreadCount} unread alert${unreadCount === 1 ? '' : 's'}` : 'All caught up')
               )}

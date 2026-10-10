@@ -278,9 +278,16 @@ function Notifications() {
         {/* List */}
         <div className="max-h-160 overflow-y-auto divide-y divide-gray-50">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <div className="w-9 h-9 rounded-full border-4 border-green-200 border-t-green-700 animate-spin" />
-              <p className="text-sm font-medium text-gray-400">Loading notifications…</p>
+            <div className="space-y-3 p-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="animate-pulse flex gap-4 items-center px-4 py-3">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 bg-gray-200 rounded w-2/5" />
+                    <div className="h-3 bg-gray-200 rounded w-4/5" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">

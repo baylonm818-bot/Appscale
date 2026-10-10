@@ -214,12 +214,24 @@ function Profile() {
     });
   };
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4">
-      <div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
-      <p className="text-sm text-gray-400 font-medium">Loading profile…</p>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 animate-pulse">
+          <div className="h-28 bg-gray-200" />
+          <div className="px-6 pb-6 space-y-4">
+            <div className="w-24 h-24 rounded-full bg-gray-300 -mt-12 border-4 border-white" />
+            <div className="h-5 bg-gray-200 rounded w-1/4" />
+            <div className="h-3 bg-gray-200 rounded w-1/3" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-96 rounded-2xl bg-white p-6 shadow-sm border border-gray-100 animate-pulse" />
+          <div className="h-96 rounded-2xl bg-white p-6 shadow-sm border border-gray-100 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
   if (error) return <p className="text-red-600 text-sm p-6">{error}</p>;
 
   return (

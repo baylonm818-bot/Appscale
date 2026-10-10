@@ -126,9 +126,21 @@ function Masterlist() {
 
   /* ── Loading / error states ── */
   if (loading) return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4">
-      <div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
-      <p className="text-sm text-gray-400 font-medium">Loading masterlist…</p>
+    <div className="space-y-6">
+      <div className="h-36 rounded-2xl bg-gray-200 animate-pulse" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-20 rounded-2xl bg-white p-4 shadow-sm border border-gray-100 animate-pulse" />
+        ))}
+      </div>
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+        <div className="h-10 bg-gray-200 rounded-xl animate-pulse" />
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 

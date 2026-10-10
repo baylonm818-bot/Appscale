@@ -256,9 +256,24 @@ function UserManagement() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" />
-        <p className="text-sm font-medium text-gray-400">Loading user accounts…</p>
+      <div className="space-y-6">
+        <div className="h-36 rounded-2xl bg-gray-200 animate-pulse" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-28 rounded-2xl bg-white p-5 shadow-sm border border-gray-100 animate-pulse flex flex-col justify-between">
+              <div className="h-4 bg-gray-200 rounded w-1/2" />
+              <div className="h-7 bg-gray-200 rounded w-1/3" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+          <div className="h-10 bg-gray-200 rounded-xl animate-pulse" />
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
