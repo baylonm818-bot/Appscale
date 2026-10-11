@@ -9,7 +9,16 @@ router.get('/:id', getProfile);
 router.get('/:id/picture/data', getProfilePictureData);
 router.put('/:id', updateProfile);
 router.patch('/:id/password', changePassword);
-router.post('/:id/picture', upload.single('profile_picture'), uploadProfilePicture);
+const handleUpload = (req, res, next) => {
+  upload.single('profile_picture')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ message: err.message || 'File upload error.' });
+    }
+    next();
+  });
+};
+
+router.post('/:id/picture', handleUpload, uploadProfilePicture);
 router.post('/:id/deactivate', roleCheck(['admin']), deactivateAccount);
 
 

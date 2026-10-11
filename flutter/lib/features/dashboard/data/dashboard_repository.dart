@@ -61,9 +61,11 @@ class DashboardRepository {
         icon: Icons.pregnant_woman_rounded,
       ),
       StatCardData(
-        label: 'SAM / Severe cases',
+        label: 'SAM (Severe Wasting)',
         value: '$samCases',
-        subtitle: samCases > 0 ? 'Needs immediate intervention' : 'No active SAM cases',
+        subtitle: samCases > 0
+            ? '$samCases acute wasting (WFH) case(s)'
+            : 'No active acute wasting (WFH) cases',
         accentColor: const Color(0xFFC0392B), // red-terracotta
         icon: Icons.warning_amber_rounded,
       ),

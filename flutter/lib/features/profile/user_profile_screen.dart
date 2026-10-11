@@ -1,9 +1,9 @@
-import 'dart:convert';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -13,6 +13,7 @@ import '../../data/local/hive_boxes.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/measurement_repository.dart';
 import '../../data/local/referral_repository.dart';
+import '../../data/remote/auth_api.dart';
 import '../../shared/utils/app_user_identity.dart';
 import '../auth/login_screen.dart';
 
@@ -28,6 +29,22 @@ class UserProfileScreen extends StatefulWidget {
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
   bool _isUploadingPicture = false;
+  String? _uploadError;
+
+  @override
+  void deactivate() {
+    ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
+    super.deactivate();
+  }
+
+  Future<bool> _checkOnline() async {
+    try {
+      final result = await Connectivity().checkConnectivity();
+      return result.any((r) => r != ConnectivityResult.none);
+    } catch (_) {
+      return true;
+    }
+  }
 
   Future<void> _pickAndUploadProfilePicture() async {
     final settings = SettingsRepository();
@@ -43,70 +60,160 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
     if (pickedFile == null) return;
 
-    // Instantly save local picked path so user picture updates immediately
-    final updatedUser = Map<String, dynamic>.from(settings.authUser ?? {});
-    updatedUser['profile_picture'] = pickedFile.path;
-    await settings.setAuthUser(updatedUser);
-    await settings.setPendingProfilePicturePath(pickedFile.path);
-    AppDataBus.notifyChanged();
-    if (mounted) setState(() {});
-
-    setState(() => _isUploadingPicture = true);
-
-    try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse(
-          'https://appscale-1.onrender.com/api/profile/$userId/picture',
+    // Preview / Crop Confirmation step
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Profile Photo Preview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Preview of your new profile photo (circular crop):',
+              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primaryGreen, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Image.file(
+                  File(pickedFile.path),
+                  width: 140,
+                  height: 140,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'This photo will be saved on your device and synced with the central server.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+            ),
+          ],
         ),
-      );
-      if (token != null && token.isNotEmpty) {
-        request.headers['Authorization'] = 'Bearer $token';
-      }
-      request.files.add(
-        await http.MultipartFile.fromPath('profile_picture', pickedFile.path),
-      );
-
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
-      final responseBody = await streamedResponse.stream.bytesToString();
-      if (streamedResponse.statusCode >= 200 && streamedResponse.statusCode < 300) {
-        final parsed = responseBody.isEmpty
-            ? <String, dynamic>{}
-            : Map<String, dynamic>.from(jsonDecode(responseBody) as Map);
-        final uploadedPath = parsed['profile_picture'];
-        if (uploadedPath != null && uploadedPath.toString().trim().isNotEmpty) {
-          final serverUser = Map<String, dynamic>.from(settings.authUser ?? {});
-          serverUser['profile_picture'] = uploadedPath.toString();
-          await settings.setAuthUser(serverUser);
-          await settings.setPendingProfilePicturePath(null);
-          AppDataBus.notifyChanged();
-        }
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile photo updated and saved to server.'),
-            backgroundColor: AppColors.primaryGreen,
-            behavior: SnackBarBehavior.floating,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
-        );
-      } else {
-        if (!mounted) return;
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryGreen,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Apply & Save'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    // Copy image to persistent application documents storage so it survives app cache purges
+    String persistentPath = pickedFile.path;
+    try {
+      final appDocDir = await getApplicationDocumentsDirectory();
+      final profileDir = Directory('${appDocDir.path}/profile_photos');
+      if (!profileDir.existsSync()) {
+        await profileDir.create(recursive: true);
+      }
+      final ext = pickedFile.path.split('.').last.toLowerCase();
+      persistentPath = '${profileDir.path}/user_${userId}_avatar.$ext';
+      await File(pickedFile.path).copy(persistentPath);
+    } catch (e) {
+      debugPrint('Failed to copy to persistent folder, using picked path: $e');
+      persistentPath = pickedFile.path;
+    }
+
+    // Save local path immediately per user
+    await settings.setLocalProfilePicturePath(persistentPath, userId: userId);
+    await settings.setPendingProfilePicturePath(persistentPath, userId: userId);
+    final updatedUser = Map<String, dynamic>.from(settings.authUser ?? {});
+    updatedUser['profile_picture'] = persistentPath;
+    await settings.setAuthUser(updatedUser);
+    AppDataBus.notifyChanged();
+    if (mounted) {
+      setState(() => _uploadError = null);
+    }
+
+    // Check connectivity: only show offline wording when genuinely offline
+    final isOnline = await _checkOnline();
+    if (!isOnline) {
+      if (mounted) {
+        ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Photo saved to device. Will sync to server when connected.'),
             backgroundColor: AppColors.statAmber,
             behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2, milliseconds: 500),
           ),
         );
+      }
+      return;
+    }
+
+    // If online, immediately upload to server
+    setState(() {
+      _isUploadingPicture = true;
+      _uploadError = null;
+    });
+
+    try {
+      final uploaded = await AuthApi.uploadProfilePicture(
+        userId: userId,
+        filePath: persistentPath,
+        token: token ?? '',
+      );
+
+      if (uploaded != null && uploaded['profile_picture'] != null) {
+        final serverUrl = uploaded['profile_picture'].toString();
+        final serverUser = Map<String, dynamic>.from(settings.authUser ?? {});
+        serverUser['profile_picture'] = serverUrl;
+        await settings.setAuthUser(serverUser);
+        await settings.setPendingProfilePicturePath(null, userId: userId);
+        AppDataBus.notifyChanged();
+        if (!mounted) return;
+        ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile photo uploaded and saved to server.'),
+            backgroundColor: AppColors.primaryGreen,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2, milliseconds: 500),
+          ),
+        );
+      } else {
+        throw Exception('Server did not return updated photo URL.');
       }
     } catch (error) {
       debugPrint('Profile picture upload exception: $error');
       if (mounted) {
+        setState(() => _uploadError = error.toString());
+        ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Photo saved to device. Will sync to server when connected.'),
+          SnackBar(
+            content: Text('Upload failed: $error. Photo is saved on device and will sync later.'),
             backgroundColor: AppColors.statAmber,
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -118,6 +225,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Widget _buildProfileAvatar(String? profileImageUrl, String resolvedName) {
+    final settings = SettingsRepository();
+    final userId = settings.authUser?['user_id']?.toString() ?? '';
+    final localPath = settings.getLocalProfilePicturePath(userId);
+
+    final imagePath = (profileImageUrl != null && profileImageUrl.trim().isNotEmpty)
+        ? profileImageUrl.trim()
+        : (localPath != null && localPath.trim().isNotEmpty ? localPath.trim() : null);
+
     final initials = resolvedName.isNotEmpty ? resolvedName[0].toUpperCase() : 'B';
     final fallback = CircleAvatar(
       radius: 36,
@@ -132,15 +247,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       ),
     );
 
-    if (profileImageUrl == null || profileImageUrl.trim().isEmpty) {
+    if (imagePath == null || imagePath.isEmpty) {
       return fallback;
     }
 
-    final trimmed = profileImageUrl.trim();
-    final isLocalPath = trimmed.startsWith('/data/') ||
+    final trimmed = imagePath;
+    final isLocalPath = trimmed.contains('profile_photos') ||
+        trimmed.startsWith('/data/') ||
         trimmed.startsWith('/storage/') ||
         trimmed.startsWith('/var/') ||
         trimmed.startsWith('file://') ||
+        (Platform.isWindows && (trimmed.contains(r':\') || trimmed.contains(':/'))) ||
         (trimmed.startsWith('/') &&
             !trimmed.startsWith('/uploads/') &&
             !trimmed.startsWith('/profile-pictures/'));
@@ -293,6 +410,24 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           ),
                         ),
                       ),
+                      if (!_isUploadingPicture && (settings.pendingProfilePicturePath != null || _uploadError != null))
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: _uploadError != null ? AppColors.statRed : AppColors.statAmber,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            child: Icon(
+                              _uploadError != null ? Icons.warning_rounded : Icons.cloud_upload,
+                              color: Colors.white,
+                              size: 12,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -460,7 +595,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               final pendingCount = ChildRepository().pendingCount +
                   MotherRepository().pendingCount +
                   MeasurementRepository().pendingCount +
-                  ReferralRepository().pendingCount;
+                  ReferralRepository().pendingCount +
+                  (SettingsRepository().pendingProfilePicturePath != null ? 1 : 0);
 
               final confirmed = await showDialog<bool>(
                 context: context,

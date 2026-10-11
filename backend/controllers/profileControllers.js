@@ -4,23 +4,28 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
+const allowedMime = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'application/octet-stream'];
+const allowedExt = ['.jpg', '.jpeg', '.png', '.webp'];
 const uploadDir = path.join(__dirname, '..', 'uploads', 'profile-pictures');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
+    let ext = path.extname(file.originalname).toLowerCase();
+    if (!ext || !allowedExt.includes(ext)) {
+      ext = file.mimetype === 'image/png' ? '.png' : file.mimetype === 'image/webp' ? '.webp' : '.jpg';
+    }
     cb(null, `user_${req.params.id}_${Date.now()}${ext}`);
   },
 });
 
 const fileFilter = (req, file, cb) => {
-  if (!allowedMime.includes(file.mimetype)) {
-    return cb(new Error('Invalid file type. Only JPG, PNG, and WEBP are allowed.'));
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowedMime.includes(file.mimetype) || allowedExt.includes(ext)) {
+    return cb(null, true);
   }
-  cb(null, true);
+  cb(new Error('Invalid file type. Only JPG, PNG, and WEBP are allowed.'));
 };
 
 exports.upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 }, fileFilter });

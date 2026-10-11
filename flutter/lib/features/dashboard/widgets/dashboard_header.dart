@@ -77,6 +77,7 @@ class DashboardHeader extends StatelessWidget {
         trimmed.startsWith('/storage/') ||
         trimmed.startsWith('/var/') ||
         trimmed.startsWith('file://') ||
+        trimmed.contains('profile_photos') ||
         (trimmed.startsWith('/') &&
             !trimmed.startsWith('/uploads/') &&
             !trimmed.startsWith('/profile-pictures/'));

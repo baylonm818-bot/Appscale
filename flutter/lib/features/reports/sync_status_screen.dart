@@ -91,13 +91,13 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
               final serverUser = Map<String, dynamic>.from(_settings.authUser ?? {});
               serverUser['profile_picture'] = uploaded['profile_picture'].toString();
               await _settings.setAuthUser(serverUser);
-              await _settings.setPendingProfilePicturePath(null);
+              await _settings.setPendingProfilePicturePath(null, userId: userId);
             }
           } catch (e) {
             errors.add('Profile picture upload failed: $e');
           }
         } else {
-          await _settings.setPendingProfilePicturePath(null);
+          await _settings.setPendingProfilePicturePath(null, userId: userId);
         }
       }
 
@@ -133,6 +133,36 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                 ? '$remaining record(s) remaining in queue.'
                 : 'Sync finished with warnings.');
       });
+
+      ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
+      if (errors.isEmpty && remaining == 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✓ All records successfully synced with server.'),
+            backgroundColor: AppColors.primaryGreen,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else if (errors.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sync finished with ${errors.length} issue(s). Check details below.'),
+            backgroundColor: AppColors.statRed,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$remaining item(s) remaining in sync queue.'),
+            backgroundColor: AppColors.statAmber,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -140,6 +170,15 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         _syncErrors = [...errors, 'Unexpected error: $e'];
         _message = 'Sync interrupted.';
       });
+      ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sync failed: $e'),
+          backgroundColor: AppColors.statRed,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
@@ -267,20 +306,33 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                             ),
                           ),
 
-                          if (_message != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: AppSpacing.sm),
-                              child: Text(
-                                _message!,
-                                style: AppTextStyles.body.copyWith(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: _syncErrors.isNotEmpty
-                                      ? AppColors.statAmber
-                                      : AppColors.darkGreen,
+                          // Reserved status line space so layout never jumps
+                          Padding(
+                            padding: const EdgeInsets.only(top: AppSpacing.sm),
+                            child: SizedBox(
+                              height: 22,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  _message ??
+                                      (pendingCount == 0
+                                          ? '✓ All records synchronized.'
+                                          : '$pendingCount record(s) remaining in queue.'),
+                                  style: AppTextStyles.body.copyWith(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: _syncErrors.isNotEmpty
+                                        ? AppColors.statRed
+                                        : (_message == null && pendingCount == 0
+                                            ? AppColors.textMuted
+                                            : AppColors.darkGreen),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
+                          ),
 
                           // Error details box if any errors occurred
                           if (_syncErrors.isNotEmpty) ...[

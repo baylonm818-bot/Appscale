@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class AuthUser {
   final int userId;
@@ -185,8 +186,16 @@ class AuthApi {
     if (token.isNotEmpty) {
       request.headers['Authorization'] = 'Bearer $token';
     }
+
+    final ext = filePath.split('.').last.toLowerCase();
+    final subtype = (ext == 'png') ? 'png' : (ext == 'webp' ? 'webp' : 'jpeg');
+
     request.files.add(
-      await http.MultipartFile.fromPath('profile_picture', filePath),
+      await http.MultipartFile.fromPath(
+        'profile_picture',
+        filePath,
+        contentType: MediaType('image', subtype),
+      ),
     );
 
     final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
@@ -197,6 +206,16 @@ class AuthApi {
           : Map<String, dynamic>.from(jsonDecode(responseBody) as Map);
       return parsed;
     }
-    return null;
+
+    String message = 'Upload failed with status ${streamedResponse.statusCode}';
+    try {
+      if (responseBody.isNotEmpty) {
+        final decoded = jsonDecode(responseBody);
+        if (decoded is Map && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        }
+      }
+    } catch (_) {}
+    throw Exception(message);
   }
 }

@@ -110,17 +110,50 @@ class SettingsRepository {
   Future<void> setAuthUser(Map<String, dynamic>? value) =>
       value == null ? _box.delete('auth_user') : _box.put('auth_user', value);
 
-  String? get pendingProfilePicturePath =>
-      _box.get('pending_profile_picture');
-  Future<void> setPendingProfilePicturePath(String? path) =>
-      path == null
-          ? _box.delete('pending_profile_picture')
-          : _box.put('pending_profile_picture', path);
+  String? get pendingProfilePicturePath {
+    final uid = authUser?['user_id']?.toString() ?? _box.get('last_user_id')?.toString();
+    if (uid != null && uid.isNotEmpty) {
+      final perUser = _box.get('pending_profile_picture_$uid') as String?;
+      if (perUser != null && perUser.isNotEmpty) return perUser;
+    }
+    return _box.get('pending_profile_picture') as String?;
+  }
+
+  Future<void> setPendingProfilePicturePath(String? path, {String? userId}) async {
+    final uid = userId ?? authUser?['user_id']?.toString() ?? _box.get('last_user_id')?.toString();
+    if (path == null) {
+      await _box.delete('pending_profile_picture');
+      if (uid != null && uid.isNotEmpty) {
+        await _box.delete('pending_profile_picture_$uid');
+      }
+    } else {
+      await _box.put('pending_profile_picture', path);
+      if (uid != null && uid.isNotEmpty) {
+        await _box.put('pending_profile_picture_$uid', path);
+      }
+    }
+  }
+
+  String? getLocalProfilePicturePath([String? userId]) {
+    final uid = userId ?? authUser?['user_id']?.toString() ?? _box.get('last_user_id')?.toString();
+    if (uid == null || uid.isEmpty) return null;
+    return _box.get('local_profile_photo_$uid') as String?;
+  }
+
+  Future<void> setLocalProfilePicturePath(String? path, {String? userId}) async {
+    final uid = userId ?? authUser?['user_id']?.toString() ?? _box.get('last_user_id')?.toString();
+    if (uid == null || uid.isEmpty) return;
+    if (path == null) {
+      await _box.delete('local_profile_photo_$uid');
+    } else {
+      await _box.put('local_profile_photo_$uid', path);
+    }
+  }
 
   Future<void> clearSession() async {
     await _box.delete('auth_token');
     await _box.delete('auth_user');
     await _box.delete('session_expires_at');
-    await _box.delete('pending_profile_picture');
+    // Preserves user-keyed pending profile pictures and local photo paths across logout
   }
 }

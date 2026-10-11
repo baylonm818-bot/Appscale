@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
@@ -60,9 +61,20 @@ class _LoginScreenState extends State<LoginScreen> {
       await _settings.setRememberMe(_rememberMe);
       await _settings.setAuthToken(session.token);
       await _settings.setSessionExpiresAt(expiresAt);
-      await _settings.setAuthUser(
-        session.toMap()['user'] as Map<String, dynamic>,
-      );
+      final userMap = Map<String, dynamic>.from(session.toMap()['user'] as Map);
+      final newUserId = userMap['user_id']?.toString() ?? '';
+
+      // Check if user has a persistent local profile photo that hasn't synced or server has no photo
+      final localPhotoPath = _settings.getLocalProfilePicturePath(newUserId);
+      final hasPendingPhoto = _settings.pendingProfilePicturePath != null;
+      if (localPhotoPath != null && localPhotoPath.isNotEmpty && File(localPhotoPath).existsSync()) {
+        final serverPic = userMap['profile_picture']?.toString();
+        if (serverPic == null || serverPic.isEmpty || hasPendingPhoto) {
+          userMap['profile_picture'] = localPhotoPath;
+        }
+      }
+
+      await _settings.setAuthUser(userMap);
 
       // ── Restore server data to local Hive ────────────────────────────────
       // This ensures data survives app reinstalls and account switches.

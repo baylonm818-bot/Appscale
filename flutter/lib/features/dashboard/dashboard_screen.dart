@@ -90,9 +90,11 @@ class _DashboardBodyState extends State<DashboardBody> {
                 pendingSyncCount: _childRepo.pendingCount +
                     _motherRepo.pendingCount +
                     _measurementRepo.pendingCount +
-                    _referralRepo.pendingCount,
+                    _referralRepo.pendingCount +
+                    (_settings.pendingProfilePicturePath != null ? 1 : 0),
                 unreadNotificationCount: unreadNotifs,
-                profileImageUrl: _settings.authUser?['profile_picture']?.toString(),
+                profileImageUrl: _settings.authUser?['profile_picture']?.toString() ??
+                    _settings.getLocalProfilePicturePath(_settings.authUser?['user_id']?.toString()),
                 onSyncTap: () => Navigator.push(
                   context,
                   appPageRoute(const SyncStatusScreen()),
