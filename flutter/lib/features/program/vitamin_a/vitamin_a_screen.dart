@@ -32,7 +32,7 @@ class _VitaminAScreenState extends State<VitaminAScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
     _vitARepo.seedInitialIfEmpty(widget.barangay);
   }
 
@@ -76,15 +76,19 @@ class _VitaminAScreenState extends State<VitaminAScreen>
           backgroundColor: AppColors.background,
           appBar: AppBar(
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
-            title: const Text('Vitamin A Program'),
+            title: const Text(
+              'Vitamin A Program',
+              style: TextStyle(color: Colors.white),
+            ),
             backgroundColor: AppColors.darkGreen,
             foregroundColor: Colors.white,
+            iconTheme: const IconThemeData(color: Colors.white),
             actions: [
               IconButton(
-                icon: const Icon(Icons.calendar_month_outlined),
+                icon: const Icon(Icons.calendar_month_outlined, color: Colors.white),
                 tooltip: 'Schedule Vitamin A Activity',
                 onPressed: () {
                   Navigator.push(
@@ -105,8 +109,8 @@ class _VitaminAScreenState extends State<VitaminAScreen>
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white70,
               tabs: [
-                Tab(text: 'Records (${records.length})'),
                 Tab(text: 'Eligible Children (${eligibleChildren.length})'),
+                Tab(text: 'Records (${records.length})'),
               ],
             ),
           ),
@@ -183,8 +187,8 @@ class _VitaminAScreenState extends State<VitaminAScreen>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildRecordsList(records),
                     _buildEligibleList(eligibleChildren, recentRecipients),
+                    _buildRecordsList(records),
                   ],
                 ),
               ),
