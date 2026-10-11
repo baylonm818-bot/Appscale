@@ -110,10 +110,22 @@ function canAccessMasterlistItem(requester, item) {
 
 function canTransferBeneficiary(requester, fromBarangay, toBarangay) {
   if (!requester) return false;
-  if (normalizeRole(requester.role) === 'admin') return true;
+  const role = normalizeRole(requester.role);
+  if (role === 'admin') return true;
 
   if (!fromBarangay || !toBarangay) return false;
-  return sameBarangay(requester.barangay, fromBarangay) && sameBarangay(requester.barangay, toBarangay);
+
+  // BHW can only transfer within same barangay partner assignment
+  if (role === 'bhw') {
+    return sameBarangay(requester.barangay, fromBarangay) && sameBarangay(requester.barangay, toBarangay);
+  }
+
+  // BNS can transfer a beneficiary who belongs to their assigned barangay to a new barangay
+  if (role === 'bns') {
+    return sameBarangay(requester.barangay, fromBarangay);
+  }
+
+  return false;
 }
 
 function enforceScopedBarangay(requester, requestedBarangay) {

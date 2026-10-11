@@ -299,6 +299,114 @@ class BeneficiaryApi {
     }
   }
 
+  static Future<List<String>> fetchBarangays() async {
+    try {
+      final settings = SettingsRepository();
+      final token = settings.authToken;
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
+
+      final uri = Uri.parse('$_baseUrl/mobile/barangays');
+      final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        final list = (jsonDecode(resp.body) as List).map((e) => e.toString()).toList();
+        if (list.isNotEmpty) return list;
+      }
+    } catch (_) {}
+    return defaultBarangays;
+  }
+
+  static const defaultBarangays = [
+    'Antipolo',
+    'B. Ibaba',
+    'B. Ilaya',
+    'Bacong-Bacong',
+    'Bahi',
+    'Bangbang',
+    'Banot',
+    'Banuyo',
+    'Bognuyan',
+    'Cabugao',
+    'Dawis',
+    'Dili',
+    'Libtangin',
+    'Mahunig',
+    'Mangiliol',
+    'Masiga',
+    'Mat. Gasan',
+    'Pangi',
+    'Pinggan',
+    'Tabionan',
+    'Tiguion',
+    'Brgy. Uno',
+    'Brgy. Dos',
+    'Brgy. Tres',
+    'Tapuyan',
+  ];
+
+  static Future<ApiResponse> transferBeneficiary({
+    required String entityType,
+    required String entityId,
+    required String targetBarangay,
+    required String reason,
+    required DateTime transferDate,
+    bool alsoTransferLinked = false,
+  }) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+
+    return _post('/mobile/transfer', {
+      'entityType': entityType,
+      'entityId': entityId,
+      'targetBarangay': targetBarangay,
+      'reason': reason,
+      'transferDate': _date(transferDate),
+      'alsoTransferLinked': alsoTransferLinked,
+      'encoded_by': settings.authUser?['user_id'],
+    }, token);
+  }
+
+  static Future<bool> checkDuplicate({
+    required String entityType,
+    required String targetBarangay,
+    required String fullName,
+    DateTime? birthDate,
+  }) async {
+    try {
+      final settings = SettingsRepository();
+      final token = settings.authToken;
+      final uri = Uri.parse('$_baseUrl/mobile/check-duplicate').replace(
+        queryParameters: {
+          'type': entityType,
+          'targetBarangay': targetBarangay,
+          'fullName': fullName,
+          if (birthDate != null) 'birthDate': _date(birthDate),
+        },
+      );
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+      final resp = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        return data['duplicateExists'] == true;
+      }
+    } catch (e) {
+      debugPrint('Duplicate check remote error: $e');
+    }
+    return false;
+  }
+
   static String _date(DateTime value) =>
       value.toIso8601String().split('T').first;
 }

@@ -57,10 +57,109 @@ class ChildRepository {
 
   Future<ApiResponse?> trySync(Child child) => _trySync(child);
 
-  Future<ApiResponse?> _trySync(Child child) async {
-    final res = await BeneficiaryApi.syncChild(child);
+  Future<ApiResponse?> transferChild({
+    required Child child,
+    required String targetBarangay,
+    required String reason,
+    required DateTime transferDate,
+    bool alsoTransferLinked = false,
+  }) async {
     final existing = _box.get(child.id) as Map?;
     final map = Map<String, dynamic>.from(existing ?? child.toMap());
+    map['barangay'] = targetBarangay;
+    map['isTransferPending'] = true;
+    map['_transferPending'] = true;
+    map['pendingTargetBarangay'] = targetBarangay;
+    map['_pendingTargetBarangay'] = targetBarangay;
+    map['inactiveReason'] = reason;
+    map['inactiveDate'] = transferDate.toIso8601String();
+    map['alsoTransferLinked'] = alsoTransferLinked;
+    map['_syncStatus'] = 'pending';
+    await _box.put(child.id, map);
+
+    if (alsoTransferLinked && child.guardian.linkedMotherId != null) {
+      final mBox = Hive.box(HiveBoxes.mothers);
+      final mRaw = mBox.get(child.guardian.linkedMotherId!);
+      if (mRaw != null) {
+        final mMap = Map<String, dynamic>.from(mRaw as Map);
+        mMap['barangay'] = targetBarangay;
+        mMap['isTransferPending'] = true;
+        mMap['_transferPending'] = true;
+        mMap['pendingTargetBarangay'] = targetBarangay;
+        mMap['_pendingTargetBarangay'] = targetBarangay;
+        mMap['inactiveReason'] = 'Transferred with child';
+        mMap['inactiveDate'] = transferDate.toIso8601String();
+        mMap['_syncStatus'] = 'pending';
+        await mBox.put(child.guardian.linkedMotherId!, mMap);
+      }
+    }
+
+    AppDataBus.notifyChanged();
+    return _trySync(Child.fromMap(map));
+  }
+
+  Future<ApiResponse?> _trySync(Child child) async {
+    final existing = _box.get(child.id) as Map?;
+    final map = Map<String, dynamic>.from(existing ?? child.toMap());
+    final isTransferPending =
+        map['isTransferPending'] == true || map['_transferPending'] == true;
+
+    ApiResponse res;
+    if (isTransferPending) {
+      final targetBarangay = (map['pendingTargetBarangay'] ??
+              map['_pendingTargetBarangay'] ??
+              child.barangay)
+          .toString();
+      final reason = (map['inactiveReason'] ?? 'Transferred').toString();
+      final alsoTransferLinked = map['alsoTransferLinked'] == true;
+      final transferDate = map['inactiveDate'] != null
+          ? DateTime.tryParse(map['inactiveDate'].toString()) ?? DateTime.now()
+          : DateTime.now();
+
+      res = await BeneficiaryApi.transferBeneficiary(
+        entityType: 'child',
+        entityId: child.id,
+        targetBarangay: targetBarangay,
+        reason: reason,
+        transferDate: transferDate,
+        alsoTransferLinked: alsoTransferLinked,
+      );
+
+      if (res.success) {
+        map['barangay'] = targetBarangay;
+        map['isTransferPending'] = false;
+        map['_transferPending'] = false;
+        map.remove('pendingTargetBarangay');
+        map.remove('_pendingTargetBarangay');
+        map.remove('alsoTransferLinked');
+        map['_syncStatus'] = 'synced';
+        map['_syncedAt'] = DateTime.now().toIso8601String();
+        map.remove('_lastSyncError');
+        map['_retryCount'] = 0;
+        await _box.put(child.id, map);
+
+        if (alsoTransferLinked && child.guardian.linkedMotherId != null) {
+          final mBox = Hive.box(HiveBoxes.mothers);
+          final mRaw = mBox.get(child.guardian.linkedMotherId!);
+          if (mRaw != null) {
+            final mMap = Map<String, dynamic>.from(mRaw as Map);
+            mMap['barangay'] = targetBarangay;
+            mMap['isTransferPending'] = false;
+            mMap['_transferPending'] = false;
+            mMap.remove('pendingTargetBarangay');
+            mMap.remove('_pendingTargetBarangay');
+            mMap['_syncStatus'] = 'synced';
+            mMap['_syncedAt'] = DateTime.now().toIso8601String();
+            await mBox.put(child.guardian.linkedMotherId!, mMap);
+          }
+        }
+        AppDataBus.notifyChanged();
+        return res;
+      }
+    } else {
+      res = await BeneficiaryApi.syncChild(child);
+    }
+
     if (res.success) {
       map['_syncStatus'] = 'synced';
       map['_syncedAt'] = DateTime.now().toIso8601String();

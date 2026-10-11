@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -52,6 +53,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
   final _referrals = ReferralRepository();
   final _settings = SettingsRepository();
   bool _isSyncing = false;
+  bool _showAllRecent = false;
   List<String> _syncErrors = [];
   String? _message;
   String _currentBarangay = '';
@@ -285,7 +287,8 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     // 6. Profile Photo
     final pendingPicPath = _settings.pendingProfilePicturePath;
     if (pendingPicPath != null && pendingPicPath.isNotEmpty) {
-      final userName = _settings.authUser?['first_name'] ?? _settings.authUser?['username'] ?? 'User';
+      final userName =
+          _settings.authUser?['first_name'] ?? _settings.authUser?['username'] ?? 'User';
       items.add(SyncItem(
         id: 'profile_photo',
         type: 'profile_photo',
@@ -296,8 +299,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       ));
     }
 
-    // Behavior: Pinakabago ang nasa itaas (Newest first)
-    // Pending and failed records appear prominently at the top
+    // Pinakabago ang nasa itaas (Newest first)
     items.sort((a, b) {
       if (a.status != 'synced' && b.status == 'synced') return -1;
       if (a.status == 'synced' && b.status != 'synced') return 1;
@@ -309,6 +311,30 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
 
   /// Sequential, item-by-item push sync updating UI in real-time
   Future<void> _syncNow() async {
+    // Check internet connectivity first
+    try {
+      final result = await InternetAddress.lookup('google.com')
+          .timeout(const Duration(seconds: 4));
+      if (result.isEmpty || result[0].rawAddress.isEmpty) {
+        throw const SocketException('No internet');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isSyncing = false;
+        _message = 'No internet connection';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No internet connection'),
+          backgroundColor: AppColors.statRed,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSyncing = true;
       _message = 'Syncing records...';
@@ -411,7 +437,11 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       final pendingPicPath = _settings.pendingProfilePicturePath;
       final userId = _settings.authUser?['user_id']?.toString() ?? '';
       final token = _settings.authToken;
-      if (pendingPicPath != null && pendingPicPath.isNotEmpty && userId.isNotEmpty && token != null && token.isNotEmpty) {
+      if (pendingPicPath != null &&
+          pendingPicPath.isNotEmpty &&
+          userId.isNotEmpty &&
+          token != null &&
+          token.isNotEmpty) {
         final file = File(pendingPicPath);
         if (file.existsSync()) {
           try {
@@ -526,7 +556,10 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           final res = await _children.trySync(child);
           if (mounted && res != null && !res.success) {
             ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-              SnackBar(content: Text('Retry failed: ${res.message}'), backgroundColor: AppColors.statRed),
+              SnackBar(
+                content: Text('Retry failed: ${res.message}'),
+                backgroundColor: AppColors.statRed,
+              ),
             );
           }
         }
@@ -537,7 +570,10 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           final res = await _mothers.trySync(mother);
           if (mounted && res != null && !res.success) {
             ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-              SnackBar(content: Text('Retry failed: ${res.message}'), backgroundColor: AppColors.statRed),
+              SnackBar(
+                content: Text('Retry failed: ${res.message}'),
+                backgroundColor: AppColors.statRed,
+              ),
             );
           }
         }
@@ -548,7 +584,10 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           final res = await _referrals.trySync(referral);
           if (mounted && res != null && !res.success) {
             ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-              SnackBar(content: Text('Retry failed: ${res.message}'), backgroundColor: AppColors.statRed),
+              SnackBar(
+                content: Text('Retry failed: ${res.message}'),
+                backgroundColor: AppColors.statRed,
+              ),
             );
           }
         }
@@ -585,7 +624,11 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         final userId = _settings.authUser?['user_id']?.toString() ?? '';
         final token = _settings.authToken;
         if (pendingPicPath != null && userId.isNotEmpty && token != null) {
-          final uploaded = await AuthApi.uploadProfilePicture(userId: userId, filePath: pendingPicPath, token: token);
+          final uploaded = await AuthApi.uploadProfilePicture(
+            userId: userId,
+            filePath: pendingPicPath,
+            token: token,
+          );
           if (uploaded != null && uploaded['profile_picture'] != null) {
             final serverUser = Map<String, dynamic>.from(_settings.authUser ?? {});
             serverUser['profile_picture'] = uploaded['profile_picture'].toString();
@@ -598,7 +641,10 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(content: Text('Retry failed: $e'), backgroundColor: AppColors.statRed),
+          SnackBar(
+            content: Text('Retry failed: $e'),
+            backgroundColor: AppColors.statRed,
+          ),
         );
       }
     } finally {
@@ -612,9 +658,12 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     if (iso == null || iso.isEmpty) return 'Never';
     try {
       final dt = DateTime.parse(iso).toLocal();
-      final date = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-      final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-      return '$date at $time';
+      final date =
+          '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+      final minute = dt.minute.toString().padLeft(2, '0');
+      final period = dt.hour >= 12 ? 'PM' : 'AM';
+      return '$date at $hour:$minute $period';
     } catch (_) {
       return iso;
     }
@@ -626,9 +675,8 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     }
     final now = DateTime.now();
     final local = dt.toLocal();
-    final isToday = local.year == now.year &&
-        local.month == now.month &&
-        local.day == now.day;
+    final isToday =
+        local.year == now.year && local.month == now.month && local.day == now.day;
     final yesterday = now.subtract(const Duration(days: 1));
     final isYesterday = local.year == yesterday.year &&
         local.month == yesterday.month &&
@@ -650,6 +698,15 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       ];
       return '${months[local.month - 1]} ${local.day}';
     }
+  }
+
+  int _measurementsCount() {
+    final box = Hive.box(HiveBoxes.measurements);
+    int count = 0;
+    for (final list in box.values) {
+      if (list is List) count += list.length;
+    }
+    return count;
   }
 
   Widget _buildSyncItemTile(SyncItem item) {
@@ -784,6 +841,103 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     );
   }
 
+  Widget _buildSummaryChip({
+    required String label,
+    required int count,
+    required Color color,
+    required Color bg,
+    required IconData icon,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                '$label: $count',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQueueDetailsTile() {
+    final childPending = _children.pendingCount;
+    final motherPending = _mothers.pendingCount;
+    final measPending = _measurements.pendingCount;
+    final refPending = _referrals.pendingCount;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+          title: Text(
+            'Queue Details by Category',
+            style: AppTextStyles.label.copyWith(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+          children: [
+            _buildDetailRow('Children', childPending, Hive.box(HiveBoxes.children).length),
+            _buildDetailRow('Mothers', motherPending, Hive.box(HiveBoxes.mothers).length),
+            _buildDetailRow('Measurements', measPending, _measurementsCount()),
+            _buildDetailRow('Referrals', refPending, Hive.box(HiveBoxes.referrals).length),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, int pending, int total) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textPrimary),
+          ),
+          Text(
+            pending > 0 ? '$pending pending ($total total)' : '$total synced',
+            style: AppTextStyles.caption.copyWith(
+              fontSize: 12,
+              fontWeight: pending > 0 ? FontWeight.w600 : FontWeight.normal,
+              color: pending > 0 ? AppColors.statAmber : AppColors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
@@ -798,12 +952,19 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
             pendingPhoto;
 
         final syncItems = _loadSyncItems();
+        final syncedCount = syncItems.where((i) => i.status == 'synced').length;
+        final failedCount = syncItems.where((i) => i.status == 'failed').length;
+
+        final displayedItems =
+            _showAllRecent ? syncItems : syncItems.take(20).toList();
+        final hasMore = !_showAllRecent && syncItems.length > 20;
 
         return Scaffold(
           backgroundColor: AppColors.background,
           body: SafeArea(
             child: Column(
               children: [
+                // Top AppBar
                 Container(
                   width: double.infinity,
                   color: AppColors.darkGreen,
@@ -825,209 +986,219 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                     ],
                   ),
                 ),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _syncNow,
-                    color: AppColors.primaryGreen,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Status Banner
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
+
+                // ── Pinned Section (Never scrolls) ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                    AppSpacing.xs,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. Status Banner
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: pendingCount == 0
+                              ? AppColors.lightGreenBg
+                              : AppColors.statAmber.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: pendingCount == 0
+                                ? AppColors.primaryGreen.withValues(alpha: 0.4)
+                                : AppColors.statAmber.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              pendingCount == 0
+                                  ? Icons.cloud_done_outlined
+                                  : Icons.cloud_upload_outlined,
                               color: pendingCount == 0
-                                  ? AppColors.lightGreenBg
-                                  : AppColors.statAmber.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: pendingCount == 0
-                                    ? AppColors.primaryGreen.withValues(alpha: 0.4)
-                                    : AppColors.statAmber.withValues(alpha: 0.4),
-                              ),
+                                  ? AppColors.darkGreen
+                                  : AppColors.statOrange,
+                              size: 24,
                             ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  pendingCount == 0
-                                      ? Icons.cloud_done_outlined
-                                      : Icons.cloud_upload_outlined,
-                                  color: pendingCount == 0
-                                      ? AppColors.darkGreen
-                                      : AppColors.statAmber,
-                                  size: 22,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        pendingCount == 0
-                                            ? 'All local device records are in sync.'
-                                            : '$pendingCount local record(s) waiting to sync.',
-                                        style: AppTextStyles.body.copyWith(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.darkGreen,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Last synced: ${_formatLastSynced(_lastSyncedAt)}',
-                                        style: AppTextStyles.caption.copyWith(
-                                          fontSize: 11,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Reserved status line space so layout never jumps
-                          Padding(
-                            padding: const EdgeInsets.only(top: AppSpacing.sm),
-                            child: SizedBox(
-                              height: 22,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  _message ??
-                                      (pendingCount == 0
-                                          ? '✓ All records synchronized.'
-                                          : '$pendingCount record(s) remaining in queue.'),
-                                  style: AppTextStyles.body.copyWith(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: _syncErrors.isNotEmpty
-                                        ? AppColors.statRed
-                                        : (_message == null && pendingCount == 0
-                                            ? AppColors.textMuted
-                                            : AppColors.darkGreen),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // Error details box if any errors occurred
-                          if (_syncErrors.isNotEmpty) ...[
-                            const SizedBox(height: AppSpacing.sm),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFEF2F2),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFFFCA5A5)),
-                              ),
+                            const SizedBox(width: 12),
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Row(
-                                    children: [
-                                      Icon(Icons.warning_amber_rounded,
-                                          color: Color(0xFFDC2626), size: 16),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        'Sync Issues / Errors:',
-                                        style: TextStyle(
-                                          color: Color(0xFF991B1B),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  ..._syncErrors.map(
-                                    (err) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 4),
-                                      child: Text(
-                                        '• $err',
-                                        style: const TextStyle(
-                                          color: Color(0xFF7F1D1D),
-                                          fontSize: 11,
-                                        ),
-                                      ),
+                                  Text(
+                                    pendingCount == 0
+                                        ? 'All local device records are in sync'
+                                        : '$pendingCount records pending',
+                                    style: AppTextStyles.body.copyWith(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: pendingCount == 0
+                                          ? AppColors.darkGreen
+                                          : const Color(0xFF856404),
                                     ),
                                   ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Last synced: ${_formatLastSynced(_lastSyncedAt)}',
+                                    style: AppTextStyles.caption.copyWith(
+                                      fontSize: 11,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                  if (_message != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _message!,
+                                      style: AppTextStyles.caption.copyWith(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: _message == 'No internet connection'
+                                            ? AppColors.statRed
+                                            : AppColors.darkGreen,
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
 
-                          const SizedBox(height: AppSpacing.lg),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      // 2. Sync Now Button (Full width)
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: _isSyncing ? null : _syncNow,
+                          icon: _isSyncing
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.sync, size: 20, color: Colors.white),
+                          label: Text(
+                            _isSyncing ? 'Syncing...' : 'Sync Now',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryGreen,
+                            disabledBackgroundColor:
+                                AppColors.primaryGreen.withValues(alpha: 0.6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+
+                      // 3. Summary row (Pending, Synced, Failed chips)
+                      Row(
+                        children: [
+                          _buildSummaryChip(
+                            label: 'Pending',
+                            count: pendingCount,
+                            color: AppColors.statAmber,
+                            bg: AppColors.statAmber.withValues(alpha: 0.12),
+                            icon: Icons.access_time_rounded,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildSummaryChip(
+                            label: 'Synced',
+                            count: syncedCount,
+                            color: AppColors.primaryGreen,
+                            bg: AppColors.lightGreenBg,
+                            icon: Icons.check_circle_rounded,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildSummaryChip(
+                            label: 'Failed',
+                            count: failedCount,
+                            color: AppColors.statRed,
+                            bg: const Color(0xFFFEF2F2),
+                            icon: Icons.error_outline_rounded,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+
+                      // 4. Section Header: Recent sync
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Recent sync',
+                            style: AppTextStyles.h2.copyWith(fontSize: 15),
+                          ),
+                          Text(
+                            '${syncItems.length} records',
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                  ),
+                ),
+
+                // Error box (if any errors from sync)
+                if (_syncErrors.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                    child: Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
                             children: [
+                              Icon(Icons.warning_amber_rounded,
+                                  color: Color(0xFFDC2626), size: 16),
+                              SizedBox(width: 6),
                               Text(
-                                'Local device records',
-                                style: AppTextStyles.h2.copyWith(fontSize: 15),
-                              ),
-                              Text(
-                                '${syncItems.length} records',
-                                style: AppTextStyles.caption.copyWith(
+                                'Sync Issues / Errors:',
+                                style: TextStyle(
+                                  color: Color(0xFF991B1B),
                                   fontSize: 12,
-                                  color: AppColors.textMuted,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: AppSpacing.sm),
-
-                          // Notification-style list of synced/pending/failed items
-                          if (syncItems.isEmpty)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 40),
-                              alignment: Alignment.center,
-                              child: Column(
-                                children: [
-                                  const Icon(Icons.sync_outlined, size: 48, color: AppColors.textMuted),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'No sync activity yet',
-                                    style: AppTextStyles.body.copyWith(
-                                      color: AppColors.textMuted,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else
-                            ...syncItems.map(_buildSyncItemTile),
-
-                          const SizedBox(height: AppSpacing.lg),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: OutlinedButton.icon(
-                              onPressed: _isSyncing ? null : _syncNow,
-                              icon: _isSyncing
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(Icons.sync, size: 18),
-                              label: Text(_isSyncing ? 'Syncing...' : 'Sync Now'),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: AppColors.border),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                          const SizedBox(height: 6),
+                          ..._syncErrors.map(
+                            (err) => Padding(
+                              padding: const EdgeInsets.only(bottom: 3),
+                              child: Text(
+                                '• $err',
+                                style: const TextStyle(
+                                  color: Color(0xFF7F1D1D),
+                                  fontSize: 11,
                                 ),
                               ),
                             ),
@@ -1035,6 +1206,83 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                         ],
                       ),
                     ),
+                  ),
+
+                // ── Scrollable Section (Recent sync list only) ──
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _syncNow,
+                    color: AppColors.primaryGreen,
+                    child: syncItems.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 48),
+                                alignment: Alignment.center,
+                                child: Column(
+                                  children: [
+                                    const Icon(
+                                      Icons.sync_outlined,
+                                      size: 48,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'No sync activity yet',
+                                      style: AppTextStyles.body.copyWith(
+                                        color: AppColors.textMuted,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              _buildQueueDetailsTile(),
+                            ],
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.lg,
+                              vertical: 4,
+                            ),
+                            itemCount: displayedItems.length +
+                                (hasMore ? 1 : 0) +
+                                1, // +1 for expandable details tile
+                            itemBuilder: (context, index) {
+                              if (index < displayedItems.length) {
+                                return _buildSyncItemTile(displayedItems[index]);
+                              } else if (hasMore && index == displayedItems.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 6),
+                                  child: Center(
+                                    child: TextButton.icon(
+                                      onPressed: () =>
+                                          setState(() => _showAllRecent = true),
+                                      icon: const Icon(
+                                        Icons.expand_more,
+                                        size: 18,
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                      label: Text(
+                                        'View all (${syncItems.length} records)',
+                                        style: const TextStyle(
+                                          color: AppColors.primaryGreen,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                return _buildQueueDetailsTile();
+                              }
+                            },
+                          ),
                   ),
                 ),
               ],

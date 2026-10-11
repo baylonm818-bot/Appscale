@@ -12,6 +12,7 @@ const {
   getMobileNutritionRecords,
   getMobileSync,
 } = require('../controllers/mobileBeneficiaryControllers');
+const { transferBeneficiary, getBarangays, checkDuplicate } = require('../controllers/masterlistControllers');
 
 // Mobile app users are BNS/BHW — enforce role (allow admin for server-side syncs)
 router.use(roleCheck(['bhw', 'bns', 'admin']));
@@ -20,11 +21,14 @@ router.post('/children', upsertChild);
 router.post('/mothers', upsertMother);
 router.post('/nutrition-records', syncNutritionRecord);
 router.post('/schedules', createMobileSchedule);
+router.post('/transfer', transferBeneficiary);
 
 router.get('/children', getMobileChildren);
 router.get('/mothers', getMobileMothers);
 router.get('/schedules', getMobileSchedules);
 router.get('/nutrition-records', getMobileNutritionRecords);
 router.get('/sync', getMobileSync);
+router.get('/barangays', getBarangays);
+router.get('/check-duplicate', checkDuplicate);
 
 module.exports = router;

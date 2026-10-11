@@ -113,53 +113,258 @@ exports.getMothers = async (req, res) => {
   }
 };
 
-exports.transferBeneficiary = async (req, res) => {
-  const { entityType, entityId, targetBarangay, targetBnsUserId, reason } = req.body;
+const GASAN_BARANGAYS = [
+  'Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang',
+  'Banot', 'Banuyo', 'Bognuyan', 'Cabugao', 'Dawis', 'Dili', 'Libtangin',
+  'Mahunig', 'Mangiliol', 'Masiga', 'Mat. Gasan', 'Pangi', 'Pinggan',
+  'Tabionan', 'Tiguion', 'Brgy. Uno', 'Brgy. Dos', 'Brgy. Tres', 'Tapuyan',
+];
 
-  if (!entityType || !entityId || !targetBarangay || !targetBnsUserId) {
-    return res.status(400).json({ message: 'Entity type, id, destination barangay, and target BNS are required.' });
+exports.getBarangays = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT DISTINCT barangay FROM users WHERE barangay IS NOT NULL AND TRIM(barangay) != ''
+       UNION
+       SELECT DISTINCT barangay FROM children WHERE barangay IS NOT NULL AND TRIM(barangay) != ''`
+    );
+    const dbBarangays = rows.map((r) => r.barangay.trim()).filter(Boolean);
+    const set = new Set([...GASAN_BARANGAYS, ...dbBarangays]);
+    const list = Array.from(set).sort((a, b) => a.localeCompare(b));
+    return res.status(200).json(list);
+  } catch (error) {
+    return res.status(200).json(GASAN_BARANGAYS);
+  }
+};
+
+exports.transferBeneficiary = async (req, res) => {
+  const {
+    entityType,
+    entityId,
+    targetBarangay,
+    targetBnsUserId,
+    reason,
+    transferDate,
+    alsoTransferLinked,
+  } = req.body;
+
+  if (!entityType || !entityId || !targetBarangay) {
+    return res.status(400).json({
+      message: 'Entity type, id, and destination barangay are required.',
+    });
   }
 
   const role = String(req.user?.role || '').toLowerCase();
-  const fromBarangay = req.user?.barangay || null;
+  const requesterBarangay = req.user?.barangay || null;
 
-  if (role !== 'admin' && !canTransferBeneficiary(req.user, fromBarangay, targetBarangay)) {
-    return res.status(403).json({ message: 'You can only transfer records within your own barangay.' });
-  }
+  const table = entityType === 'mother' ? 'mothers' : 'children';
+  const idColumn = entityType === 'mother' ? 'mother_id' : 'child_id';
+
+  // Use a dedicated connection for a single atomic transaction
+  const conn = await pool.getConnection();
 
   try {
-    const table = entityType === 'mother' ? 'mothers' : 'children';
-    const idColumn = entityType === 'mother' ? 'mother_id' : 'child_id';
-    const [[record]] = await pool.query(`SELECT * FROM ${table} WHERE ${idColumn} = ? LIMIT 1`, [entityId]);
+    await conn.beginTransaction();
+
+    // 1. Ensure transfers table exists
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS transfers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        record_id VARCHAR(100) NOT NULL,
+        record_type VARCHAR(50) NOT NULL,
+        from_barangay VARCHAR(100) NOT NULL,
+        to_barangay VARCHAR(100) NOT NULL,
+        transfer_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        transferred_by VARCHAR(100) NULL,
+        reason TEXT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    // 2. Locate beneficiary by id or external_id
+    const [[record]] = await conn.query(
+      `SELECT * FROM ${table} WHERE ${idColumn} = ? OR external_id = ? LIMIT 1`,
+      [entityId, entityId]
+    );
+
     if (!record) {
+      await conn.rollback();
       return res.status(404).json({ message: 'Beneficiary not found.' });
     }
 
-    await pool.query(`UPDATE ${table} SET barangay = ?, updated_at = NOW() WHERE ${idColumn} = ?`, [targetBarangay, entityId]);
+    const fromBarangay = record.barangay || requesterBarangay;
 
-    await pool.query(
-      `INSERT INTO archive_records (table_name, record_id, snapshot, reason, archived_by, archived_at)
-       VALUES (?, ?, ?, 'transfer', ?, NOW())`,
-      [table, entityId, JSON.stringify(record), req.user?.user_id || null]
+    if (String(fromBarangay).trim().toLowerCase() === String(targetBarangay).trim().toLowerCase()) {
+      await conn.rollback();
+      return res.status(400).json({ message: 'Target barangay must be different from current barangay.' });
+    }
+
+    if (role !== 'admin' && !canTransferBeneficiary(req.user, fromBarangay, targetBarangay)) {
+      await conn.rollback();
+      return res.status(403).json({ message: 'You can only transfer beneficiaries from your assigned barangay.' });
+    }
+
+    // Determine target BNS for assignment if available
+    let resolvedTargetBns = targetBnsUserId || null;
+    if (!resolvedTargetBns) {
+      const [[targetBnsRow]] = await conn.query(
+        `SELECT user_id FROM users WHERE role = 'bns' AND LOWER(TRIM(barangay)) = LOWER(TRIM(?)) AND status = 'active' LIMIT 1`,
+        [targetBarangay]
+      );
+      if (targetBnsRow) resolvedTargetBns = targetBnsRow.user_id;
+    }
+
+    const effectiveDate = transferDate ? new Date(transferDate) : new Date();
+
+    // 3. Update the primary record
+    const primaryDbId = record[idColumn];
+    const updateParams = resolvedTargetBns
+      ? [targetBarangay, resolvedTargetBns, primaryDbId]
+      : [targetBarangay, primaryDbId];
+    const encodedByClause = resolvedTargetBns ? ', encoded_by = ?' : '';
+
+    await conn.query(
+      `UPDATE ${table} SET barangay = ?${encodedByClause}, status = 'active', updated_at = NOW() WHERE ${idColumn} = ?`,
+      updateParams
+    );
+
+    // 4. Log transfer
+    const transferredByUser = req.user?.username || String(req.user?.user_id || 'System');
+    await conn.query(
+      `INSERT INTO transfers (record_id, record_type, from_barangay, to_barangay, transfer_date, transferred_by, reason)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        String(record.external_id || primaryDbId),
+        entityType,
+        fromBarangay,
+        targetBarangay,
+        effectiveDate,
+        transferredByUser,
+        reason || 'Beneficiary transferred to new barangay',
+      ]
     );
 
     try {
-      await pool.query(
+      await conn.query(
         `INSERT INTO transfer_history (entity_type, entity_id, from_barangay, to_barangay, transferred_by, reason, notes)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [entityType, entityId, record.barangay || fromBarangay, targetBarangay, req.user?.user_id || null, reason || 'Transferred by admin', null]
+        [entityType, primaryDbId, fromBarangay, targetBarangay, req.user?.user_id || null, reason || 'Transferred', null]
       );
     } catch (_) {}
 
-    await pool.query(
-      `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
-       VALUES (?, ?, 'system', FALSE, ?, NOW())`,
-      [`Beneficiary transferred: ${record.first_name || 'Record'} ${record.last_name || ''}`.trim(), `A ${entityType} record moved from ${record.barangay || fromBarangay} to ${targetBarangay}.`, entityId]
+    // 5. If also transferring linked beneficiary
+    const shouldTransferLinked = Boolean(alsoTransferLinked);
+
+    if (entityType === 'child' && shouldTransferLinked && record.mother_id) {
+      // Transfer linked mother
+      await conn.query(
+        `UPDATE mothers SET barangay = ?${encodedByClause}, status = 'active', updated_at = NOW() WHERE mother_id = ?`,
+        updateParams.slice(0, -1).concat([record.mother_id])
+      );
+      await conn.query(
+        `INSERT INTO transfers (record_id, record_type, from_barangay, to_barangay, transfer_date, transferred_by, reason)
+         VALUES (?, 'mother', ?, ?, ?, ?, ?)`,
+        [String(record.mother_id), fromBarangay, targetBarangay, effectiveDate, transferredByUser, 'Linked child transfer']
+      );
+    } else if (entityType === 'mother' && shouldTransferLinked) {
+      // Transfer all linked children
+      const [linkedKids] = await conn.query(
+        `SELECT child_id, external_id FROM children WHERE mother_id = ?`,
+        [primaryDbId]
+      );
+      for (const kid of linkedKids) {
+        await conn.query(
+          `UPDATE children SET barangay = ?${encodedByClause}, status = 'active', updated_at = NOW() WHERE child_id = ?`,
+          updateParams.slice(0, -1).concat([kid.child_id])
+        );
+        await conn.query(
+          `INSERT INTO transfers (record_id, record_type, from_barangay, to_barangay, transfer_date, transferred_by, reason)
+           VALUES (?, 'child', ?, ?, ?, ?, ?)`,
+          [String(kid.external_id || kid.child_id), fromBarangay, targetBarangay, effectiveDate, transferredByUser, 'Linked mother transfer']
+        );
+      }
+    }
+
+    // 6. Notify active BNS & BHW of the new target barangay
+    const [targetStaff] = await conn.query(
+      `SELECT user_id FROM users WHERE LOWER(TRIM(barangay)) = LOWER(TRIM(?)) AND status = 'active'`,
+      [targetBarangay]
     );
 
-    return res.status(200).json({ message: 'Beneficiary transferred successfully.' });
+    const beneficiaryFullName = `${record.first_name || ''} ${record.last_name || ''}`.trim() || 'Beneficiary';
+    const notifTitle = `Bagong lipat: ${beneficiaryFullName} mula sa ${fromBarangay}`;
+    const notifMessage = `Si ${beneficiaryFullName} ay inilipat sa inyong barangay (${targetBarangay}) mula sa Barangay ${fromBarangay}.`;
+
+    if (targetStaff.length > 0) {
+      for (const staff of targetStaff) {
+        await conn.query(
+          `INSERT INTO notifications (user_id, title, message, type, is_read, related_id, created_at)
+           VALUES (?, ?, ?, 'alert', FALSE, ?, NOW())`,
+          [staff.user_id, notifTitle, notifMessage, primaryDbId]
+        );
+      }
+    } else {
+      // Global/broadcast notification if no specific user mapped yet
+      await conn.query(
+        `INSERT INTO notifications (user_id, title, message, type, is_read, related_id, created_at)
+         VALUES (NULL, ?, ?, 'alert', FALSE, ?, NOW())`,
+        [notifTitle, notifMessage, primaryDbId]
+      );
+    }
+
+    await conn.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: `Beneficiary successfully transferred to Barangay ${targetBarangay}.`,
+      targetBarangay,
+      entityId,
+    });
   } catch (error) {
-    console.error('Transfer beneficiary error:', error);
-    return res.status(500).json({ message: 'Server error. Please try again later.' });
+    await conn.rollback();
+    console.error('Transfer beneficiary transaction error:', error);
+    return res.status(500).json({ message: 'Server error during transfer. Rolled back changes.' });
+  } finally {
+    conn.release();
   }
 };
+
+exports.checkDuplicate = async (req, res) => {
+  try {
+    const { type, targetBarangay, fullName, birthDate } = req.query;
+    if (!targetBarangay || !fullName) {
+      return res.status(200).json({ duplicateExists: false });
+    }
+    const table = type === 'mother' ? 'mothers' : 'children';
+    const cleanName = fullName.trim();
+    const cleanBarangay = targetBarangay.trim();
+
+    let query = `SELECT * FROM ${table} WHERE LOWER(TRIM(barangay)) = LOWER(TRIM(?))`;
+    const params = [cleanBarangay];
+
+    query += ` AND (
+      LOWER(TRIM(CONCAT_WS(' ', first_name, last_name))) = LOWER(TRIM(?))
+      OR LOWER(TRIM(CONCAT_WS(' ', first_name, middle_initial, last_name))) = LOWER(TRIM(?))
+      OR LOWER(TRIM(first_name)) = LOWER(TRIM(?))
+    )`;
+    params.push(cleanName, cleanName, cleanName);
+
+    if (birthDate) {
+      const cleanBirth = String(birthDate).split('T')[0];
+      query += ` AND DATE(birth_date) = ?`;
+      params.push(cleanBirth);
+    }
+
+    query += ` LIMIT 1`;
+
+    const [rows] = await pool.query(query, params);
+
+    return res.status(200).json({
+      duplicateExists: rows.length > 0,
+      existing: rows.length > 0 ? rows[0] : null,
+    });
+  } catch (error) {
+    console.error('Check duplicate error:', error);
+    return res.status(500).json({ message: 'Error checking duplicate', duplicateExists: false });
+  }
+};
+

@@ -15,6 +15,9 @@ class Mother {
   final bool isActive;
   final String?
   inactiveReason; // 'Stopped breastfeeding', 'Transferred', 'Deceased'
+  final DateTime? inactiveDate;
+  final bool isTransferPending;
+  final String? pendingTargetBarangay;
   final List<String> linkedChildIds;
 
   const Mother({
@@ -31,6 +34,9 @@ class Mother {
     this.riskStatus = 'Not visited',
     this.isActive = true,
     this.inactiveReason,
+    this.inactiveDate,
+    this.isTransferPending = false,
+    this.pendingTargetBarangay,
     this.linkedChildIds = const [],
   });
 
@@ -56,6 +62,9 @@ class Mother {
     'riskStatus': riskStatus,
     'isActive': isActive,
     'inactiveReason': inactiveReason,
+    'inactiveDate': inactiveDate?.toIso8601String(),
+    'isTransferPending': isTransferPending,
+    'pendingTargetBarangay': pendingTargetBarangay,
     'linkedChildIds': linkedChildIds,
   };
 
@@ -79,6 +88,8 @@ class Mother {
           : apiFullName,
     );
 
+    final rawInactiveDate = (map['inactiveDate'] ?? map['inactive_date']) as String?;
+
     return Mother(
       id: rawId,
       fullName: normalizedFullName,
@@ -100,6 +111,13 @@ class Mother {
           ? map['isActive'] as bool
           : (map['status'] as String? ?? 'active') == 'active',
       inactiveReason: map['inactiveReason'] as String?,
+      inactiveDate: rawInactiveDate != null
+          ? DateTime.tryParse(rawInactiveDate.split('T').first)
+          : null,
+      isTransferPending:
+          (map['isTransferPending'] ?? map['_transferPending'] ?? false) as bool,
+      pendingTargetBarangay:
+          (map['pendingTargetBarangay'] ?? map['_pendingTargetBarangay']) as String?,
       linkedChildIds:
           (map['linkedChildIds'] as List?)?.map((e) => e.toString()).toList() ??
           [],
@@ -107,18 +125,22 @@ class Mother {
   }
 
   Mother copyWith({
+    String? barangay,
     List<String>? linkedChildIds,
     String? riskStatus,
     String? breastfeedingPractice,
     bool? isActive,
     String? inactiveReason,
+    DateTime? inactiveDate,
+    bool? isTransferPending,
+    String? pendingTargetBarangay,
   }) => Mother(
     id: id,
     fullName: fullName,
     birthDate: birthDate,
     contactNo: contactNo,
     address: address,
-    barangay: barangay,
+    barangay: barangay ?? this.barangay,
     breastfeedingPractice: breastfeedingPractice ?? this.breastfeedingPractice,
     belongsToIpGroup: belongsToIpGroup,
     disability: disability,
@@ -126,6 +148,9 @@ class Mother {
     riskStatus: riskStatus ?? this.riskStatus,
     isActive: isActive ?? this.isActive,
     inactiveReason: inactiveReason ?? this.inactiveReason,
+    inactiveDate: inactiveDate ?? this.inactiveDate,
+    isTransferPending: isTransferPending ?? this.isTransferPending,
+    pendingTargetBarangay: pendingTargetBarangay ?? this.pendingTargetBarangay,
     linkedChildIds: linkedChildIds ?? this.linkedChildIds,
   );
 

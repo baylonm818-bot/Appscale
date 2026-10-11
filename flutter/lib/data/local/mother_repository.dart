@@ -58,10 +58,113 @@ class MotherRepository {
 
   Future<ApiResponse?> trySync(Mother mother) => _trySync(mother);
 
-  Future<ApiResponse?> _trySync(Mother mother) async {
-    final res = await BeneficiaryApi.syncMother(mother);
+  Future<ApiResponse?> transferMother({
+    required Mother mother,
+    required String targetBarangay,
+    required String reason,
+    required DateTime transferDate,
+    bool alsoTransferLinked = false,
+  }) async {
     final existing = _box.get(mother.id) as Map?;
     final map = Map<String, dynamic>.from(existing ?? mother.toMap());
+    map['barangay'] = targetBarangay;
+    map['isTransferPending'] = true;
+    map['_transferPending'] = true;
+    map['pendingTargetBarangay'] = targetBarangay;
+    map['_pendingTargetBarangay'] = targetBarangay;
+    map['inactiveReason'] = reason;
+    map['inactiveDate'] = transferDate.toIso8601String();
+    map['alsoTransferLinked'] = alsoTransferLinked;
+    map['_syncStatus'] = 'pending';
+    await _box.put(mother.id, map);
+
+    if (alsoTransferLinked && mother.linkedChildIds.isNotEmpty) {
+      final cBox = Hive.box(HiveBoxes.children);
+      for (final cid in mother.linkedChildIds) {
+        final cRaw = cBox.get(cid);
+        if (cRaw != null) {
+          final cMap = Map<String, dynamic>.from(cRaw as Map);
+          cMap['barangay'] = targetBarangay;
+          cMap['isTransferPending'] = true;
+          cMap['_transferPending'] = true;
+          cMap['pendingTargetBarangay'] = targetBarangay;
+          cMap['_pendingTargetBarangay'] = targetBarangay;
+          cMap['inactiveReason'] = 'Transferred with mother';
+          cMap['inactiveDate'] = transferDate.toIso8601String();
+          cMap['_syncStatus'] = 'pending';
+          await cBox.put(cid, cMap);
+        }
+      }
+    }
+
+    AppDataBus.notifyChanged();
+    return _trySync(Mother.fromMap(map));
+  }
+
+  Future<ApiResponse?> _trySync(Mother mother) async {
+    final existing = _box.get(mother.id) as Map?;
+    final map = Map<String, dynamic>.from(existing ?? mother.toMap());
+    final isTransferPending =
+        map['isTransferPending'] == true || map['_transferPending'] == true;
+
+    ApiResponse res;
+    if (isTransferPending) {
+      final targetBarangay = (map['pendingTargetBarangay'] ??
+              map['_pendingTargetBarangay'] ??
+              mother.barangay)
+          .toString();
+      final reason = (map['inactiveReason'] ?? 'Transferred').toString();
+      final alsoTransferLinked = map['alsoTransferLinked'] == true;
+      final transferDate = map['inactiveDate'] != null
+          ? DateTime.tryParse(map['inactiveDate'].toString()) ?? DateTime.now()
+          : DateTime.now();
+
+      res = await BeneficiaryApi.transferBeneficiary(
+        entityType: 'mother',
+        entityId: mother.id,
+        targetBarangay: targetBarangay,
+        reason: reason,
+        transferDate: transferDate,
+        alsoTransferLinked: alsoTransferLinked,
+      );
+
+      if (res.success) {
+        map['barangay'] = targetBarangay;
+        map['isTransferPending'] = false;
+        map['_transferPending'] = false;
+        map.remove('pendingTargetBarangay');
+        map.remove('_pendingTargetBarangay');
+        map.remove('alsoTransferLinked');
+        map['_syncStatus'] = 'synced';
+        map['_syncedAt'] = DateTime.now().toIso8601String();
+        map.remove('_lastSyncError');
+        map['_retryCount'] = 0;
+        await _box.put(mother.id, map);
+
+        if (alsoTransferLinked && mother.linkedChildIds.isNotEmpty) {
+          final cBox = Hive.box(HiveBoxes.children);
+          for (final cid in mother.linkedChildIds) {
+            final cRaw = cBox.get(cid);
+            if (cRaw != null) {
+              final cMap = Map<String, dynamic>.from(cRaw as Map);
+              cMap['barangay'] = targetBarangay;
+              cMap['isTransferPending'] = false;
+              cMap['_transferPending'] = false;
+              cMap.remove('pendingTargetBarangay');
+              cMap.remove('_pendingTargetBarangay');
+              cMap['_syncStatus'] = 'synced';
+              cMap['_syncedAt'] = DateTime.now().toIso8601String();
+              await cBox.put(cid, cMap);
+            }
+          }
+        }
+        AppDataBus.notifyChanged();
+        return res;
+      }
+    } else {
+      res = await BeneficiaryApi.syncMother(mother);
+    }
+
     if (res.success) {
       map['_syncStatus'] = 'synced';
       map['_syncedAt'] = DateTime.now().toIso8601String();

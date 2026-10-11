@@ -20,6 +20,9 @@ class Child {
   final DateTime? lastWeighedAt;
   final bool isActive;
   final String? inactiveReason; // 'Graduated', 'Transferred', 'Deceased'
+  final DateTime? inactiveDate;
+  final bool isTransferPending;
+  final String? pendingTargetBarangay;
   final String
   wastingStatus; // 'SAM', 'MAM', 'Normal', 'Overweight', 'Obese', 'Not weighed'
 
@@ -40,6 +43,9 @@ class Child {
     this.lastWeighedAt,
     this.isActive = true,
     this.inactiveReason,
+    this.inactiveDate,
+    this.isTransferPending = false,
+    this.pendingTargetBarangay,
     this.wastingStatus = 'Not weighed',
   });
 
@@ -158,6 +164,9 @@ class Child {
     'lastWeighedAt': lastWeighedAt?.toIso8601String(),
     'isActive': isActive,
     'inactiveReason': inactiveReason,
+    'inactiveDate': inactiveDate?.toIso8601String(),
+    'isTransferPending': isTransferPending,
+    'pendingTargetBarangay': pendingTargetBarangay,
     'wastingStatus': wastingStatus,
   };
 
@@ -196,6 +205,8 @@ class Child {
           : apiFullName,
     );
 
+    final rawInactiveDate = (map['inactiveDate'] ?? map['inactive_date']) as String?;
+
     return Child(
       id: rawId,
       sequenceNo: strVal('sequenceNo', 'sequence_no').isNotEmpty
@@ -227,6 +238,13 @@ class Child {
           ? map['isActive'] as bool
           : (map['status'] as String? ?? 'active') == 'active',
       inactiveReason: map['inactiveReason'] as String?,
+      inactiveDate: rawInactiveDate != null
+          ? DateTime.tryParse(rawInactiveDate.split('T').first)
+          : null,
+      isTransferPending:
+          (map['isTransferPending'] ?? map['_transferPending'] ?? false) as bool,
+      pendingTargetBarangay:
+          (map['pendingTargetBarangay'] ?? map['_pendingTargetBarangay']) as String?,
       wastingStatus: strVal('wastingStatus', 'overall_status').isNotEmpty
           ? strVal('wastingStatus', 'overall_status')
           : 'Not weighed',
@@ -234,6 +252,7 @@ class Child {
   }
 
   Child copyWith({
+    String? barangay,
     Guardian? guardian,
     String? nutritionStatus,
     String? stuntingStatus,
@@ -241,6 +260,9 @@ class Child {
     DateTime? lastWeighedAt,
     bool? isActive,
     String? inactiveReason,
+    DateTime? inactiveDate,
+    bool? isTransferPending,
+    String? pendingTargetBarangay,
   }) => Child(
     id: id,
     sequenceNo: sequenceNo,
@@ -248,7 +270,7 @@ class Child {
     birthDate: birthDate,
     gender: gender,
     address: address,
-    barangay: barangay,
+    barangay: barangay ?? this.barangay,
     belongsToIpGroup: belongsToIpGroup,
     disability: disability,
     guardian: guardian ?? this.guardian,
@@ -257,6 +279,9 @@ class Child {
     lastWeighedAt: lastWeighedAt ?? this.lastWeighedAt,
     isActive: isActive ?? this.isActive,
     inactiveReason: inactiveReason ?? this.inactiveReason,
+    inactiveDate: inactiveDate ?? this.inactiveDate,
+    isTransferPending: isTransferPending ?? this.isTransferPending,
+    pendingTargetBarangay: pendingTargetBarangay ?? this.pendingTargetBarangay,
     stuntingStatus: stuntingStatus ?? this.stuntingStatus,
     wastingStatus: wastingStatus ?? this.wastingStatus,
   );

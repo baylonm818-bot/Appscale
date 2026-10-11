@@ -84,7 +84,7 @@ class ChildProfileHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              if (isActive) ...[
+              if (isActive && !child.isTransferPending) ...[
                 _MeasureButton(onPressed: onMeasurePressed),
                 if (referralStatus.showReferButton && onReferralPressed != null) ...[
                   const SizedBox(width: 6),
@@ -94,6 +94,7 @@ class ChildProfileHeader extends StatelessWidget {
               ],
               _OverflowMenu(
                 isActive: isActive,
+                isTransferPending: child.isTransferPending,
                 onEditPressed: onEditPressed,
                 onStatusActionPressed: onStatusActionPressed,
               ),
@@ -200,11 +201,13 @@ class ChildProfileHeader extends StatelessWidget {
 
 class _OverflowMenu extends StatelessWidget {
   final bool isActive;
+  final bool isTransferPending;
   final VoidCallback onEditPressed;
   final VoidCallback onStatusActionPressed;
 
   const _OverflowMenu({
     required this.isActive,
+    this.isTransferPending = false,
     required this.onEditPressed,
     required this.onStatusActionPressed,
   });
@@ -226,31 +229,40 @@ class _OverflowMenu extends StatelessWidget {
         if (value == 'status') onStatusActionPressed();
       },
       itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'edit',
-          child: Row(
-            children: [
-              Icon(
-                Icons.edit_outlined,
-                size: 18,
-                color: AppColors.textSecondary,
-              ),
-              SizedBox(width: 10),
-              Text('Edit profile'),
-            ],
+        if (!isTransferPending)
+          const PopupMenuItem(
+            value: 'edit',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.edit_outlined,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
+                SizedBox(width: 10),
+                Text('Edit profile'),
+              ],
+            ),
           ),
-        ),
         PopupMenuItem(
           value: 'status',
           child: Row(
             children: [
               Icon(
-                isActive ? Icons.person_off_outlined : Icons.replay,
+                isTransferPending
+                    ? Icons.sync_problem
+                    : (isActive ? Icons.person_off_outlined : Icons.replay),
                 size: 18,
-                color: isActive ? AppColors.statRed : AppColors.primaryGreen,
+                color: isTransferPending
+                    ? AppColors.statOrange
+                    : (isActive ? AppColors.statRed : AppColors.primaryGreen),
               ),
               const SizedBox(width: 10),
-              Text(isActive ? 'Mark as inactive' : 'Reactivate'),
+              Text(
+                isTransferPending
+                    ? 'Transfer pending'
+                    : (isActive ? 'Mark as inactive' : 'Reactivate'),
+              ),
             ],
           ),
         ),
