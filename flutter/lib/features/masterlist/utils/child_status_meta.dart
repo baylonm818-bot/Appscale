@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/child.dart';
 
 /// Maps a child's nutrition status string to its display color.
 /// Add a new status here (e.g. once MUAC/SAM tracking is built) and
@@ -90,4 +91,93 @@ class ChildStatusMeta {
     'Stunted',
     'Not weighed',
   ];
+}
+
+enum ChildOverallCategory {
+  all,
+  severe,
+  atRisk,
+  overweightObese,
+  normal,
+  notWeighed,
+}
+
+class ChildOverallStatus {
+  final String label;
+  final Color color;
+  final ChildOverallCategory category;
+  final int severityRank; // 0 = Severe, 1 = At risk, 2 = Overweight/Obese, 3 = Normal, 4 = Not weighed
+
+  const ChildOverallStatus({
+    required this.label,
+    required this.color,
+    required this.category,
+    required this.severityRank,
+  });
+
+  static ChildOverallStatus fromChild(Child child) {
+    final wfa = ChildStatusMeta.formatStatus(child.nutritionStatus);
+    final hfa = ChildStatusMeta.formatStatus(child.stuntingStatus);
+    final wfh = ChildStatusMeta.formatStatus(child.wastingStatus);
+
+    final statuses = [wfa, hfa, wfh];
+
+    if (statuses.every((s) => s == 'Not weighed')) {
+      return const ChildOverallStatus(
+        label: 'Not weighed',
+        color: AppColors.notWeighed,
+        category: ChildOverallCategory.notWeighed,
+        severityRank: 4,
+      );
+    }
+
+    // 1. Severe (Pula): Severely Underweight, Severely Stunted, SAM
+    final isSevere = statuses.any((s) =>
+        s == 'Severely Underweight' ||
+        s == 'Severely Stunted' ||
+        s == 'SAM');
+    if (isSevere) {
+      return const ChildOverallStatus(
+        label: 'Severe',
+        color: AppColors.statRed,
+        category: ChildOverallCategory.severe,
+        severityRank: 0,
+      );
+    }
+
+    // 2. Moderate / At risk (Orange): Underweight, Stunted, MAM
+    final isAtRisk = statuses.any((s) =>
+        s == 'Underweight' ||
+        s == 'Stunted' ||
+        s == 'MAM');
+    if (isAtRisk) {
+      return const ChildOverallStatus(
+        label: 'At risk',
+        color: AppColors.statOrange,
+        category: ChildOverallCategory.atRisk,
+        severityRank: 1,
+      );
+    }
+
+    // 3. Overweight / Obese (Violet / Asul): Obese, Overweight
+    final isOverweightOrObese = statuses.any((s) =>
+        s == 'Obese' || s == 'Overweight');
+    if (isOverweightOrObese) {
+      final isObese = statuses.any((s) => s == 'Obese');
+      return ChildOverallStatus(
+        label: isObese ? 'Obese' : 'Overweight',
+        color: isObese ? AppColors.statPurple : AppColors.statBlue,
+        category: ChildOverallCategory.overweightObese,
+        severityRank: 2,
+      );
+    }
+
+    // 4. Normal (Berde): Lahat Normal o Tall
+    return const ChildOverallStatus(
+      label: 'Normal',
+      color: AppColors.primaryGreen,
+      category: ChildOverallCategory.normal,
+      severityRank: 3,
+    );
+  }
 }

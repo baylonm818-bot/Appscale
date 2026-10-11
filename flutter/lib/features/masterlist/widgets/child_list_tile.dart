@@ -11,172 +11,203 @@ class ChildListTile extends StatelessWidget {
 
   const ChildListTile({super.key, required this.child, required this.onTap});
 
-  int _severityRank(String status) {
-    final s = status.toLowerCase();
-    if (s == 'sam' || s.contains('severely') || s == 'sst' || s == 'suw') return 0;
-    if (s == 'mam' || s == 'underweight' || s == 'stunted' || s == 'obese' || s == 'overweight' || s == 'uw' || s == 'st' || s == 'ob' || s == 'ow') return 1;
-    if (s == 'normal' || s == 'tall' || s == 'n') return 2;
-    if (s == 'not weighed') return 3;
-    return 4;
+  Widget _buildIndicator(String type, String rawStatus) {
+    final status = ChildStatusMeta.formatStatus(rawStatus);
+    final color = ChildStatusMeta.colorFor(status);
+    String shortText;
+    switch (status) {
+      case 'Severely Underweight':
+      case 'Severely Stunted':
+        shortText = 'Severe';
+        break;
+      case 'Underweight':
+        shortText = 'Underwt';
+        break;
+      case 'Stunted':
+        shortText = 'Stunted';
+        break;
+      case 'SAM':
+        shortText = 'SAM';
+        break;
+      case 'MAM':
+        shortText = 'MAM';
+        break;
+      case 'Overweight':
+        shortText = 'Overwt';
+        break;
+      case 'Obese':
+        shortText = 'Obese';
+        break;
+      case 'Normal':
+        shortText = 'Normal';
+        break;
+      case 'Tall':
+        shortText = 'Tall';
+        break;
+      case 'Not weighed':
+        shortText = '--';
+        break;
+      default:
+        shortText = status;
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 5,
+          height: 5,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            '$type · $shortText',
+            style: const TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isNotWeighed = child.nutritionStatus.trim().toLowerCase() == 'not weighed' ||
-        child.nutritionStatus.trim().isEmpty;
-
-    final List<_StatusChipData> chips = [];
-
-    if (isNotWeighed) {
-      chips.add(_StatusChipData(
-        label: 'Not weighed',
-        color: AppColors.notWeighed,
-        severity: 3,
-      ));
-    } else {
-      final wfaFormatted = ChildStatusMeta.formatStatus(child.nutritionStatus);
-      chips.add(_StatusChipData(
-        label: 'WFA: $wfaFormatted',
-        color: ChildStatusMeta.colorFor(wfaFormatted),
-        severity: _severityRank(wfaFormatted),
-      ));
-
-      if (child.stuntingStatus.isNotEmpty &&
-          child.stuntingStatus.toLowerCase() != 'not weighed') {
-        final hfaFormatted = ChildStatusMeta.formatStatus(child.stuntingStatus);
-        chips.add(_StatusChipData(
-          label: 'HFA: $hfaFormatted',
-          color: ChildStatusMeta.colorFor(hfaFormatted),
-          severity: _severityRank(hfaFormatted),
-        ));
-      }
-
-      if (child.wastingStatus.isNotEmpty &&
-          child.wastingStatus.toLowerCase() != 'not weighed') {
-        final wfhFormatted = ChildStatusMeta.formatStatus(child.wastingStatus);
-        chips.add(_StatusChipData(
-          label: 'WFH: $wfhFormatted',
-          color: ChildStatusMeta.colorFor(wfhFormatted),
-          severity: _severityRank(wfhFormatted),
-        ));
-      }
-
-      // Sort so most severe status (lowest rank number) appears first
-      chips.sort((a, b) => a.severity.compareTo(b.severity));
-    }
-
-    final topColor = chips.isNotEmpty ? chips.first.color : AppColors.primaryGreen;
+    final overall = ChildOverallStatus.fromChild(child);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isNotWeighed
-                    ? AppColors.border
-                    : topColor.withValues(alpha: 0.35),
-                width: isNotWeighed ? 1.0 : 1.2,
-              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border, width: 1.0),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: isNotWeighed
-                        ? AppColors.notWeighed.withValues(alpha: 0.15)
-                        : topColor.withValues(alpha: 0.14),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isNotWeighed
-                          ? AppColors.notWeighed.withValues(alpha: 0.4)
-                          : topColor.withValues(alpha: 0.6),
-                      width: 1.5,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(11),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 4px colored strip on the left edge
+                    Container(
+                      width: 4,
+                      color: overall.color,
                     ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    child.initials,
-                    style: TextStyle(
-                      color: isNotWeighed
-                          ? AppColors.textMuted
-                          : (topColor == AppColors.primaryGreen
-                              ? AppColors.darkGreen
-                              : topColor),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        child.fullName,
-                        style: AppTextStyles.label.copyWith(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Neutral light green avatar
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: AppColors.darkGreen.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                child.initials,
+                                style: const TextStyle(
+                                  color: AppColors.darkGreen,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Info column
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Line 1: Name and Overall Status Badge
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          child.fullName,
+                                          style: AppTextStyles.label.copyWith(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      StatusBadge(
+                                        label: overall.label,
+                                        color: overall.color,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  // Line 2: Age · Address
+                                  Text(
+                                    '${child.ageDisplay} · ${child.formattedAddress}',
+                                    style: AppTextStyles.caption.copyWith(
+                                      fontSize: 11.5,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 5),
+                                  // Line 3: 3 small indicators side-by-side in one row
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildIndicator('WFA', child.nutritionStatus),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: _buildIndicator('HFA', child.stuntingStatus),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: _buildIndicator('WFH', child.wastingStatus),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: AppColors.textMuted,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${child.ageDisplay} · ${child.formattedAddress}',
-                        style: AppTextStyles.body.copyWith(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: chips
-                            .map((chip) => StatusBadge(
-                                  label: chip.label,
-                                  color: chip.color,
-                                ))
-                            .toList(),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: AppColors.textMuted,
-                ),
-              ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
-}
-
-class _StatusChipData {
-  final String label;
-  final Color color;
-  final int severity;
-
-  _StatusChipData({
-    required this.label,
-    required this.color,
-    required this.severity,
-  });
 }

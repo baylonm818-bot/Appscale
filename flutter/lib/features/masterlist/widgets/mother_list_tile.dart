@@ -20,72 +20,142 @@ class MotherListTile extends StatelessWidget {
     final label = mother.isActive ? formattedStatus : 'Inactive';
 
     final initials = mother.fullName.trim().split(RegExp(r'\s+')).length >= 2
-        ? (mother.fullName.trim().split(RegExp(r'\s+'))[0][0] + mother.fullName.trim().split(RegExp(r'\s+'))[1][0]).toUpperCase()
+        ? (mother.fullName.trim().split(RegExp(r'\s+'))[0][0] +
+                mother.fullName.trim().split(RegExp(r'\s+'))[1][0])
+            .toUpperCase()
         : (mother.fullName.isNotEmpty ? mother.fullName[0].toUpperCase() : '?');
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border, width: 1.0),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.statAmber.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      color: AppColors.darkGreen,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(11),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 4px colored strip on the left edge
+                    Container(
+                      width: 4,
+                      color: color,
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        mother.fullName,
-                        style: AppTextStyles.label.copyWith(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        mother.formattedAddress,
-                        style: AppTextStyles.body.copyWith(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Neutral light green avatar
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: AppColors.darkGreen.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                initials,
+                                style: const TextStyle(
+                                  color: AppColors.darkGreen,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Details column
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Line 1: Name and Overall Status Badge
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          mother.fullName,
+                                          style: AppTextStyles.label.copyWith(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      StatusBadge(label: label, color: color),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  // Line 2: Age · Address
+                                  Text(
+                                    '${mother.ageLabel} · ${mother.formattedAddress}',
+                                    style: AppTextStyles.caption.copyWith(
+                                      fontSize: 11.5,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  // Line 3: Breastfeeding practice
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 5,
+                                        height: 5,
+                                        decoration: BoxDecoration(
+                                          color: color,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          mother.breastfeedingPractice,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: AppColors.textMuted,
+                            ),
+                          ],
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                StatusBadge(label: label, color: color),
-              ],
+              ),
             ),
           ),
         ),
