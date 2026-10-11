@@ -13,6 +13,9 @@ class AppTextField extends StatefulWidget {
   final int maxLines;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
+  final FocusNode? focusNode;
+  final bool hasError;
+  final bool hasWarning;
   final String? errorText;
   final TextInputAction? textInputAction;
   final Iterable<String>? autofillHints;
@@ -27,6 +30,9 @@ class AppTextField extends StatefulWidget {
     this.isPassword = false,
     this.isNumericOnly = false,
     this.controller,
+    this.focusNode,
+    this.hasError = false,
+    this.hasWarning = false,
     this.maxLines = 1,
     this.keyboardType,
     this.inputFormatters,
@@ -66,6 +72,7 @@ class _AppTextFieldState extends State<AppTextField> {
         const SizedBox(height: 6),
         TextField(
           controller: widget.controller,
+          focusNode: widget.focusNode,
           obscureText: _obscure,
           keyboardType: resolvedKeyboardType,
           inputFormatters: resolvedFormatters,
@@ -111,13 +118,22 @@ class _AppTextFieldState extends State<AppTextField> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: widget.errorText != null ? AppColors.statRed : AppColors.border,
+                color: (widget.hasError || widget.errorText != null)
+                    ? AppColors.statRed
+                    : widget.hasWarning
+                        ? AppColors.statOrange
+                        : AppColors.border,
+                width: (widget.hasError || widget.errorText != null || widget.hasWarning) ? 1.4 : 1.0,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: widget.errorText != null ? AppColors.statRed : AppColors.borderFocused,
+                color: (widget.hasError || widget.errorText != null)
+                    ? AppColors.statRed
+                    : widget.hasWarning
+                        ? AppColors.statOrange
+                        : AppColors.borderFocused,
                 width: 1.4,
               ),
             ),

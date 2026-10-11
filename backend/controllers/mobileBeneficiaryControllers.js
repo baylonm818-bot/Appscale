@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const { isDuplicateNutritionRecord } = require('../utils/mobileSyncSafety');
 const { enforceScopedBarangay } = require('../utils/roleAccess');
+const { validateMeasurementPlausibility } = require('../utils/growthRangeValidator');
 
 function splitName(fullName) {
   const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
@@ -380,6 +381,16 @@ exports.upsertMother = async (req, res) => {
         } catch (e) {
           console.error('Post-update mother BMI computation failed:', e && e.message);
         }
+        if (Array.isArray(req.body.linked_child_external_ids) && req.body.linked_child_external_ids.length > 0) {
+          try {
+            await pool.query(
+              'UPDATE children SET mother_id = ? WHERE external_id IN (?)',
+              [motherId, req.body.linked_child_external_ids]
+            );
+          } catch (linkErr) {
+            console.error('Link children to mother error (update):', linkErr && linkErr.message);
+          }
+        }
         return res.status(200).json({
           message: 'Mother updated successfully.',
           mother_id: motherId,
@@ -455,6 +466,17 @@ exports.upsertMother = async (req, res) => {
       console.error('Auto-sync mother notification error (non-fatal):', notifErr && notifErr.message);
     }
 
+    if (Array.isArray(req.body.linked_child_external_ids) && req.body.linked_child_external_ids.length > 0) {
+      try {
+        await pool.query(
+          'UPDATE children SET mother_id = ? WHERE external_id IN (?)',
+          [result.insertId, req.body.linked_child_external_ids]
+        );
+      } catch (linkErr) {
+        console.error('Link children to mother error (insert):', linkErr && linkErr.message);
+      }
+    }
+
     return res.status(201).json({
       message: 'Mother registered successfully.',
       mother_id: result.insertId,
@@ -510,6 +532,19 @@ exports.syncNutritionRecord = async (req, res) => {
     const safeWeight = Number(weight_kg) || 0;
     const safeHeight = Number(height_cm) || 0;
     const safeMuac = Number(muac_cm) || 0;
+
+    const plausibility = validateMeasurementPlausibility(
+      safeWeight,
+      safeHeight,
+      child?.age_in_months || 0
+    );
+    if (!plausibility.isValid) {
+      return res.status(400).json({
+        message: plausibility.message,
+        code: 'implausible_measurement',
+        field: plausibility.field,
+      });
+    }
 
     const calculated = computeNutritionStatus(
       safeWeight,

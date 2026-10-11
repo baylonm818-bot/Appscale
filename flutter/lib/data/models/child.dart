@@ -185,15 +185,24 @@ class Child {
         .join(' ');
 
     final rawGuardian = map['guardian'];
+    final motherIdFromMap =
+        (map['mother_external_id'] ?? map['mother_id'])?.toString();
     Guardian guardian;
     if (rawGuardian is Map) {
-      guardian = Guardian.fromMap(rawGuardian);
+      final gMotherId = rawGuardian['linkedMotherId'] as String? ??
+          (motherIdFromMap != null && motherIdFromMap.isNotEmpty ? motherIdFromMap : null);
+      guardian = Guardian(
+        fullName: (rawGuardian['fullName'] ?? rawGuardian['full_name'] ?? '') as String,
+        relationship: (rawGuardian['relationship'] ?? 'Guardian') as String,
+        contactNo: (rawGuardian['contactNo'] ?? rawGuardian['contact_no'] ?? '') as String,
+        linkedMotherId: gMotherId,
+      );
     } else {
       guardian = Guardian(
         fullName: map['guardian_name'] as String? ?? '',
         relationship: 'Guardian',
         contactNo: map['guardian_contact'] as String? ?? '',
-        linkedMotherId: null,
+        linkedMotherId: motherIdFromMap != null && motherIdFromMap.isNotEmpty ? motherIdFromMap : null,
       );
     }
 

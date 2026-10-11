@@ -48,7 +48,12 @@ class ChildrenTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final children = ChildRepository().getByIds(mother.linkedChildIds);
+    final allChildren = ChildRepository().getAll();
+    final children = allChildren
+        .where((c) =>
+            mother.linkedChildIds.contains(c.id) ||
+            c.guardian.linkedMotherId == mother.id)
+        .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),

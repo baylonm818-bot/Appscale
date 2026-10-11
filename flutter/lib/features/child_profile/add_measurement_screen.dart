@@ -44,13 +44,19 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
   final _childRepo = ChildRepository();
   final _activityRepo = ActivityLogRepository();
 
+  final _scrollController = ScrollController();
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _muacController = TextEditingController();
 
-  String? _weightError;
-  String? _heightError;
-  String? _muacError;
+  final _weightFocusNode = FocusNode();
+  final _heightFocusNode = FocusNode();
+  final _muacFocusNode = FocusNode();
+
+  ValidationResult _weightValidation = const ValidationResult();
+  ValidationResult _heightValidation = const ValidationResult();
+  ValidationResult _muacValidation = const ValidationResult();
+  String? _plausibilityError;
 
   DateTime _monthYear = DateTime.now();
   bool _edema = false;
@@ -63,28 +69,125 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
   bool get _isMuacEligible => widget.child.ageInMonths >= 6;
 
-  void _validateInputsLive() {
-    final w = MeasurementValidator.parseDecimal(_weightController.text);
-    final h = MeasurementValidator.parseDecimal(_heightController.text);
-    final m = _isMuacEligible
-        ? MeasurementValidator.parseDecimal(_muacController.text)
-        : null;
-
-    setState(() {
-      _weightError = w != null
-          ? MeasurementValidator.validateWeight(w, widget.child.ageInMonths)
-          : null;
-      _heightError = h != null
-          ? MeasurementValidator.validateHeight(
-              h,
-              widget.child.ageInMonths,
-              previousHeightCm: _previousEntry?.heightCm,
-            )
-          : null;
-      _muacError = (m != null && _isMuacEligible)
-          ? MeasurementValidator.validateMuac(m, widget.child.ageInMonths)
-          : null;
+  @override
+  void initState() {
+    super.initState();
+    _weightFocusNode.addListener(() {
+      if (!_weightFocusNode.hasFocus) {
+        _validateWeight();
+      }
     });
+    _heightFocusNode.addListener(() {
+      if (!_heightFocusNode.hasFocus) {
+        _validateHeight();
+      }
+    });
+    _muacFocusNode.addListener(() {
+      if (!_muacFocusNode.hasFocus) {
+        _validateMuac();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _weightController.dispose();
+    _heightController.dispose();
+    _muacController.dispose();
+    _weightFocusNode.dispose();
+    _heightFocusNode.dispose();
+    _muacFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _applyWeightSuggestion(String val) {
+    _weightController.text = val;
+    _weightController.selection = TextSelection.fromPosition(
+      TextPosition(offset: val.length),
+    );
+    _validateWeight();
+  }
+
+  void _applyHeightSuggestion(String val) {
+    _heightController.text = val;
+    _heightController.selection = TextSelection.fromPosition(
+      TextPosition(offset: val.length),
+    );
+    _validateHeight();
+  }
+
+  void _validateWeight() {
+    final raw = _weightController.text.trim();
+    if (raw.isEmpty) {
+      setState(() {
+        _weightValidation = const ValidationResult();
+      });
+      return;
+    }
+    final w = MeasurementValidator.parseDecimal(raw);
+    if (w == null) {
+      setState(() {
+        _weightValidation = const ValidationResult(
+          severity: ValidationSeverity.error,
+          message: 'Please enter a valid numeric weight (e.g. 12.5 kg).',
+        );
+      });
+      return;
+    }
+    final res = MeasurementValidator.checkWeight(w, widget.child.ageInMonths);
+    setState(() {
+      _weightValidation = res;
+    });
+  }
+
+  void _validateHeight() {
+    final raw = _heightController.text.trim();
+    if (raw.isEmpty) {
+      setState(() {
+        _heightValidation = const ValidationResult();
+      });
+      return;
+    }
+    final h = MeasurementValidator.parseDecimal(raw);
+    if (h == null) {
+      setState(() {
+        _heightValidation = const ValidationResult(
+          severity: ValidationSeverity.error,
+          message: 'Please enter a valid numeric height (e.g. 85 cm).',
+        );
+      });
+      return;
+    }
+    final res = MeasurementValidator.checkHeight(
+      h,
+      widget.child.ageInMonths,
+      previousHeightCm: _previousEntry?.heightCm,
+    );
+    setState(() {
+      _heightValidation = res;
+    });
+  }
+
+  void _validateMuac() {
+    if (!_isMuacEligible) return;
+    final raw = _muacController.text.trim();
+    if (raw.isEmpty) {
+      setState(() => _muacValidation = const ValidationResult());
+      return;
+    }
+    final m = MeasurementValidator.parseDecimal(raw);
+    if (m == null) {
+      setState(() {
+        _muacValidation = const ValidationResult(
+          severity: ValidationSeverity.error,
+          message: 'Please enter a valid numeric MUAC (e.g. 14.5 cm).',
+        );
+      });
+      return;
+    }
+    final res = MeasurementValidator.checkMuac(m, widget.child.ageInMonths);
+    setState(() => _muacValidation = res);
   }
 
   // Computed live as the BNS types — this feeds the preview card.
@@ -139,89 +242,191 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
         ? MeasurementValidator.parseDecimal(_muacController.text)
         : null;
 
+    final weightRes = rawW == null
+        ? const ValidationResult(
+            severity: ValidationSeverity.error,
+            message: 'Weight is required.',
+          )
+        : MeasurementValidator.checkWeight(rawW, widget.child.ageInMonths);
+
+    final heightRes = rawH == null
+        ? const ValidationResult(
+            severity: ValidationSeverity.error,
+            message: 'Height is required.',
+          )
+        : MeasurementValidator.checkHeight(
+            rawH,
+            widget.child.ageInMonths,
+            previousHeightCm: _previousEntry?.heightCm,
+          );
+
+    final muacRes = _isMuacEligible
+        ? (rawM == null
+            ? const ValidationResult(
+                severity: ValidationSeverity.error,
+                message: 'MUAC is required for children 6 months and older.',
+              )
+            : MeasurementValidator.checkMuac(rawM, widget.child.ageInMonths))
+        : const ValidationResult();
+
     setState(() {
-      _weightError = rawW == null
-          ? 'Enter weight'
-          : MeasurementValidator.validateWeight(rawW, widget.child.ageInMonths);
-      _heightError = rawH == null
-          ? 'Enter height'
-          : MeasurementValidator.validateHeight(
-              rawH,
-              widget.child.ageInMonths,
-              previousHeightCm: _previousEntry?.heightCm,
-            );
-      _muacError = _isMuacEligible
-          ? (rawM == null
-              ? 'Enter MUAC'
-              : MeasurementValidator.validateMuac(rawM, widget.child.ageInMonths))
-          : null;
+      _weightValidation = weightRes;
+      _heightValidation = heightRes;
+      _muacValidation = muacRes;
+      _plausibilityError = null;
     });
 
-    if (rawW == null ||
-        rawH == null ||
-        (_isMuacEligible && rawM == null) ||
-        _weightError != null ||
-        _heightError != null ||
-        _muacError != null) {
+    if (weightRes.isError || heightRes.isError || muacRes.isError) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+      if (weightRes.isError) {
+        _weightFocusNode.requestFocus();
+      } else if (heightRes.isError) {
+        _heightFocusNode.requestFocus();
+      } else if (muacRes.isError) {
+        _muacFocusNode.requestFocus();
+      }
       return;
     }
 
-    final plausibilityError = MeasurementValidator.validatePlausibility(
-      weight: rawW,
-      height: rawH,
-      muac: rawM,
-      ageMonths: widget.child.ageInMonths,
-      previousHeightCm: _previousEntry?.heightCm,
-    );
-    if (plausibilityError != null) {
-      setState(() {
-        if (_heightError == null && _weightError == null) {
-          _heightError = plausibilityError;
+    if (rawW != null && rawH != null) {
+      final plausibilityErr = MeasurementValidator.validatePlausibility(
+        weight: rawW,
+        height: rawH,
+        muac: rawM,
+        ageMonths: widget.child.ageInMonths,
+        previousHeightCm: _previousEntry?.heightCm,
+      );
+      if (plausibilityErr != null) {
+        setState(() => _plausibilityError = plausibilityErr);
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
         }
-      });
-      return;
+        return;
+      }
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Review measurement before saving'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Weight: ${rawW.toStringAsFixed(1)} kg'),
-            Text('Height: ${rawH.toStringAsFixed(1)} cm'),
-            if (rawM != null) Text('MUAC: ${rawM.toStringAsFixed(1)} cm'),
-            const SizedBox(height: 8),
-            const Text('Auto-computed nutritional status:'),
-            if (_liveResult != null) ...[
-              Text('Computed BMI: ${_liveResult!.bmi} kg/m² (${_liveResult!.bmiStatus})'),
-              Text('Weight-for-age: ${_liveResult!.weight}'),
-              Text('Height-for-age: ${_liveResult!.height}'),
-              Text('Wasting: ${_liveResult!.wasting}'),
+    final hasSoftWarnings =
+        weightRes.isWarning || heightRes.isWarning || muacRes.isWarning;
+
+    if (hasSoftWarnings) {
+      final confirmedWarning = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: AppColors.statOrange),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Hindi karaniwan ang value na ito. Tama ba?',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
             ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (weightRes.isWarning) ...[
+                Text(
+                  '• ${weightRes.fullMessage}',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 6),
+              ],
+              if (heightRes.isWarning) ...[
+                Text(
+                  '• ${heightRes.fullMessage}',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 6),
+              ],
+              if (muacRes.isWarning) ...[
+                Text(
+                  '• ${muacRes.fullMessage}',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 6),
+              ],
+              const SizedBox(height: 8),
+              const Text(
+                'Maaaring totoo ito sa batang may severe acute malnutrition (SAM) o stunted. Sigurado ka bang tama ang naitalang sukat?',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Edit'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Yes, save'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Edit'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
+      );
 
-    if (confirmed != true) return;
+      if (confirmedWarning != true) return;
+    } else {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Review measurement before saving'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Weight: ${rawW!.toStringAsFixed(1)} kg'),
+              Text('Height: ${rawH!.toStringAsFixed(1)} cm'),
+              if (rawM != null) Text('MUAC: ${rawM.toStringAsFixed(1)} cm'),
+              const SizedBox(height: 8),
+              const Text('Auto-computed nutritional status:'),
+              if (_liveResult != null) ...[
+                Text(
+                  'Computed BMI: ${_liveResult!.bmi} kg/m² (${_liveResult!.bmiStatus})',
+                ),
+                Text('Weight-for-age: ${_liveResult!.weight}'),
+                Text('Height-for-age: ${_liveResult!.height}'),
+                Text('Wasting: ${_liveResult!.wasting}'),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Edit'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+    }
 
     setState(() => _isSaving = true);
 
-    final w = rawW;
-    final h = rawH;
+    final w = rawW!;
+    final h = rawH!;
     final muac = rawM;
 
     final weightStatus = GrowthClassifier.classifyWeightForAge(
@@ -388,6 +593,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             ),
             Expanded(
               child: SingleChildScrollView(
+                controller: _scrollController,
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -451,8 +657,18 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                                 hint: 'e.g. 12.5',
                                 icon: Icons.monitor_weight_outlined,
                                 controller: _weightController,
-                                errorText: _weightError,
-                                onChanged: (_) => _validateInputsLive(),
+                                focusNode: _weightFocusNode,
+                                hasError: _weightValidation.isError,
+                                hasWarning: _weightValidation.isWarning,
+                                onChanged: (_) {
+                                  if (_weightValidation.hasMessage) {
+                                    setState(() {
+                                      _weightValidation = const ValidationResult();
+                                    });
+                                  } else {
+                                    setState(() {});
+                                  }
+                                },
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
@@ -466,8 +682,18 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                                 hint: 'e.g. 85',
                                 icon: Icons.straighten_outlined,
                                 controller: _heightController,
-                                errorText: _heightError,
-                                onChanged: (_) => _validateInputsLive(),
+                                focusNode: _heightFocusNode,
+                                hasError: _heightValidation.isError,
+                                hasWarning: _heightValidation.isWarning,
+                                onChanged: (_) {
+                                  if (_heightValidation.hasMessage) {
+                                    setState(() {
+                                      _heightValidation = const ValidationResult();
+                                    });
+                                  } else {
+                                    setState(() {});
+                                  }
+                                },
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
@@ -476,19 +702,54 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                             ),
                           ],
                         ),
+                        if (_weightValidation.hasMessage)
+                          _MeasurementAlertBanner(
+                            result: _weightValidation,
+                            onApplySuggestion: _weightValidation.suggestionValue != null
+                                ? () => _applyWeightSuggestion(_weightValidation.suggestionValue!)
+                                : null,
+                          ),
+                        if (_heightValidation.hasMessage)
+                          _MeasurementAlertBanner(
+                            result: _heightValidation,
+                            onApplySuggestion: _heightValidation.suggestionValue != null
+                                ? () => _applyHeightSuggestion(_heightValidation.suggestionValue!)
+                                : null,
+                          ),
+                        if (_plausibilityError != null)
+                          _MeasurementAlertBanner(
+                            result: ValidationResult(
+                              severity: ValidationSeverity.error,
+                              message: _plausibilityError,
+                            ),
+                          ),
                         if (_isMuacEligible) ...[
                           AppTextField(
                             label: 'MUAC (cm) *',
                             hint: 'Mid-upper arm circumference',
                             icon: Icons.favorite_outline,
                             controller: _muacController,
-                            errorText: _muacError,
-                            onChanged: (_) => _validateInputsLive(),
+                            focusNode: _muacFocusNode,
+                            hasError: _muacValidation.isError,
+                            hasWarning: _muacValidation.isWarning,
+                            onChanged: (_) {
+                              if (_muacValidation.hasMessage) {
+                                setState(() {
+                                  _muacValidation = const ValidationResult();
+                                });
+                              } else {
+                                setState(() {});
+                              }
+                            },
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                             ],
                           ),
+                          if (_muacValidation.hasMessage)
+                            _MeasurementAlertBanner(
+                              result: _muacValidation,
+                            ),
                           Text(
                             'Supporting measurement, used for wasting screening ages 6–59 months',
                             style: AppTextStyles.body.copyWith(
@@ -663,14 +924,6 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
   String _formatMonthYear(DateTime d) =>
       '${_monthAbbr[d.month - 1]} ${d.year}';
-
-  @override
-  void dispose() {
-    _weightController.dispose();
-    _heightController.dispose();
-    _muacController.dispose();
-    super.dispose();
-  }
 }
 
 class _MonthYearField extends StatelessWidget {
@@ -772,3 +1025,92 @@ class _PreviousStat extends StatelessWidget {
     );
   }
 }
+
+class _MeasurementAlertBanner extends StatelessWidget {
+  final ValidationResult result;
+  final VoidCallback? onApplySuggestion;
+
+  const _MeasurementAlertBanner({
+    required this.result,
+    this.onApplySuggestion,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (result.isValid || result.message == null) return const SizedBox.shrink();
+
+    final isError = result.isError;
+    final bgColor = isError ? const Color(0xFFFFEBEE) : const Color(0xFFFFF3E0);
+    final borderColor = isError ? AppColors.statRed : AppColors.statOrange;
+    final textColor = isError ? AppColors.statRed : const Color(0xFFB25E00);
+    final iconData = isError ? Icons.error_outline : Icons.warning_amber_rounded;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor, width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(iconData, size: 18, color: textColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  result.fullMessage ?? result.message ?? '',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (result.suggestionValue != null && onApplySuggestion != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: InkWell(
+                onTap: onApplySuggestion,
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: borderColor.withValues(alpha: 0.6)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check, size: 14, color: textColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Gamitin ang ${result.suggestionValue}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+

@@ -16,6 +16,10 @@ import 'package:appscalev3/data/growth_standards/measurement_validator.dart';
 import 'package:appscalev3/features/reports/services/consolidation_computation_service.dart';
 import 'package:appscalev3/shared/utils/app_user_identity.dart';
 import 'package:appscalev3/data/models/measurement.dart';
+import 'package:appscalev3/data/models/mother.dart';
+import 'package:appscalev3/data/local/mother_repository.dart';
+import 'package:appscalev3/data/local/child_repository.dart';
+import 'package:appscalev3/data/local/beneficiary_link_service.dart';
 
 void main() {
   group('Item 4: GrowthClassifier Tests', () {
@@ -465,7 +469,7 @@ void main() {
     test('Rejects implausible 25 kg weight for a 1-month-old', () {
       final err = MeasurementValidator.validateWeight(25.0, 1);
       expect(err, isNotNull);
-      expect(err, contains('outside plausible range'));
+      expect(err, contains('is too high for 1 mo'));
     });
 
     test('Accepts normal 4.5 kg weight for a 1-month-old', () {
@@ -476,7 +480,7 @@ void main() {
     test('Rejects 35 cm height for a 3-month-old', () {
       final err = MeasurementValidator.validateHeight(35.0, 3);
       expect(err, isNotNull);
-      expect(err, contains('outside plausible range'));
+      expect(err, contains('is too low for 3 mos'));
     });
 
     test('Rejects decreasing height compared to previous entry', () {
@@ -486,7 +490,7 @@ void main() {
         previousHeightCm: 60.0,
       );
       expect(err, isNotNull);
-      expect(err, contains('cannot decrease'));
+      expect(err, contains('slightly lower than previous entry'));
     });
 
     test('Accepts valid increasing height', () {
@@ -526,4 +530,147 @@ void main() {
       expect(child.formattedAddress, equals('Purok 4'));
     });
   });
+
+  group('Child-Mother Linking Tests', () {
+    setUp(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      const channel = MethodChannel('plugins.flutter.io/path_provider');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+        return '.';
+      });
+      await Hive.initFlutter();
+      await Hive.openBox(HiveBoxes.children);
+      await Hive.openBox(HiveBoxes.mothers);
+      await Hive.box(HiveBoxes.children).clear();
+      await Hive.box(HiveBoxes.mothers).clear();
+    });
+
+    test('Child.fromMap preserves mother_external_id into guardian.linkedMotherId', () {
+      final child = Child.fromMap({
+        'id': 'c-1',
+        'full_name': 'Baby Maria',
+        'birth_date': '2025-01-01',
+        'sex': 'female',
+        'barangay': 'Tiguion',
+        'guardian_name': 'Juana Santos',
+        'guardian_contact': '09123456789',
+        'mother_external_id': 'm-999',
+      });
+      expect(child.guardian.linkedMotherId, equals('m-999'));
+    });
+
+    test('resolveOrCreateMotherForChild creates new mother and auto-links', () async {
+      final service = BeneficiaryLinkService();
+      final mother = await service.resolveOrCreateMotherForChild(
+        barangay: 'Tiguion',
+        guardianName: 'Ana Reyes',
+        guardianContact: '09171112222',
+        address: 'Purok 2',
+      );
+
+      expect(mother.fullName, equals('Ana Reyes'));
+      expect(mother.contactNo, equals('09171112222'));
+      expect(mother.barangay, equals('Tiguion'));
+      expect(mother.isActive, isTrue);
+      expect(mother.riskStatus, equals('Not visited'));
+
+      // If called again for the same mother, reuses existing without creating duplicate
+      final reused = await service.resolveOrCreateMotherForChild(
+        barangay: 'Tiguion',
+        guardianName: 'Ana Reyes',
+        guardianContact: '09171112222',
+        address: 'Purok 2',
+      );
+      expect(reused.id, equals(mother.id));
+      expect(MotherRepository().getAll().length, equals(1));
+    });
+
+    test('autoLinkExistingMotherGuardians fixes legacy unlinked children whose guardian is Mother', () async {
+      final childRepo = ChildRepository();
+      final motherRepo = MotherRepository();
+      final service = BeneficiaryLinkService();
+
+      final child = Child(
+        id: 'c-legacy',
+        sequenceNo: 'TIG-2026-001',
+        fullName: 'Legacy Child',
+        birthDate: DateTime(2025, 6, 1),
+        gender: 'Female',
+        address: 'Purok 3',
+        barangay: 'Tiguion',
+        belongsToIpGroup: false,
+        disability: 'None',
+        guardian: const Guardian(
+          fullName: 'Elena Cruz',
+          relationship: 'Mother',
+          contactNo: '09187778888',
+          linkedMotherId: null,
+        ),
+        createdAt: DateTime.now(),
+      );
+      await childRepo.add(child);
+
+      // Run migration
+      await service.autoLinkExistingMotherGuardians(barangay: 'Tiguion');
+
+      final updatedChild = childRepo.getById('c-legacy')!;
+      expect(updatedChild.guardian.linkedMotherId, isNotNull);
+
+      final linkedMother = motherRepo.getById(updatedChild.guardian.linkedMotherId!)!;
+      expect(linkedMother.fullName, equals('Elena Cruz'));
+      expect(linkedMother.linkedChildIds, contains('c-legacy'));
+    });
+  });
+
+  group('Measurement Age-Based Validation Tests', () {
+    test('Weight 32 kg for 6 mos yields hard error with 3.2 kg suggestion', () {
+      final res = MeasurementValidator.checkWeight(32.0, 6);
+      expect(res.isError, isTrue);
+      expect(res.message, contains('Weight 32 kg is too high for 6 mos. Expected 3-12 kg.'));
+      expect(res.suggestion, contains('Ibig mo bang sabihin 3.2 kg?'));
+      expect(res.suggestionValue, equals('3.2'));
+    });
+
+    test('Height 35 cm for 6 mos yields hard error', () {
+      final res = MeasurementValidator.checkHeight(35.0, 6);
+      expect(res.isError, isTrue);
+      expect(res.message, contains('Height 35 cm is too low for 6 mos. Expected 55-80 cm.'));
+      expect(res.suggestion, isNull);
+    });
+
+    test('Soft warning triggered for plausible SAM/stunted child values', () {
+      // For 6 months: soft range is 3.0-12.0 kg, hard range is 2.2-15.0 kg
+      // 2.8 kg is between 2.2 and 3.0 -> soft warning
+      final weightRes = MeasurementValidator.checkWeight(2.8, 6);
+      expect(weightRes.isWarning, isTrue);
+      expect(weightRes.isError, isFalse);
+      expect(weightRes.message, contains('unusually low for 6 mos'));
+
+      // 53 cm is between 48 and 55 cm -> soft warning
+      final heightRes = MeasurementValidator.checkHeight(53.0, 6);
+      expect(heightRes.isWarning, isTrue);
+      expect(heightRes.isError, isFalse);
+      expect(heightRes.message, contains('unusually low for 6 mos'));
+    });
+
+    test('Decimal parsing supports comma and period', () {
+      expect(MeasurementValidator.parseDecimal('12.5'), equals(12.5));
+      expect(MeasurementValidator.parseDecimal('12,5'), equals(12.5));
+      expect(MeasurementValidator.parseDecimal('invalid'), isNull);
+      expect(MeasurementValidator.parseDecimal(''), isNull);
+    });
+
+    test('MUAC validation enforces plausible ranges for 6+ months', () {
+      final errorMuac = MeasurementValidator.checkMuac(35.0, 12);
+      expect(errorMuac.isError, isTrue);
+
+      final normalMuac = MeasurementValidator.checkMuac(13.5, 12);
+      expect(normalMuac.isValid, isTrue);
+
+      final warningMuac = MeasurementValidator.checkMuac(10.2, 12);
+      expect(warningMuac.isWarning, isTrue);
+    });
+  });
 }
+

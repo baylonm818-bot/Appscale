@@ -137,6 +137,22 @@ class _AddChildScreenState extends State<AddChildScreen> {
       return;
     }
 
+    Mother? targetMother = _linkedMother;
+    final isMotherGuardian = _relationship.trim().toLowerCase() == 'mother';
+
+    if (isMotherGuardian) {
+      targetMother = await _linkService.resolveOrCreateMotherForChild(
+        barangay: _currentBarangay,
+        guardianName: _guardianNameController.text.trim(),
+        guardianContact: sanitizedGuardianContact,
+        address: _addressController.text.trim(),
+        belongsToIpGroup: _belongsToIpGroup,
+        excludeChildId: widget.existingChild?.id,
+      );
+    } else if (!_guardianIsMonitoredMother) {
+      targetMother = null;
+    }
+
     final child = Child(
       id: widget.existingChild?.id ?? ChildRepository.generateId(),
       sequenceNo: _sequenceNo,
@@ -153,7 +169,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
         fullName: _guardianNameController.text.trim(),
         relationship: _relationship,
         contactNo: sanitizedGuardianContact,
-        linkedMotherId: _guardianIsMonitoredMother ? _linkedMother?.id : null,
+        linkedMotherId: targetMother?.id,
       ),
       createdAt: widget.existingChild?.createdAt ?? DateTime.now(),
       nutritionStatus: widget.existingChild?.nutritionStatus ?? 'Not weighed',
@@ -171,8 +187,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
     }
 
     final oldMotherId = widget.existingChild?.guardian.linkedMotherId;
-    if (_guardianIsMonitoredMother && _linkedMother != null) {
-      if (oldMotherId != null && oldMotherId != _linkedMother!.id) {
+    if (targetMother != null) {
+      if (oldMotherId != null && oldMotherId != targetMother.id) {
         final oldMother = _motherRepo.getById(oldMotherId);
         if (oldMother != null) {
           await _linkService.unlinkChildFromMother(
@@ -183,7 +199,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       }
       await _linkService.linkChildToMother(
         child: child,
-        mother: _linkedMother!,
+        mother: targetMother,
       );
     } else if (oldMotherId != null) {
       final oldMother = _motherRepo.getById(oldMotherId);
@@ -348,55 +364,91 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             ),
                           ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.lightGreenBg,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.primaryGreen),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Guardian is also a monitored mother?',
-                                  style: AppTextStyles.body.copyWith(
-                                    fontSize: 12,
-                                    color: AppColors.darkGreen,
+                        if (_relationship.trim().toLowerCase() == 'mother')
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.lightGreenBg,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: AppColors.primaryGreen.withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.check_circle_outline,
+                                  color: AppColors.primaryGreen,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Mother beneficiary record will be automatically linked.',
+                                    style: AppTextStyles.body.copyWith(
+                                      fontSize: 12,
+                                      color: AppColors.darkGreen,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              Switch(
-                                value: _guardianIsMonitoredMother,
-                                activeThumbColor: AppColors.primaryGreen,
-                                onChanged: (v) => setState(() {
-                                  _guardianIsMonitoredMother = v;
-                                  if (!v) _linkedMother = null;
-                                }),
-                              ),
-                            ],
+                              ],
+                            ),
+                          )
+                        else ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Link to monitored mother? (Optional)',
+                                    style: AppTextStyles.body.copyWith(
+                                      fontSize: 12,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                Switch(
+                                  value: _guardianIsMonitoredMother,
+                                  activeThumbColor: AppColors.primaryGreen,
+                                  onChanged: (v) => setState(() {
+                                    _guardianIsMonitoredMother = v;
+                                    if (!v) _linkedMother = null;
+                                  }),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        if (_guardianIsMonitoredMother)
-                          MotherPickerField(
-                            barangay: _currentBarangay,
-                            selected: _linkedMother,
-                            prefillFullName: _guardianNameController.text,
-                            prefillContact: _guardianContactController.text,
-                            prefillAddress: _addressController.text,
-                            onSelected: (mother) => setState(() {
-                              _linkedMother = mother;
-                              if (mother != null) {
-                                _guardianNameController.text = mother.fullName;
-                                _guardianContactController.text =
-                                    mother.contactNo;
-                              }
-                            }),
-                          ),
+                          if (_guardianIsMonitoredMother)
+                            MotherPickerField(
+                              barangay: _currentBarangay,
+                              selected: _linkedMother,
+                              prefillFullName: _guardianNameController.text,
+                              prefillContact: _guardianContactController.text,
+                              prefillAddress: _addressController.text,
+                              onSelected: (mother) => setState(() {
+                                _linkedMother = mother;
+                                if (mother != null) {
+                                  _guardianNameController.text = mother.fullName;
+                                  _guardianContactController.text =
+                                      mother.contactNo;
+                                }
+                              }),
+                            ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: AppSpacing.xl),

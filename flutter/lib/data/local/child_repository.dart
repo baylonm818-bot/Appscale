@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/child.dart';
+import '../models/mother.dart';
 import 'hive_boxes.dart';
 import 'app_data_bus.dart';
+import 'mother_repository.dart';
 import '../models/child_status_filter.dart';
 import '../remote/beneficiary_api.dart';
 
@@ -19,6 +21,11 @@ class ChildRepository {
       return null;
     });
     return child;
+  }
+
+  Child? getById(String id) {
+    final map = _box.get(id);
+    return map == null ? null : Child.fromMap(map as Map);
   }
 
   List<Child> getAll() =>
@@ -157,6 +164,17 @@ class ChildRepository {
         return res;
       }
     } else {
+      if (child.guardian.linkedMotherId != null &&
+          child.guardian.linkedMotherId!.isNotEmpty) {
+        final mBox = Hive.box(HiveBoxes.mothers);
+        final mRaw = mBox.get(child.guardian.linkedMotherId);
+        if (mRaw != null) {
+          final mMap = Map<String, dynamic>.from(mRaw as Map);
+          if (mMap['_syncStatus'] != 'synced') {
+            await MotherRepository().trySync(Mother.fromMap(mMap));
+          }
+        }
+      }
       res = await BeneficiaryApi.syncChild(child);
     }
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/local/hive_boxes.dart';
+import '../../data/local/beneficiary_link_service.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/measurement_repository.dart';
 import '../../data/local/mother_repository.dart';
@@ -42,9 +43,11 @@ class _SplashScreenState extends State<SplashScreen>
     Future.microtask(() async {
       try {
         await HiveBoxes.init();
+        await BeneficiaryLinkService().autoLinkExistingMotherGuardians();
+        // Sync mothers first so mother_external_id resolves cleanly when syncing children
+        await MotherRepository().syncPending();
         await Future.wait([
           ChildRepository().syncPending(),
-          MotherRepository().syncPending(),
           MeasurementRepository().syncPending(),
         ]);
       } catch (e) {
