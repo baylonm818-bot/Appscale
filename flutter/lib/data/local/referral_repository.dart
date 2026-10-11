@@ -79,6 +79,8 @@ class ReferralRepository {
     return errors;
   }
 
+  Future<ApiResponse?> trySync(Referral referral) => _trySync(referral);
+
   Future<ApiResponse?> _trySync(Referral referral) async {
     final res = await ReferralApi.submit(referral);
     final existing = _box.get(referral.id) as Map?;
@@ -86,6 +88,7 @@ class ReferralRepository {
     if (res.success) {
       // Mark as synced and capture server-assigned referral id if provided
       map['_syncStatus'] = 'synced';
+      map['_syncedAt'] = DateTime.now().toIso8601String();
       map.remove('_lastSyncError');
       map['_retryCount'] = 0;
       try {

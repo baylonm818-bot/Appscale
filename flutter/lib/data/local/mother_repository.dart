@@ -56,12 +56,15 @@ class MotherRepository {
       .where((raw) => (raw as Map)['_syncStatus'] != 'synced')
       .length;
 
+  Future<ApiResponse?> trySync(Mother mother) => _trySync(mother);
+
   Future<ApiResponse?> _trySync(Mother mother) async {
     final res = await BeneficiaryApi.syncMother(mother);
     final existing = _box.get(mother.id) as Map?;
     final map = Map<String, dynamic>.from(existing ?? mother.toMap());
     if (res.success) {
       map['_syncStatus'] = 'synced';
+      map['_syncedAt'] = DateTime.now().toIso8601String();
       map.remove('_lastSyncError');
       map['_retryCount'] = 0;
     } else {
