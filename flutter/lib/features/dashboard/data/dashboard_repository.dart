@@ -6,7 +6,6 @@ import '../../../data/local/hive_boxes.dart';
 import '../../../data/local/mother_repository.dart';
 import '../../masterlist/utils/child_status_meta.dart';
 import '../models/dashboard_models.dart';
-import '../../../data/models/child.dart';
 import '../../../data/local/program_schedule_repository.dart';
 
 class DashboardRepository {
@@ -80,31 +79,6 @@ class DashboardRepository {
         icon: Icons.restaurant_menu_rounded,
       ),
     ];
-  }
-
-  List<Child> getNeedsAttentionChildren({int limit = 3}) {
-    final activeChildren = _childRepo
-        .getByBarangay(_currentBarangay)
-        .where((c) => c.isActive)
-        .toList();
-
-    final severe = activeChildren.where((c) {
-      final wfa = ChildStatusMeta.formatStatus(c.nutritionStatus);
-      final hfa = ChildStatusMeta.formatStatus(c.stuntingStatus);
-      final wfh = ChildStatusMeta.formatStatus(c.wastingStatus);
-      return wfh == 'SAM' ||
-          wfa == 'Severely Underweight' ||
-          hfa == 'Severely Stunted';
-    }).toList();
-
-    severe.sort((a, b) {
-      final aOverall = ChildOverallStatus.fromChild(a).severityRank;
-      final bOverall = ChildOverallStatus.fromChild(b).severityRank;
-      if (aOverall != bOverall) return aOverall.compareTo(bOverall);
-      return a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase());
-    });
-
-    return severe.take(limit).toList();
   }
 
   bool _isThisMonth(DateTime date) {
