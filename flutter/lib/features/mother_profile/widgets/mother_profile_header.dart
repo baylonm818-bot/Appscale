@@ -7,7 +7,6 @@ import '../../../data/local/referral_repository.dart';
 import '../../../data/models/mother.dart';
 import '../../masterlist/utils/mother_status_meta.dart';
 import '../../masterlist/widgets/status_badge.dart';
-import '../../referrals/widgets/referral_detail_sheet.dart';
 
 const _kAccent = Color(0xFF1B5E20);
 const _kAccentDark = Color(0xFF2E7D32);
@@ -30,10 +29,19 @@ class MotherProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasVisits =
-        MotherVisitRepository().getForMother(mother.id).isNotEmpty;
-    final activeReferral =
-        ReferralRepository().getActiveForBeneficiary(mother.id);
+    final visits = MotherVisitRepository().getForMother(mother.id);
+    final presentVisits = visits.where((v) => v.present).toList();
+    final hasVisits = presentVisits.isNotEmpty;
+    final latestVisit = hasVisits ? presentVisits.first : null;
+    final needsReferral = latestVisit != null &&
+        (latestVisit.isReferralNeeded || mother.riskStatus == 'At-risk');
+
+    final referralStatus = ReferralRepository().getReferralHeaderStatus(
+      beneficiaryId: mother.id,
+      hasRecords: hasVisits,
+      needsReferralFromRecord: needsReferral,
+      recordDate: latestVisit?.effectiveCreatedAt,
+    );
 
     return Container(
       width: double.infinity,
@@ -48,7 +56,7 @@ class MotherProfileHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Single row: arrow -> title -> Add visit -> Referral/Referred -> overflow menu.
+          // Single row: arrow -> title -> Add visit -> Refer (if needed) -> overflow menu.
           Row(
             children: [
               InkWell(
@@ -62,8 +70,11 @@ class MotherProfileHeader extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Mother',
-                  style: AppTextStyles.h2.copyWith(color: Colors.white),
+                  'Mother Profile',
+                  style: AppTextStyles.h2.copyWith(
+                    color: Colors.white,
+                    fontSize: 18,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -71,19 +82,11 @@ class MotherProfileHeader extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               if (mother.isActive) ...[
                 _AddVisitButton(onPressed: onAddVisitPressed),
-                const SizedBox(width: 6),
-                if (hasVisits && activeReferral == null) ...[
+                if (referralStatus.showReferButton) ...[
+                  const SizedBox(width: 6),
                   _ReferralButton(onPressed: onReferralPressed),
-                  const SizedBox(width: 6),
-                ] else if (activeReferral != null) ...[
-                  _ReferredBadge(
-                    onPressed: () => ReferralDetailSheet.show(
-                      context,
-                      referral: activeReferral,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
                 ],
+                const SizedBox(width: 6),
               ],
               _OverflowMenu(
                 isActive: mother.isActive,
@@ -148,6 +151,7 @@ class MotherProfileHeader extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: 8,
+            runSpacing: 6,
             children: [
               if (mother.isActive)
                 StatusBadge(
@@ -159,6 +163,12 @@ class MotherProfileHeader extends StatelessWidget {
                 StatusBadge(
                   label: 'Inactive · ${mother.inactiveReason ?? "Unspecified"}',
                   color: AppColors.textMuted,
+                  onDark: true,
+                ),
+              if (referralStatus.chipLabel != null)
+                StatusBadge(
+                  label: referralStatus.chipLabel!,
+                  color: referralStatus.chipColor!,
                   onDark: true,
                 ),
             ],
@@ -272,55 +282,20 @@ class _ReferralButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.amber.shade700.withValues(alpha: 0.9),
+      color: AppColors.statOrange,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(20),
         child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.assignment_turned_in_outlined, color: Colors.white, size: 14),
               SizedBox(width: 3),
               Text(
-                'Referral',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ReferredBadge extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _ReferredBadge({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.amber.shade800,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(20),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle_outline, color: Colors.white, size: 14),
-              SizedBox(width: 4),
-              Text(
-                'Referred',
+                'Refer',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 12,

@@ -1,5 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
+import '../../core/theme/app_colors.dart';
 import '../models/referral.dart';
 import '../models/app_notification.dart';
 import 'app_data_bus.dart';
@@ -7,6 +9,18 @@ import 'hive_boxes.dart';
 import 'notification_repository.dart';
 import '../remote/referral_api.dart';
 import '../remote/beneficiary_api.dart';
+
+class ReferralHeaderStatus {
+  final bool showReferButton;
+  final String? chipLabel;
+  final Color? chipColor;
+
+  const ReferralHeaderStatus({
+    required this.showReferButton,
+    this.chipLabel,
+    this.chipColor,
+  });
+}
 
 class ReferralRepository {
   Box get _box => Hive.box(HiveBoxes.referrals);
@@ -201,6 +215,92 @@ class ReferralRepository {
     ).toList();
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list.isNotEmpty ? list.first : null;
+  }
+
+  /// Returns the latest referral for a beneficiary that is not cancelled or rejected.
+  Referral? getLatestValidForBeneficiary(String beneficiaryId) {
+    final list = getAll().where((r) {
+      final s = r.status.trim().toLowerCase();
+      return r.beneficiaryId == beneficiaryId &&
+          s != 'cancelled' &&
+          s != 'rejected';
+    }).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list.isNotEmpty ? list.first : null;
+  }
+
+  /// Calculates header button and status chip state for a beneficiary profile:
+  /// 1. Not visited / no records: no button, no chip
+  /// 2. Active referral: "Referred to BHW" chip, no refer button
+  /// 3. Completed referral: "Referral completed" chip, no refer button UNLESS
+  ///    a new visit/record after the referral flagged that referral is needed again
+  /// 4. Needs referral & no active referral: "Refer" button, no chip
+  /// 5. Normal assessment: no button, no chip
+  ReferralHeaderStatus getReferralHeaderStatus({
+    required String beneficiaryId,
+    required bool hasRecords,
+    required bool needsReferralFromRecord,
+    DateTime? recordDate,
+  }) {
+    if (!hasRecords) {
+      return const ReferralHeaderStatus(showReferButton: false);
+    }
+
+    final latestReferral = getLatestValidForBeneficiary(beneficiaryId);
+
+    final isActive = latestReferral != null &&
+        (latestReferral.status.trim().toLowerCase() == 'pending' ||
+            latestReferral.status.trim().toLowerCase() == 'in progress' ||
+            latestReferral.status.trim().toLowerCase() == 'ongoing' ||
+            latestReferral.status.trim().toLowerCase() == 'responded');
+
+    if (isActive) {
+      return const ReferralHeaderStatus(
+        showReferButton: false,
+        chipLabel: 'Referred to BHW',
+        chipColor: AppColors.statOrange,
+      );
+    }
+
+    final isCompleted = latestReferral != null &&
+        latestReferral.status.trim().toLowerCase() == 'completed';
+
+    if (isCompleted) {
+      final isNewRecordAfterReferral = recordDate != null &&
+          recordDate.isAfter(latestReferral.createdAt);
+
+      if (isNewRecordAfterReferral) {
+        if (needsReferralFromRecord) {
+          return const ReferralHeaderStatus(
+            showReferButton: true,
+            chipLabel: null,
+          );
+        } else {
+          return const ReferralHeaderStatus(
+            showReferButton: false,
+            chipLabel: null,
+          );
+        }
+      } else {
+        return const ReferralHeaderStatus(
+          showReferButton: false,
+          chipLabel: 'Referral completed',
+          chipColor: AppColors.primaryGreen,
+        );
+      }
+    }
+
+    if (needsReferralFromRecord) {
+      return const ReferralHeaderStatus(
+        showReferButton: true,
+        chipLabel: null,
+      );
+    }
+
+    return const ReferralHeaderStatus(
+      showReferButton: false,
+      chipLabel: null,
+    );
   }
 
   /// Barangay-wide view for the Dashboard entry point — pending and

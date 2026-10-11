@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/local/app_data_bus.dart';
 import '../../data/local/mother_repository.dart';
+import '../../data/local/mother_visit_repository.dart';
 import '../../data/models/mother.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../../shared/widgets/deactivate_beneficiary_sheet.dart';
@@ -44,6 +45,26 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
   }
 
   Future<void> _handleCreateReferral(Mother current) async {
+    final visits = MotherVisitRepository().getForMother(current.id);
+    final present = visits.where((v) => v.present).toList();
+    final parts = <String>[];
+    if (present.isNotEmpty) {
+      final latest = present.first;
+      if (latest.observation == 'Signs of concern') {
+        parts.add(latest.observationNote?.isNotEmpty == true
+            ? latest.observationNote!
+            : 'Signs of concern observed');
+      }
+      if (latest.hasMedicalConcern) {
+        parts.add(latest.concernNote?.isNotEmpty == true
+            ? latest.concernNote!
+            : 'Medical concern reported');
+      }
+    }
+    final reason = parts.isNotEmpty
+        ? parts.join(' · ')
+        : 'Maternal health assessment referral';
+
     await Navigator.push(
       context,
       appPageRoute(
@@ -51,7 +72,8 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
           prefillBeneficiaryType: 'mother',
           prefillBeneficiaryId: current.id,
           prefillBeneficiaryName: current.fullName,
-          prefillReason: 'Maternal health referral',
+          prefillBeneficiarySubtitle: current.formattedAddress,
+          prefillReason: reason,
         ),
       ),
     );

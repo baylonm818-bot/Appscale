@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/local/app_data_bus.dart';
 import '../../data/local/child_repository.dart';
+import '../../data/local/measurement_repository.dart';
 import '../../data/models/child.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../../shared/widgets/deactivate_beneficiary_sheet.dart';
 import '../beneficiary/add_child_screen.dart';
+import '../referrals/create_referral_screen.dart';
 import 'add_measurement_screen.dart';
 import 'widgets/charts_tab.dart';
 import 'widgets/child_profile_header.dart';
@@ -37,6 +39,47 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     await Navigator.push<Child>(
       context,
       appPageRoute(AddMeasurementScreen(child: current)),
+    );
+  }
+
+  Future<void> _handleCreateReferral(Child current) async {
+    final measurements = MeasurementRepository().getForChild(current.id);
+    String reason = 'Child nutrition referral';
+    if (measurements.isNotEmpty) {
+      final latest = measurements.first;
+      final parts = <String>[];
+      if (latest.effectiveWastingStatus == 'SAM' ||
+          latest.effectiveWastingStatus == 'MAM') {
+        parts.add('Wasting: ${latest.effectiveWastingStatus}');
+      }
+      if (latest.heightForAgeStatus == 'Severely Stunted') {
+        parts.add('Stunting: Severely Stunted');
+      }
+      if (latest.weightForAgeStatus == 'Severely Underweight') {
+        parts.add('Weight: Severely Underweight');
+      }
+      if (parts.isNotEmpty) {
+        reason = parts.join(' · ');
+      }
+    } else if (current.wastingStatus == 'SAM' ||
+        current.wastingStatus == 'MAM' ||
+        current.nutritionStatus == 'Severely Underweight') {
+      reason =
+          'Nutritional concern: ${current.nutritionStatus} · ${current.wastingStatus}';
+    }
+
+    await Navigator.push(
+      context,
+      appPageRoute(
+        CreateReferralScreen(
+          prefillBeneficiaryType: 'child',
+          prefillBeneficiaryId: current.id,
+          prefillBeneficiaryName: current.fullName,
+          prefillBeneficiarySubtitle:
+              '${current.ageLabel} · ${current.formattedAddress}',
+          prefillReason: reason,
+        ),
+      ),
     );
   }
 
@@ -80,6 +123,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                   onEditPressed: () => _handleEdit(child),
                   onStatusActionPressed: () => _handleStatusAction(child),
                   onMeasurePressed: () => _handleMeasure(child),
+                  onReferralPressed: () => _handleCreateReferral(child),
                 ),
                 ProfileTabBar(
                   currentIndex: _tabIndex,

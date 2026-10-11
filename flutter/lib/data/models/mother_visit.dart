@@ -9,6 +9,9 @@ class MotherVisit {
   observation; // 'Appears well' or 'Signs of concern' — null if missed
   final String? observationNote;
 
+  final bool needsReferral;
+  final DateTime? createdAt;
+
   const MotherVisit({
     required this.date,
     required this.present,
@@ -18,10 +21,19 @@ class MotherVisit {
     this.concernNote,
     this.observation,
     this.observationNote,
+    this.needsReferral = false,
+    this.createdAt,
   });
 
   bool get stoppedBreastfeeding =>
       breastfeedingPractice == 'Stopped breastfeeding';
+
+  bool get isReferralNeeded =>
+      needsReferral ||
+      hasMedicalConcern ||
+      observation == 'Signs of concern';
+
+  DateTime get effectiveCreatedAt => createdAt ?? date;
 
   Map<String, dynamic> toMap() => {
     'date': date.toIso8601String(),
@@ -32,6 +44,8 @@ class MotherVisit {
     'concernNote': concernNote,
     'observation': observation,
     'observationNote': observationNote,
+    'needsReferral': isReferralNeeded,
+    'createdAt': effectiveCreatedAt.toIso8601String(),
   };
 
   factory MotherVisit.fromMap(Map<String, dynamic> map) => MotherVisit(
@@ -45,5 +59,11 @@ class MotherVisit {
     concernNote: map['concernNote'] as String?,
     observation: map['observation'] as String?,
     observationNote: map['observationNote'] as String?,
+    needsReferral: map['needsReferral'] as bool? ??
+        ((map['hasMedicalConcern'] as bool? ?? false) ||
+            map['observation'] == 'Signs of concern'),
+    createdAt: map['createdAt'] != null
+        ? DateTime.tryParse(map['createdAt'] as String)
+        : null,
   );
 }

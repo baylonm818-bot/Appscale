@@ -50,6 +50,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
   final Set<String> _topics = {};
   bool _hasConcern = false;
   String _observation = 'Appears well';
+  bool _needsReferral = false;
   bool _isSaving = false;
 
   bool get _isFormValid =>
@@ -68,6 +69,9 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
     setState(() => _isSaving = true);
 
     try {
+      final isReferralMarked = _present &&
+          (_needsReferral || _hasConcern || _observation == 'Signs of concern');
+
       final visit = MotherVisit(
         date: _date,
         present: _present,
@@ -81,6 +85,8 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
         observationNote: _present && _observation == 'Signs of concern'
             ? _observationNoteController.text.trim()
             : null,
+        needsReferral: isReferralMarked,
+        createdAt: DateTime.now(),
       );
 
       await _visitRepo
@@ -105,7 +111,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
               r.status.toLowerCase() != 'cancelled');
 
       final needsReferralPrompt = _present &&
-          (_observation == 'Signs of concern' || _hasConcern) &&
+          isReferralMarked &&
           !hasExistingReferral;
 
       if (needsReferralPrompt && mounted) {
@@ -406,6 +412,40 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                                   controller: _observationNoteController,
                                 ),
                               ],
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Needs referral to BHW?',
+                                style: AppTextStyles.label,
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _toggle(
+                                      'No',
+                                      !_needsReferral &&
+                                          !_hasConcern &&
+                                          _observation != 'Signs of concern',
+                                      () => setState(() => _needsReferral = false),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _toggle(
+                                      'Yes',
+                                      _needsReferral ||
+                                          _hasConcern ||
+                                          _observation == 'Signs of concern',
+                                      () => setState(() => _needsReferral = true),
+                                      danger: true,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ],

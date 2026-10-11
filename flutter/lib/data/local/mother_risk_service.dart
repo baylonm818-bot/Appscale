@@ -32,7 +32,7 @@ class MotherRiskService {
 
     final latest = presentVisits.first;
 
-    final newRisk = latest.observation == 'Signs of concern'
+    final newRisk = latest.isReferralNeeded
         ? 'At-risk'
         : 'Normal';
     final newBreastfeeding =
