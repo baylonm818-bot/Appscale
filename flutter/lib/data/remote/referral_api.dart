@@ -93,4 +93,35 @@ class ReferralApi {
       );
     }
   }
+
+  static Future<List<Map<String, dynamic>>?> fetchReferrals({String? barangay}) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) return null;
+
+    final query = (barangay != null && barangay.isNotEmpty)
+        ? '?barangay=${Uri.encodeComponent(barangay)}'
+        : '';
+    final url = Uri.parse('$_baseUrl/bhw/referrals$query');
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          return decoded.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }

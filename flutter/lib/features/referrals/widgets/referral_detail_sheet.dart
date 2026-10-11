@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../data/local/child_repository.dart';
+import '../../../data/local/mother_repository.dart';
 import '../../../data/models/referral.dart';
-import '../../masterlist/widgets/status_badge.dart';
 
 /// Read-only referral detail sheet for BNS mobile users.
 ///
 /// Status updates and clinical resolutions are managed exclusively by the
 /// RHU Admin and BHW via the Web Health Portal; this sheet allows the mobile
-/// user to track status and review clinical outcome notes.
+/// user to track status and review clinical outcome notes, completion date,
+/// and supplies given.
 class ReferralDetailSheet extends StatelessWidget {
   final Referral referral;
 
@@ -28,22 +30,56 @@ class ReferralDetailSheet extends StatelessWidget {
   }
 
   Color get _statusColor {
-    switch (referral.status) {
+    final s = referral.statusDisplay;
+    switch (s) {
       case 'Pending':
-        return AppColors.statAmber;
+        return AppColors.statOrange;
       case 'In Progress':
         return AppColors.statBlue;
       case 'Completed':
         return AppColors.primaryGreen;
+      case 'Cancelled':
+        return AppColors.textMuted;
       default:
         return AppColors.textMuted;
     }
+  }
+
+  String get _displayName {
+    if (referral.beneficiaryName.trim().isNotEmpty) {
+      return referral.beneficiaryName.trim();
+    }
+    final mother = MotherRepository().getById(referral.beneficiaryId);
+    if (mother != null && mother.fullName.trim().isNotEmpty) {
+      return mother.fullName.trim();
+    }
+    final child = ChildRepository().getById(referral.beneficiaryId);
+    if (child != null && child.fullName.trim().isNotEmpty) {
+      return child.fullName.trim();
+    }
+    return referral.beneficiaryType == 'mother' ? 'Mother' : 'Child Beneficiary';
+  }
+
+  String get _facilityDisplay {
+    final f = referral.facility.trim();
+    if (f.isNotEmpty && !RegExp(r'^\d+$').hasMatch(f)) {
+      return f;
+    }
+    final match = RegExp(r'Facility:\s*([^|\n]+)').firstMatch(referral.notes);
+    if (match != null &&
+        match.group(1)!.trim().isNotEmpty &&
+        !RegExp(r'^\d+$').hasMatch(match.group(1)!.trim())) {
+      return match.group(1)!.trim();
+    }
+    return 'Rural Health Unit (RHU)';
   }
 
   @override
   Widget build(BuildContext context) {
     final dateStr =
         '${referral.createdAt.year}-${referral.createdAt.month.toString().padLeft(2, '0')}-${referral.createdAt.day.toString().padLeft(2, '0')}';
+    final statusColor = _statusColor;
+    final isCompleted = referral.isCompleted;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -75,12 +111,12 @@ class ReferralDetailSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      referral.beneficiaryName,
+                      _displayName,
                       style: AppTextStyles.h2.copyWith(fontSize: 18),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${referral.beneficiaryType == 'child' ? 'Child Beneficiary' : 'Mother Beneficiary'} · Barangay ${referral.barangay}',
+                      '${referral.beneficiaryType == 'mother' ? 'Mother Beneficiary' : 'Child Beneficiary'} · Barangay ${referral.barangay}',
                       style: AppTextStyles.body.copyWith(
                         fontSize: 12,
                         color: AppColors.textMuted,
@@ -89,7 +125,41 @@ class ReferralDetailSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              StatusBadge(label: referral.status, color: _statusColor),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isCompleted) ...[
+                      Icon(Icons.check_circle, size: 13, color: statusColor),
+                      const SizedBox(width: 5),
+                    ] else ...[
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                    ],
+                    Text(
+                      referral.statusDisplay,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -132,7 +202,7 @@ class ReferralDetailSheet extends StatelessWidget {
           const SizedBox(height: 10),
           _buildDetailRow(
             'Referred Facility',
-            referral.facility,
+            _facilityDisplay,
             Icons.local_hospital_outlined,
           ),
           const SizedBox(height: 10),
@@ -141,6 +211,22 @@ class ReferralDetailSheet extends StatelessWidget {
             referral.reason,
             Icons.report_problem_outlined,
           ),
+          if (isCompleted && referral.formattedCompletedDate != null) ...[
+            const SizedBox(height: 10),
+            _buildDetailRow(
+              'Date Completed',
+              referral.formattedCompletedDate!,
+              Icons.event_available_outlined,
+            ),
+          ],
+          if (isCompleted) ...[
+            const SizedBox(height: 10),
+            _buildDetailRow(
+              'Items / Supplies Given',
+              referral.itemsGivenFormatted,
+              Icons.inventory_2_outlined,
+            ),
+          ],
           const SizedBox(height: AppSpacing.lg),
 
           // Status & Outcome Section
@@ -163,25 +249,25 @@ class ReferralDetailSheet extends StatelessWidget {
                 Row(
                   children: [
                     Icon(
-                      referral.status == 'Completed'
+                      isCompleted
                           ? Icons.check_circle
-                          : (referral.status == 'In Progress'
-                                ? Icons.timelapse
-                                : Icons.hourglass_top),
+                          : (referral.isInProgress
+                              ? Icons.timelapse
+                              : Icons.hourglass_top),
                       size: 16,
-                      color: _statusColor,
+                      color: statusColor,
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      referral.status == 'Completed'
+                      isCompleted
                           ? 'Resolved by RHU / BHW'
-                          : (referral.status == 'In Progress'
-                                ? 'Under Review by RHU Staff'
-                                : 'Awaiting RHU Evaluation'),
+                          : (referral.isInProgress
+                              ? 'Under Review by RHU / BHW Staff'
+                              : 'Awaiting RHU / BHW Evaluation'),
                       style: AppTextStyles.body.copyWith(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: _statusColor,
+                        color: statusColor,
                       ),
                     ),
                   ],

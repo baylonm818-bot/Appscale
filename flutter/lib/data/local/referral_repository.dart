@@ -146,43 +146,214 @@ class ReferralRepository {
     return Referral.fromMap(Map<String, dynamic>.from(raw as Map));
   }
 
+  /// Pulls the latest referrals from the backend and reconciles them with Hive.
+  /// Server status takes precedence over local status when server is updated.
+  Future<void> pullLatest({String? barangay}) async {
+    try {
+      final settings = SettingsRepository();
+      final effectiveBarangay = barangay ?? settings.authUser?['barangay']?.toString();
+      final incoming = await ReferralApi.fetchReferrals(barangay: effectiveBarangay);
+      if (incoming != null && incoming.isNotEmpty) {
+        await processIncomingReferrals(incoming);
+      }
+    } catch (e) {
+      debugPrint('[ReferralRepository] pullLatest error: $e');
+    }
+  }
+
+  /// Processes incoming referral records from either dedicated pull or full sync payload.
+  Future<void> processIncomingReferrals(List<Map<String, dynamic>> incoming) async {
+    for (final r in incoming) {
+      final serverId = (r['referral_id'] ?? r['id'])?.toString();
+      if (serverId == null || serverId.isEmpty) continue;
+
+      final serverStatus = Referral.normalizeStatus(r['status']?.toString());
+      final serverNotes = (r['notes'] ?? r['response_notes'] ?? '').toString();
+      final serverUpdatedAt = DateTime.tryParse((r['updated_at'] ?? r['updatedAt'] ?? r['created_at'] ?? '').toString());
+      final serverCreatedAt = DateTime.tryParse((r['created_at'] ?? r['createdAt'] ?? '').toString()) ?? DateTime.now();
+      final beneficiaryType = r['beneficiary_type']?.toString() ??
+          (r['mother_id'] != null ? 'mother' : 'child');
+      final beneficiaryId = (r['child_external_id'] ??
+              r['mother_external_id'] ??
+              r['child_id'] ??
+              r['mother_id'])
+          ?.toString() ??
+          '';
+
+      String name = '${r['beneficiary_first_name'] ?? ''} ${r['beneficiary_last_name'] ?? ''}'.trim();
+      if (name.isEmpty) {
+        name = (r['beneficiary_name'] ?? r['beneficiaryName'] ?? '').toString().trim();
+      }
+
+      String facility = (r['facility'] ?? '').toString().trim();
+      if (facility.isEmpty || RegExp(r'^\d+$').hasMatch(facility)) {
+        final match = RegExp(r'Facility:\s*([^|\n]+)').firstMatch(serverNotes);
+        if (match != null && match.group(1)!.trim().isNotEmpty && !RegExp(r'^\d+$').hasMatch(match.group(1)!.trim())) {
+          facility = match.group(1)!.trim();
+        } else {
+          facility = 'Rural Health Unit (RHU)';
+        }
+      }
+
+      List<Map<String, dynamic>> items = const [];
+      final rawItems = r['items_given'] ?? r['itemsGiven'];
+      if (rawItems is List) {
+        items = rawItems.map((i) {
+          if (i is Map) return Map<String, dynamic>.from(i);
+          return <String, dynamic>{'item_name': i.toString(), 'quantity': 1};
+        }).toList();
+      }
+
+      // Find matching local Hive record
+      String? matchedKey;
+      Map<String, dynamic>? matchedMap;
+
+      for (final key in _box.keys) {
+        final raw = _box.get(key);
+        if (raw is Map) {
+          final m = Map<String, dynamic>.from(raw);
+          if (m['server_id']?.toString() == serverId || m['id']?.toString() == serverId) {
+            matchedKey = key.toString();
+            matchedMap = m;
+            break;
+          }
+        }
+      }
+
+      // Secondary match by beneficiaryId and reason if pending local record without server_id
+      if (matchedKey == null && beneficiaryId.isNotEmpty) {
+        for (final key in _box.keys) {
+          final raw = _box.get(key);
+          if (raw is Map) {
+            final m = Map<String, dynamic>.from(raw);
+            if (m['beneficiaryId']?.toString() == beneficiaryId &&
+                m['reason']?.toString() == (r['reason'] ?? '').toString()) {
+              matchedKey = key.toString();
+              matchedMap = m;
+              break;
+            }
+          }
+        }
+      }
+
+      if (matchedKey != null && matchedMap != null) {
+        final previousStatus = Referral.normalizeStatus(matchedMap['status']?.toString());
+        final existingUpdatedAt = DateTime.tryParse(
+          (matchedMap['updatedAt'] ?? matchedMap['createdAt'] ?? '').toString(),
+        );
+
+        // Server wins if serverUpdatedAt is newer, or if server has resolved/progressed
+        final bool shouldUpdateStatus = serverUpdatedAt == null ||
+            existingUpdatedAt == null ||
+            !serverUpdatedAt.isBefore(existingUpdatedAt) ||
+            serverStatus == 'Completed' ||
+            serverStatus == 'In Progress';
+
+        final effectiveStatus = shouldUpdateStatus ? serverStatus : previousStatus;
+
+        // Trigger notification if newly completed by BHW
+        if (previousStatus != 'Completed' && serverStatus == 'Completed') {
+          final resolvedName = name.isNotEmpty
+              ? name
+              : (matchedMap['beneficiaryName']?.toString() ?? 'Beneficiary');
+          await NotificationRepository().add(
+            AppNotification(
+              id: NotificationRepository.generateId(),
+              title: 'Referral Completed',
+              message: 'Referral ni $resolvedName ay Completed.',
+              type: 'referral_completed',
+              referralId: matchedKey,
+              timestamp: DateTime.now(),
+            ),
+          );
+        }
+
+        final updatedRecord = {
+          ...matchedMap,
+          'server_id': serverId,
+          'status': effectiveStatus,
+          'notes': serverNotes.isNotEmpty ? serverNotes : (matchedMap['notes'] ?? ''),
+          'facility': facility,
+          if (name.isNotEmpty) 'beneficiaryName': name,
+          'itemsGiven': items,
+          'updatedAt': (serverUpdatedAt ?? DateTime.now()).toIso8601String(),
+          '_syncStatus': 'synced',
+        };
+        await _box.put(matchedKey, updatedRecord);
+      } else {
+        // Brand new referral from server
+        final newRecord = {
+          'id': serverId,
+          'server_id': serverId,
+          'beneficiaryId': beneficiaryId,
+          'beneficiaryType': beneficiaryType,
+          'beneficiaryName': name,
+          'barangay': r['barangay']?.toString() ?? '',
+          'reason': (r['reason'] ?? '').toString(),
+          'facility': facility,
+          'notes': serverNotes,
+          'status': serverStatus,
+          'createdAt': serverCreatedAt.toIso8601String(),
+          'updatedAt': (serverUpdatedAt ?? serverCreatedAt).toIso8601String(),
+          'itemsGiven': items,
+          '_syncStatus': 'synced',
+        };
+        await _box.put(serverId, newRecord);
+
+        if (serverStatus == 'Completed') {
+          await NotificationRepository().add(
+            AppNotification(
+              id: NotificationRepository.generateId(),
+              title: 'Referral Completed',
+              message: 'Referral ni ${name.isNotEmpty ? name : "Beneficiary"} ay Completed.',
+              type: 'referral_completed',
+              referralId: serverId,
+              timestamp: DateTime.now(),
+            ),
+          );
+        }
+      }
+    }
+    AppDataBus.notifyChanged();
+  }
+
   /// Simulates / processes incoming updates from the RHU Web Portal (Admin/BHW).
-  /// Mobile users cannot edit statuses directly; updates arrive from the web
-  /// and trigger an in-app notification when completed or moved in-progress.
   Future<void> receiveWebUpdate({
     required String referralId,
     required String newStatus,
     String? notes,
+    List<Map<String, dynamic>>? itemsGiven,
   }) async {
     final existing = getById(referralId);
     if (existing == null) return;
 
+    final normStatus = Referral.normalizeStatus(newStatus);
     final updated = existing.copyWith(
-      status: newStatus,
+      status: normStatus,
       notes: notes ?? existing.notes,
+      updatedAt: DateTime.now(),
+      itemsGiven: itemsGiven ?? existing.itemsGiven,
     );
-    await _box.put(updated.id, updated.toMap());
+    await _box.put(updated.id, updated.toMap()..['_syncStatus'] = 'synced');
 
     // Dispatch notification to mobile user
-    if (newStatus == 'Completed') {
+    if (normStatus == 'Completed') {
       await NotificationRepository().add(
         AppNotification(
           id: NotificationRepository.generateId(),
-          title: 'Referral Resolved by RHU',
-          message:
-              'RHU/BHW completed referral for ${updated.beneficiaryName}. Outcome: ${notes?.isNotEmpty == true ? notes : "Referral resolved by RHU."}',
+          title: 'Referral Completed',
+          message: 'Referral ni ${updated.beneficiaryName} ay Completed.',
           type: 'referral_completed',
           referralId: updated.id,
           timestamp: DateTime.now(),
         ),
       );
-    } else if (newStatus == 'In Progress') {
+    } else if (normStatus == 'In Progress') {
       await NotificationRepository().add(
         AppNotification(
           id: NotificationRepository.generateId(),
           title: 'Referral In Progress at RHU',
-          message:
-              'RHU/BHW is currently evaluating ${updated.beneficiaryName}.',
+          message: 'RHU/BHW is currently evaluating ${updated.beneficiaryName}.',
           type: 'referral_in_progress',
           referralId: updated.id,
           timestamp: DateTime.now(),
@@ -205,13 +376,11 @@ class ReferralRepository {
     return list;
   }
 
-  /// Returns the latest active (Pending, Ongoing, In Progress, Responded) referral
-  /// for a given beneficiary if one exists.
+  /// Returns the latest active (Pending, In Progress) referral for a given beneficiary.
   Referral? getActiveForBeneficiary(String beneficiaryId) {
-    const activeStatuses = {'pending', 'in progress', 'ongoing', 'responded'};
     final list = getAll().where((r) =>
         r.beneficiaryId == beneficiaryId &&
-        activeStatuses.contains(r.status.trim().toLowerCase())
+        (r.isPending || r.isInProgress)
     ).toList();
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list.isNotEmpty ? list.first : null;
@@ -219,23 +388,15 @@ class ReferralRepository {
 
   /// Returns the latest referral for a beneficiary that is not cancelled or rejected.
   Referral? getLatestValidForBeneficiary(String beneficiaryId) {
-    final list = getAll().where((r) {
-      final s = r.status.trim().toLowerCase();
-      return r.beneficiaryId == beneficiaryId &&
-          s != 'cancelled' &&
-          s != 'rejected';
-    }).toList();
+    final list = getAll().where((r) =>
+        r.beneficiaryId == beneficiaryId &&
+        !r.isCancelled
+    ).toList();
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list.isNotEmpty ? list.first : null;
   }
 
   /// Calculates header button and status chip state for a beneficiary profile:
-  /// 1. Not visited / no records: no button, no chip
-  /// 2. Active referral: "Referred to BHW" chip, no refer button
-  /// 3. Completed referral: "Referral completed" chip, no refer button UNLESS
-  ///    a new visit/record after the referral flagged that referral is needed again
-  /// 4. Needs referral & no active referral: "Refer" button, no chip
-  /// 5. Normal assessment: no button, no chip
   ReferralHeaderStatus getReferralHeaderStatus({
     required String beneficiaryId,
     required bool hasRecords,
@@ -248,13 +409,7 @@ class ReferralRepository {
 
     final latestReferral = getLatestValidForBeneficiary(beneficiaryId);
 
-    final isActive = latestReferral != null &&
-        (latestReferral.status.trim().toLowerCase() == 'pending' ||
-            latestReferral.status.trim().toLowerCase() == 'in progress' ||
-            latestReferral.status.trim().toLowerCase() == 'ongoing' ||
-            latestReferral.status.trim().toLowerCase() == 'responded');
-
-    if (isActive) {
+    if (latestReferral != null && (latestReferral.isPending || latestReferral.isInProgress)) {
       return const ReferralHeaderStatus(
         showReferButton: false,
         chipLabel: 'Referred to BHW',
@@ -262,10 +417,7 @@ class ReferralRepository {
       );
     }
 
-    final isCompleted = latestReferral != null &&
-        latestReferral.status.trim().toLowerCase() == 'completed';
-
-    if (isCompleted) {
+    if (latestReferral != null && latestReferral.isCompleted) {
       final isNewRecordAfterReferral = recordDate != null &&
           recordDate.isAfter(latestReferral.createdAt);
 
@@ -303,12 +455,11 @@ class ReferralRepository {
     );
   }
 
-  /// Barangay-wide view for the Dashboard entry point — pending and
-  /// in-progress cases surface first, since those are what a BNS
-  /// actually needs to act on.
+  /// Barangay-wide view: Pending and In-Progress cases surface first,
+  /// completed cases at the bottom.
   List<Referral> getForBarangay(String barangay) {
     final list = getAll()
-        .where((r) => r.barangay == barangay && r.status != 'Cancelled')
+        .where((r) => r.barangay == barangay && !r.isCancelled)
         .toList();
     list.sort((a, b) {
       const order = {
@@ -316,10 +467,9 @@ class ReferralRepository {
         'In Progress': 1,
         'Completed': 2,
       };
-      final statusCompare = (order[a.status] ?? 9).compareTo(
-        order[b.status] ?? 9,
-      );
-      if (statusCompare != 0) return statusCompare;
+      final aRank = order[a.statusDisplay] ?? 1;
+      final bRank = order[b.statusDisplay] ?? 1;
+      if (aRank != bRank) return aRank.compareTo(bRank);
       return b.createdAt.compareTo(a.createdAt);
     });
     return list;
@@ -329,7 +479,7 @@ class ReferralRepository {
       .where(
         (r) =>
             r.barangay == barangay &&
-            (r.status == 'Pending' || r.status == 'In Progress'),
+            (r.isPending || r.isInProgress),
       )
       .length;
 

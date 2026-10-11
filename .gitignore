@@ -17,3 +17,5 @@ flutter/**/GeneratedPluginRegistrant.*
 .idea/
 *.iml
 *.log
+*.hive
+*_box.lock

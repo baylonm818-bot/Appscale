@@ -474,6 +474,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         if (!pullResult.success && pullResult.error != null) {
           errors.add('Cloud pull failed: ${pullResult.error}');
         }
+        await _referrals.pullLatest(barangay: _currentBarangay);
       }
 
       final nowIso = DateTime.now().toIso8601String();

@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../local/hive_boxes.dart';
 import '../local/app_data_bus.dart';
+import '../local/referral_repository.dart';
 
 /// Central service that is the single source of truth for pulling server data
 /// into the local Hive cache. Called after login and on reconnect.
@@ -58,7 +59,6 @@ class SyncService {
     final childBox       = Hive.box(HiveBoxes.children);
     final motherBox      = Hive.box(HiveBoxes.mothers);
     final measurementBox = Hive.box(HiveBoxes.measurements);
-    final referralBox    = Hive.box(HiveBoxes.referrals);
     final scheduleBox    = Hive.box(HiveBoxes.programSchedule);
     final notifBox       = Hive.box(HiveBoxes.notifications);
     final enrollBox      = Hive.box(HiveBoxes.feedingEnrollment);
@@ -180,24 +180,12 @@ class SyncService {
 
     // ── 4. Referrals ──────────────────────────────────────────────────────────
     final referrals = (payload['referrals'] as List? ?? []);
-    for (final r in referrals) {
-      final key = r['referral_id']?.toString() ?? '';
-      if (key.isEmpty) continue;
-      final existing = referralBox.get(key) as Map?;
-      if (existing != null && existing['_syncStatus'] == 'pending') continue;
-      await referralBox.put(key, {
-        'id': key,
-        'beneficiaryId': (r['child_external_id'] ?? r['child_id'] ?? r['mother_id'])?.toString() ?? '',
-        'beneficiaryType': 'child',
-        'beneficiaryName': '${r['beneficiary_first_name'] ?? ''} ${r['beneficiary_last_name'] ?? ''}'.trim(),
-        'barangay': r['barangay'] as String? ?? barangay,
-        'facility': r['referred_to']?.toString() ?? '',
-        'reason': r['reason'] as String? ?? '',
-        'notes': (r['notes'] ?? r['response_notes'] ?? '').toString(),
-        'status': r['status'] as String? ?? 'Pending',
-        'createdAt': r['created_at'] as String? ?? DateTime.now().toIso8601String(),
-        '_syncStatus': 'synced',
-      });
+    if (referrals.isNotEmpty) {
+      final list = referrals
+          .whereType<Map>()
+          .map((m) => Map<String, dynamic>.from(m))
+          .toList();
+      await ReferralRepository().processIncomingReferrals(list);
     }
 
     // ── 5. Schedules ──────────────────────────────────────────────────────────

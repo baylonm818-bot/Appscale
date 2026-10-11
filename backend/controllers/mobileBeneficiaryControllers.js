@@ -985,9 +985,13 @@ exports.getMobileSync = async (req, res) => {
       ),
       pool.query(
         `SELECT r.referral_id, r.child_id, r.mother_id, r.reason, r.referred_to,
-                r.status, r.notes, r.created_at,
-                c.first_name AS beneficiary_first_name, c.last_name AS beneficiary_last_name,
+                r.status, r.notes, r.created_at, r.updated_at,
+                COALESCE(c.first_name, m.first_name) AS beneficiary_first_name,
+                COALESCE(c.last_name, m.last_name) AS beneficiary_last_name,
+                COALESCE(c.external_id, m.external_id) AS beneficiary_external_id,
                 c.external_id AS child_external_id,
+                m.external_id AS mother_external_id,
+                CASE WHEN r.mother_id IS NOT NULL THEN 'mother' ELSE 'child' END AS beneficiary_type,
                 COALESCE(c.barangay, m.barangay) AS barangay
          FROM referrals r
          LEFT JOIN children c ON c.child_id = r.child_id
@@ -1010,6 +1014,27 @@ exports.getMobileSync = async (req, res) => {
         [barangay, barangay, barangay, barangay, `%${barangay}%`, `%${barangay}%`]
       ),
     ]);
+
+    // Attach items_given for referrals
+    const refIds = (referrals || []).map((r) => r.referral_id).filter(Boolean);
+    if (refIds.length > 0) {
+      try {
+        const [itemsRows] = await pool.query(
+          `SELECT referral_id, item_name, quantity, unit, given_at
+           FROM referral_items
+           WHERE referral_id IN (${refIds.map(() => '?').join(',')})`,
+          refIds
+        );
+        const itemsMap = {};
+        for (const item of itemsRows) {
+          itemsMap[item.referral_id] = itemsMap[item.referral_id] || [];
+          itemsMap[item.referral_id].push(item);
+        }
+        for (const r of referrals) {
+          r.items_given = itemsMap[r.referral_id] || [];
+        }
+      } catch (_) {}
+    }
 
     // Fetch requester's profile picture URL
     const userId = req.user?.user_id;

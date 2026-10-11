@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../data/local/child_repository.dart';
+import '../../../data/local/mother_repository.dart';
 import '../../../data/models/referral.dart';
-import '../../masterlist/widgets/status_badge.dart';
 import 'referral_detail_sheet.dart';
 
 class ReferralCard extends StatelessWidget {
@@ -16,16 +17,50 @@ class ReferralCard extends StatelessWidget {
   });
 
   Color get _statusColor {
-    switch (referral.status) {
+    final s = referral.statusDisplay;
+    switch (s) {
       case 'Pending':
-        return AppColors.statAmber;
+        return AppColors.statOrange;
       case 'In Progress':
         return AppColors.statBlue;
       case 'Completed':
         return AppColors.primaryGreen;
+      case 'Cancelled':
+        return AppColors.textMuted;
       default:
         return AppColors.textMuted;
     }
+  }
+
+  String get _displayName {
+    if (referral.beneficiaryName.trim().isNotEmpty) {
+      return referral.beneficiaryName.trim();
+    }
+    // Fallback: lookup in MotherRepository
+    final mother = MotherRepository().getById(referral.beneficiaryId);
+    if (mother != null && mother.fullName.trim().isNotEmpty) {
+      return mother.fullName.trim();
+    }
+    // Fallback: lookup in ChildRepository
+    final child = ChildRepository().getById(referral.beneficiaryId);
+    if (child != null && child.fullName.trim().isNotEmpty) {
+      return child.fullName.trim();
+    }
+    return referral.beneficiaryType == 'mother' ? 'Mother' : 'Child Beneficiary';
+  }
+
+  String get _facilityDisplay {
+    final f = referral.facility.trim();
+    if (f.isNotEmpty && !RegExp(r'^\d+$').hasMatch(f)) {
+      return f;
+    }
+    final match = RegExp(r'Facility:\s*([^|\n]+)').firstMatch(referral.notes);
+    if (match != null &&
+        match.group(1)!.trim().isNotEmpty &&
+        !RegExp(r'^\d+$').hasMatch(match.group(1)!.trim())) {
+      return match.group(1)!.trim();
+    }
+    return 'Rural Health Unit (RHU)';
   }
 
   void _openDetailSheet(BuildContext context) {
@@ -34,6 +69,9 @@ class ReferralCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = _statusColor;
+    final isCompleted = referral.isCompleted;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -53,6 +91,7 @@ class ReferralCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Column(
@@ -60,7 +99,7 @@ class ReferralCard extends StatelessWidget {
                         children: [
                           if (showBeneficiaryName)
                             Text(
-                              referral.beneficiaryName,
+                              _displayName,
                               style: AppTextStyles.label.copyWith(fontSize: 14),
                             ),
                           Text(
@@ -73,7 +112,41 @@ class ReferralCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    StatusBadge(label: referral.status, color: _statusColor),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isCompleted) ...[
+                            Icon(Icons.check_circle, size: 12, color: statusColor),
+                            const SizedBox(width: 4),
+                          ] else ...[
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                          ],
+                          Text(
+                            referral.statusDisplay,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -86,7 +159,7 @@ class ReferralCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        referral.facility,
+                        _facilityDisplay,
                         style: AppTextStyles.body.copyWith(
                           fontSize: 11,
                           color: AppColors.textMuted,
@@ -132,16 +205,16 @@ class ReferralCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(
-                          referral.status == 'Completed'
+                          isCompleted
                               ? Icons.check_circle_outline
                               : Icons.notes,
                           size: 13,
-                          color: _statusColor,
+                          color: statusColor,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            referral.status == 'Completed'
+                            isCompleted
                                 ? 'RHU Resolution: ${referral.notes}'
                                 : 'RHU Note: ${referral.notes}',
                             maxLines: 2,

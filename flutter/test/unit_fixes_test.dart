@@ -20,6 +20,8 @@ import 'package:appscalev3/data/models/mother.dart';
 import 'package:appscalev3/data/local/mother_repository.dart';
 import 'package:appscalev3/data/local/child_repository.dart';
 import 'package:appscalev3/data/local/beneficiary_link_service.dart';
+import 'package:appscalev3/data/local/referral_repository.dart';
+import 'package:appscalev3/data/local/referral_needs_service.dart';
 
 void main() {
   group('Item 4: GrowthClassifier Tests', () {
@@ -672,5 +674,156 @@ void main() {
       expect(warningMuac.isWarning, isTrue);
     });
   });
+
+  group('Referral Sync, Normalization & Needs Referral Tests', () {
+    setUp(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      const channel = MethodChannel('plugins.flutter.io/path_provider');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+        return '.';
+      });
+      await Hive.initFlutter();
+      await Hive.openBox(HiveBoxes.referrals);
+      await Hive.openBox(HiveBoxes.notifications);
+      await Hive.openBox(HiveBoxes.children);
+      await Hive.openBox(HiveBoxes.mothers);
+      await Hive.openBox(HiveBoxes.measurements);
+      await Hive.openBox(HiveBoxes.motherVisits);
+      await Hive.box(HiveBoxes.referrals).clear();
+      await Hive.box(HiveBoxes.notifications).clear();
+      await Hive.box(HiveBoxes.children).clear();
+      await Hive.box(HiveBoxes.mothers).clear();
+      await Hive.box(HiveBoxes.measurements).clear();
+      await Hive.box(HiveBoxes.motherVisits).clear();
+    });
+
+    test('Referral.normalizeStatus handles various case variants and aliases', () {
+      expect(Referral.normalizeStatus('completed'), equals('Completed'));
+      expect(Referral.normalizeStatus('Complete'), equals('Completed'));
+      expect(Referral.normalizeStatus('CLOSED'), equals('Completed'));
+      expect(Referral.normalizeStatus('resolved'), equals('Completed'));
+
+      expect(Referral.normalizeStatus('in_progress'), equals('In Progress'));
+      expect(Referral.normalizeStatus('ongoing'), equals('In Progress'));
+      expect(Referral.normalizeStatus('received'), equals('In Progress'));
+      expect(Referral.normalizeStatus('responded'), equals('In Progress'));
+
+      expect(Referral.normalizeStatus('pending'), equals('Pending'));
+      expect(Referral.normalizeStatus('Open'), equals('Pending'));
+
+      expect(Referral.normalizeStatus('cancelled'), equals('Cancelled'));
+      expect(Referral.normalizeStatus('canceled'), equals('Cancelled'));
+      expect(Referral.normalizeStatus('rejected'), equals('Cancelled'));
+
+      // Non-standard status preserved rather than defaulting to Pending
+      expect(Referral.normalizeStatus('custom_state'), equals('custom_state'));
+      expect(Referral.normalizeStatus(null), equals('Unknown'));
+      expect(Referral.normalizeStatus(''), equals('Unknown'));
+    });
+
+    test('processIncomingReferrals updates local records with server status and notifies on completion', () async {
+      final repo = ReferralRepository();
+
+      // Seed an initial pending referral locally
+      final localRef = Referral(
+        id: 'ref-local-1',
+        beneficiaryType: 'child',
+        beneficiaryId: 'c-100',
+        beneficiaryName: 'Juan dela Cruz',
+        barangay: 'Tiguion',
+        reason: 'SAM',
+        facility: 'RHU',
+        notes: '',
+        status: 'Pending',
+        createdAt: DateTime(2026, 10, 1),
+      );
+      await repo.add(localRef);
+
+      // Server payload has this referral marked Completed with items given
+      final serverPayload = [
+        {
+          'referral_id': 55,
+          'child_id': 'c-100',
+          'beneficiary_type': 'child',
+          'first_name': 'Juan',
+          'last_name': 'dela Cruz',
+          'barangay': 'Tiguion',
+          'reason': 'SAM',
+          'status': 'completed',
+          'facility': 'RHU',
+          'updated_at': '2026-10-11T10:00:00Z',
+          'created_at': '2026-10-01T08:00:00Z',
+          'items_given': ['RUTF (2 boxes)', 'Amoxicillin'],
+        }
+      ];
+
+      await repo.processIncomingReferrals(serverPayload);
+
+      final updated = repo.getById('ref-local-1');
+      expect(updated, isNotNull);
+      expect(updated!.status, equals('Completed'));
+      expect(updated.isCompleted, isTrue);
+      expect(updated.serverId, equals('55'));
+      expect(updated.itemsGivenFormatted, contains('RUTF (2 boxes)'));
+      expect(updated.itemsGivenFormatted, contains('Amoxicillin'));
+
+      // Verify completion notification dispatched
+      final notifBox = Hive.box(HiveBoxes.notifications);
+      final notifs = notifBox.values.toList();
+      expect(notifs.isNotEmpty, isTrue);
+      final notifMap = Map<String, dynamic>.from(notifs.last as Map);
+      expect(notifMap['title'], contains('Referral Completed'));
+      expect(notifMap['message'], contains('Juan dela Cruz'));
+    });
+
+    test('ReferralNeedsService excludes completed referrals from Needs Referral list', () async {
+      final childRepo = ChildRepository();
+      final refRepo = ReferralRepository();
+      final needsService = ReferralNeedsService();
+
+      final child = Child(
+        id: 'c-sam-1',
+        sequenceNo: '1',
+        fullName: 'Severely Malnourished Child',
+        birthDate: DateTime(2025, 1, 1),
+        gender: 'Boy',
+        address: 'Purok 1',
+        barangay: 'Tiguion',
+        belongsToIpGroup: false,
+        disability: 'None',
+        guardian: const Guardian(fullName: 'Nanay', relationship: 'Mother', contactNo: ''),
+        createdAt: DateTime(2025, 1, 1),
+        wastingStatus: 'SAM',
+        nutritionStatus: 'Severely Underweight',
+      );
+      await childRepo.add(child);
+
+      // Without any referral, child is in needs referral list
+      var needed = await needsService.getChildrenNeedingReferral('Tiguion');
+      expect(needed.any((c) => c.id == 'c-sam-1'), isTrue);
+
+      // Now create a completed referral
+      final completedRef = Referral(
+        id: 'ref-c-sam-1',
+        beneficiaryType: 'child',
+        beneficiaryId: 'c-sam-1',
+        beneficiaryName: 'Severely Malnourished Child',
+        barangay: 'Tiguion',
+        reason: 'SAM',
+        facility: 'RHU',
+        notes: '',
+        status: 'Completed',
+        createdAt: DateTime(2026, 10, 1),
+        updatedAt: DateTime(2026, 10, 5),
+      );
+      await refRepo.add(completedRef);
+
+      // After completion, child is no longer needing referral
+      needed = await needsService.getChildrenNeedingReferral('Tiguion');
+      expect(needed.any((c) => c.id == 'c-sam-1'), isFalse);
+    });
+  });
 }
+
 

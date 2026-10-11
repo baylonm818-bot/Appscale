@@ -146,6 +146,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         barangay: barangay,
         token: token,
       );
+      await _referralRepo.pullLatest(barangay: barangay);
     } catch (e) {
       debugPrint('Auto-restore failed (offline or server error): $e');
     }
