@@ -10,7 +10,7 @@ router.get('/:id/picture/data', getProfilePictureData);
 router.put('/:id', updateProfile);
 router.patch('/:id/password', changePassword);
 router.post('/:id/picture', upload.single('profile_picture'), uploadProfilePicture);
-router.post('/:id/deactivate', deactivateAccount);
+router.post('/:id/deactivate', roleCheck(['admin']), deactivateAccount);
 
 
 module.exports = router;
