@@ -8,7 +8,6 @@ import { useAuth } from './AuthContext';
 import {
   LayoutDashboard,
   AlertCircle,
-  Users,
   FileText,
   Calendar,
   Bell,
@@ -16,8 +15,6 @@ import {
   LogOut,
   Menu,
   X,
-  Sun,
-  Moon,
 } from 'lucide-react';
 
 const menuItems = [
@@ -35,6 +32,7 @@ function BHWLayout() {
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(null);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [notificationPreview, setNotificationPreview] = useState([]);
   
   const navigate = useNavigate();
@@ -46,17 +44,19 @@ function BHWLayout() {
   const profileRootRef = useRef(null);
 
   const fetchUnreadCount = useCallback(async () => {
-    // indicate loading state
+    setNotificationsLoading(true);
     setUnreadNotifications(null);
+    setNotificationPreview([]);
     try {
       const response = await axiosClient.get('/bhw/notifications');
       const notifications = response.data?.notifications || [];
       setUnreadNotifications(Number(response.data?.unreadCount || 0));
       setNotificationPreview(notifications.slice(0, 4));
     } catch {
-      // on error show empty preview and zero (loaded)
       setUnreadNotifications(0);
       setNotificationPreview([]);
+    } finally {
+      setNotificationsLoading(false);
     }
   }, []);
 
@@ -297,33 +297,40 @@ function BHWLayout() {
               <button
                 type="button"
                 aria-label="Notifications"
+                aria-controls="bhw-notification-menu"
+                aria-haspopup="menu"
                 aria-expanded={isNotificationMenuOpen}
+                aria-live="polite"
                 onClick={() => {
                   setIsNotificationMenuOpen((prev) => !prev);
                   setIsProfileMenuOpen(false);
                 }}
-                className="relative flex h-10 w-10 items-center justify-center rounded-full text-green-800 transition hover:bg-green-50"
+                className="relative flex h-10 w-10 items-center justify-center rounded-full text-green-800 transition hover:bg-green-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
               >
                 <Bell size={19} />
-                {unreadNotifications > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                {!notificationsLoading && unreadNotifications !== null && unreadNotifications > 0 && (
+                  <span
+                    role="status"
+                    aria-live="polite"
+                    className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+                  >
                     {unreadNotifications > 99 ? '99+' : unreadNotifications}
                   </span>
                 )}
               </button>
 
               {isNotificationMenuOpen && (
-                <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-black/15">
+                <div id="bhw-notification-menu" role="menu" aria-label="BHW notifications" className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-black/15">
                   <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
                     <p className="text-sm font-bold text-gray-900">Notifications</p>
-                    {unreadNotifications > 0 && (
+                    {!notificationsLoading && unreadNotifications !== null && unreadNotifications > 0 && (
                       <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800">
                         {unreadNotifications} new
                       </span>
                     )}
                   </div>
 
-                  {unreadNotifications > 0 && (
+                  {!notificationsLoading && unreadNotifications !== null && unreadNotifications > 0 && (
                     <button
                       type="button"
                       onClick={handleMarkAllRead}

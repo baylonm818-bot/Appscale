@@ -55,20 +55,29 @@ function canEditUser(requester, targetUser) {
 
 function canAccessSchedule(requester, schedule) {
   if (!requester || !schedule) return false;
-  const requesterRole = normalizeRole(requester.role);
-  if (requesterRole === 'admin') return true;
 
+  const requesterRole = normalizeRole(requester.role);
+  const requesterId = Number(requester.user_id);
+  const creatorId = Number(schedule.created_by || schedule.createdBy || schedule.created_by_user_id || schedule.user_id || 0);
   const targetRole = normalizeRole(schedule.target_role || schedule.assigned_to_role || schedule.role || '');
   const scheduleBarangay = String(schedule.barangay || '').trim();
   const isGlobalSchedule = scheduleBarangay === '' || scheduleBarangay.toLowerCase() === 'all barangays' || scheduleBarangay.toLowerCase() === 'all';
   const matchesBarangay = isGlobalSchedule || sameBarangay(requester.barangay, scheduleBarangay);
 
+  if (requesterRole === 'admin') {
+    return creatorId === 0 || creatorId === requesterId ? true : false;
+  }
+
   if (requesterRole === 'bhw') {
-    return matchesBarangay && (targetRole === 'bhw' || targetRole === 'all' || targetRole === '');
+    if (creatorId === requesterId) return true;
+    if (!matchesBarangay) return false;
+    return targetRole === 'bhw' || targetRole === 'all' || targetRole === '' || targetRole === 'all barangays';
   }
 
   if (requesterRole === 'bns') {
-    return matchesBarangay && (targetRole === 'bns' || targetRole === 'all' || targetRole === '');
+    if (creatorId === requesterId) return true;
+    if (!matchesBarangay) return false;
+    return targetRole === 'bns' || targetRole === 'all' || targetRole === '' || targetRole === 'all barangays';
   }
 
   return false;
@@ -135,10 +144,14 @@ function isUserActiveForLogin(user) {
   const isDeleted = deletedAt !== null && deletedAt !== undefined && deletedAt !== '';
 
   if (isDeleted) return false;
-  if (role === 'admin') return true;
 
   const status = normalizeRole(user.status);
-  return status === 'active';
+  if (!status) {
+    return role !== 'admin' ? false : true;
+  }
+
+  if (status === 'active') return true;
+  return false;
 }
 
 function ensureSingleActiveRolePerBarangay({ users = [], role, barangay }) {

@@ -242,7 +242,7 @@ exports.login = async (req, res) => {
     };
     const userRole = String(user.role).toLowerCase();
     const isAdmin = userRole === 'admin' || loginEmail.toLowerCase().includes('admin');
-    const usesLoginAttemptLock = ['bhw', 'bns'].includes(userRole) && !isAdmin;
+    const usesLoginAttemptLock = ['admin', 'bhw', 'bns'].includes(userRole);
 
     if (bootstrapMatches) {
       await pool.query("UPDATE users SET failed_attempts = 0, status = 'active' WHERE user_id = ?", [user.user_id]).catch(() => {});
@@ -277,19 +277,16 @@ exports.login = async (req, res) => {
       });
     }
 
+    if (usesLoginAttemptLock && user.status === 'locked') {
+      return res.status(403).json({ message: 'Account is locked. Please contact the administrator.' });
+    }
+
+    if (!isUserActiveForLogin(user)) {
+      return res.status(403).json({ message: 'Account is inactive. Please contact the administrator.' });
+    }
+
     if (isAdmin) {
       user.role = 'admin';
-      if (user.status !== 'active') {
-        await pool.query("UPDATE users SET status = 'active', failed_attempts = 0, role = 'admin' WHERE user_id = ?", [user.user_id]).catch(() => {});
-        user.status = 'active';
-      }
-    } else {
-      if (user.status === 'locked') {
-        return res.status(403).json({ message: 'Account is locked. Please contact the administrator.' });
-      }
-      if (!isUserActiveForLogin(user)) {
-        return res.status(403).json({ message: 'Account is inactive. Please contact the administrator.' });
-      }
     }
 
     let passwordMatch = false;

@@ -15,8 +15,6 @@ import {
   LogOut,
   Menu,
   X,
-  Sun,
-  Moon,
 } from 'lucide-react';
 
 const menuItems = [

@@ -45,6 +45,74 @@ CREATE TABLE `users` (
   INDEX `idx_users_barangay` (`barangay`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+DELIMITER $$
+CREATE TRIGGER `trg_users_block_duplicate_active_bhw_insert`
+BEFORE INSERT ON `users`
+FOR EACH ROW
+BEGIN
+  IF NEW.role = 'bhw' AND NEW.status = 'active' AND NEW.deleted_at IS NULL AND EXISTS (
+    SELECT 1 FROM `users` u
+    WHERE u.role = 'bhw'
+      AND u.barangay = NEW.barangay
+      AND u.status = 'active'
+      AND u.deleted_at IS NULL
+  ) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'This barangay already has an active BHW. Deactivate or lock the existing BHW before adding a replacement.';
+  END IF;
+END$$
+
+CREATE TRIGGER `trg_users_block_duplicate_active_bhw_update`
+BEFORE UPDATE ON `users`
+FOR EACH ROW
+BEGIN
+  IF NEW.role = 'bhw' AND NEW.status = 'active' AND NEW.deleted_at IS NULL AND EXISTS (
+    SELECT 1 FROM `users` u
+    WHERE u.role = 'bhw'
+      AND u.barangay = NEW.barangay
+      AND u.status = 'active'
+      AND u.deleted_at IS NULL
+      AND u.user_id <> NEW.user_id
+  ) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'This barangay already has an active BHW. Deactivate or lock the existing BHW before adding a replacement.';
+  END IF;
+END$$
+
+CREATE TRIGGER `trg_users_block_duplicate_active_bns_insert`
+BEFORE INSERT ON `users`
+FOR EACH ROW
+BEGIN
+  IF NEW.role = 'bns' AND NEW.status = 'active' AND NEW.deleted_at IS NULL AND EXISTS (
+    SELECT 1 FROM `users` u
+    WHERE u.role = 'bns'
+      AND u.barangay = NEW.barangay
+      AND u.status = 'active'
+      AND u.deleted_at IS NULL
+  ) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'This barangay already has an active BNS. Deactivate or lock the existing BNS before adding a replacement.';
+  END IF;
+END$$
+
+CREATE TRIGGER `trg_users_block_duplicate_active_bns_update`
+BEFORE UPDATE ON `users`
+FOR EACH ROW
+BEGIN
+  IF NEW.role = 'bns' AND NEW.status = 'active' AND NEW.deleted_at IS NULL AND EXISTS (
+    SELECT 1 FROM `users` u
+    WHERE u.role = 'bns'
+      AND u.barangay = NEW.barangay
+      AND u.status = 'active'
+      AND u.deleted_at IS NULL
+      AND u.user_id <> NEW.user_id
+  ) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'This barangay already has an active BNS. Deactivate or lock the existing BNS before adding a replacement.';
+  END IF;
+END$$
+DELIMITER ;
+
 -- --------------------------------------------------------------------
 -- Table 2: mothers
 -- Lactating and pregnant mothers beneficiary registry
