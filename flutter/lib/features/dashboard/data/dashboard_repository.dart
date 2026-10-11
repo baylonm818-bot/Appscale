@@ -6,6 +6,7 @@ import '../../../data/local/hive_boxes.dart';
 import '../../../data/local/mother_repository.dart';
 import '../../masterlist/utils/child_status_meta.dart';
 import '../models/dashboard_models.dart';
+import '../../../data/models/child.dart';
 import '../../../data/local/program_schedule_repository.dart';
 
 class DashboardRepository {
@@ -43,42 +44,67 @@ class DashboardRepository {
 
     return [
       StatCardData(
-        label: 'Children 0-59 months',
+        label: 'Children (0-59 mos)',
         value: '${activeChildren.length}',
         subtitle: childrenThisMonth > 0
-            ? '↑ $childrenThisMonth new this month'
-            : 'No new records this month',
-        accentColor: const Color(0xFF1B5E20), // deep green
+            ? '$childrenThisMonth new this month'
+            : 'No new this month',
+        accentColor: const Color(0xFF1B5E20), // dark green
         icon: Icons.child_care_rounded,
       ),
       StatCardData(
         label: 'Lactating Mothers',
         value: '${activeMothers.length}',
         subtitle: mothersThisMonth > 0
-            ? '↑ $mothersThisMonth new this month'
-            : 'No new records this month',
+            ? '$mothersThisMonth new this month'
+            : 'No new this month',
         accentColor: const Color(0xFF00796B), // teal
         icon: Icons.pregnant_woman_rounded,
       ),
       StatCardData(
-        label: 'SAM (Severe Wasting)',
+        label: 'SAM Cases',
         value: '$samCases',
         subtitle: samCases > 0
-            ? '$samCases acute wasting (WFH) case(s)'
-            : 'No active acute wasting (WFH) cases',
-        accentColor: const Color(0xFFC0392B), // red-terracotta
+            ? '$samCases acute wasting'
+            : 'No active cases',
+        accentColor: const Color(0xFFC62828), // deep red / terracotta
         icon: Icons.warning_amber_rounded,
       ),
       StatCardData(
-        label: 'Feeding enrollees',
+        label: 'Feeding Program',
         value: '$enrolledCount',
         subtitle: enrolledCount > 0
-            ? '$enrolledCount active in program'
-            : 'No children enrolled yet',
-        accentColor: const Color(0xFF7A8B1F), // olive
+            ? '$enrolledCount enrolled'
+            : 'None enrolled',
+        accentColor: const Color(0xFF558B2F), // olive / moss green
         icon: Icons.restaurant_menu_rounded,
       ),
     ];
+  }
+
+  List<Child> getNeedsAttentionChildren({int limit = 3}) {
+    final activeChildren = _childRepo
+        .getByBarangay(_currentBarangay)
+        .where((c) => c.isActive)
+        .toList();
+
+    final severe = activeChildren.where((c) {
+      final wfa = ChildStatusMeta.formatStatus(c.nutritionStatus);
+      final hfa = ChildStatusMeta.formatStatus(c.stuntingStatus);
+      final wfh = ChildStatusMeta.formatStatus(c.wastingStatus);
+      return wfh == 'SAM' ||
+          wfa == 'Severely Underweight' ||
+          hfa == 'Severely Stunted';
+    }).toList();
+
+    severe.sort((a, b) {
+      final aOverall = ChildOverallStatus.fromChild(a).severityRank;
+      final bOverall = ChildOverallStatus.fromChild(b).severityRank;
+      if (aOverall != bOverall) return aOverall.compareTo(bOverall);
+      return a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase());
+    });
+
+    return severe.take(limit).toList();
   }
 
   bool _isThisMonth(DateTime date) {
@@ -93,8 +119,6 @@ class DashboardRepository {
         .getByBarangay(_currentBarangay)
         .where((c) => c.isActive)
         .toList();
-
-    if (allChildren.isEmpty) return [];
 
     const order = [
       'Normal',
@@ -115,12 +139,13 @@ class DashboardRepository {
 
     final total = allChildren.length;
     return order
-        .where((s) => (counts[s] ?? 0) > 0)
         .map(
           (s) => NutritionStatusItem(
             label: s,
-            count: counts[s]!,
-            percent: ((counts[s]! / total) * 100).clamp(0, 100),
+            count: counts[s] ?? 0,
+            percent: total > 0
+                ? (((counts[s] ?? 0) / total) * 100).clamp(0, 100)
+                : 0,
             color: ChildStatusMeta.colorFor(s),
           ),
         )

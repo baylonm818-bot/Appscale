@@ -12,11 +12,12 @@ class RecentActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayEntries = entries.take(3).toList();
     return SectionCard(
       title: 'Recent Activity',
-      child: entries.isEmpty
+      child: displayEntries.isEmpty
           ? const _EmptyState()
-          : _EntryList(entries: entries),
+          : _EntryList(entries: displayEntries),
     );
   }
 }
@@ -27,16 +28,16 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
         children: [
-          const Icon(Icons.history, color: AppColors.textMuted, size: 28),
-          const SizedBox(height: 8),
+          const Icon(Icons.history, color: AppColors.textMuted, size: 24),
+          const SizedBox(height: 6),
           Text(
-            'Nothing recorded yet. Actions you take — adding a child,\nlogging a measurement, creating a referral — will show up here.',
+            'Nothing recorded yet.',
             textAlign: TextAlign.center,
             style: AppTextStyles.body.copyWith(
-              fontSize: 11,
+              fontSize: 12,
               color: AppColors.textMuted,
             ),
           ),
@@ -57,7 +58,7 @@ class _EntryList extends StatelessWidget {
         for (int i = 0; i < entries.length; i++) ...[
           _EntryTile(entry: entries[i]),
           if (i != entries.length - 1)
-            const Divider(height: 18, color: AppColors.border),
+            const Divider(height: 16, color: AppColors.border),
         ],
       ],
     );
@@ -72,17 +73,18 @@ class _EntryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = ActivityTypeMeta.colorFor(entry.type);
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: 34,
-          height: 34,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(
             ActivityTypeMeta.iconFor(entry.type),
-            size: 17,
+            size: 16,
             color: color,
           ),
         ),
@@ -92,14 +94,18 @@ class _EntryTile extends StatelessWidget {
             entry.title,
             style: AppTextStyles.body.copyWith(
               fontSize: 12,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
+        const SizedBox(width: 8),
         Text(
           timeAgo(entry.timestamp),
           style: AppTextStyles.body.copyWith(
-            fontSize: 10,
+            fontSize: 10.5,
             color: AppColors.textMuted,
           ),
         ),

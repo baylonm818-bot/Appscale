@@ -39,9 +39,14 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   bool _wasOffline = false;
 
-  void _navigateToMasterlist(MasterlistCategory category) {
+  void _navigateToMasterlist(MasterlistCategory category, {String? filterChip}) {
     setState(() => _navIndex = 1);
-    _masterlistKey.currentState?.setCategory(category);
+    if (filterChip != null) {
+      _masterlistKey.currentState
+          ?.setCategoryAndFilter(category, childChip: filterChip);
+    } else {
+      _masterlistKey.currentState?.setCategory(category);
+    }
   }
 
   bool get _isBns {

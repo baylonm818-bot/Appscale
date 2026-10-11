@@ -66,6 +66,16 @@ class MasterlistScreenState extends State<MasterlistScreen> {
     });
   }
 
+  void setCategoryAndFilter(MasterlistCategory category, {String? childChip, String? motherChip}) {
+    setState(() {
+      _category = category;
+      _query = '';
+      _filter = const ChildStatusFilter();
+      if (childChip != null) _childFilterChip = childChip;
+      if (motherChip != null) _motherFilterChip = motherChip;
+    });
+  }
+
   Future<void> _openFilter() async {
     final result = await StatusFilterSheet.show(context, _filter);
     if (result != null) setState(() => _filter = result);

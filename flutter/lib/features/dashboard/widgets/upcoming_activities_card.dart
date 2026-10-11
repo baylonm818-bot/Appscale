@@ -3,7 +3,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/section_card.dart';
 import '../models/dashboard_models.dart';
-import '../../../shared/widgets/empty_state.dart';
 
 class UpcomingActivitiesCard extends StatelessWidget {
   final List<UpcomingActivityData> activities;
@@ -11,22 +10,24 @@ class UpcomingActivitiesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final nearest = activities.take(1).toList();
+
     return SectionCard(
-      title: 'Upcoming Activities',
-      child: activities.isEmpty
-          ? const EmptyState(
-              icon: Icons.event_available_outlined,
-              message: 'No upcoming activities scheduled.',
+      title: 'Upcoming',
+      child: nearest.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Center(
+                child: Text(
+                  'No upcoming activities scheduled.',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
             )
-          : Column(
-              children: [
-                for (int i = 0; i < activities.length; i++) ...[
-                  _ActivityTile(data: activities[i]),
-                  if (i != activities.length - 1)
-                    const Divider(height: 20, color: AppColors.border),
-                ],
-              ],
-            ),
+          : _ActivityTile(data: nearest.first),
     );
   }
 }
@@ -38,10 +39,11 @@ class _ActivityTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+          constraints: const BoxConstraints(minWidth: 42, minHeight: 42),
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
           decoration: BoxDecoration(
             color: AppColors.primaryGreen,
             borderRadius: BorderRadius.circular(10),
@@ -55,7 +57,8 @@ class _ActivityTile extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1,
                 ),
                 maxLines: 1,
               ),
@@ -64,7 +67,8 @@ class _ActivityTile extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
                 ),
                 maxLines: 1,
               ),
@@ -75,18 +79,33 @@ class _ActivityTile extends StatelessWidget {
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(data.title, style: AppTextStyles.label),
+              Text(
+                data.title,
+                style: AppTextStyles.label.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               const SizedBox(height: 2),
               Text(
                 data.subtitle,
-                style: AppTextStyles.body.copyWith(fontSize: 11),
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
+        const SizedBox(width: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           decoration: BoxDecoration(
             color: data.statusColor,
             borderRadius: BorderRadius.circular(20),

@@ -1,115 +1,102 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
 import '../models/dashboard_models.dart';
 
-/// Web-portal–style stat card: white background, large metric on the left,
-/// coloured circular icon on the right — exactly matching the Admin Dashboard.
 class StatCard extends StatelessWidget {
   final StatCardData data;
   final VoidCallback? onTap;
-  const StatCard({super.key, required this.data, this.onTap});
+
+  const StatCard({
+    super.key,
+    required this.data,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isPositiveSub = data.subtitle.startsWith('↑') ||
-        data.subtitle.contains('this month') && !data.subtitle.startsWith('No');
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Left: number + label + subtitle
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: data.accentColor,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: data.accentColor.withValues(alpha: 0.28),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // 1. Label sa itaas (1 line, ellipsis)
+              Text(
+                data.label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  letterSpacing: 0.1,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+              // 2. Malaking numero (bold) at icon sa kanan sa semi-transparent puting bilog
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Label row (small, muted)
-                  Text(
-                    data.label,
-                    style: AppTextStyles.caption.copyWith(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.3,
-                      height: 1.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  // Big value
-                  Text(
-                    data.value,
-                    style: AppTextStyles.h1.copyWith(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                      height: 1.0,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  // Subtitle with optional colour indicator
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          data.subtitle,
-                          style: AppTextStyles.caption.copyWith(
-                            fontSize: 10,
-                            color: isPositiveSub
-                                ? AppColors.primaryGreen
-                                : AppColors.textMuted,
-                            fontWeight: isPositiveSub
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                            height: 1.3,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                  Expanded(
+                    child: Text(
+                      data.value,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        height: 1.0,
                       ),
-                    ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      data.icon,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 10),
-            // Right: coloured circular icon
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: data.accentColor.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+              const SizedBox(height: 6),
+              // 3. Maikling subtext (1 line, ellipsis)
+              Text(
+                data.subtitle,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.88),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              child: Icon(
-                data.icon,
-                color: data.accentColor,
-                size: 22,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

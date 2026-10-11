@@ -3,16 +3,17 @@ import '../../data/local/activity_log_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import 'data/dashboard_repository.dart';
 import 'widgets/dashboard_header.dart';
+import 'widgets/needs_attention_card.dart';
 import 'widgets/nutrition_status_card.dart';
 import 'widgets/recent_activity_card.dart';
 import 'widgets/upcoming_activities_card.dart';
-import '../../core/theme/app_spacing.dart';
 import '../../shared/widgets/responsive_stat_grid.dart';
 import '../../data/local/app_data_bus.dart';
 import '../../data/local/auto_graduation_service.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
-import '../referrals/referrals_overview_screen.dart';
+import '../child_profile/child_profile_screen.dart';
+import '../program/feeding/feeding_program_screen.dart';
 import '../reports/sync_status_screen.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../../shared/utils/app_user_identity.dart';
@@ -29,7 +30,8 @@ import '../masterlist/widgets/masterlist_header.dart';
 /// The Home tab's content only. MainShell provides the Scaffold,
 /// bottom nav, and FAB — this widget just returns what goes inside.
 class DashboardBody extends StatefulWidget {
-  final void Function(MasterlistCategory category)? onNavigateToMasterlist;
+  final void Function(MasterlistCategory category, {String? filterChip})?
+  onNavigateToMasterlist;
   const DashboardBody({super.key, this.onNavigateToMasterlist});
 
   @override
@@ -45,7 +47,6 @@ class _DashboardBodyState extends State<DashboardBody> {
   final _measurementRepo = MeasurementRepository();
   final _referralRepo = ReferralRepository();
   final _settings = SettingsRepository();
-
 
   String get _currentBarangay =>
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
@@ -73,6 +74,7 @@ class _DashboardBodyState extends State<DashboardBody> {
       valueListenable: AppDataBus.version,
       builder: (context, value, childWidget) {
         final stats = _dashboardRepo.getStatCards();
+        final needsAttention = _dashboardRepo.getNeedsAttentionChildren();
         final nutrition = _dashboardRepo.getNutritionBreakdown();
         final upcoming = _dashboardRepo.getUpcomingActivities();
         final recent = _activityRepo.getRecent();
@@ -87,48 +89,83 @@ class _DashboardBodyState extends State<DashboardBody> {
               DashboardHeader(
                 bnsName: _bnsName,
                 barangayName: 'Barangay $_currentBarangay',
-                pendingSyncCount: _childRepo.pendingCount +
+                pendingSyncCount:
+                    _childRepo.pendingCount +
                     _motherRepo.pendingCount +
                     _measurementRepo.pendingCount +
                     _referralRepo.pendingCount +
                     (_settings.pendingProfilePicturePath != null ? 1 : 0),
                 unreadNotificationCount: unreadNotifs,
-                profileImageUrl: _settings.authUser?['profile_picture']?.toString() ??
-                    _settings.getLocalProfilePicturePath(_settings.authUser?['user_id']?.toString()),
-                onSyncTap: () => Navigator.push(
-                  context,
-                  appPageRoute(const SyncStatusScreen()),
-                ),
-                onNotificationTap: () => Navigator.push(
-                  context,
-                  appPageRoute(const NotificationsScreen()),
-                ),
-                onProfileTap: () => Navigator.push(
-                  context,
-                  appPageRoute(const UserProfileScreen()),
-                ),
+                profileImageUrl:
+                    _settings.authUser?['profile_picture']?.toString() ??
+                    _settings.getLocalProfilePicturePath(
+                      _settings.authUser?['user_id']?.toString(),
+                    ),
+                onSyncTap:
+                    () => Navigator.push(
+                      context,
+                      appPageRoute(const SyncStatusScreen()),
+                    ),
+                onNotificationTap:
+                    () => Navigator.push(
+                      context,
+                      appPageRoute(const NotificationsScreen()),
+                    ),
+                onProfileTap:
+                    () => Navigator.push(
+                      context,
+                      appPageRoute(const UserProfileScreen()),
+                    ),
               ),
               Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // 1. Stat cards (2x2)
                     ResponsiveStatGrid(
                       items: stats,
                       onTaps: [
-                        () => widget.onNavigateToMasterlist?.call(MasterlistCategory.children),
-                        () => widget.onNavigateToMasterlist?.call(MasterlistCategory.mothers),
-                        () => Navigator.push(context, appPageRoute(const ReferralsOverviewScreen())),
-                        null,
+                        () => widget.onNavigateToMasterlist?.call(
+                          MasterlistCategory.children,
+                        ),
+                        () => widget.onNavigateToMasterlist?.call(
+                          MasterlistCategory.mothers,
+                        ),
+                        () => widget.onNavigateToMasterlist?.call(
+                          MasterlistCategory.children,
+                          filterChip: 'Severe',
+                        ),
+                        () => Navigator.push(
+                          context,
+                          appPageRoute(const FeedingProgramScreen()),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.lg),
+                    const SizedBox(height: 12),
+                    // 2. Needs Attention (Top 3 severe cases)
+                    NeedsAttentionCard(
+                      children: needsAttention,
+                      onViewAll:
+                          () => widget.onNavigateToMasterlist?.call(
+                            MasterlistCategory.children,
+                            filterChip: 'Severe',
+                          ),
+                      onChildTap:
+                          (child) => Navigator.push(
+                            context,
+                            appPageRoute(ChildProfileScreen(child: child)),
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    // 3. Nutritional Status (Stacked bar & 2-column legend)
                     NutritionStatusCard(items: nutrition),
-                    const SizedBox(height: AppSpacing.lg),
+                    const SizedBox(height: 12),
+                    // 4. Upcoming Activities (Nearest schedule)
                     UpcomingActivitiesCard(activities: upcoming),
-                    const SizedBox(height: AppSpacing.lg),
+                    const SizedBox(height: 12),
+                    // 5. Recent Activity (Last 3 entries)
                     RecentActivityCard(entries: recent),
-                    const SizedBox(height: 120),
                   ],
                 ),
               ),
