@@ -11,6 +11,7 @@ import '../../data/local/report_signatory_repository.dart';
 import '../../shared/utils/app_pickers.dart';
 import '../../data/models/report_signatory.dart';
 import 'report_types.dart';
+import '../../shared/utils/barangay_assets.dart';
 import 'services/consolidation_computation_service.dart';
 import 'services/excel_table_data.dart';
 import 'services/report_excel_service.dart';
@@ -1290,23 +1291,70 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  widget.reportType.title,
-                  style: AppTextStyles.label.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+          if (widget.reportType.id == 'children_masterlist' ||
+              widget.reportType.id == 'lactating_mothers_masterlist') ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(14),
+                  topRight: Radius.circular(14),
                 ),
-                Text(
-                  'Barangay $_currentBarangay',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.darkGreen),
-                ),
-              ],
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset('assets/images/logos/bagong_pilipinas.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 38)),
+                      const SizedBox(width: 8),
+                      Image.asset('assets/images/logos/nnc.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 38)),
+                      const SizedBox(width: 8),
+                      Image.asset('assets/images/logos/gasan_seal.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 38)),
+                      const SizedBox(width: 8),
+                      Image.asset(getBarangaySealAssetPath(_currentBarangay), width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 38)),
+                      const SizedBox(width: 8),
+                      Image.asset('assets/images/logos/nutrition_logo.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 38)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    widget.reportType.id == 'lactating_mothers_masterlist'
+                        ? 'MASTERLIST OF LACTATING MOTHER ${_period.year}'
+                        : 'CHILDREN MASTERLIST ${_period.year}',
+                    style: AppTextStyles.h3.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Barangay $_currentBarangay · Municipality of Gasan',
+                    style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Divider(height: 1, color: AppColors.border),
+            const Divider(height: 1, color: AppColors.border),
+          ] else ...[
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    widget.reportType.title,
+                    style: AppTextStyles.label.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Barangay $_currentBarangay',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.darkGreen),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.border),
+          ],
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Table(

@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../data/models/report_signatory.dart';
+import '../../../shared/utils/barangay_assets.dart';
 import 'consolidation_computation_service.dart';
 
 /// Builds the consolidation report as a real PDF.
@@ -181,6 +183,12 @@ class ReportPdfService {
         ? 'Punong Barangay'
         : 'Acting Punong Barangay';
 
+    final bagongPilipinas = await _loadAssetImage('assets/images/logos/bagong_pilipinas.png');
+    final nnc = await _loadAssetImage('assets/images/logos/nnc.png');
+    final gasanSeal = await _loadAssetImage('assets/images/logos/gasan_seal.png');
+    final barangaySeal = await _loadBarangayImage(barangay, signatory);
+    final nutritionLogo = await _loadAssetImage('assets/images/logos/nutrition_logo.png');
+
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -195,49 +203,14 @@ class ReportPdfService {
           ),
           pw.SizedBox(height: 8),
 
-          // 5 logos row — 4 standard placeholders + 1 user-uploaded barangay logo
-          pw.Center(
-            child: pw.Builder(
-              builder: (context) {
-                pw.Widget barangayLogoWidget;
-                final logoPath = signatory?.barangayLogoPath ?? '';
-                if (logoPath.isNotEmpty) {
-                  final logoFile = File(logoPath);
-                  if (logoFile.existsSync()) {
-                    final bytes = logoFile.readAsBytesSync();
-                    final img = pw.MemoryImage(bytes);
-                    barangayLogoWidget = pw.Container(
-                      width: 46,
-                      height: 46,
-                      decoration: const pw.BoxDecoration(
-                        shape: pw.BoxShape.circle,
-                        color: PdfColors.white,
-                      ),
-                      child: pw.Image(img, fit: pw.BoxFit.contain, width: 46, height: 46),
-                    );
-                  } else {
-                    barangayLogoWidget = _logoPlaceholder('BARANGAY\nSEAL', PdfColors.teal800);
-                  }
-                } else {
-                  barangayLogoWidget = _logoPlaceholder('BARANGAY\nSEAL', PdfColors.teal800);
-                }
-
-                return pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.center,
-                  children: [
-                    _logoPlaceholder('BAGONG\nPILIPINAS', PdfColors.red800),
-                    pw.SizedBox(width: 10),
-                    _logoPlaceholder('NNC', PdfColors.green800),
-                    pw.SizedBox(width: 10),
-                    _logoPlaceholder('PROVINCE\nMARINDUQUE', PdfColors.blue800),
-                    pw.SizedBox(width: 10),
-                    barangayLogoWidget,
-                    pw.SizedBox(width: 10),
-                    _logoPlaceholder('BNS\nLOGO', PdfColors.green700),
-                  ],
-                );
-              },
-            ),
+          // 5 official logos row: Bagong Pilipinas, NNC, Gasan, Barangay seal, Nutrition logo
+          _buildHeaderLogos(
+            barangay: barangay,
+            bagongPilipinas: bagongPilipinas,
+            nnc: nnc,
+            gasanSeal: gasanSeal,
+            barangaySeal: barangaySeal,
+            nutritionLogo: nutritionLogo,
           ),
           pw.SizedBox(height: 16),
 
@@ -327,6 +300,12 @@ class ReportPdfService {
         ? 'Punong Barangay'
         : 'Acting Punong Barangay';
 
+    final bagongPilipinas = await _loadAssetImage('assets/images/logos/bagong_pilipinas.png');
+    final nnc = await _loadAssetImage('assets/images/logos/nnc.png');
+    final gasanSeal = await _loadAssetImage('assets/images/logos/gasan_seal.png');
+    final barangaySeal = await _loadBarangayImage(barangay, signatory);
+    final nutritionLogo = await _loadAssetImage('assets/images/logos/nutrition_logo.png');
+
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -341,8 +320,15 @@ class ReportPdfService {
           ),
           pw.SizedBox(height: 8),
 
-          // 5 logos row
-          _buildHeaderLogos(barangay, signatory),
+          // 5 official logos row: Bagong Pilipinas, NNC, Gasan, Barangay seal, Nutrition logo
+          _buildHeaderLogos(
+            barangay: barangay,
+            bagongPilipinas: bagongPilipinas,
+            nnc: nnc,
+            gasanSeal: gasanSeal,
+            barangaySeal: barangaySeal,
+            nutritionLogo: nutritionLogo,
+          ),
           pw.SizedBox(height: 16),
 
           // Title
@@ -415,46 +401,70 @@ class ReportPdfService {
     );
   }
 
-  pw.Widget _buildHeaderLogos(String barangay, ReportSignatory? signatory) {
-    pw.Widget barangayLogoWidget;
-    final logoPath = signatory?.barangayLogoPath ?? '';
-    if (logoPath.isNotEmpty) {
-      final logoFile = File(logoPath);
-      if (logoFile.existsSync()) {
-        final bytes = logoFile.readAsBytesSync();
-        final img = pw.MemoryImage(bytes);
-        barangayLogoWidget = pw.Container(
-          width: 46,
-          height: 46,
-          decoration: const pw.BoxDecoration(
-            shape: pw.BoxShape.circle,
-            color: PdfColors.white,
-          ),
-          child: pw.Image(img, fit: pw.BoxFit.contain, width: 46, height: 46),
-        );
-      } else {
-        barangayLogoWidget = _logoPlaceholder('BARANGAY\n${barangay.toUpperCase()}', PdfColors.teal800);
-      }
-    } else {
-      barangayLogoWidget = _logoPlaceholder('BARANGAY\n${barangay.toUpperCase()}', PdfColors.teal800);
+  Future<pw.MemoryImage?> _loadAssetImage(String assetPath) async {
+    try {
+      final byteData = await rootBundle.load(assetPath);
+      return pw.MemoryImage(byteData.buffer.asUint8List());
+    } catch (_) {
+      return null;
     }
+  }
 
+  Future<pw.MemoryImage?> _loadBarangayImage(String barangay, ReportSignatory? signatory) async {
+    final customPath = signatory?.barangayLogoPath ?? '';
+    if (customPath.isNotEmpty) {
+      try {
+        final file = File(customPath);
+        if (file.existsSync()) {
+          final bytes = await file.readAsBytes();
+          return pw.MemoryImage(bytes);
+        }
+      } catch (_) {}
+    }
+    final assetPath = getBarangaySealAssetPath(barangay);
+    return _loadAssetImage(assetPath);
+  }
+
+  pw.Widget _buildHeaderLogos({
+    required String barangay,
+    required pw.MemoryImage? bagongPilipinas,
+    required pw.MemoryImage? nnc,
+    required pw.MemoryImage? gasanSeal,
+    required pw.MemoryImage? barangaySeal,
+    required pw.MemoryImage? nutritionLogo,
+  }) {
     return pw.Center(
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.center,
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
         children: [
-          _logoPlaceholder('BAGONG\nPILIPINAS', PdfColors.red800),
-          pw.SizedBox(width: 10),
-          _logoPlaceholder('NNC', PdfColors.green800),
-          pw.SizedBox(width: 10),
-          _logoPlaceholder('PROVINCE\nMARINDUQUE', PdfColors.blue800),
-          pw.SizedBox(width: 10),
-          barangayLogoWidget,
-          pw.SizedBox(width: 10),
-          _logoPlaceholder('BNS\nLOGO', PdfColors.green700),
+          _renderLogo(bagongPilipinas, 'BAGONG\nPILIPINAS', PdfColors.red800),
+          pw.SizedBox(width: 8),
+          _renderLogo(nnc, 'NNC', PdfColors.green800),
+          pw.SizedBox(width: 8),
+          _renderLogo(gasanSeal, 'GASAN', PdfColors.blue800),
+          pw.SizedBox(width: 8),
+          _renderLogo(barangaySeal, 'BARANGAY\n${barangay.toUpperCase()}', PdfColors.teal800),
+          pw.SizedBox(width: 8),
+          _renderLogo(nutritionLogo, 'BNS', PdfColors.green700),
         ],
       ),
     );
+  }
+
+  pw.Widget _renderLogo(pw.MemoryImage? image, String fallbackLabel, PdfColor fallbackColor) {
+    if (image != null) {
+      return pw.Container(
+        width: 46,
+        height: 46,
+        decoration: const pw.BoxDecoration(
+          shape: pw.BoxShape.circle,
+          color: PdfColors.white,
+        ),
+        child: pw.Image(image, fit: pw.BoxFit.contain, width: 46, height: 46),
+      );
+    }
+    return _logoPlaceholder(fallbackLabel, fallbackColor);
   }
 
   pw.Widget _logoPlaceholder(String label, [PdfColor color = PdfColors.grey600]) {
