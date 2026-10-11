@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../data/local/measurement_repository.dart';
 import '../../../data/models/child.dart';
 import '../../../data/models/report_signatory.dart';
+import '../../../data/growth_standards/growth_classifier.dart';
 import 'consolidation_computation_service.dart';
 import 'excel_table_data.dart';
 
@@ -156,27 +157,44 @@ class ReportExcelService {
 
         col = 4;
         for (int m = startMonth; m <= endMonth; m++) {
-          final totalMonths = (year - child.birthDate.year) * 12 + (m - child.birthDate.month);
           String ageStr = '';
           String wtStr = '';
           String statusStr = '';
 
-          if (totalMonths < 0) {
-            ageStr = '';
-          } else if (totalMonths > 23) {
-            final prevMonths = (year - child.birthDate.year) * 12 + (m - 1 - child.birthDate.month);
-            if (prevMonths <= 23) {
+          final recs = measurements
+              .where((rec) => rec.date.year == year && rec.date.month == m)
+              .toList();
+          if (recs.isNotEmpty) {
+            final r = recs.first;
+            final ageAtMeasurement = child.ageInMonthsAt(r.date);
+            if (ageAtMeasurement <= 23) {
+              ageStr = '$ageAtMeasurement';
+              wtStr = r.weightKg.toStringAsFixed(1);
+              final computedWfa = GrowthClassifier.classifyWeightForAge(
+                weightKg: r.weightKg,
+                ageMonths: ageAtMeasurement,
+                gender: child.gender,
+              );
+              statusStr = _mapWeightStatusCode(computedWfa);
+              if (statusStr == 'SUW') boysSuw++;
+              if (statusStr == 'UW') boysUw++;
+            } else {
               ageStr = 'OA';
             }
           } else {
-            ageStr = '$totalMonths';
-            final recs = measurements.where((rec) => rec.date.year == year && rec.date.month == m).toList();
-            if (recs.isNotEmpty) {
-              final r = recs.first;
-              wtStr = r.weightKg.toStringAsFixed(1);
-              statusStr = _mapWeightStatusCode(r.weightForAgeStatus);
-              if (statusStr == 'SUW') boysSuw++;
-              if (statusStr == 'UW') boysUw++;
+            final monthRefDate = DateTime(year, m, 1);
+            if (monthRefDate.isBefore(DateTime(child.birthDate.year, child.birthDate.month, 1))) {
+              ageStr = '';
+            } else {
+              final ageInMonth = child.ageInMonthsAt(monthRefDate);
+              if (ageInMonth > 23) {
+                final prevMonthRef = DateTime(year, m > 1 ? m - 1 : 1, 1);
+                if (m == 1 || child.ageInMonthsAt(prevMonthRef) <= 23) {
+                  ageStr = 'OA';
+                }
+              } else {
+                ageStr = '$ageInMonth';
+              }
             }
           }
 
@@ -226,27 +244,44 @@ class ReportExcelService {
 
         col = 4;
         for (int m = startMonth; m <= endMonth; m++) {
-          final totalMonths = (year - child.birthDate.year) * 12 + (m - child.birthDate.month);
           String ageStr = '';
           String wtStr = '';
           String statusStr = '';
 
-          if (totalMonths < 0) {
-            ageStr = '';
-          } else if (totalMonths > 23) {
-            final prevMonths = (year - child.birthDate.year) * 12 + (m - 1 - child.birthDate.month);
-            if (prevMonths <= 23) {
+          final recs = measurements
+              .where((rec) => rec.date.year == year && rec.date.month == m)
+              .toList();
+          if (recs.isNotEmpty) {
+            final r = recs.first;
+            final ageAtMeasurement = child.ageInMonthsAt(r.date);
+            if (ageAtMeasurement <= 23) {
+              ageStr = '$ageAtMeasurement';
+              wtStr = r.weightKg.toStringAsFixed(1);
+              final computedWfa = GrowthClassifier.classifyWeightForAge(
+                weightKg: r.weightKg,
+                ageMonths: ageAtMeasurement,
+                gender: child.gender,
+              );
+              statusStr = _mapWeightStatusCode(computedWfa);
+              if (statusStr == 'SUW') girlsSuw++;
+              if (statusStr == 'UW') girlsUw++;
+            } else {
               ageStr = 'OA';
             }
           } else {
-            ageStr = '$totalMonths';
-            final recs = measurements.where((rec) => rec.date.year == year && rec.date.month == m).toList();
-            if (recs.isNotEmpty) {
-              final r = recs.first;
-              wtStr = r.weightKg.toStringAsFixed(1);
-              statusStr = _mapWeightStatusCode(r.weightForAgeStatus);
-              if (statusStr == 'SUW') girlsSuw++;
-              if (statusStr == 'UW') girlsUw++;
+            final monthRefDate = DateTime(year, m, 1);
+            if (monthRefDate.isBefore(DateTime(child.birthDate.year, child.birthDate.month, 1))) {
+              ageStr = '';
+            } else {
+              final ageInMonth = child.ageInMonthsAt(monthRefDate);
+              if (ageInMonth > 23) {
+                final prevMonthRef = DateTime(year, m > 1 ? m - 1 : 1, 1);
+                if (m == 1 || child.ageInMonthsAt(prevMonthRef) <= 23) {
+                  ageStr = 'OA';
+                }
+              } else {
+                ageStr = '$ageInMonth';
+              }
             }
           }
 
@@ -453,7 +488,12 @@ class ReportExcelService {
               ageStr = '$ageAtWeighing';
             }
             wtStr = rec.weightKg.toStringAsFixed(1);
-            statusStr = _mapWeightStatusCode(rec.weightForAgeStatus);
+            final computedStatus = GrowthClassifier.classifyWeightForAge(
+              weightKg: rec.weightKg,
+              ageMonths: ageAtWeighing,
+              gender: child.gender,
+            );
+            statusStr = _mapWeightStatusCode(computedStatus);
           } else {
             if (totalMonths > 59) {
               final prevTargetMonth = q > 0 ? q * 3 : 1;

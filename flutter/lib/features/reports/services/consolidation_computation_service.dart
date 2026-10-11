@@ -1,7 +1,8 @@
 import '../../../data/local/child_repository.dart';
 import '../../../data/local/measurement_repository.dart';
 import '../../../data/models/child.dart';
-import '../../../data/models/measurement.dart';
+import '../../../data/growth_standards/growth_classifier.dart';
+import '../../masterlist/utils/child_status_meta.dart';
 
 class ConsolidationRowData {
   final String label;
@@ -99,10 +100,9 @@ class ConsolidationComputationService {
     for (int m = 1; m <= 12; m++) {
       final oldIdx = (m - 1) * 2;
       final newIdx = oldIdx + 1;
+      final monthRefDate = DateTime(year, m, 1);
 
       for (final child in children) {
-        final age = (year - child.birthDate.year) * 12 + (m - child.birthDate.month);
-        
         if (!child.isActive) {
           if (child.inactiveReason == 'Transferred') {
             rowMovedOut[newIdx]++;
@@ -117,9 +117,13 @@ class ConsolidationComputationService {
           continue;
         }
 
-        if (age < 0) continue; // Not born yet
+        // Child not born yet in month m
+        if (monthRefDate.isBefore(DateTime(child.birthDate.year, child.birthDate.month, 1))) {
+          continue;
+        }
 
-        if (age >= 24) {
+        final ageAtMonth = child.ageInMonthsAt(monthRefDate);
+        if (ageAtMonth >= 24) {
           rowOverAge[newIdx]++;
           rowOverAge[oldIdx]++;
           continue;
@@ -127,45 +131,60 @@ class ConsolidationComputationService {
 
         // Active child 0-23 months
         final measurements = _measurementRepo.getForChild(child.id);
-        final thisMonthMs = measurements.where((mRec) => mRec.date.year == year && mRec.date.month == m).toList();
-        final prevMs = measurements.where((mRec) => mRec.date.year < year || (mRec.date.year == year && mRec.date.month < m)).toList();
+        final thisMonthMs = measurements
+            .where((mRec) => mRec.date.year == year && mRec.date.month == m)
+            .toList();
+        final prevMs = measurements
+            .where((mRec) =>
+                mRec.date.year < year ||
+                (mRec.date.year == year && mRec.date.month < m))
+            .toList();
 
-        final statusNew = _reportStatusForChildAndMeasurement(
-          child,
-          thisMonthMs.isNotEmpty ? thisMonthMs.first : null,
-        );
-        final statusOld = _reportStatusForChildAndMeasurement(
-          child,
-          prevMs.isNotEmpty ? prevMs.first : null,
-        );
-
-        // Fill OLD column
-        if (statusOld == 'Underweight') {
-          rowUw[oldIdx]++;
-        } else if (statusOld == 'Severely Underweight') {
-          rowSuw[oldIdx]++;
+        // Fill OLD column (previous measurement status)
+        if (prevMs.isNotEmpty) {
+          final pRec = prevMs.first;
+          final pAge = child.ageInMonthsAt(pRec.date);
+          final pStatus = pAge <= 23
+              ? GrowthClassifier.classifyWeightForAge(
+                  weightKg: pRec.weightKg,
+                  ageMonths: pAge,
+                  gender: child.gender,
+                )
+              : 'Normal';
+          if (pStatus == 'Severely Underweight') {
+            rowSuw[oldIdx]++;
+          } else if (pStatus == 'Underweight') {
+            rowUw[oldIdx]++;
+          } else {
+            rowNormal[oldIdx]++;
+          }
         } else {
           rowNormal[oldIdx]++;
         }
 
-        // Fill NEW column
-        if (thisMonthMs.isEmpty) {
-          rowNotWeighed[newIdx]++;
-          if (statusNew == 'Underweight') {
-            rowUw[newIdx]++;
-          } else if (statusNew == 'Severely Underweight') {
-            rowSuw[newIdx]++;
+        // Fill NEW column (this month's measurement status)
+        if (thisMonthMs.isNotEmpty) {
+          final mRec = thisMonthMs.first;
+          final ageAtMeasurement = child.ageInMonthsAt(mRec.date);
+          if (ageAtMeasurement <= 23) {
+            final wfa = GrowthClassifier.classifyWeightForAge(
+              weightKg: mRec.weightKg,
+              ageMonths: ageAtMeasurement,
+              gender: child.gender,
+            );
+            if (wfa == 'Severely Underweight') {
+              rowSuw[newIdx]++;
+            } else if (wfa == 'Underweight') {
+              rowUw[newIdx]++;
+            } else {
+              rowNormal[newIdx]++;
+            }
           } else {
-            rowNormal[newIdx]++;
+            rowOverAge[newIdx]++;
           }
         } else {
-          if (statusNew == 'Underweight') {
-            rowUw[newIdx]++;
-          } else if (statusNew == 'Severely Underweight') {
-            rowSuw[newIdx]++;
-          } else {
-            rowNormal[newIdx]++;
-          }
+          // Unweighed in this month: only increment rowNotWeighed
+          rowNotWeighed[newIdx]++;
         }
       }
 
@@ -195,25 +214,6 @@ class ConsolidationComputationService {
         ConsolidationRowData(label: 'TOTAL', values: rowGrandTotal),
       ],
     );
-  }
-
-  String _reportStatusForChildAndMeasurement(Child child, dynamic measurement) {
-    if (measurement == null) return 'Normal';
-
-    final inferred = measurement is Measurement
-        ? measurement.statusForAgeMonths(child.ageInMonthsAt(measurement.date))
-        : measurement['weightForAgeStatus'] ?? 'Normal';
-
-    switch (inferred) {
-      case 'SAM':
-      case 'Severely Underweight':
-        return 'Severely Underweight';
-      case 'MAM':
-      case 'Underweight':
-        return 'Underweight';
-      default:
-        return 'Normal';
-    }
   }
 
   ConsolidationMatrixData _compute24to59Matrix(String barangay, int year) {
@@ -269,16 +269,19 @@ class ConsolidationComputationService {
           continue;
         }
 
-        final status = child.nutritionStatus;
+        final status = ChildStatusMeta.formatStatus(child.nutritionStatus);
         if (status == 'Underweight') {
           rowUw[targetIdx]++;
           rowUw[totalIdx]++;
         } else if (status == 'Severely Underweight') {
           rowSuw[targetIdx]++;
           rowSuw[totalIdx]++;
-        } else if (status == 'Overweight' || child.wastingStatus == 'Overweight') {
+        } else if (status == 'Overweight') {
           rowOw[targetIdx]++;
           rowOw[totalIdx]++;
+        } else if (status == 'Not weighed') {
+          rowNotWeighed[targetIdx]++;
+          rowNotWeighed[totalIdx]++;
         } else {
           rowNormal[targetIdx]++;
           rowNormal[totalIdx]++;
@@ -376,13 +379,16 @@ class ConsolidationComputationService {
           continue;
         }
 
-        final status = child.stuntingStatus;
+        final status = ChildStatusMeta.formatStatus(child.stuntingStatus);
         if (status == 'Stunted') {
           rowStunted[newIdx]++;
           rowStunted[oldIdx]++;
         } else if (status == 'Severely Stunted') {
           rowSeverelyStunted[newIdx]++;
           rowSeverelyStunted[oldIdx]++;
+        } else if (status == 'Not weighed') {
+          rowNotWeighed[newIdx]++;
+          rowNotWeighed[oldIdx]++;
         } else {
           rowNormal[newIdx]++;
           rowNormal[oldIdx]++;
@@ -464,13 +470,16 @@ class ConsolidationComputationService {
           continue;
         }
 
-        final status = child.wastingStatus;
+        final status = ChildStatusMeta.formatStatus(child.wastingStatus);
         if (status == 'MAM' || status == 'Wasted') {
           rowWasted[newIdx]++;
           rowWasted[oldIdx]++;
         } else if (status == 'SAM' || status == 'Severely Wasted') {
           rowSeverelyWasted[newIdx]++;
           rowSeverelyWasted[oldIdx]++;
+        } else if (status == 'Not weighed') {
+          rowNotWeighed[newIdx]++;
+          rowNotWeighed[oldIdx]++;
         } else {
           rowNormal[newIdx]++;
           rowNormal[oldIdx]++;
@@ -517,15 +526,20 @@ class ConsolidationComputationService {
   }
 
   Map<String, int> _byWeightStatus(List<Child> children) => {
-    'Normal': children.where((c) => c.nutritionStatus == 'Normal').length,
+    'Normal': children
+        .where((c) => ChildStatusMeta.formatStatus(c.nutritionStatus) == 'Normal')
+        .length,
     'Underweight': children
-        .where((c) => c.nutritionStatus == 'Underweight')
+        .where((c) => ChildStatusMeta.formatStatus(c.nutritionStatus) == 'Underweight')
         .length,
     'Severely Underweight': children
-        .where((c) => c.nutritionStatus == 'Severely Underweight')
+        .where((c) => ChildStatusMeta.formatStatus(c.nutritionStatus) == 'Severely Underweight')
+        .length,
+    'Overweight': children
+        .where((c) => ChildStatusMeta.formatStatus(c.nutritionStatus) == 'Overweight')
         .length,
     'Not weighed': children
-        .where((c) => c.nutritionStatus == 'Not weighed')
+        .where((c) => ChildStatusMeta.formatStatus(c.nutritionStatus) == 'Not weighed')
         .length,
     'Total': children.length,
   };

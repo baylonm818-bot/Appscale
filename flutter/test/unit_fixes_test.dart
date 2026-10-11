@@ -205,7 +205,7 @@ void main() {
   });
 
   group('Report consolidation logic', () {
-    test('0-23 month consolidation uses the measurement-date weight-for-length status for infants', () async {
+    test('0-23 month consolidation uses WHO weight-for-age standards at measurement date', () async {
       TestWidgetsFlutterBinding.ensureInitialized();
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
         const MethodChannel('plugins.flutter.io/path_provider'),
@@ -246,22 +246,23 @@ void main() {
         wastingStatus: 'Normal',
       );
 
-      await childBox.put(child.id, child.toMap()..['_syncStatus'] = 'synced');
+      // Save to Hive with pending sync status to verify unsynced records are included
+      await childBox.put(child.id, child.toMap()..['_syncStatus'] = 'pending');
 
       final measurement = Measurement(
         date: DateTime(2026, 1, 15),
-        weightKg: 7.6,
+        weightKg: 6.5, // Boy at 12 mos: < 6.9 kg (-3SD) is Severely Underweight
         heightCm: 66.0,
         muacCm: 11.0,
         bilateralPittingEdema: false,
-        weightForAgeStatus: 'Normal',
+        weightForAgeStatus: 'Severely Underweight',
         heightForAgeStatus: 'Normal',
         weightForLengthStatus: 'SAM',
-        customBmi: 17.4,
-        customBmiStatus: 'Normal',
+        customBmi: 14.9,
+        customBmiStatus: 'Severely Wasted',
       );
 
-      await measurementBox.put(child.id, [measurement.toMap()..['_syncStatus'] = 'synced']);
+      await measurementBox.put(child.id, [measurement.toMap()..['_syncStatus'] = 'pending']);
 
       final matrix = ConsolidationComputationService().computeMatrix(
         'consolidation_0_23',
@@ -269,8 +270,166 @@ void main() {
         year: 2026,
       );
 
-      expect(matrix.rows[2].values[1], greaterThan(0));
+      // Row 2 is Severely Underweight. Values index 1 is Month 1 (January) NEW column.
       expect(matrix.rows[2].values[1], equals(1));
+      // SubTotal row (index 3) should equal 1
+      expect(matrix.rows[3].values[1], equals(1));
+      // Grand Total row (index 8) should equal 1
+      expect(matrix.rows[8].values[1], equals(1));
+    });
+  });
+
+  group('Reports & Analytics Accuracy & Consistency Tests', () {
+    test('Reads ALL Hive records including pending sync status and calculates exact age at measurement', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (MethodCall methodCall) async {
+          if (methodCall.method == 'getApplicationDocumentsDirectory') {
+            return '/tmp';
+          }
+          return null;
+        },
+      );
+      await Hive.initFlutter();
+      await Hive.openBox(HiveBoxes.children);
+      await Hive.openBox(HiveBoxes.measurements);
+
+      final childBox = Hive.box(HiveBoxes.children);
+      final measurementBox = Hive.box(HiveBoxes.measurements);
+      await childBox.clear();
+      await measurementBox.clear();
+
+      // Child 1: Boy born 2025-06-01 (7 mos in Jan 2026), pending sync, Normal weight (8.0 kg)
+      final child1 = Child(
+        id: 'child-rep-1',
+        sequenceNo: '001',
+        fullName: 'Active Boy Normal',
+        birthDate: DateTime(2025, 6, 1),
+        gender: 'Boy',
+        address: 'Purok 1',
+        barangay: 'Bantad',
+        belongsToIpGroup: false,
+        disability: 'None',
+        guardian: const Guardian(fullName: 'Nanay 1', relationship: 'Mother', contactNo: ''),
+        createdAt: DateTime(2025, 6, 1),
+        nutritionStatus: 'Normal',
+        stuntingStatus: 'Normal',
+        wastingStatus: 'Normal',
+      );
+      await childBox.put(child1.id, child1.toMap()..['_syncStatus'] = 'pending');
+
+      // Child 2: Girl born 2025-01-01 (12 mos in Jan 2026), pending sync, Underweight (6.8 kg)
+      final child2 = Child(
+        id: 'child-rep-2',
+        sequenceNo: '002',
+        fullName: 'Active Girl UW',
+        birthDate: DateTime(2025, 1, 1),
+        gender: 'Girl',
+        address: 'Purok 2',
+        barangay: 'Bantad',
+        belongsToIpGroup: false,
+        disability: 'None',
+        guardian: const Guardian(fullName: 'Nanay 2', relationship: 'Mother', contactNo: ''),
+        createdAt: DateTime(2025, 1, 1),
+        nutritionStatus: 'Underweight',
+        stuntingStatus: 'Normal',
+        wastingStatus: 'Normal',
+      );
+      await childBox.put(child2.id, child2.toMap()..['_syncStatus'] = 'pending');
+
+      // Child 3: Inactive/Deceased child - should be excluded from active nutritional totals
+      final child3 = Child(
+        id: 'child-rep-3',
+        sequenceNo: '003',
+        fullName: 'Inactive Child',
+        birthDate: DateTime(2025, 3, 1),
+        gender: 'Boy',
+        address: 'Purok 1',
+        barangay: 'Bantad',
+        belongsToIpGroup: false,
+        disability: 'None',
+        guardian: const Guardian(fullName: 'Nanay 3', relationship: 'Mother', contactNo: ''),
+        createdAt: DateTime(2025, 3, 1),
+        isActive: false,
+        inactiveReason: 'Deceased',
+        inactiveDate: DateTime(2025, 12, 1),
+        nutritionStatus: 'Normal',
+        stuntingStatus: 'Normal',
+        wastingStatus: 'Normal',
+      );
+      await childBox.put(child3.id, child3.toMap()..['_syncStatus'] = 'synced');
+
+      // Child 4: Over 23 months (born 2023-12-01, 25 mos in Jan 2026) - should be in Over Age row
+      final child4 = Child(
+        id: 'child-rep-4',
+        sequenceNo: '004',
+        fullName: 'Over Age Child',
+        birthDate: DateTime(2023, 12, 1),
+        gender: 'Girl',
+        address: 'Purok 3',
+        barangay: 'Bantad',
+        belongsToIpGroup: false,
+        disability: 'None',
+        guardian: const Guardian(fullName: 'Nanay 4', relationship: 'Mother', contactNo: ''),
+        createdAt: DateTime(2023, 12, 1),
+        nutritionStatus: 'Normal',
+        stuntingStatus: 'Normal',
+        wastingStatus: 'Normal',
+      );
+      await childBox.put(child4.id, child4.toMap()..['_syncStatus'] = 'pending');
+
+      // Add measurements for Child 1 and Child 2 in Jan 2026 (pending sync)
+      final m1 = Measurement(
+        date: DateTime(2026, 1, 10),
+        weightKg: 8.0, // Normal for 7 mos boy
+        heightCm: 68.0,
+        muacCm: 14.0,
+        bilateralPittingEdema: false,
+        weightForAgeStatus: 'Normal',
+        heightForAgeStatus: 'Normal',
+        weightForLengthStatus: 'Normal',
+      );
+      final m2 = Measurement(
+        date: DateTime(2026, 1, 12),
+        weightKg: 6.8, // Underweight for 12 mos girl (negTwoSD is 7.0, negThreeSD is 6.3)
+        heightCm: 72.0,
+        muacCm: 12.5,
+        bilateralPittingEdema: false,
+        weightForAgeStatus: 'Underweight',
+        heightForAgeStatus: 'Normal',
+        weightForLengthStatus: 'Normal',
+      );
+      await measurementBox.put(child1.id, [m1.toMap()..['_syncStatus'] = 'pending']);
+      await measurementBox.put(child2.id, [m2.toMap()..['_syncStatus'] = 'pending']);
+
+      final matrix = ConsolidationComputationService().computeMatrix(
+        'consolidation_0_23',
+        'Bantad',
+        year: 2026,
+      );
+
+      // For Month 1 (Jan), newIdx = 1
+      // Normal row (index 0): child 1
+      expect(matrix.rows[0].values[1], equals(1));
+      // Underweight row (index 1): child 2
+      expect(matrix.rows[1].values[1], equals(1));
+      // Severely Underweight row (index 2): 0
+      expect(matrix.rows[2].values[1], equals(0));
+      // Sub-Total row (index 3): 2 (Normal + UW)
+      expect(matrix.rows[3].values[1], equals(2));
+      // Over Age row (index 5): child 4
+      expect(matrix.rows[5].values[1], equals(1));
+      // Deceased row (index 7): child 3
+      expect(matrix.rows[7].values[1], equals(1));
+      // Grand Total row (index 8): 4 (Sub-total 2 + Over Age 1 + Deceased 1)
+      expect(matrix.rows[8].values[1], equals(4));
+
+      // Verify Consistency: active 0-23 children WFA breakdown sums to total 0-23 active children
+      final wfaBreakdown = ConsolidationComputationService().compute('consolidation_0_23', 'Bantad');
+      expect(wfaBreakdown['Normal'], equals(1));
+      expect(wfaBreakdown['Underweight'], equals(1));
+      expect(wfaBreakdown['Total'], equals(2)); // 2 active 0-23 children in Bantad (child1, child2)
     });
   });
 

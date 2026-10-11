@@ -136,16 +136,16 @@ class SyncService {
       final childId = entry.key;
       final serverRecords = entry.value;
       final existingRaw = (measurementBox.get(childId) as List?) ?? [];
-      // Keep any locally-pending records that the server doesn't know about yet
+      // Keep any locally-pending records that have not yet been synced
       final pendingLocal = existingRaw
           .where((r) => (r as Map?)?['_syncStatus'] != 'synced')
           .toList();
-      // Merge: server records + pending local (deduplicated by date)
-      final serverDates = serverRecords.map((r) => r['date']).toSet();
-      final mergedPending = pendingLocal
-          .where((r) => !serverDates.contains((r as Map?)?['date']))
+      // Local pending records are the source of truth; never overwrite with server data
+      final pendingDates = pendingLocal.map((r) => (r as Map)['date']).toSet();
+      final nonCollidingServer = serverRecords
+          .where((r) => !pendingDates.contains(r['date']))
           .toList();
-      final merged = [...serverRecords, ...mergedPending];
+      final merged = [...nonCollidingServer, ...pendingLocal];
       merged.sort((a, b) {
         final aDate = (a as Map?)?['date'] ?? '';
         final bDate = (b as Map?)?['date'] ?? '';

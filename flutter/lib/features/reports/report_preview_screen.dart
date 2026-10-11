@@ -17,6 +17,11 @@ import 'services/excel_table_data.dart';
 import 'services/report_excel_service.dart';
 import 'services/report_pdf_service.dart';
 
+import '../../data/growth_standards/growth_classifier.dart';
+import '../../data/local/app_data_bus.dart';
+import '../../shared/utils/app_page_route.dart';
+import 'sync_status_screen.dart';
+
 class ReportPreviewScreen extends StatefulWidget {
   final ReportTypeInfo reportType;
   const ReportPreviewScreen({super.key, required this.reportType});
@@ -27,9 +32,28 @@ class ReportPreviewScreen extends StatefulWidget {
 
 class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   final _settings = SettingsRepository();
+  final _childRepo = ChildRepository();
+  final _measurementRepo = MeasurementRepository();
+  final _motherRepo = MotherRepository();
   DateTime _period = DateTime.now();
   bool _isExporting = false;
   int _monthlyPartIndex = 0; // 0 = JAN–JUN, 1 = JUL–DEC
+
+  int get _pendingRecordsCount =>
+      _childRepo.pendingCount +
+      _measurementRepo.pendingCount +
+      _motherRepo.pendingCount;
+
+  bool _isEligible0to23(Child c, int year) {
+    if (!c.isActive) return false;
+    if (c.birthDate.isAfter(DateTime(year, 12, 31))) return false;
+    final ageAtStartOfYear = c.ageInMonthsAt(DateTime(year, 1, 1));
+    if (ageAtStartOfYear >= 24) {
+      final recs = _measurementRepo.getForChild(c.id);
+      return recs.any((r) => r.date.year == year && c.ageInMonthsAt(r.date) <= 23);
+    }
+    return true;
+  }
 
   String get _currentBarangay =>
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
@@ -156,7 +180,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     if (widget.reportType.id == 'monthly_weight_record') {
       final children = childRepo
           .getByBarangay(_currentBarangay)
-          .where((c) => c.isActive)
+          .where((c) => _isEligible0to23(c, _period.year))
           .toList();
 
       final boys = children.where((c) => c.gender == 'Male').toList()
@@ -254,7 +278,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     }
 
     if (reportTypeId == 'children_masterlist') {
-      final children = childRepo.getByBarangay(_currentBarangay);
+      final children = childRepo
+          .getByBarangay(_currentBarangay)
+          .where((c) => c.isActive)
+          .toList();
       int no = 1;
       final rows = children
           .map(
@@ -301,46 +328,100 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     final isConsolidation =
         widget.reportType.category == ReportCategory.consolidation;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              color: AppColors.darkGreen,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.lg,
-              ),
-              child: Row(
-                children: [
-                  InkWell(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back, color: Colors.white),
+    return ValueListenableBuilder<int>(
+      valueListenable: AppDataBus.version,
+      builder: (context, _, _) {
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: SafeArea(
+            child: Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  color: AppColors.darkGreen,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.lg,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      widget.reportType.title,
-                      style: AppTextStyles.h2.copyWith(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isConsolidation) ...[
+                  child: Row(
+                    children: [
                       InkWell(
-                        onTap: _pickPeriod,
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(Icons.arrow_back, color: Colors.white),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          widget.reportType.title,
+                          style: AppTextStyles.h2.copyWith(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_pendingRecordsCount > 0)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF3E0),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFFFB74D)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.cloud_upload_outlined,
+                                  color: Color(0xFFE65100),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    '$_pendingRecordsCount ${_pendingRecordsCount == 1 ? "record" : "records"} not yet synced',
+                                    style: const TextStyle(
+                                      color: Color(0xFFBF360C),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  style: TextButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  ),
+                                  onPressed: () => Navigator.push(
+                                    context,
+                                    appPageRoute(const SyncStatusScreen()),
+                                  ),
+                                  child: const Text(
+                                    'Sync Now',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFE65100),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (isConsolidation) ...[
+                          InkWell(
+                            onTap: _pickPeriod,
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -464,7 +545,9 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         ),
       ),
     );
-  }
+  },
+);
+}
 
   Widget _buildConsolidationPreview() {
     final matrix = ConsolidationComputationService().computeMatrix(
@@ -643,7 +726,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     final measurementRepo = MeasurementRepository();
     final signatory = ReportSignatoryRepository().get(_currentBarangay);
 
-    final children = childRepo.getByBarangay(_currentBarangay).where((c) => c.isActive).toList();
+    final children = childRepo
+        .getByBarangay(_currentBarangay)
+        .where((c) => _isEligible0to23(c, _period.year))
+        .toList();
     final boys = children.where((c) => c.gender == 'Male').toList()
       ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
     final girls = children.where((c) => c.gender == 'Female').toList()
@@ -670,27 +756,44 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         final measurements = measurementRepo.getForChild(child.id);
 
         for (int m = startMonth; m <= endMonth; m++) {
-          final totalMonths = (_period.year - child.birthDate.year) * 12 + (m - child.birthDate.month);
           String ageStr = '';
           String wtStr = '';
           String statusStr = '';
 
-          if (totalMonths < 0) {
-            ageStr = '';
-          } else if (totalMonths > 23) {
-            final prevMonths = (_period.year - child.birthDate.year) * 12 + (m - 1 - child.birthDate.month);
-            if (prevMonths <= 23) {
+          final recs = measurements
+              .where((r) => r.date.year == _period.year && r.date.month == m)
+              .toList();
+          if (recs.isNotEmpty) {
+            final r = recs.first;
+            final ageAtMeasurement = child.ageInMonthsAt(r.date);
+            if (ageAtMeasurement <= 23) {
+              ageStr = '$ageAtMeasurement';
+              wtStr = r.weightKg.toStringAsFixed(1);
+              final computedWfa = GrowthClassifier.classifyWeightForAge(
+                weightKg: r.weightKg,
+                ageMonths: ageAtMeasurement,
+                gender: child.gender,
+              );
+              statusStr = _mapWeightStatusCode(computedWfa);
+              if (statusStr == 'SUW') suwCount++;
+              if (statusStr == 'UW') uwCount++;
+            } else {
               ageStr = 'OA';
             }
           } else {
-            ageStr = '$totalMonths';
-            final recs = measurements.where((r) => r.date.year == _period.year && r.date.month == m).toList();
-            if (recs.isNotEmpty) {
-              final r = recs.first;
-              wtStr = r.weightKg.toStringAsFixed(1);
-              statusStr = _mapWeightStatusCode(r.weightForAgeStatus);
-              if (statusStr == 'SUW') suwCount++;
-              if (statusStr == 'UW') uwCount++;
+            final monthRefDate = DateTime(_period.year, m, 1);
+            if (monthRefDate.isBefore(DateTime(child.birthDate.year, child.birthDate.month, 1))) {
+              ageStr = '';
+            } else {
+              final ageInMonth = child.ageInMonthsAt(monthRefDate);
+              if (ageInMonth > 23) {
+                final prevMonthRef = DateTime(_period.year, m > 1 ? m - 1 : 1, 1);
+                if (m == 1 || child.ageInMonthsAt(prevMonthRef) <= 23) {
+                  ageStr = 'OA';
+                }
+              } else {
+                ageStr = '$ageInMonth';
+              }
             }
           }
 
@@ -969,7 +1072,12 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             dates.add('${rec.date.month}/${rec.date.day}/${rec.date.year}');
             ages.add(ageAtWeighing > 59 ? 'OA' : '$ageAtWeighing');
             wts.add(rec.weightKg.toStringAsFixed(1));
-            statuses.add(_mapWeightStatusCode(rec.weightForAgeStatus));
+            final computedStatus = GrowthClassifier.classifyWeightForAge(
+              weightKg: rec.weightKg,
+              ageMonths: ageAtWeighing,
+              gender: child.gender,
+            );
+            statuses.add(_mapWeightStatusCode(computedStatus));
           } else {
             dates.add('');
             if (totalMonths > 59) {
@@ -1308,15 +1416,15 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Image.asset('assets/images/logos/bagong_pilipinas.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 38)),
+                      Image.asset('assets/images/logos/bagong_pilipinas.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
                       const SizedBox(width: 8),
-                      Image.asset('assets/images/logos/nnc.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 38)),
+                      Image.asset('assets/images/logos/nnc.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
                       const SizedBox(width: 8),
-                      Image.asset('assets/images/logos/gasan_seal.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 38)),
+                      Image.asset('assets/images/logos/gasan_seal.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
                       const SizedBox(width: 8),
-                      Image.asset(getBarangaySealAssetPath(_currentBarangay), width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 38)),
+                      Image.asset(getBarangaySealAssetPath(_currentBarangay), width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
                       const SizedBox(width: 8),
-                      Image.asset('assets/images/logos/nutrition_logo.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 38)),
+                      Image.asset('assets/images/logos/nutrition_logo.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
                     ],
                   ),
                   const SizedBox(height: 10),
