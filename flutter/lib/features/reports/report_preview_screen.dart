@@ -199,6 +199,29 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           names: names,
           signatory: signatory,
         );
+      } else if (widget.reportType.id == 'monthly_weight_record') {
+        final childRepo = ChildRepository();
+        final measurementRepo = MeasurementRepository();
+        final children = childRepo
+            .getByBarangay(_currentBarangay)
+            .where((c) => _isEligible0to23(c, _period.year))
+            .toList();
+        final boys = children.where((c) => c.gender == 'Male').toList()
+          ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+        final girls = children.where((c) => c.gender == 'Female').toList()
+          ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+
+        file = await ReportPdfService().exportMonthly0to23Pdf(
+          fileTitle: 'Monthly_0-23_${_period.year}_$_currentBarangay',
+          barangay: _currentBarangay,
+          municipality: _currentMunicipality,
+          province: _currentProvince,
+          year: _period.year,
+          boys: boys,
+          girls: girls,
+          measurementRepo: measurementRepo,
+          signatory: signatory,
+        );
       } else if (widget.reportType.id == 'quarterly_weighing') {
         final childRepo = ChildRepository();
         final measurementRepo = MeasurementRepository();
@@ -1125,6 +1148,28 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Logo header (matching PDF) ──
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset('assets/images/logos/bagong_pilipinas.png', width: 32, height: 32,
+                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
+              const SizedBox(width: 6),
+              Image.asset('assets/images/logos/nnc.png', width: 32, height: 32,
+                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
+              const SizedBox(width: 6),
+              Image.asset('assets/images/logos/gasan_seal.png', width: 32, height: 32,
+                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
+              const SizedBox(width: 6),
+              Image.asset(getBarangaySealAssetPath(_currentBarangay), width: 32, height: 32,
+                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
+              const SizedBox(width: 6),
+              Image.asset('assets/images/logos/nutrition_logo.png', width: 32, height: 32,
+                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
+            ],
+          ),
+          const SizedBox(height: 10),
+
           // Center Bold Header Block
           Center(
             child: Column(

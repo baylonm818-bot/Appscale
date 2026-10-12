@@ -86,33 +86,51 @@ class ReportPdfService {
   }) async {
     final doc = pw.Document();
 
+    final bagongPilipinas = await _loadAssetImage('assets/images/logos/bagong_pilipinas.png');
+    final nnc = await _loadAssetImage('assets/images/logos/nnc.png');
+    final gasanSeal = await _loadAssetImage('assets/images/logos/gasan_seal.png');
+    final barangaySeal = await _loadBarangayImage(matrix.barangay, signatory);
+    final nutritionLogo = await _loadAssetImage('assets/images/logos/nutrition_logo.png');
+
     doc.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.symmetric(horizontal: 16 * PdfPageFormat.mm, vertical: 20 * PdfPageFormat.mm),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 14 * PdfPageFormat.mm, vertical: 14 * PdfPageFormat.mm),
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
+            _buildHeaderLogos(
+              barangay: matrix.barangay,
+              bagongPilipinas: bagongPilipinas,
+              nnc: nnc,
+              gasanSeal: gasanSeal,
+              barangaySeal: barangaySeal,
+              nutritionLogo: nutritionLogo,
+            ),
+            pw.SizedBox(height: 6),
             pw.Center(
               child: pw.Text(
                 'CONSOLIDATION',
-                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
               ),
             ),
             pw.Center(
-              child: pw.Text(matrix.title, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+              child: pw.Text(
+                matrix.title,
+                style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF1B5E20)),
+              ),
             ),
-            pw.SizedBox(height: 4),
+            pw.SizedBox(height: 3),
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('BARANGAY: ${matrix.barangay.toUpperCase()}', style: const pw.TextStyle(fontSize: 9)),
-                pw.Text('YEAR: ${matrix.year}', style: const pw.TextStyle(fontSize: 9)),
+                pw.Text('BARANGAY: ${matrix.barangay.toUpperCase()}', style: const pw.TextStyle(fontSize: 8)),
+                pw.Text('YEAR: ${matrix.year}', style: const pw.TextStyle(fontSize: 8)),
               ],
             ),
-            pw.SizedBox(height: 10),
+            pw.SizedBox(height: 6),
             _buildMatrixTable(matrix),
-            pw.SizedBox(height: 20),
+            pw.SizedBox(height: 14),
             _buildFourSignatoryBlock(signatory),
           ],
         ),
@@ -872,10 +890,10 @@ class ReportPdfService {
     }
 
     pw.Widget buildWeighingTable(String genderLabel, List<Child> kids) {
-      // Headers
+      // Headers matching official BNS Form 1-A
       const qtrs = ['1ST', '2ND', '3RD', '4TH'];
       final headerData = [
-        ['NAME OF CHILD / $genderLabel', 'DATE OF BIRTH',
+        ['NAME OF CHILD / $genderLabel', 'NAME OF FATHER/\nMOTHER', 'DATE OF\nBIRTH',
           ...List.generate(4, (i) => 'DATE\nWT${i + 1}'),
           ...List.generate(4, (i) => 'AGE\n${qtrs[i]}'),
           ...List.generate(4, (i) => 'WT\n${qtrs[i]}'),
@@ -921,6 +939,7 @@ class ReportPdfService {
 
         return [
           child.fullName,
+          child.guardian.fullName.isNotEmpty ? child.guardian.fullName : '',
           '${child.birthDate.month}/${child.birthDate.day}/${child.birthDate.year}',
           ...dates,
           ...ages,
@@ -931,17 +950,18 @@ class ReportPdfService {
       }).toList();
 
       const colWidths = <int, pw.TableColumnWidth>{
-        0: pw.FlexColumnWidth(2.5),
-        1: pw.FixedColumnWidth(54),
-        2: pw.FixedColumnWidth(42), 3: pw.FixedColumnWidth(42),
-        4: pw.FixedColumnWidth(42), 5: pw.FixedColumnWidth(42),
-        6: pw.FixedColumnWidth(30), 7: pw.FixedColumnWidth(30),
-        8: pw.FixedColumnWidth(30), 9: pw.FixedColumnWidth(30),
-        10: pw.FixedColumnWidth(36), 11: pw.FixedColumnWidth(36),
-        12: pw.FixedColumnWidth(36), 13: pw.FixedColumnWidth(36),
-        14: pw.FixedColumnWidth(36), 15: pw.FixedColumnWidth(36),
-        16: pw.FixedColumnWidth(36), 17: pw.FixedColumnWidth(36),
-        18: pw.FixedColumnWidth(46),
+        0: pw.FlexColumnWidth(2.2),
+        1: pw.FixedColumnWidth(60),
+        2: pw.FixedColumnWidth(48),
+        3: pw.FixedColumnWidth(38), 4: pw.FixedColumnWidth(38),
+        5: pw.FixedColumnWidth(38), 6: pw.FixedColumnWidth(38),
+        7: pw.FixedColumnWidth(26), 8: pw.FixedColumnWidth(26),
+        9: pw.FixedColumnWidth(26), 10: pw.FixedColumnWidth(26),
+        11: pw.FixedColumnWidth(32), 12: pw.FixedColumnWidth(32),
+        13: pw.FixedColumnWidth(32), 14: pw.FixedColumnWidth(32),
+        15: pw.FixedColumnWidth(32), 16: pw.FixedColumnWidth(32),
+        17: pw.FixedColumnWidth(32), 18: pw.FixedColumnWidth(32),
+        19: pw.FixedColumnWidth(40),
       };
 
       return pw.TableHelper.fromTextArray(
@@ -974,31 +994,41 @@ class ReportPdfService {
           ),
           pw.SizedBox(height: 10),
 
-          // ── Title block ──
-          pw.Center(
-            child: pw.Column(
-              children: [
-                pw.Text(
-                  'QUARTERLY FULL WEIGHING RECORD',
-                  style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.Text(
-                  'CHILDREN 24–59 MONTHS · Year: $year',
-                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.SizedBox(height: 2),
-                pw.Text(
-                  'Province: ${province.toUpperCase()}  ·  Municipality: ${municipality.toUpperCase()}  ·  Barangay: ${barangay.toUpperCase()}',
-                  style: const pw.TextStyle(fontSize: 8),
-                ),
-                pw.Text(
-                  'BNS: $bnsName  ·  Date Generated: $fmtDate',
-                  style: const pw.TextStyle(fontSize: 8),
-                ),
-              ],
-            ),
+          // ── BNS Form 1-A Header Block ──
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('BNS FORM NO: 1-A', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('Food and Nutrition Program', style: const pw.TextStyle(fontSize: 8)),
+                  pw.Text('Revised Boac MNC', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
+                  pw.Text('Date: January 2004', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
+                  pw.SizedBox(height: 3),
+                  pw.Text('QUARTERLY FULL WEIGHING RECORD (24-59 MOS.)', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF1B5E20))),
+                  pw.Text('1. NAME OF BNS: ${bnsName.isNotEmpty ? bnsName.toUpperCase() : "—"}', style: const pw.TextStyle(fontSize: 7.5)),
+                  pw.Text('2. BARANGAY: ${barangay.toUpperCase()}', style: const pw.TextStyle(fontSize: 7.5)),
+                  pw.Text('3. MUNICIPALITY: ${municipality.toUpperCase()}', style: const pw.TextStyle(fontSize: 7.5)),
+                  pw.Text('4. PROVINCE: ${province.toUpperCase()}', style: const pw.TextStyle(fontSize: 7.5)),
+                ],
+              ),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Inclusive date of Weighing: 1ST | 2ND | 3RD | 4TH', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 2),
+                  pw.Text('Total no. of Families Surveyed: _____', style: const pw.TextStyle(fontSize: 7.5)),
+                  pw.Text('Total no. of Families with PS: _____', style: const pw.TextStyle(fontSize: 7.5)),
+                  pw.Text('Total no. of Families with/out PS: _____', style: const pw.TextStyle(fontSize: 7.5)),
+                  pw.Text('Total no. of Children Weighed: $grandTotal', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('Date Generated: $fmtDate', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
+                ],
+              ),
+            ],
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 10),
 
           // ── Summary nutritional status table ──
           pw.Text(
@@ -1059,6 +1089,243 @@ class ReportPdfService {
         ],
       ),
     );
+
+    final bytes = await doc.save();
+    return _savePdfToDocuments(fileTitle: fileTitle, bytes: bytes);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MONTHLY RECORD OF WEIGHT AND WEIGHT STATUS (0–23 months) PDF
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Exports the Monthly Record of Weight & Weight Status (0-23 mos.) as a PDF.
+  /// Exactly follows official DOH/NNC template with Jan-Jun / Jul-Dec tables,
+  /// Year/Mo/Day columns, Age Mo, Weight (kgs), and Weight Status (N, UW, SUW, OA),
+  /// with section footers (No. of SUW / UW, Accomplished By, Date Accomplished).
+  Future<File> exportMonthly0to23Pdf({
+    required String fileTitle,
+    required String barangay,
+    required String municipality,
+    required String province,
+    required int year,
+    required List<Child> boys,
+    required List<Child> girls,
+    required MeasurementRepository measurementRepo,
+    required ReportSignatory? signatory,
+  }) async {
+    final doc = pw.Document();
+
+    final bagongPilipinas = await _loadAssetImage('assets/images/logos/bagong_pilipinas.png');
+    final nnc = await _loadAssetImage('assets/images/logos/nnc.png');
+    final gasanSeal = await _loadAssetImage('assets/images/logos/gasan_seal.png');
+    final barangaySeal = await _loadBarangayImage(barangay, signatory);
+    final nutritionLogo = await _loadAssetImage('assets/images/logos/nutrition_logo.png');
+
+    final bnsName = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
+    final today = DateTime.now();
+    final fmtDate = '${today.month.toString().padLeft(2, '0')}/'
+        '${today.day.toString().padLeft(2, '0')}/${today.year}';
+
+    final monthNames = [
+      'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+      'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+    ];
+
+    String mapWtStatus(String raw) {
+      final s = raw.toLowerCase();
+      if (s.contains('severely') && s.contains('underweight')) return 'SUW';
+      if (s.contains('underweight')) return 'UW';
+      if (s.contains('overweight') || s.contains('obese')) return 'OW';
+      if (s.contains('normal')) return 'N';
+      return '';
+    }
+
+    pw.Widget buildMonthlyTable(String genderLabel, List<Child> kids, int startMonth, int endMonth) {
+      int suwCount = 0;
+      int uwCount = 0;
+
+      // Group Headers
+      final groupHeaders = [
+        'NAME OF CHILD\n$genderLabel',
+        'YEAR',
+        'MO.',
+        'DAY',
+        for (int m = startMonth; m <= endMonth; m++) ...[
+          '${monthNames[m - 1]},\n$year',
+          '',
+          '',
+        ],
+      ];
+
+      // Sub-headers
+      final subHeaders = [
+        '',
+        '',
+        '',
+        '',
+        for (int m = startMonth; m <= endMonth; m++) ...[
+          'AGE\nMO.',
+          'WT\n(KG)',
+          'STATUS',
+        ],
+      ];
+
+      final dataRows = kids.map((child) {
+        final meas = measurementRepo.getForChild(child.id);
+        final cells = <String>[
+          child.fullName,
+          '${child.birthDate.year}',
+          '${child.birthDate.month}',
+          '${child.birthDate.day}',
+        ];
+
+        for (int m = startMonth; m <= endMonth; m++) {
+          final recs = meas.where((r) => r.date.year == year && r.date.month == m).toList();
+          if (recs.isNotEmpty) {
+            final r = recs.first;
+            final ageAtM = Child.monthsBetween(child.birthDate, r.date);
+            if (ageAtM <= 23) {
+              final status = mapWtStatus(
+                GrowthClassifier.classifyWeightForAge(
+                  weightKg: r.weightKg,
+                  ageMonths: ageAtM,
+                  gender: child.gender,
+                ),
+              );
+              if (status == 'SUW') suwCount++;
+              if (status == 'UW') uwCount++;
+              cells.addAll(['$ageAtM', r.weightKg.toStringAsFixed(1), status]);
+            } else {
+              cells.addAll(['OA', '', '']);
+            }
+          } else {
+            final monthRef = DateTime(year, m, 1);
+            if (monthRef.isBefore(DateTime(child.birthDate.year, child.birthDate.month, 1))) {
+              cells.addAll(['', '', '']);
+            } else {
+              final ageInM = Child.monthsBetween(child.birthDate, monthRef);
+              if (ageInM > 23) {
+                final prevMonthRef = DateTime(year, m > 1 ? m - 1 : 1, 1);
+                if (m == 1 || Child.monthsBetween(child.birthDate, prevMonthRef) <= 23) {
+                  cells.addAll(['OA', '', '']);
+                } else {
+                  cells.addAll(['', '', '']);
+                }
+              } else {
+                cells.addAll(['$ageInM', '', '']);
+              }
+            }
+          }
+        }
+        return cells;
+      }).toList();
+
+      final colWidths = <int, pw.TableColumnWidth>{
+        0: const pw.FlexColumnWidth(2.6),
+        1: const pw.FixedColumnWidth(26),
+        2: const pw.FixedColumnWidth(20),
+        3: const pw.FixedColumnWidth(20),
+        for (int i = 4; i < 22; i += 3) ...{
+          i: const pw.FixedColumnWidth(24),
+          i + 1: const pw.FixedColumnWidth(30),
+          i + 2: const pw.FixedColumnWidth(30),
+        },
+      };
+
+      return pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.TableHelper.fromTextArray(
+            headers: groupHeaders,
+            data: [subHeaders, ...dataRows],
+            headerStyle: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF1B5E20)),
+            cellStyle: const pw.TextStyle(fontSize: 6.5),
+            cellPadding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 2.5),
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.4),
+            columnWidths: colWidths,
+            cellAlignment: pw.Alignment.center,
+            headerCount: 1,
+          ),
+          pw.SizedBox(height: 6),
+          // Sub-footer matching template
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+              color: PdfColors.grey100,
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('NO. OF SEVERELY UNDERWEIGHT: $suwCount', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: PdfColors.red800)),
+                pw.Text('NO. OF UNDERWEIGHT: $uwCount', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: PdfColors.orange800)),
+                pw.Text('DATE ACCOMPLISHED: $fmtDate', style: const pw.TextStyle(fontSize: 7)),
+                pw.Text('ACCOMPLISHED BY: $bnsName', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    void addPartPages(int startMonth, int endMonth, String partTitle) {
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.symmetric(horizontal: 14 * PdfPageFormat.mm, vertical: 12 * PdfPageFormat.mm),
+          build: (context) => [
+            _buildHeaderLogos(
+              barangay: barangay,
+              bagongPilipinas: bagongPilipinas,
+              nnc: nnc,
+              gasanSeal: gasanSeal,
+              barangaySeal: barangaySeal,
+              nutritionLogo: nutritionLogo,
+            ),
+            pw.SizedBox(height: 8),
+            pw.Center(
+              child: pw.Column(
+                children: [
+                  pw.Text('MONTHLY RECORD OF WEIGHT AND WEIGHT STATUS', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('INFANTS 0-23 MONTHS · $partTitle · Year: $year', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF1B5E20))),
+                  pw.SizedBox(height: 2),
+                  pw.Text('PROVINCE: ${province.toUpperCase()}  |  CITY/MUNICIPALITY: ${municipality.toUpperCase()}  |  BARANGAY: ${barangay.toUpperCase()}', style: const pw.TextStyle(fontSize: 8)),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 10),
+
+            // BOYS Section
+            pw.Text('BOYS (Total: ${boys.length})', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 3),
+            if (boys.isEmpty)
+              pw.Text('No boys recorded.', style: const pw.TextStyle(fontSize: 7))
+            else
+              buildMonthlyTable('BOYS', boys, startMonth, endMonth),
+            pw.SizedBox(height: 12),
+
+            // GIRLS Section
+            pw.Text('GIRLS (Total: ${girls.length})', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 3),
+            if (girls.isEmpty)
+              pw.Text('No girls recorded.', style: const pw.TextStyle(fontSize: 7))
+            else
+              buildMonthlyTable('GIRLS', girls, startMonth, endMonth),
+            pw.SizedBox(height: 18),
+
+            pw.Divider(color: PdfColors.grey400),
+            pw.SizedBox(height: 6),
+            _buildFourSignatoryBlock(signatory),
+          ],
+        ),
+      );
+    }
+
+    // Part 1: Jan–Jun
+    addPartPages(1, 6, 'JANUARY – JUNE');
+    // Part 2: Jul–Dec
+    addPartPages(7, 12, 'JULY – DECEMBER');
 
     final bytes = await doc.save();
     return _savePdfToDocuments(fileTitle: fileTitle, bytes: bytes);

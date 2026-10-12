@@ -59,7 +59,7 @@ class ReportTypes {
     id: 'monthly_weight_record',
     title: 'Monthly Record of Weight & Weight Status (0–23 Months)',
     category: ReportCategory.individualRecord,
-    formats: [ExportFormat.excel],
+    formats: [ExportFormat.pdf, ExportFormat.excel],
   );
   static const quarterlyWeighing = ReportTypeInfo(
     id: 'quarterly_weighing',
