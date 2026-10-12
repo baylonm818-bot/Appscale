@@ -273,11 +273,30 @@ class SyncService {
     for (final e in enrollments) {
       final progType = (e['program_type'] ?? 'feeding').toString().toLowerCase();
       if (progType == 'feeding') {
-        final childKey = (e['child_external_id'] ?? e['child_id'] ?? '').toString();
+        final extId = (e['child_external_id'] ?? '').toString();
+        final srvId = (e['child_id'] ?? '').toString();
+        // Resolve target key that matches local Hive child id
+        String childKey = extId;
+        if (childKey.isEmpty || !childBox.containsKey(childKey)) {
+          if (childBox.containsKey(srvId)) {
+            childKey = srvId;
+          } else {
+            // Find child by sequenceNo or mapped server id
+            for (final k in childBox.keys) {
+              final cMap = childBox.get(k) as Map?;
+              if (cMap != null && (cMap['id'] == extId || cMap['id'] == srvId || k == extId || k == srvId)) {
+                childKey = k.toString();
+                break;
+              }
+            }
+          }
+        }
+        if (childKey.isEmpty) childKey = extId.isNotEmpty ? extId : srvId;
+
         if (childKey.isNotEmpty) {
           final rawStatus = (e['status'] ?? 'enrolled').toString().toLowerCase();
           final isEnrolled = rawStatus == 'enrolled' || rawStatus == 'active';
-          final existing = enrollBox.get(childKey);
+          final existing = enrollBox.get(childKey) ?? (extId.isNotEmpty ? enrollBox.get(extId) : null) ?? (srvId.isNotEmpty ? enrollBox.get(srvId) : null);
           Map<String, dynamic>? existingMap;
           if (existing is Map) {
             existingMap = Map<String, dynamic>.from(existing);

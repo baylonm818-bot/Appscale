@@ -152,7 +152,14 @@ class FeedingEnrollmentRepository {
   }
 
   Map<String, dynamic>? getEnrollmentData(String childId) {
-    final raw = _box.get(childId);
+    var raw = _box.get(childId);
+    if (raw == null) {
+      // Check if child has a mapped server ID in SyncIdMapper
+      final srvId = SyncIdMapper.instance.getChildServerId(childId);
+      if (srvId != null) {
+        raw = _box.get(srvId.toString());
+      }
+    }
     if (raw == null) return null;
     if (raw is Map) return Map<String, dynamic>.from(raw);
     if (raw is String) {
