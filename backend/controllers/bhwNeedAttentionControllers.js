@@ -315,7 +315,25 @@ exports.getNeedAttention = async (req, res) => {
          last_visit ASC`,
       queryParams
     );
-    return res.status(200).json(children);
+    const mappedChildren = children.map((c) => {
+      let overall = c.overall_status;
+      const ws = String(c.weight_status || '').toLowerCase();
+      const hs = String(c.height_status || '').toLowerCase();
+      const wst = String(c.wasting_status || '').toLowerCase();
+      if (!overall || overall.toLowerCase() === 'normal') {
+        if (ws.includes('sever') || hs.includes('sever') || wst.includes('sever')) {
+          overall = 'SAM';
+        } else if (ws.includes('underweight') || hs.includes('stunted') || wst.includes('wasted')) {
+          overall = 'MAM';
+        } else if (ws === 'obese') {
+          overall = 'obese';
+        } else if (ws === 'overweight') {
+          overall = 'overweight';
+        }
+      }
+      return { ...c, overall_status: overall };
+    });
+    return res.status(200).json(mappedChildren);
   } catch (error) {
     console.error('Get need attention error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });

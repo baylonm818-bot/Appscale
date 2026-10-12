@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -19,7 +20,9 @@ const statusColors = {
   underweight: 'bg-amber-100 text-amber-800 ring-1 ring-amber-200',
   severely_underweight: 'bg-red-100 text-red-800 ring-1 ring-red-200',
   overweight: 'bg-blue-100 text-blue-800 ring-1 ring-blue-200',
+  OVERWEIGHT: 'bg-blue-100 text-blue-800 ring-1 ring-blue-200',
   obese: 'bg-purple-100 text-purple-800 ring-1 ring-purple-200',
+  OBESE: 'bg-purple-100 text-purple-800 ring-1 ring-purple-200',
 };
 
 const statusPriority = {
@@ -361,12 +364,12 @@ function NeedAttention() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm table-fixed min-w-175">
             <colgroup>
-              <col className="w-[24%]" />
-              <col className="w-[10%]" />
+              <col className="w-[23%]" />
+              <col className="w-[9%]" />
+              <col className="w-[13%]" />
+              <col className="w-[16%]" />
               <col className="w-[14%]" />
-              <col className="w-[14%]" />
-              <col className="w-[14%]" />
-              <col className="w-[24%]" />
+              <col className="w-[25%]" />
             </colgroup>
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80 border-b border-gray-100">
@@ -411,7 +414,7 @@ function NeedAttention() {
                         <p className="text-gray-400">{c.height_cm ? `${c.height_cm} cm` : '—'}</p>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${statusColors[c.overall_status] || 'bg-gray-100 text-gray-700'}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase whitespace-nowrap inline-block ${statusColors[c.overall_status] || 'bg-gray-100 text-gray-700'}`}>
                           {c.overall_status || 'At Risk'}
                         </span>
                       </td>
@@ -434,14 +437,13 @@ function NeedAttention() {
                             <Stethoscope size={13} className="text-emerald-700" /> Log Visit
                           </button>
                           {Boolean(c.is_referred) ? (
-                            <button
-                              type="button"
-                              disabled
-                              title="An active referral is already pending or in progress for this child"
-                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                            <Link
+                              to="/bhw/referrals"
+                              title="Active referral ongoing. Click to view referrals"
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
                             >
-                              <CheckCircle2 size={13} className="text-gray-400" /> Referred
-                            </button>
+                              <CheckCircle2 size={13} className="text-blue-600" /> Referred
+                            </Link>
                           ) : (
                             <button
                               type="button"
