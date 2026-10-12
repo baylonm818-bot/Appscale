@@ -2,6 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'app_data_bus.dart';
 import 'child_repository.dart';
 import 'hive_boxes.dart';
+import 'sync_id_mapper.dart';
 import '../models/child.dart';
 import '../remote/beneficiary_api.dart';
 
