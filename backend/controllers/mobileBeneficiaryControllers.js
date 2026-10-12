@@ -281,11 +281,12 @@ exports.upsertChild = async (req, res) => {
     try {
       const childName = `${firstName} ${lastName || ''}`.trim();
       await pool.query(
-        `INSERT INTO notifications (title, message, type, is_read, created_at)
-         VALUES (?, ?, 'child', FALSE, NOW())`,
+        `INSERT INTO notifications (title, message, type, is_read, recipient_role, barangay, created_at)
+         VALUES (?, ?, 'child', FALSE, 'admin', ?, NOW())`,
         [
           `New Child Registered: ${childName}`,
           `Child beneficiary ${childName} in Barangay ${resolvedBarangay} was added to the masterlist.`,
+          resolvedBarangay,
         ]
       );
     } catch (notifErr) {
@@ -525,11 +526,12 @@ exports.upsertMother = async (req, res) => {
     try {
       const motherName = `${firstName} ${lastName || ''}`.trim();
       await pool.query(
-        `INSERT INTO notifications (title, message, type, is_read, created_at)
-         VALUES (?, ?, 'mother', FALSE, NOW())`,
+        `INSERT INTO notifications (title, message, type, is_read, recipient_role, barangay, created_at)
+         VALUES (?, ?, 'mother', FALSE, 'bhw', ?, NOW())`,
         [
           `New Mother Registered: ${motherName}`,
           `Mother beneficiary ${motherName} in Barangay ${resolvedBarangay} was added to the masterlist.`,
+          resolvedBarangay,
         ]
       );
     } catch (notifErr) {
@@ -707,11 +709,12 @@ exports.syncNutritionRecord = async (req, res) => {
         const childName = childRow ? `${childRow.first_name} ${childRow.last_name}` : `Child #${resolvedChildId}`;
         const statusLabel = os === 'SAM' ? 'Severe Acute Malnutrition (SAM)' : 'Moderate Acute Malnutrition (MAM)';
         await pool.query(
-          `INSERT INTO notifications (title, message, type, is_read, created_at)
-           VALUES (?, ?, 'alert', FALSE, NOW())`,
+          `INSERT INTO notifications (title, message, type, is_read, recipient_role, barangay, created_at)
+           VALUES (?, ?, 'alert', FALSE, 'bhw', ?, NOW())`,
           [
             `${os} Alert: ${childName}`,
             `${childName} has been measured and classified as ${statusLabel}. Immediate attention is required.`,
+            childRow ? childRow.barangay : null,
           ]
         );
       } catch (notifErr) {
@@ -793,13 +796,11 @@ exports.getMobileChildren = async (req, res) => {
          nr.overall_status, nr.record_date AS last_visit
        FROM children c
        LEFT JOIN (
-         SELECT nr1.*
-         FROM nutrition_records nr1
-         INNER JOIN (
-           SELECT child_id, MAX(record_date) AS latest_date
-           FROM nutrition_records
-           GROUP BY child_id
-         ) latest ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
+         SELECT nr_sub.* FROM (
+           SELECT nr1.*,
+                  ROW_NUMBER() OVER (PARTITION BY nr1.child_id ORDER BY nr1.record_date DESC, nr1.record_id DESC) AS rn
+           FROM nutrition_records nr1
+         ) nr_sub WHERE nr_sub.rn = 1
        ) nr ON nr.child_id = c.child_id
        WHERE ${where}
        ORDER BY c.first_name ASC`,
@@ -1046,9 +1047,11 @@ exports.getMobileSync = async (req, res) => {
                 nr.record_date AS last_visit
          FROM children c
          LEFT JOIN (
-           SELECT nr1.* FROM nutrition_records nr1
-           INNER JOIN (SELECT child_id, MAX(record_date) AS latest_date FROM nutrition_records GROUP BY child_id) latest
-           ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
+           SELECT nr_sub.* FROM (
+             SELECT nr1.*,
+                    ROW_NUMBER() OVER (PARTITION BY nr1.child_id ORDER BY nr1.record_date DESC, nr1.record_id DESC) AS rn
+             FROM nutrition_records nr1
+           ) nr_sub WHERE nr_sub.rn = 1
          ) nr ON nr.child_id = c.child_id
          WHERE ${childWhere} ORDER BY c.first_name ASC`,
         childParams

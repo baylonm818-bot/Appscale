@@ -190,13 +190,14 @@ exports.createChildService = async (req, res) => {
     // ── Partner Notification (BHW / BNS in barangay) ─────────────────────────
     try {
       await pool.query(
-        `INSERT INTO notifications (title, message, type, is_read, related_id, created_by, created_at)
-         VALUES (?, ?, 'visit', FALSE, ?, ?, NOW())`,
+        `INSERT INTO notifications (title, message, type, is_read, related_id, created_by, recipient_role, barangay, created_at)
+         VALUES (?, ?, 'visit', FALSE, ?, ?, 'bhw', ?, NOW())`,
         [
           `Health Visit: ${child.first_name} ${child.last_name}`,
           `Health visit recorded (${selectedConfig.name}) for ${child.first_name} ${child.last_name} in Barangay ${child.barangay}.`,
           result.insertId,
           providerId,
+          child.barangay,
         ]
       );
     } catch (notifErr) {

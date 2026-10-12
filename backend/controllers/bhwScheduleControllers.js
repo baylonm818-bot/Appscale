@@ -8,12 +8,13 @@ async function createScheduleStatusNotification(scheduleId, statusOverride) {
 
     const label = statusOverride === 'done' ? 'Completed' : statusOverride === 'cancelled' ? 'Cancelled' : String(statusOverride || 'Updated').toUpperCase();
     await pool.query(
-      `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
-       VALUES (?, ?, 'schedule', FALSE, ?, NOW())`,
+      `INSERT INTO notifications (title, message, type, is_read, related_id, recipient_role, barangay, created_at)
+       VALUES (?, ?, 'schedule', FALSE, ?, 'all', ?, NOW())`,
       [
         `Schedule ${label}: ${sched.title}`,
         `"${sched.title}" (${sched.barangay || 'All Barangays'}) was updated to ${statusOverride || 'updated'}.`,
         scheduleId,
+        sched.barangay && sched.barangay !== 'All Barangays' ? sched.barangay : null,
       ]
     );
   } catch (notifErr) {

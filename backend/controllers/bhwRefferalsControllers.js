@@ -339,6 +339,8 @@ exports.createReferral = async (req, res) => {
         if (notifColSet.has('related_id')) { nf.push('related_id'); nv.push(result.insertId); }
         if (notifColSet.has('created_by')) { nf.push('created_by'); nv.push(referringUserId); }
         if (notifColSet.has('created_at')) { nf.push('created_at'); nv.push(new Date()); }
+        if (notifColSet.has('recipient_role')) { nf.push('recipient_role'); nv.push('bhw'); }
+        if (notifColSet.has('barangay')) { nf.push('barangay'); nv.push(targetBarangay || null); }
 
         await pool.query(
           `INSERT INTO notifications (${nf.join(', ')}) VALUES (${nf.map(() => '?').join(', ')})`,

@@ -138,7 +138,6 @@ function Dashboard() {
 
   const trends = stats.nineCategoryTrend || {};
   const totalActiveChildren = stats.totalChildren || 1;
-  const maxTrend = Math.max(...Object.values(trends).map(Number), 1);
   const overviewData = stats.malnutritionByBarangay || [];
 
   return (
@@ -209,7 +208,7 @@ function Dashboard() {
               {Object.entries(trends).map(([key, count]) => {
                 const num = Number(count) || 0;
                 const percentage = totalActiveChildren > 0 ? Math.round((num / totalActiveChildren) * 100) : 0;
-                const widthPercent = (num / maxTrend) * 100;
+                const barWidthPercent = totalActiveChildren > 0 ? (num / totalActiveChildren) * 100 : 0;
 
                 return (
                   <div key={key} className="group">
@@ -222,7 +221,7 @@ function Dashboard() {
                     <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${statusColors[key] || 'bg-green-500'}`}
-                        style={{ width: `${Math.max(widthPercent, num > 0 ? 4 : 0)}%` }}
+                        style={{ width: `${Math.max(barWidthPercent, num > 0 ? 3 : 0)}%` }}
                       />
                     </div>
                   </div>

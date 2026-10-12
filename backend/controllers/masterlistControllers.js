@@ -318,9 +318,9 @@ exports.transferBeneficiary = async (req, res) => {
 
     try {
       await conn.query(
-        `INSERT INTO notifications (title, message, type, is_read, related_id, created_by, created_at)
-         VALUES (?, ?, 'alert', FALSE, ?, ?, NOW())`,
-        [notifTitle, notifMessage, primaryDbId, req.user?.user_id || null]
+        `INSERT INTO notifications (title, message, type, is_read, related_id, created_by, recipient_role, barangay, created_at)
+         VALUES (?, ?, 'alert', FALSE, ?, ?, 'bhw', ?, NOW())`,
+        [notifTitle, notifMessage, primaryDbId, req.user?.user_id || null, targetBarangay]
       );
     } catch (notifErr) {
       console.warn('Transfer notification warning (non-fatal):', {

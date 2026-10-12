@@ -84,12 +84,13 @@ exports.createSchedule = async (req, res) => {
       const formattedDate = new Date(schedule_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       const location = [venue, barangay && barangay !== 'All Barangays' ? barangay : null].filter(Boolean).join(', ') || 'Municipal Venue';
       await pool.query(
-        `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
-         VALUES (?, ?, 'schedule', FALSE, ?, NOW())`,
+        `INSERT INTO notifications (title, message, type, is_read, related_id, recipient_role, barangay, created_at)
+         VALUES (?, ?, 'schedule', FALSE, ?, 'all', ?, NOW())`,
         [
           `New Schedule: ${title}`,
           `${schedule_type.toUpperCase()} scheduled for ${formattedDate} at ${location}.`,
-          result.insertId
+          result.insertId,
+          barangay && barangay !== 'All Barangays' ? barangay : null,
         ]
       );
     } catch (notifErr) {
@@ -119,12 +120,13 @@ exports.updateScheduleStatus = async (req, res) => {
       if (sched) {
         const statusLabel = status === 'done' ? 'Completed' : status === 'cancelled' ? 'Cancelled' : status.toUpperCase();
         await pool.query(
-          `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
-           VALUES (?, ?, 'schedule', FALSE, ?, NOW())`,
+          `INSERT INTO notifications (title, message, type, is_read, related_id, recipient_role, barangay, created_at)
+           VALUES (?, ?, 'schedule', FALSE, ?, 'all', ?, NOW())`,
           [
             `Schedule ${statusLabel}: ${sched.title}`,
             `"${sched.title}" (${sched.barangay || 'All Barangays'}) was updated to ${status}.`,
-            id
+            id,
+            sched.barangay && sched.barangay !== 'All Barangays' ? sched.barangay : null,
           ]
         );
       }

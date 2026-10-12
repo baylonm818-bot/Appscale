@@ -4,22 +4,25 @@ function bhwNotificationExclusionClause(alias = 'n') {
   return `(${alias}.type <> 'system' AND ${alias}.title NOT LIKE 'Data Synced%' AND ${alias}.title NOT LIKE 'Data Synced Automatically%')`;
 }
 
-function buildScopedNotificationWhere(userBarangay) {
+function buildScopedNotification(userBarangay) {
   const barangayLike = `%${userBarangay}%`;
-
-  return `
-    FROM notifications n
-    LEFT JOIN schedules s ON n.type = 'schedule' AND n.related_id = s.schedule_id
-    LEFT JOIN referrals r ON n.type = 'referral' AND n.related_id = r.referral_id
-    LEFT JOIN children c ON c.child_id = r.child_id
-    LEFT JOIN mothers m ON m.mother_id = r.mother_id
-    WHERE (
-      (n.type = 'schedule' AND s.barangay = ?)
-      OR (n.type = 'referral' AND COALESCE(c.barangay, m.barangay) = ?)
-      OR (n.title LIKE ?)
-      OR (n.message LIKE ?)
-    )
-  `;
+  return {
+    fromWhere: `
+      FROM notifications n
+      LEFT JOIN schedules s ON n.type = 'schedule' AND n.related_id = s.schedule_id
+      LEFT JOIN referrals r ON n.type = 'referral' AND n.related_id = r.referral_id
+      LEFT JOIN children c ON c.child_id = r.child_id
+      LEFT JOIN mothers m ON m.mother_id = r.mother_id
+      WHERE (
+        (n.type = 'schedule' AND (s.barangay = ? OR s.barangay = 'All Barangays' OR s.barangay IS NULL OR n.barangay = ?))
+        OR (n.type = 'referral' AND (n.barangay = ? OR COALESCE(c.barangay, m.barangay) = ?))
+        OR (n.barangay = ?)
+        OR (n.title LIKE ?)
+        OR (n.message LIKE ?)
+      )
+    `,
+    params: [userBarangay, userBarangay, userBarangay, userBarangay, userBarangay, barangayLike, barangayLike],
+  };
 }
 
 exports.getNotifications = async (req, res) => {
@@ -30,19 +33,19 @@ exports.getNotifications = async (req, res) => {
   }
 
   try {
-    const scopedWhere = buildScopedNotificationWhere(userBarangay);
+    const { fromWhere, params } = buildScopedNotification(userBarangay);
     const [notifications] = await pool.query(
       `SELECT n.notification_id, n.title, n.message, n.type, n.is_read, n.created_at
-       ${scopedWhere} AND ${bhwNotificationExclusionClause()}
+       ${fromWhere} AND ${bhwNotificationExclusionClause()}
        ORDER BY n.created_at DESC
        LIMIT 50`,
-      [userBarangay, userBarangay, `%${userBarangay}%`, `%${userBarangay}%`]
+      params
     );
 
     const [[{ unreadCount }]] = await pool.query(
       `SELECT COUNT(*) AS unreadCount
-       ${scopedWhere} AND n.is_read = FALSE AND ${bhwNotificationExclusionClause()}`,
-      [userBarangay, userBarangay, `%${userBarangay}%`, `%${userBarangay}%`]
+       ${fromWhere} AND n.is_read = FALSE AND ${bhwNotificationExclusionClause()}`,
+      params
     );
 
     return res.status(200).json({ notifications, unreadCount });
@@ -61,6 +64,7 @@ exports.markAsRead = async (req, res) => {
   }
 
   try {
+    const { params } = buildScopedNotification(userBarangay);
     await pool.query(
       `UPDATE notifications n
        LEFT JOIN schedules s ON n.type = 'schedule' AND n.related_id = s.schedule_id
@@ -69,11 +73,12 @@ exports.markAsRead = async (req, res) => {
        LEFT JOIN mothers m ON m.mother_id = r.mother_id
        SET n.is_read = TRUE
        WHERE n.notification_id = ?
-         AND ((n.type = 'schedule' AND s.barangay = ?)
-           OR (n.type = 'referral' AND COALESCE(c.barangay, m.barangay) = ?)
+         AND ((n.type = 'schedule' AND (s.barangay = ? OR s.barangay = 'All Barangays' OR s.barangay IS NULL OR n.barangay = ?))
+           OR (n.type = 'referral' AND (n.barangay = ? OR COALESCE(c.barangay, m.barangay) = ?))
+           OR (n.barangay = ?)
            OR (n.title LIKE ?)
            OR (n.message LIKE ?))`,
-      [id, userBarangay, userBarangay, `%${userBarangay}%`, `%${userBarangay}%`]
+      [id, ...params]
     );
     return res.status(200).json({ message: 'Marked as read.' });
   } catch (error) {
@@ -90,6 +95,7 @@ exports.markAllAsRead = async (req, res) => {
   }
 
   try {
+    const { params } = buildScopedNotification(userBarangay);
     await pool.query(
       `UPDATE notifications n
        LEFT JOIN schedules s ON n.type = 'schedule' AND n.related_id = s.schedule_id
@@ -98,12 +104,13 @@ exports.markAllAsRead = async (req, res) => {
        LEFT JOIN mothers m ON m.mother_id = r.mother_id
        SET n.is_read = TRUE
        WHERE n.is_read = FALSE
-        AND ((n.type = 'schedule' AND s.barangay = ?)
-          OR (n.type = 'referral' AND COALESCE(c.barangay, m.barangay) = ?)
+        AND ((n.type = 'schedule' AND (s.barangay = ? OR s.barangay = 'All Barangays' OR s.barangay IS NULL OR n.barangay = ?))
+          OR (n.type = 'referral' AND (n.barangay = ? OR COALESCE(c.barangay, m.barangay) = ?))
+          OR (n.barangay = ?)
           OR (n.title LIKE ?)
           OR (n.message LIKE ?))
         AND ${bhwNotificationExclusionClause()}`,
-      [userBarangay, userBarangay, `%${userBarangay}%`, `%${userBarangay}%`]
+      params
     );
     return res.status(200).json({ message: 'All marked as read.' });
   } catch (error) {
