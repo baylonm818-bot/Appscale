@@ -11,6 +11,18 @@ const {
   createMobileSchedule,
   getMobileNutritionRecords,
   getMobileSync,
+  upsertProgramEnrollment,
+  getMobileProgramEnrollments,
+  upsertMealPlan,
+  getMobileMealPlans,
+  recordFeedingAttendance,
+  getMobileFeedingAttendance,
+  upsertFeedingSchedule,
+  getMobileFeedingSchedule,
+  recordChildService,
+  getMobileChildServices,
+  recordMotherService,
+  getMobileMotherServices,
 } = require('../controllers/mobileBeneficiaryControllers');
 const { transferBeneficiary, getBarangays, checkDuplicate } = require('../controllers/masterlistControllers');
 
@@ -22,6 +34,25 @@ router.post('/mothers', upsertMother);
 router.post('/nutrition-records', syncNutritionRecord);
 router.post('/schedules', createMobileSchedule);
 router.post('/transfer', transferBeneficiary);
+
+// Programs & Services endpoints
+router.post('/program-enrollments', upsertProgramEnrollment);
+router.get('/program-enrollments', getMobileProgramEnrollments);
+
+router.post('/meal-plans', upsertMealPlan);
+router.get('/meal-plans', getMobileMealPlans);
+
+router.post('/feeding-attendance', recordFeedingAttendance);
+router.get('/feeding-attendance', getMobileFeedingAttendance);
+
+router.post('/feeding-schedules', upsertFeedingSchedule);
+router.get('/feeding-schedules', getMobileFeedingSchedule);
+
+router.post('/child-services', recordChildService);
+router.get('/child-services', getMobileChildServices);
+
+router.post('/mother-services', recordMotherService);
+router.get('/mother-services', getMobileMotherServices);
 
 router.get('/children', getMobileChildren);
 router.get('/mothers', getMobileMothers);

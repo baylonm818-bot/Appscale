@@ -63,6 +63,12 @@ class SyncService {
     final notifBox       = Hive.box(HiveBoxes.notifications);
     final enrollBox      = Hive.box(HiveBoxes.feedingEnrollment);
     final settingsBox    = Hive.box(HiveBoxes.settings);
+    final mealPlanBox    = Hive.box(HiveBoxes.mealPlans);
+    final attendanceBox  = Hive.box(HiveBoxes.feedingAttendance);
+    final feedingSchedBox= Hive.box(HiveBoxes.feedingSchedule);
+    final vitABox        = Hive.box(HiveBoxes.vitaminA);
+    final dewormBox      = Hive.box(HiveBoxes.deworming);
+    final motherVisitBox = Hive.box(HiveBoxes.motherVisits);
 
     // ── 1. Children ──────────────────────────────────────────────────────────
     final children = (payload['children'] as List? ?? []);
@@ -247,6 +253,185 @@ class SyncService {
       }
     }
 
+    // ── 8. Feeding Enrollment (from programEnrollments) ──────────────────────
+    final enrollments = (payload['programEnrollments'] as List? ?? []);
+    for (final e in enrollments) {
+      final progType = (e['program_type'] ?? 'feeding').toString().toLowerCase();
+      if (progType == 'feeding') {
+        final childKey = (e['child_external_id'] ?? e['child_id'] ?? '').toString();
+        if (childKey.isNotEmpty) {
+          final status = (e['status'] ?? 'active').toString().toLowerCase();
+          if (status == 'active') {
+            await enrollBox.put(childKey, e['enrolled_at'] ?? DateTime.now().toIso8601String());
+          } else {
+            await enrollBox.delete(childKey);
+          }
+        }
+      }
+    }
+
+    // ── 9. Meal Plans ────────────────────────────────────────────────────────
+    final mealPlans = (payload['mealPlans'] as List? ?? []);
+    for (final p in mealPlans) {
+      final key = (p['external_id'] ?? p['plan_id'] ?? '').toString();
+      if (key.isEmpty) continue;
+      final existing = mealPlanBox.get(key) as Map?;
+      if (existing != null && existing['_syncStatus'] == 'pending') continue;
+      List<String> items = [];
+      if (p['ingredients'] != null) {
+        try {
+          final decoded = jsonDecode(p['ingredients'].toString());
+          if (decoded is List) items = decoded.map((e) => e.toString()).toList();
+        } catch (_) {
+          items = p['ingredients'].toString().split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+        }
+      }
+      if (items.isEmpty && p['meal_name'] != null) {
+        items = [p['meal_name'].toString()];
+      }
+      await mealPlanBox.put(key, {
+        'id': key,
+        'foodItems': items,
+        'effectiveFrom': _dateOnly(p['effective_from'] ?? p['created_at']),
+        'effectiveTo': p['effective_to'] != null ? _dateOnly(p['effective_to']) : null,
+        'barangay': (p['barangay'] ?? barangay).toString(),
+        'createdAt': (p['created_at'] ?? DateTime.now().toIso8601String()).toString(),
+        '_syncStatus': 'synced',
+      });
+    }
+
+    // ── 10. Feeding Attendance ───────────────────────────────────────────────
+    final attendanceList = (payload['feedingAttendance'] as List? ?? []);
+    final Map<String, Map<String, String>> groupedAtt = {};
+    for (final a in attendanceList) {
+      final b = (a['barangay'] ?? barangay).toString();
+      final dateStr = _dateOnly(a['attendance_date']);
+      final childKey = (a['child_external_id'] ?? a['child_id'] ?? '').toString();
+      if (childKey.isEmpty) continue;
+      final groupKey = '$b|$dateStr';
+      groupedAtt.putIfAbsent(groupKey, () => <String, String>{});
+      groupedAtt[groupKey]![childKey] = (a['status'] ?? 'Present').toString();
+    }
+    for (final entry in groupedAtt.entries) {
+      final existing = (attendanceBox.get(entry.key) as Map?)?.map((k, v) => MapEntry(k.toString(), v.toString())) ?? {};
+      final merged = {...entry.value, ...existing}; // local pending takes precedence
+      await attendanceBox.put(entry.key, merged);
+    }
+
+    // ── 11. Feeding Schedule ─────────────────────────────────────────────────
+    final fs = payload['feedingSchedule'];
+    if (fs is Map) {
+      final fsBarangay = (fs['barangay'] ?? barangay).toString();
+      final existing = feedingSchedBox.get(fsBarangay) as Map?;
+      if (existing == null || existing['_syncStatus'] != 'pending') {
+        List<int> days = [1, 2, 3, 4, 5];
+        if (fs['days_of_week'] != null) {
+          final rawDays = fs['days_of_week'].toString().toLowerCase();
+          days = [];
+          if (rawDays.contains('mon')) days.add(1);
+          if (rawDays.contains('tue')) days.add(2);
+          if (rawDays.contains('wed')) days.add(3);
+          if (rawDays.contains('thu')) days.add(4);
+          if (rawDays.contains('fri')) days.add(5);
+          if (rawDays.contains('sat')) days.add(6);
+          if (rawDays.contains('sun')) days.add(7);
+          if (days.isEmpty) days = [1, 2, 3, 4, 5];
+        }
+        await feedingSchedBox.put(fsBarangay, {
+          'daysOfWeek': days,
+          'startTime': fs['start_time'] ?? fs['feeding_time'] ?? '10:00 AM',
+          'endTime': fs['end_time'] ?? '11:00 AM',
+          'location': fs['venue'] ?? 'Barangay Health Center',
+          'startDate': DateTime.now().toIso8601String(),
+          'endDate': null,
+          'barangay': fsBarangay,
+          'createdAt': DateTime.now().toIso8601String(),
+          '_syncStatus': 'synced',
+        });
+      }
+    }
+
+    // ── 12. Child Services (Vitamin A & Deworming) ────────────────────────────
+    final childServices = (payload['childServices'] as List? ?? []);
+    for (final cs in childServices) {
+      final key = (cs['external_id'] ?? cs['service_id'] ?? '').toString();
+      if (key.isEmpty) continue;
+      final st = (cs['service_type'] ?? '').toString().toLowerCase();
+      final childId = (cs['child_external_id'] ?? cs['child_id'] ?? '').toString();
+
+      if (st.contains('vitamin') || st.contains('vit a')) {
+        final existing = vitABox.get(key) as Map?;
+        if (existing != null && existing['_syncStatus'] == 'pending') continue;
+        await vitABox.put(key, {
+          'id': key,
+          'childId': childId,
+          'childName': cs['child_name'] ?? 'Child',
+          'barangay': barangay,
+          'ageInMonths': cs['age_in_months'] ?? 12,
+          'dateGiven': _dateOnly(cs['service_date']),
+          'dosage': cs['dosage'] ?? '100,000 IU (Blue)',
+          'doseType': cs['service_name'] ?? 'Routine',
+          'administeredBy': cs['provided_by'] ?? 'BNS',
+          'remarks': cs['notes'] ?? '',
+          'nextDueDate': cs['next_schedule'] != null ? _dateOnly(cs['next_schedule']) : null,
+          'createdAt': DateTime.now().toIso8601String(),
+          '_syncStatus': 'synced',
+        });
+      } else if (st.contains('deworm')) {
+        final existing = dewormBox.get(key) as Map?;
+        if (existing != null && existing['_syncStatus'] == 'pending') continue;
+        await dewormBox.put(key, {
+          'id': key,
+          'childId': childId,
+          'childName': cs['child_name'] ?? 'Child',
+          'barangay': barangay,
+          'ageInMonths': cs['age_in_months'] ?? 12,
+          'dateGiven': _dateOnly(cs['service_date']),
+          'drugName': cs['dosage'] ?? cs['service_name'] ?? 'Albendazole 400mg',
+          'round': cs['notes'] ?? '1st Round (Jan - Jun)',
+          'adverseEvents': 'None',
+          'administeredBy': cs['provided_by'] ?? 'BNS',
+          'remarks': cs['notes'] ?? '',
+          'nextDueDate': cs['next_schedule'] != null ? _dateOnly(cs['next_schedule']) : null,
+          'createdAt': DateTime.now().toIso8601String(),
+          '_syncStatus': 'synced',
+        });
+      }
+    }
+
+    // ── 13. Mother Services (Maternal Counseling / Visits) ────────────────────
+    final motherServices = (payload['motherServices'] as List? ?? []);
+    final Map<String, List<Map<String, dynamic>>> groupedMv = {};
+    for (final ms in motherServices) {
+      final motherId = (ms['mother_external_id'] ?? ms['mother_id'] ?? '').toString();
+      if (motherId.isEmpty) continue;
+      groupedMv.putIfAbsent(motherId, () => []);
+      groupedMv[motherId]!.add({
+        'date': _dateOnly(ms['service_date']),
+        'present': true,
+        'breastfeedingPractice': 'Exclusively breastfeeding',
+        'topicsCounseled': [ms['service_name'] ?? 'Maternal Counseling'],
+        'hasMedicalConcern': false,
+        'concernNote': null,
+        'observation': 'Appears well',
+        'observationNote': ms['notes'],
+        'needsReferral': false,
+        'createdAt': DateTime.now().toIso8601String(),
+        '_syncStatus': 'synced',
+      });
+    }
+    for (final entry in groupedMv.entries) {
+      final motherId = entry.key;
+      final existingRaw = (motherVisitBox.get(motherId) as List?) ?? [];
+      final pendingLocal = existingRaw
+          .where((v) => (v as Map?)?['_syncStatus'] == 'pending')
+          .toList();
+      final pendingDates = pendingLocal.map((v) => (v as Map)['date']).toSet();
+      final nonColliding = entry.value.where((v) => !pendingDates.contains(v['date'])).toList();
+      final merged = [...nonColliding, ...pendingLocal];
+      await motherVisitBox.put(motherId, merged);
+    }
+
     debugPrint(
       '[SyncService] Seeded '
       '${children.length} children, '
@@ -254,7 +439,9 @@ class SyncService {
       '${mothers.length} mothers, '
       '${referrals.length} referrals, '
       '${schedules.length} schedules, '
-      '${notifications.length} notifications',
+      '${notifications.length} notifications, '
+      '${enrollments.length} enrollments, '
+      '${mealPlans.length} meal plans',
     );
   }
 

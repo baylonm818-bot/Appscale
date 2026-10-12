@@ -25,6 +25,7 @@ async function getReferralTableMeta() {
     hasChildId: names.has('child_id'),
     hasMotherId: names.has('mother_id'),
     hasBeneficiaryType: names.has('beneficiary_type'),
+    hasReferralType: names.has('referral_type'),
   };
 }
 
@@ -34,6 +35,7 @@ exports.createReferral = async (req, res) => {
     mother_id,
     beneficiary_name,
     beneficiary_type,
+    referral_type,
     barangay,
     facility,
     notes,
@@ -47,10 +49,10 @@ exports.createReferral = async (req, res) => {
   }
 
   try {
-    const { hasChildId, hasMotherId, hasBeneficiaryType } = await getReferralTableMeta();
+    const { hasChildId, hasMotherId, hasBeneficiaryType, hasReferralType } = await getReferralTableMeta();
     let resolvedChildId = child_id || null;
     let resolvedMotherId = mother_id || null;
-    let beneficiaryType = beneficiary_type || (resolvedChildId ? 'child' : 'mother');
+    let beneficiaryType = (referral_type || beneficiary_type || (resolvedMotherId ? 'mother' : 'child')).toLowerCase();
     let targetBarangay = barangay || null;
     let targetDisplayName = beneficiary_name || null;
     let targetLabel = 'Beneficiary';
@@ -289,6 +291,11 @@ exports.createReferral = async (req, res) => {
         insertValues.push(beneficiaryType);
       }
 
+      if (hasReferralType) {
+        insertFields.push('referral_type');
+        insertValues.push(beneficiaryType === 'mother' ? 'mother' : 'child');
+      }
+
       insertFields.push('referred_by', 'referred_to', 'reason', 'severity', 'status', 'notes');
       insertValues.push(
         referringUserId,
@@ -317,9 +324,13 @@ exports.createReferral = async (req, res) => {
         );
         const notifColSet = new Set(notifCols.map((c) => c.COLUMN_NAME));
 
+        const notifTitle = beneficiaryType === 'mother'
+          ? 'New Lactating Mother Referral'
+          : 'New Child Referral Submitted';
+
         const nf = ['title', 'message', 'type', 'is_read'];
         const nv = [
-          'New Referral Submitted',
+          notifTitle,
           `${targetLabel} from ${targetBarangay || 'Unknown Barangay'} needs follow-up (${severity || 'medium'} severity).`,
           'referral',
           false,
@@ -367,11 +378,11 @@ exports.getReferrals = async (req, res) => {
     const [referrals] = await pool.query(
       `SELECT DISTINCT
          r.referral_id,
-         CASE
-           WHEN r.child_id IS NOT NULL OR c.child_id IS NOT NULL THEN 'child'
+         COALESCE(r.referral_type, CASE WHEN r.mother_id IS NOT NULL THEN 'mother' ELSE 'child' END) AS referral_type,
+         COALESCE(r.referral_type, CASE
            WHEN r.mother_id IS NOT NULL OR m.mother_id IS NOT NULL THEN 'mother'
            ELSE 'child'
-         END AS beneficiary_type,
+         END) AS beneficiary_type,
          r.reason,
          CASE
            WHEN LOWER(COALESCE(r.severity, '')) = 'high' THEN 'high'

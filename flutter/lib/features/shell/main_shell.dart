@@ -11,6 +11,12 @@ import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/measurement_repository.dart';
 import '../../data/local/referral_repository.dart';
+import '../../data/local/feeding_schedule_repository.dart';
+import '../../data/local/meal_plan_repository.dart';
+import '../../data/local/feeding_attendance_repository.dart';
+import '../../data/local/vitamin_a_repository.dart';
+import '../../data/local/deworming_repository.dart';
+import '../../data/local/mother_visit_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/app_data_bus.dart';
 import '../../data/remote/sync_service.dart';
@@ -34,6 +40,12 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   final _motherRepo = MotherRepository();
   final _measurementRepo = MeasurementRepository();
   final _referralRepo = ReferralRepository();
+  final _feedingScheduleRepo = FeedingScheduleRepository();
+  final _mealPlanRepo = MealPlanRepository();
+  final _attendanceRepo = FeedingAttendanceRepository();
+  final _vitaminARepo = VitaminARepository();
+  final _dewormingRepo = DewormingRepository();
+  final _motherVisitRepo = MotherVisitRepository();
   final _settings = SettingsRepository();
   Timer? _autoSyncTimer;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
@@ -157,7 +169,12 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final totalPending = _childRepo.pendingCount +
         _motherRepo.pendingCount +
         _measurementRepo.pendingCount +
-        _referralRepo.pendingCount;
+        _referralRepo.pendingCount +
+        _feedingScheduleRepo.pendingCount +
+        _mealPlanRepo.pendingCount +
+        _vitaminARepo.pendingCount +
+        _dewormingRepo.pendingCount +
+        _motherVisitRepo.pendingCount;
     if (totalPending == 0) {
       return;
     }
@@ -168,13 +185,24 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       await _motherRepo.syncPending();
       await _measurementRepo.syncPending();
       await _referralRepo.syncPending();
+      await _feedingScheduleRepo.syncPending();
+      await _mealPlanRepo.syncPending();
+      await _attendanceRepo.syncPending();
+      await _vitaminARepo.syncPending();
+      await _dewormingRepo.syncPending();
+      await _motherVisitRepo.syncPending();
       AppDataBus.notifyChanged();
 
       // Show snackbar only if some records were actually synced
       final remaining = _childRepo.pendingCount +
           _motherRepo.pendingCount +
           _measurementRepo.pendingCount +
-          _referralRepo.pendingCount;
+          _referralRepo.pendingCount +
+          _feedingScheduleRepo.pendingCount +
+          _mealPlanRepo.pendingCount +
+          _vitaminARepo.pendingCount +
+          _dewormingRepo.pendingCount +
+          _motherVisitRepo.pendingCount;
       final synced = totalPending - remaining;
       if (synced > 0 && mounted) {
         AppNotificationUI.showSuccess(
@@ -214,6 +242,12 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         await _motherRepo.syncPending();
         await _measurementRepo.syncPending();
         await _referralRepo.syncPending();
+        await _feedingScheduleRepo.syncPending();
+        await _mealPlanRepo.syncPending();
+        await _attendanceRepo.syncPending();
+        await _vitaminARepo.syncPending();
+        await _dewormingRepo.syncPending();
+        await _motherVisitRepo.syncPending();
         // Refresh again after sync completes in case counts changed.
         AppDataBus.notifyChanged();
       } catch (syncErr) {

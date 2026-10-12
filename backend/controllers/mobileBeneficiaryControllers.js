@@ -204,6 +204,33 @@ exports.upsertChild = async (req, res) => {
             childId,
           ]
         );
+
+        if (req.body.is_enrolled != null) {
+          try {
+            const isEnrolled = Boolean(req.body.is_enrolled);
+            const cExtId = external_id || String(childId);
+            const cName = `${firstName} ${lastName || ''}`.trim();
+            const [existingEnr] = await pool.query(
+              'SELECT enrollment_id FROM program_enrollments WHERE child_id = ? AND program_type = "feeding" LIMIT 1',
+              [childId]
+            );
+            if (existingEnr.length > 0) {
+              await pool.query(
+                'UPDATE program_enrollments SET status = ?, updated_at = NOW() WHERE enrollment_id = ?',
+                [isEnrolled ? 'active' : 'inactive', existingEnr[0].enrollment_id]
+              );
+            } else if (isEnrolled) {
+              await pool.query(
+                `INSERT INTO program_enrollments (external_id, program_type, beneficiary_type, child_id, child_external_id, beneficiary_name, barangay, enrolled_at, status, enrolled_by)
+                 VALUES (?, 'feeding', 'child', ?, ?, ?, ?, NOW(), 'active', ?)`,
+                [`${resolvedBarangay}|feeding|${cExtId}`, childId, cExtId, cName, resolvedBarangay, resolvedEncodedBy]
+              );
+            }
+          } catch (enrErr) {
+            console.error('Child is_enrolled update error:', enrErr.message);
+          }
+        }
+
         return res.status(200).json({
           message: 'Child updated successfully.',
           child_id: childId,
@@ -257,6 +284,21 @@ exports.upsertChild = async (req, res) => {
       );
     } catch (notifErr) {
       console.error('Auto-sync child notification error (non-fatal):', notifErr && notifErr.message);
+    }
+
+    if (req.body.is_enrolled != null && Boolean(req.body.is_enrolled)) {
+      try {
+        const childId = result.insertId;
+        const cExtId = external_id || String(childId);
+        const cName = `${firstName} ${lastName || ''}`.trim();
+        await pool.query(
+          `INSERT INTO program_enrollments (external_id, program_type, beneficiary_type, child_id, child_external_id, beneficiary_name, barangay, enrolled_at, status, enrolled_by)
+           VALUES (?, 'feeding', 'child', ?, ?, ?, ?, NOW(), 'active', ?)`,
+          [`${resolvedBarangay}|feeding|${cExtId}`, childId, cExtId, cName, resolvedBarangay, resolvedEncodedBy]
+        );
+      } catch (enrErr) {
+        console.error('Child is_enrolled insert error:', enrErr.message);
+      }
     }
 
     return res.status(201).json({
@@ -933,7 +975,7 @@ exports.getMobileSync = async (req, res) => {
     const refParams = barangay ? [barangay, barangay, barangay] : [];
     const refWhere = barangay ? '(c.barangay = ? OR m.barangay = ? OR ? IS NULL)' : '1=1';
 
-    const [[children], [nutritionRecords], [mothers], [motherServices], [schedules], [referrals], [notifications]] = await Promise.all([
+    const [[children], [nutritionRecords], [mothers], [motherServices], [schedules], [referrals], [notifications], [programEnrollments], [mealPlans], [feedingAttendance], [feedingSchedule], [childServices]] = await Promise.all([
       pool.query(
         `SELECT c.child_id, c.external_id, c.first_name, c.middle_initial, c.last_name,
                 c.birth_date, c.sex, c.age_in_months, c.age_group, c.barangay, c.purok,
@@ -970,8 +1012,8 @@ exports.getMobileSync = async (req, res) => {
         motherParams
       ),
       pool.query(
-        `SELECT ms.service_id, ms.mother_id, m.external_id AS mother_external_id,
-                ms.service_type, ms.service_name, ms.service_date, ms.provided_by, ms.notes
+        `SELECT ms.service_id, ms.external_id, ms.mother_id, m.external_id AS mother_external_id,
+                ms.service_type, ms.service_name, ms.dosage, ms.service_date, ms.provided_by, ms.notes
          FROM mother_services ms
          INNER JOIN mothers m ON m.mother_id = ms.mother_id
          WHERE ${motherWhere} ORDER BY ms.service_date ASC`,
@@ -984,7 +1026,9 @@ exports.getMobileSync = async (req, res) => {
         scheduleParams
       ),
       pool.query(
-        `SELECT r.referral_id, r.child_id, r.mother_id, r.reason, r.referred_to,
+        `SELECT r.referral_id, r.child_id, r.mother_id,
+                COALESCE(r.referral_type, CASE WHEN r.mother_id IS NOT NULL THEN 'mother' ELSE 'child' END) AS referral_type,
+                r.reason, r.referred_to,
                 r.status, r.notes, r.created_at, r.updated_at,
                 COALESCE(c.first_name, m.first_name) AS beneficiary_first_name,
                 COALESCE(c.last_name, m.last_name) AS beneficiary_last_name,
@@ -1012,6 +1056,48 @@ exports.getMobileSync = async (req, res) => {
             OR n.title LIKE ? OR n.message LIKE ?
          ORDER BY n.created_at DESC LIMIT 50`,
         [barangay, barangay, barangay, barangay, `%${barangay}%`, `%${barangay}%`]
+      ),
+      pool.query(
+        `SELECT pe.enrollment_id, pe.external_id, pe.program_type, pe.beneficiary_type,
+                pe.child_id, pe.mother_id, pe.child_external_id, pe.mother_external_id,
+                pe.beneficiary_name, pe.barangay, pe.enrolled_at, pe.status, pe.notes
+         FROM program_enrollments pe
+         WHERE ${barangay ? 'pe.barangay = ?' : '1=1'}
+         ORDER BY pe.enrolled_at DESC`,
+        barangay ? [barangay] : []
+      ),
+      pool.query(
+        `SELECT mp.plan_id, mp.external_id, mp.barangay, mp.week_number, mp.day_of_week,
+                mp.meal_name, mp.ingredients, mp.notes, mp.target_group, mp.created_at, mp.updated_at
+         FROM meal_plans mp
+         WHERE ${barangay ? 'mp.barangay = ?' : '1=1'}
+         ORDER BY mp.created_at DESC`,
+        barangay ? [barangay] : []
+      ),
+      pool.query(
+        `SELECT fa.attendance_id, fa.external_id, fa.child_id, fa.child_external_id,
+                fa.barangay, fa.attendance_date, fa.status, fa.meal_served, fa.remarks
+         FROM feeding_attendance fa
+         WHERE ${barangay ? 'fa.barangay = ?' : '1=1'}
+         ORDER BY fa.attendance_date DESC`,
+        barangay ? [barangay] : []
+      ),
+      pool.query(
+        `SELECT fs.schedule_id, fs.barangay, fs.feeding_time, fs.start_time, fs.end_time,
+                fs.venue, fs.days_of_week, fs.target_count, fs.notes
+         FROM feeding_schedules fs
+         WHERE ${barangay ? 'fs.barangay = ?' : '1=1'}
+         LIMIT 1`,
+        barangay ? [barangay] : []
+      ),
+      pool.query(
+        `SELECT cs.service_id, cs.external_id, cs.child_id, c.external_id AS child_external_id,
+                cs.service_type, cs.service_name, cs.dosage, cs.service_date, cs.provided_by, cs.notes
+         FROM child_services cs
+         INNER JOIN children c ON c.child_id = cs.child_id
+         WHERE ${barangay ? 'c.barangay = ?' : '1=1'}
+         ORDER BY cs.service_date ASC`,
+        barangay ? [barangay] : []
       ),
     ]);
 
@@ -1092,6 +1178,11 @@ exports.getMobileSync = async (req, res) => {
       nutritionRecords,
       mothers,
       motherServices: motherServices || [],
+      childServices: childServices || [],
+      programEnrollments: programEnrollments || [],
+      mealPlans: mealPlans || [],
+      feedingAttendance: feedingAttendance || [],
+      feedingSchedule: feedingSchedule && feedingSchedule[0] ? feedingSchedule[0] : null,
       schedules: visibleSchedules,
       referrals,
       notifications,
@@ -1101,5 +1192,383 @@ exports.getMobileSync = async (req, res) => {
   } catch (error) {
     console.error('Full mobile sync error:', error);
     return res.status(500).json({ message: 'Server error during full sync.' });
+  }
+};
+
+// ── PROGRAM ENROLLMENT ──
+exports.upsertProgramEnrollment = async (req, res) => {
+  const { external_id, program_type, beneficiary_type, child_external_id, child_id, mother_external_id, mother_id, beneficiary_name, barangay, enrolled_at, status, notes } = req.body;
+  const scope = enforceScopedBarangay(req.user, barangay || null);
+  const resolvedBarangay = scope.barangay;
+  const resolvedStatus = status || 'active';
+  const enrolledDate = enrolled_at || new Date().toISOString();
+
+  try {
+    let resolvedChildId = child_id || null;
+    let resolvedMotherId = mother_id || null;
+    if (!resolvedChildId && child_external_id) {
+      const [[c]] = await pool.query('SELECT child_id FROM children WHERE external_id = ? OR child_id = ? LIMIT 1', [child_external_id, child_external_id]);
+      if (c) resolvedChildId = c.child_id;
+    }
+    if (!resolvedMotherId && mother_external_id) {
+      const [[m]] = await pool.query('SELECT mother_id FROM mothers WHERE external_id = ? OR mother_id = ? LIMIT 1', [mother_external_id, mother_external_id]);
+      if (m) resolvedMotherId = m.mother_id;
+    }
+
+    const [existing] = await pool.query(
+      `SELECT enrollment_id FROM program_enrollments
+       WHERE (external_id IS NOT NULL AND external_id = ?)
+          OR (program_type = ? AND child_id IS NOT NULL AND child_id = ?)
+          OR (program_type = ? AND mother_id IS NOT NULL AND mother_id = ?)
+          OR (program_type = ? AND child_external_id IS NOT NULL AND child_external_id = ?)
+       LIMIT 1`,
+      [external_id || '', program_type || 'feeding', resolvedChildId || -1, program_type || 'feeding', resolvedMotherId || -1, program_type || 'feeding', child_external_id || '']
+    );
+
+    if (existing.length > 0) {
+      await pool.query(
+        `UPDATE program_enrollments
+         SET status = ?, notes = COALESCE(?, notes), enrolled_at = COALESCE(?, enrolled_at), updated_at = NOW()
+         WHERE enrollment_id = ?`,
+        [resolvedStatus, notes || null, enrolledDate, existing[0].enrollment_id]
+      );
+      return res.status(200).json({ message: 'Program enrollment updated successfully.', enrollment_id: existing[0].enrollment_id });
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO program_enrollments
+       (external_id, program_type, beneficiary_type, child_id, mother_id, child_external_id, mother_external_id, beneficiary_name, barangay, enrolled_at, status, notes, enrolled_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        external_id || null,
+        program_type || 'feeding',
+        beneficiary_type || (resolvedChildId ? 'child' : 'mother'),
+        resolvedChildId,
+        resolvedMotherId,
+        child_external_id || null,
+        mother_external_id || null,
+        beneficiary_name || null,
+        resolvedBarangay,
+        enrolledDate,
+        resolvedStatus,
+        notes || null,
+        req.user?.user_id || null,
+      ]
+    );
+
+    return res.status(201).json({ message: 'Enrolled in program successfully.', enrollment_id: result.insertId });
+  } catch (error) {
+    console.error('Upsert program enrollment error:', error);
+    return res.status(500).json({ message: 'Server error saving program enrollment.' });
+  }
+};
+
+exports.getMobileProgramEnrollments = async (req, res) => {
+  const scope = enforceScopedBarangay(req.user, req.query.barangay || null);
+  const barangay = scope.barangay;
+  try {
+    const [rows] = await pool.query(
+      `SELECT pe.* FROM program_enrollments pe
+       WHERE ${barangay ? 'pe.barangay = ?' : '1=1'}
+       ORDER BY pe.enrolled_at DESC`,
+      barangay ? [barangay] : []
+    );
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error('Get program enrollments error:', error);
+    return res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+// ── MEAL PLANS ──
+exports.upsertMealPlan = async (req, res) => {
+  const { external_id, barangay, meal_name, ingredients, notes, target_group, effective_from, effective_to } = req.body;
+  const scope = enforceScopedBarangay(req.user, barangay || null);
+  const resolvedBarangay = scope.barangay;
+
+  try {
+    const rawIngredients = typeof ingredients === 'object' ? JSON.stringify(ingredients) : String(ingredients || '');
+    const [existing] = await pool.query(
+      'SELECT plan_id FROM meal_plans WHERE external_id = ? LIMIT 1',
+      [external_id || '']
+    );
+
+    if (existing.length > 0) {
+      await pool.query(
+        `UPDATE meal_plans
+         SET meal_name = ?, ingredients = ?, notes = ?, target_group = ?, updated_at = NOW()
+         WHERE plan_id = ?`,
+        [meal_name, rawIngredients, notes || null, target_group || null, existing[0].plan_id]
+      );
+      return res.status(200).json({ message: 'Meal plan updated successfully.', plan_id: existing[0].plan_id });
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO meal_plans
+       (external_id, barangay, meal_name, ingredients, notes, target_group, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [external_id || null, resolvedBarangay, meal_name, rawIngredients, notes || null, target_group || null, req.user?.user_id || null]
+    );
+
+    return res.status(201).json({ message: 'Meal plan created successfully.', plan_id: result.insertId });
+  } catch (error) {
+    console.error('Upsert meal plan error:', error);
+    return res.status(500).json({ message: 'Server error saving meal plan.' });
+  }
+};
+
+exports.getMobileMealPlans = async (req, res) => {
+  const scope = enforceScopedBarangay(req.user, req.query.barangay || null);
+  const barangay = scope.barangay;
+  try {
+    const [rows] = await pool.query(
+      `SELECT * FROM meal_plans WHERE ${barangay ? 'barangay = ?' : '1=1'} ORDER BY created_at DESC`,
+      barangay ? [barangay] : []
+    );
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error('Get meal plans error:', error);
+    return res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+// ── FEEDING ATTENDANCE ──
+exports.recordFeedingAttendance = async (req, res) => {
+  const { entries, child_external_id, child_id, barangay, attendance_date, status, meal_served, remarks } = req.body;
+  const scope = enforceScopedBarangay(req.user, barangay || null);
+  const resolvedBarangay = scope.barangay;
+
+  try {
+    const items = Array.isArray(entries) ? entries : [{ child_external_id, child_id, attendance_date, status, meal_served, remarks }];
+    for (const item of items) {
+      if (!item.child_external_id && !item.child_id) continue;
+      let cId = item.child_id || null;
+      if (!cId && item.child_external_id) {
+        const [[c]] = await pool.query('SELECT child_id FROM children WHERE external_id = ? OR child_id = ? LIMIT 1', [item.child_external_id, item.child_external_id]);
+        if (c) cId = c.child_id;
+      }
+      const attDate = item.attendance_date || new Date().toISOString().slice(0, 10);
+      const extKey = `${resolvedBarangay}|${item.child_external_id || cId}|${attDate}`;
+
+      const [existing] = await pool.query(
+        `SELECT attendance_id FROM feeding_attendance
+         WHERE (external_id = ?)
+            OR (child_id IS NOT NULL AND child_id = ? AND attendance_date = ?)
+            OR (child_external_id IS NOT NULL AND child_external_id = ? AND attendance_date = ?)
+         LIMIT 1`,
+        [extKey, cId || -1, attDate, item.child_external_id || '', attDate]
+      );
+
+      if (existing.length > 0) {
+        await pool.query(
+          `UPDATE feeding_attendance
+           SET status = ?, meal_served = COALESCE(?, meal_served), remarks = COALESCE(?, remarks)
+           WHERE attendance_id = ?`,
+          [item.status || 'Present', item.meal_served || null, item.remarks || null, existing[0].attendance_id]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO feeding_attendance
+           (external_id, child_id, child_external_id, barangay, attendance_date, status, meal_served, remarks, recorded_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [extKey, cId, item.child_external_id || null, resolvedBarangay, attDate, item.status || 'Present', item.meal_served || null, item.remarks || null, req.user?.user_id || null]
+        );
+      }
+    }
+    return res.status(200).json({ message: 'Feeding attendance recorded successfully.' });
+  } catch (error) {
+    console.error('Record feeding attendance error:', error);
+    return res.status(500).json({ message: 'Server error saving attendance.' });
+  }
+};
+
+exports.getMobileFeedingAttendance = async (req, res) => {
+  const scope = enforceScopedBarangay(req.user, req.query.barangay || null);
+  const barangay = scope.barangay;
+  try {
+    const [rows] = await pool.query(
+      `SELECT * FROM feeding_attendance WHERE ${barangay ? 'barangay = ?' : '1=1'} ORDER BY attendance_date DESC`,
+      barangay ? [barangay] : []
+    );
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error('Get feeding attendance error:', error);
+    return res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+// ── FEEDING SCHEDULE ──
+exports.upsertFeedingSchedule = async (req, res) => {
+  const { barangay, feeding_time, start_time, end_time, venue, days_of_week, target_count, notes } = req.body;
+  const scope = enforceScopedBarangay(req.user, barangay || null);
+  const resolvedBarangay = scope.barangay;
+
+  try {
+    const rawDays = Array.isArray(days_of_week) ? days_of_week.join(', ') : (days_of_week || '');
+    const [existing] = await pool.query('SELECT schedule_id FROM feeding_schedules WHERE barangay = ? LIMIT 1', [resolvedBarangay]);
+
+    if (existing.length > 0) {
+      await pool.query(
+        `UPDATE feeding_schedules
+         SET feeding_time = ?, start_time = ?, end_time = ?, venue = ?, days_of_week = ?, target_count = ?, notes = ?, updated_by = ?, updated_at = NOW()
+         WHERE schedule_id = ?`,
+        [feeding_time || '10:00 AM', start_time || null, end_time || null, venue || null, rawDays, target_count || null, notes || null, req.user?.user_id || null, existing[0].schedule_id]
+      );
+      return res.status(200).json({ message: 'Feeding schedule updated successfully.', schedule_id: existing[0].schedule_id });
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO feeding_schedules
+       (barangay, feeding_time, start_time, end_time, venue, days_of_week, target_count, notes, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [resolvedBarangay, feeding_time || '10:00 AM', start_time || null, end_time || null, venue || null, rawDays, target_count || null, notes || null, req.user?.user_id || null]
+    );
+
+    return res.status(201).json({ message: 'Feeding schedule created successfully.', schedule_id: result.insertId });
+  } catch (error) {
+    console.error('Upsert feeding schedule error:', error);
+    return res.status(500).json({ message: 'Server error saving feeding schedule.' });
+  }
+};
+
+exports.getMobileFeedingSchedule = async (req, res) => {
+  const scope = enforceScopedBarangay(req.user, req.query.barangay || null);
+  const barangay = scope.barangay;
+  try {
+    const [[row]] = await pool.query('SELECT * FROM feeding_schedules WHERE barangay = ? LIMIT 1', [barangay]);
+    return res.status(200).json(row || null);
+  } catch (error) {
+    console.error('Get feeding schedule error:', error);
+    return res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+// ── CHILD SERVICES (VITAMIN A & DEWORMING) ──
+exports.recordChildService = async (req, res) => {
+  const { external_id, child_external_id, child_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes } = req.body;
+  try {
+    let resolvedChildId = child_id || null;
+    if (!resolvedChildId && child_external_id) {
+      const [[c]] = await pool.query('SELECT child_id FROM children WHERE external_id = ? OR child_id = ? LIMIT 1', [child_external_id, child_external_id]);
+      if (c) resolvedChildId = c.child_id;
+    }
+    if (!resolvedChildId) {
+      return res.status(400).json({ message: 'Valid child is required.' });
+    }
+
+    const sDate = service_date || new Date().toISOString().slice(0, 10);
+    const [existing] = await pool.query(
+      `SELECT service_id FROM child_services
+       WHERE (external_id IS NOT NULL AND external_id = ?)
+          OR (child_id = ? AND service_type = ? AND service_date = ?)
+       LIMIT 1`,
+      [external_id || '', resolvedChildId, service_type, sDate]
+    );
+
+    if (existing.length > 0) {
+      await pool.query(
+        `UPDATE child_services
+         SET dosage = COALESCE(?, dosage), service_name = COALESCE(?, service_name), notes = COALESCE(?, notes), provided_by = COALESCE(?, provided_by)
+         WHERE service_id = ?`,
+        [dosage || null, service_name || null, notes || null, provided_by || null, existing[0].service_id]
+      );
+      return res.status(200).json({ message: 'Child service updated successfully.', service_id: existing[0].service_id });
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO child_services
+       (external_id, child_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [external_id || null, resolvedChildId, service_type, service_name || service_type, dosage || null, sDate, next_schedule || null, provided_by || 'BNS', notes || null]
+    );
+
+    return res.status(201).json({ message: 'Child service recorded successfully.', service_id: result.insertId });
+  } catch (error) {
+    console.error('Record child service error:', error);
+    return res.status(500).json({ message: 'Server error saving child service.' });
+  }
+};
+
+exports.getMobileChildServices = async (req, res) => {
+  const scope = enforceScopedBarangay(req.user, req.query.barangay || null);
+  const barangay = scope.barangay;
+  try {
+    const [rows] = await pool.query(
+      `SELECT cs.*, c.external_id AS child_external_id
+       FROM child_services cs
+       INNER JOIN children c ON c.child_id = cs.child_id
+       WHERE ${barangay ? 'c.barangay = ?' : '1=1'}
+       ORDER BY cs.service_date DESC`,
+      barangay ? [barangay] : []
+    );
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error('Get child services error:', error);
+    return res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+// ── MOTHER SERVICES (MATERNAL COUNSELING) ──
+exports.recordMotherService = async (req, res) => {
+  const { external_id, mother_external_id, mother_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes } = req.body;
+  try {
+    let resolvedMotherId = mother_id || null;
+    if (!resolvedMotherId && mother_external_id) {
+      const [[m]] = await pool.query('SELECT mother_id FROM mothers WHERE external_id = ? OR mother_id = ? LIMIT 1', [mother_external_id, mother_external_id]);
+      if (m) resolvedMotherId = m.mother_id;
+    }
+    if (!resolvedMotherId) {
+      return res.status(400).json({ message: 'Valid mother is required.' });
+    }
+
+    const sDate = service_date || new Date().toISOString().slice(0, 10);
+    const [existing] = await pool.query(
+      `SELECT service_id FROM mother_services
+       WHERE (external_id IS NOT NULL AND external_id = ?)
+          OR (mother_id = ? AND service_type = ? AND service_date = ?)
+       LIMIT 1`,
+      [external_id || '', resolvedMotherId, service_type || 'Maternal Counseling', sDate]
+    );
+
+    if (existing.length > 0) {
+      await pool.query(
+        `UPDATE mother_services
+         SET dosage = COALESCE(?, dosage), service_name = COALESCE(?, service_name), notes = COALESCE(?, notes), provided_by = COALESCE(?, provided_by)
+         WHERE service_id = ?`,
+        [dosage || null, service_name || null, notes || null, provided_by || null, existing[0].service_id]
+      );
+      return res.status(200).json({ message: 'Mother service updated successfully.', service_id: existing[0].service_id });
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO mother_services
+       (external_id, mother_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [external_id || null, resolvedMotherId, service_type || 'Maternal Counseling', service_name || service_type || 'Maternal Counseling', dosage || null, sDate, next_schedule || null, provided_by || 'BNS', notes || null]
+    );
+
+    return res.status(201).json({ message: 'Mother service recorded successfully.', service_id: result.insertId });
+  } catch (error) {
+    console.error('Record mother service error:', error);
+    return res.status(500).json({ message: 'Server error saving mother service.' });
+  }
+};
+
+exports.getMobileMotherServices = async (req, res) => {
+  const scope = enforceScopedBarangay(req.user, req.query.barangay || null);
+  const barangay = scope.barangay;
+  try {
+    const [rows] = await pool.query(
+      `SELECT ms.*, m.external_id AS mother_external_id
+       FROM mother_services ms
+       INNER JOIN mothers m ON m.mother_id = ms.mother_id
+       WHERE ${barangay ? 'm.barangay = ?' : '1=1'}
+       ORDER BY ms.service_date DESC`,
+      barangay ? [barangay] : []
+    );
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error('Get mother services error:', error);
+    return res.status(500).json({ message: 'Server error.' });
   }
 };

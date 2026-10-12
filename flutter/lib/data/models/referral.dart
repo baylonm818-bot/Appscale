@@ -30,7 +30,7 @@ class Referral {
   });
 
   /// Normalize status values from any source (server, DB, client) to a
-  /// consistent title-cased set: Pending, In Progress, Completed, Cancelled.
+  /// consistent title-cased set: Pending, Ongoing, Completed, Cancelled.
   /// If unrecognized, returns the trimmed value or 'Unknown' (never defaults to Pending).
   static String normalizeStatus(String? raw) {
     if (raw == null) return 'Unknown';
@@ -44,7 +44,7 @@ class Referral {
         s == 'ongoing' ||
         s == 'received' ||
         s == 'responded') {
-      return 'In Progress';
+      return 'Ongoing';
     }
     if (s == 'pending' || s == 'open') {
       return 'Pending';
@@ -57,7 +57,8 @@ class Referral {
 
   bool get isCompleted => normalizeStatus(status) == 'Completed';
   bool get isPending => normalizeStatus(status) == 'Pending';
-  bool get isInProgress => normalizeStatus(status) == 'In Progress';
+  bool get isOngoing => normalizeStatus(status) == 'Ongoing';
+  bool get isInProgress => isOngoing; // backward compatibility alias
   bool get isCancelled => normalizeStatus(status) == 'Cancelled';
   String get statusDisplay => normalizeStatus(status);
 

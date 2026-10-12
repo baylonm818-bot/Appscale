@@ -21,6 +21,7 @@ class ReferralCard extends StatelessWidget {
     switch (s) {
       case 'Pending':
         return AppColors.statOrange;
+      case 'Ongoing':
       case 'In Progress':
         return AppColors.statBlue;
       case 'Completed':
@@ -31,6 +32,10 @@ class ReferralCard extends StatelessWidget {
         return AppColors.textMuted;
     }
   }
+
+  bool get _isMother =>
+      referral.beneficiaryType.toLowerCase() == 'mother' ||
+      referral.beneficiaryType.toLowerCase() == 'lactating_mother';
 
   String get _displayName {
     if (referral.beneficiaryName.trim().isNotEmpty) {
@@ -97,11 +102,46 @@ class ReferralCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (showBeneficiaryName)
-                            Text(
-                              _displayName,
-                              style: AppTextStyles.label.copyWith(fontSize: 14),
-                            ),
+                          Row(
+                            children: [
+                              if (showBeneficiaryName) ...[
+                                Flexible(
+                                  child: Text(
+                                    _displayName,
+                                    style: AppTextStyles.label.copyWith(fontSize: 14),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: _isMother
+                                      ? const Color(0xFFF3E5F5)
+                                      : const Color(0xFFE3F2FD),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: _isMother
+                                        ? const Color(0xFFCE93D8)
+                                        : const Color(0xFF90CAF9),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  _isMother ? 'Lactating Mother' : 'Child',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: _isMother
+                                        ? const Color(0xFF7B1FA2)
+                                        : const Color(0xFF1565C0),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
                           Text(
                             '${referral.createdAt.year}-${referral.createdAt.month.toString().padLeft(2, '0')}-${referral.createdAt.day.toString().padLeft(2, '0')}',
                             style: AppTextStyles.body.copyWith(

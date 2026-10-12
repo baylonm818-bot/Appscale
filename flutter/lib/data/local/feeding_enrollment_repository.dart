@@ -3,6 +3,7 @@ import 'app_data_bus.dart';
 import 'child_repository.dart';
 import 'hive_boxes.dart';
 import '../models/child.dart';
+import '../remote/beneficiary_api.dart';
 
 /// Enrollment is just "is this child currently in the feeding program,
 /// and since when" — keyed directly by childId, since a child only ever
@@ -16,6 +17,15 @@ class FeedingEnrollmentRepository {
     final child = childRepo.getAll().firstWhere((c) => c.id == childId, orElse: () => throw Exception('Child not found'));
     await childRepo.update(child);
     AppDataBus.notifyChanged();
+
+    try {
+      await BeneficiaryApi.syncProgramEnrollment(
+        childId: childId,
+        isEnrolled: true,
+        barangay: child.barangay,
+        beneficiaryName: child.fullName,
+      );
+    } catch (_) {}
   }
 
   Future<void> unenroll(String childId) async {
@@ -24,6 +34,15 @@ class FeedingEnrollmentRepository {
     final child = childRepo.getAll().firstWhere((c) => c.id == childId, orElse: () => throw Exception('Child not found'));
     await childRepo.update(child);
     AppDataBus.notifyChanged();
+
+    try {
+      await BeneficiaryApi.syncProgramEnrollment(
+        childId: childId,
+        isEnrolled: false,
+        barangay: child.barangay,
+        beneficiaryName: child.fullName,
+      );
+    } catch (_) {}
   }
 
   bool isEnrolled(String childId) => _box.containsKey(childId);

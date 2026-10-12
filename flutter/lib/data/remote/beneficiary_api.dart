@@ -7,6 +7,8 @@ import '../models/child.dart';
 import '../models/mother.dart';
 import '../models/measurement.dart';
 import '../models/program_schedule.dart';
+import '../models/meal_plan.dart';
+import '../models/feeding_schedule.dart';
 
 class ApiResponse {
   final bool success;
@@ -136,6 +138,166 @@ class BeneficiaryApi {
       'barangay': schedule.barangay,
       'target_role': 'bns',
       'notes': schedule.notes,
+    }, token);
+  }
+
+  static Future<ApiResponse> syncProgramEnrollment({
+    required String childId,
+    required bool isEnrolled,
+    required String barangay,
+    String? beneficiaryName,
+  }) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+    return _post('/mobile/program-enrollments', {
+      'program_type': 'feeding',
+      'beneficiary_type': 'child',
+      'child_external_id': childId,
+      'beneficiary_name': beneficiaryName,
+      'barangay': barangay,
+      'status': isEnrolled ? 'active' : 'inactive',
+      'enrolled_at': DateTime.now().toIso8601String(),
+    }, token);
+  }
+
+  static Future<ApiResponse> syncMealPlan(MealPlan plan) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+    return _post('/mobile/meal-plans', {
+      'external_id': plan.id,
+      'barangay': plan.barangay,
+      'meal_name': plan.itemsSummary,
+      'ingredients': plan.foodItems,
+      'effective_from': plan.effectiveFrom.toIso8601String(),
+      'effective_to': plan.effectiveTo?.toIso8601String(),
+    }, token);
+  }
+
+  static Future<ApiResponse> syncFeedingAttendance({
+    required String barangay,
+    required DateTime date,
+    required Map<String, String> statuses,
+  }) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+    final entries = statuses.entries.map((e) => {
+      'child_external_id': e.key,
+      'barangay': barangay,
+      'attendance_date': _date(date),
+      'status': e.value,
+    }).toList();
+    return _post('/mobile/feeding-attendance', {
+      'barangay': barangay,
+      'attendance_date': _date(date),
+      'entries': entries,
+    }, token);
+  }
+
+  static Future<ApiResponse> syncFeedingSchedule(FeedingSchedule schedule) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+    return _post('/mobile/feeding-schedules', {
+      'barangay': schedule.barangay,
+      'feeding_time': schedule.startTime,
+      'start_time': schedule.startTime,
+      'end_time': schedule.endTime,
+      'venue': schedule.location,
+      'days_of_week': schedule.daysSummary,
+      'notes': 'Daily feeding routine',
+    }, token);
+  }
+
+  static Future<ApiResponse> syncChildService({
+    required String externalId,
+    required String childExternalId,
+    required String serviceType,
+    required String serviceName,
+    required String dosage,
+    required DateTime serviceDate,
+    DateTime? nextSchedule,
+    String? providedBy,
+    String? notes,
+  }) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+    return _post('/mobile/child-services', {
+      'external_id': externalId,
+      'child_external_id': childExternalId,
+      'service_type': serviceType,
+      'service_name': serviceName,
+      'dosage': dosage,
+      'service_date': _date(serviceDate),
+      'next_schedule': nextSchedule != null ? _date(nextSchedule) : null,
+      'provided_by': providedBy ?? 'BNS',
+      'notes': notes,
+    }, token);
+  }
+
+  static Future<ApiResponse> syncMotherService({
+    required String externalId,
+    required String motherExternalId,
+    required String serviceType,
+    required String serviceName,
+    required DateTime serviceDate,
+    String? dosage,
+    DateTime? nextSchedule,
+    String? providedBy,
+    String? notes,
+  }) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+    return _post('/mobile/mother-services', {
+      'external_id': externalId,
+      'mother_external_id': motherExternalId,
+      'service_type': serviceType,
+      'service_name': serviceName,
+      'dosage': dosage,
+      'service_date': _date(serviceDate),
+      'next_schedule': nextSchedule != null ? _date(nextSchedule) : null,
+      'provided_by': providedBy ?? 'BNS',
+      'notes': notes,
     }, token);
   }
 

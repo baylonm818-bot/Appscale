@@ -58,36 +58,55 @@ function computeNutritionStatus(weightKg, heightCm, ageMonths, sex) {
 
 exports.createChildService = async (req, res) => {
   const { child_id, service_date, service_type, provided_by, weight_kg, height_cm, notes } = req.body;
-  const serviceLabels = {
-    vitamin_a: 'Vitamin A',
-    deworming: 'Deworming',
-    feeding: 'Feeding',
-    checkup: 'Checkup',
+  const serviceConfigs = {
+    vitamin_a: { type: 'Vitamin A', name: 'Vitamin A Supplementation' },
+    deworming: { type: 'Deworming', name: 'Deworming Tablet', defaultDosage: 'Albendazole 400mg' },
+    feeding: { type: 'Feeding', name: 'Supplementary Feeding' },
+    checkup: { type: 'Checkup', name: 'General Health Checkup' },
   };
 
-  if (!child_id || !service_date || !serviceLabels[service_type] || !provided_by) {
-    return res.status(400).json({ message: 'Child, date, service, and provider are required.' });
+  const selectedConfig = serviceConfigs[service_type];
+  if (!child_id || !service_date || !selectedConfig) {
+    return res.status(400).json({ message: 'Child, date, and valid service type are required.' });
   }
+
+  const providerId = req.user?.user_id || provided_by || null;
+  const modifierName = `${req.user?.first_name || ''} ${req.user?.last_name || ''}`.trim() || 'BHW';
 
   try {
     const [[child]] = await pool.query(
-      'SELECT child_id, age_in_months, sex FROM children WHERE child_id = ?',
+      'SELECT child_id, first_name, last_name, barangay, age_in_months, sex FROM children WHERE child_id = ?',
       [child_id]
     );
     if (!child) return res.status(404).json({ message: 'Child not found.' });
 
+    // Determine dosage for supplementation if applicable
+    let dosage = selectedConfig.defaultDosage || null;
+    if (service_type === 'vitamin_a') {
+      dosage = (child.age_in_months || 0) < 12 ? '100,000 IU' : '200,000 IU';
+    }
+
     const [result] = await pool.query(
-      `INSERT INTO child_services (child_id, service_type, service_date, provided_by, notes)
-       VALUES (?, ?, ?, ?, ?)`,
-      [child_id, serviceLabels[service_type], service_date, provided_by, notes || null]
+      `INSERT INTO child_services (child_id, service_type, service_name, dosage, service_date, provided_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        child_id,
+        selectedConfig.type,
+        selectedConfig.name,
+        dosage,
+        service_date,
+        providerId,
+        notes || null,
+      ]
     );
 
-    const hasMeasurement = weight_kg !== undefined && weight_kg !== null && weight_kg !== ''
-      || height_cm !== undefined && height_cm !== null && height_cm !== '';
+    const hasMeasurement = (weight_kg !== undefined && weight_kg !== null && weight_kg !== '')
+      || (height_cm !== undefined && height_cm !== null && height_cm !== '');
+
+    let safeWeight = Number(weight_kg) || 0;
+    let safeHeight = Number(height_cm) || 0;
 
     if (hasMeasurement) {
-      const safeWeight = Number(weight_kg) || 0;
-      const safeHeight = Number(height_cm) || 0;
       const calculated = computeNutritionStatus(
         safeWeight,
         safeHeight,
@@ -99,17 +118,36 @@ exports.createChildService = async (req, res) => {
       const hs = normalizeNutritionStatus(calculated.heightStatus);
       const os = normalizeNutritionStatus(calculated.overallStatus);
 
+      let bmi = null;
+      let bmiStatus = null;
+      if (safeWeight > 0 && safeHeight > 0) {
+        const hMeters = safeHeight / 100;
+        bmi = Number((safeWeight / (hMeters * hMeters)).toFixed(2));
+        if (bmi < 18.5) bmiStatus = 'Underweight';
+        else if (bmi < 25) bmiStatus = 'Normal';
+        else if (bmi < 30) bmiStatus = 'Overweight';
+        else bmiStatus = 'Obese';
+      }
+
       const [existing] = await pool.query(
         'SELECT record_id FROM nutrition_records WHERE child_id = ? AND record_date = ? LIMIT 1',
         [child_id, service_date]
       );
 
-      if (!existing.length) {
+      if (existing.length > 0) {
+        await pool.query(
+          `UPDATE nutrition_records
+           SET weight_kg = ?, height_cm = ?, weight_status = ?, height_status = ?,
+               overall_status = ?, bmi = ?, bmi_status = ?, recorded_by = ?
+           WHERE record_id = ?`,
+          [safeWeight, safeHeight, ws, hs, os, bmi, bmiStatus, providerId, existing[0].record_id]
+        );
+      } else {
         await pool.query(
           `INSERT INTO nutrition_records (
              child_id, record_date, age_in_months, weight_kg, height_cm, muac_cm,
-             weight_status, height_status, overall_status, recorded_by
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             weight_status, height_status, overall_status, bmi, bmi_status, recorded_by
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             child_id,
             service_date,
@@ -120,13 +158,56 @@ exports.createChildService = async (req, res) => {
             ws,
             hs,
             os,
-            provided_by,
+            bmi,
+            bmiStatus,
+            providerId,
           ]
         );
       }
     }
 
-    return res.status(201).json({ message: 'Child service recorded.', service_id: result.insertId });
+    // ── Audit Trail (Module 4 Clinical Requirement) ─────────────────────────
+    try {
+      const auditDetails = `Health visit recorded: ${selectedConfig.name} on ${service_date}${hasMeasurement ? ` (Weight: ${safeWeight}kg, Height: ${safeHeight}cm)` : ''}${notes ? `. Notes: ${notes}` : ''}`;
+      await pool.query(
+        `INSERT INTO medical_records_audit_trail (
+           record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name,
+           action, action_details, modified_by, modifier_name, timestamp
+         ) VALUES ('child_services', ?, 'child', ?, ?, 'CREATE', ?, ?, ?, NOW())`,
+        [
+          result.insertId,
+          child_id,
+          `${child.first_name} ${child.last_name}`,
+          auditDetails,
+          providerId,
+          modifierName,
+        ]
+      );
+    } catch (auditErr) {
+      console.warn('Audit trail insert warning (non-fatal):', auditErr.message);
+    }
+
+    // ── Partner Notification (BHW / BNS in barangay) ─────────────────────────
+    try {
+      await pool.query(
+        `INSERT INTO notifications (title, message, type, is_read, related_id, created_by, created_at)
+         VALUES (?, ?, 'visit', FALSE, ?, ?, NOW())`,
+        [
+          `Health Visit: ${child.first_name} ${child.last_name}`,
+          `Health visit recorded (${selectedConfig.name}) for ${child.first_name} ${child.last_name} in Barangay ${child.barangay}.`,
+          result.insertId,
+          providerId,
+        ]
+      );
+    } catch (notifErr) {
+      console.warn('Visit notification insert warning (non-fatal):', notifErr.message);
+    }
+
+    return res.status(201).json({
+      message: 'Child health service recorded successfully.',
+      service_id: result.insertId,
+      last_visit: service_date,
+    });
   } catch (error) {
     console.error('Create child service error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });
@@ -136,6 +217,11 @@ exports.createChildService = async (req, res) => {
 exports.getNeedAttention = async (req, res) => {
   const role = String(req.user?.role || '').toLowerCase();
   let barangay = req.query.barangay || req.user?.barangay || null;
+
+  // Strict barangay scoping for BHW users to ensure they only see their assigned barangay
+  if (role === 'bhw' && req.user?.barangay) {
+    barangay = req.user.barangay;
+  }
 
   if (!barangay && role !== 'admin') {
     return res.status(400).json({ message: 'Barangay is required.' });
@@ -162,12 +248,20 @@ exports.getNeedAttention = async (req, res) => {
     }
 
     const selectCols = [
-      'c.child_id', 'c.first_name', 'c.last_name', 'c.sex', 'c.age_in_months',
-      'c.guardian_name', 'c.guardian_contact',
+      'c.child_id', 'c.first_name', 'c.last_name', 'c.middle_initial', 'c.sex', 'c.age_in_months',
+      'c.guardian_name', 'c.guardian_contact', 'c.barangay',
       'nr.weight_kg', 'nr.height_cm', 'nr.weight_status', 'nr.height_status',
-      'nr.overall_status', 'nr.record_date AS last_visit'
+      'nr.overall_status',
+      `CASE
+         WHEN latest_cs.latest_service_date IS NOT NULL AND nr.record_date IS NOT NULL THEN
+           GREATEST(nr.record_date, latest_cs.latest_service_date)
+         WHEN latest_cs.latest_service_date IS NOT NULL THEN latest_cs.latest_service_date
+         ELSE nr.record_date
+       END AS last_visit`,
+      'CASE WHEN active_ref.active_referral_id IS NOT NULL THEN 1 ELSE 0 END AS is_referred',
+      'active_ref.active_referral_id'
     ];
-    if (hasWasting) selectCols.splice(10, 0, 'nr.wasting_status');
+    if (hasWasting) selectCols.splice(13, 0, 'nr.wasting_status');
 
     const barangayCondition = barangay ? 'c.barangay = ?' : '1=1';
     const queryParams = barangay ? [barangay, ...childScopeParams] : [...childScopeParams];
@@ -179,11 +273,28 @@ exports.getNeedAttention = async (req, res) => {
          SELECT nr1.*
          FROM nutrition_records nr1
          INNER JOIN (
-           SELECT child_id, MAX(record_date) AS latest_date
-           FROM nutrition_records
+           SELECT child_id, MAX(record_id) AS latest_id
+           FROM nutrition_records nr_inner
+           INNER JOIN (
+             SELECT child_id AS cid, MAX(record_date) AS max_date
+             FROM nutrition_records
+             GROUP BY child_id
+           ) m ON nr_inner.child_id = m.cid AND nr_inner.record_date = m.max_date
            GROUP BY child_id
-         ) latest ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
+         ) latest ON nr1.record_id = latest.latest_id
        ) nr ON nr.child_id = c.child_id
+       LEFT JOIN (
+         SELECT child_id, MAX(service_date) AS latest_service_date
+         FROM child_services
+         GROUP BY child_id
+       ) latest_cs ON latest_cs.child_id = c.child_id
+       LEFT JOIN (
+         SELECT child_id, MAX(referral_id) AS active_referral_id
+         FROM referrals
+         WHERE LOWER(status) IN ('pending', 'ongoing', 'responded', 'in progress')
+           AND child_id IS NOT NULL
+         GROUP BY child_id
+       ) active_ref ON active_ref.child_id = c.child_id
        WHERE ${barangayCondition}
          AND c.status = 'active'
          ${childScopeClause}
@@ -194,8 +305,12 @@ exports.getNeedAttention = async (req, res) => {
            ${hasWasting ? "OR nr.wasting_status IN ('wasted','severely_wasted','severly_wasted')" : ''}
          )
        ORDER BY
-         FIELD(nr.overall_status, 'SAM', 'MAM') ASC,
-         nr.record_date ASC`,
+         CASE
+           WHEN nr.overall_status = 'SAM' OR nr.weight_status LIKE '%sever%' OR nr.height_status LIKE '%sever%' THEN 0
+           WHEN nr.overall_status = 'MAM' OR nr.weight_status IN ('underweight') OR nr.height_status IN ('stunted') THEN 1
+           ELSE 2
+         END ASC,
+         last_visit ASC`,
       queryParams
     );
     return res.status(200).json(children);

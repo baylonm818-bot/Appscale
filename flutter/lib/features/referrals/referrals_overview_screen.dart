@@ -80,15 +80,19 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                     _currentBarangay,
                   );
 
-                  final pendingCount = referrals
-                      .where((r) => r.isPending || r.isInProgress)
-                      .length;
+                  final pendingCount =
+                      referrals.where((r) => r.isPending).length;
+                  final ongoingCount =
+                      referrals.where((r) => r.isOngoing).length;
                   final completedCount =
                       referrals.where((r) => r.isCompleted).length;
 
                   final filteredReferrals = referrals.where((r) {
                     if (_selectedFilter == 'Pending') {
-                      return r.isPending || r.isInProgress;
+                      return r.isPending;
+                    }
+                    if (_selectedFilter == 'Ongoing') {
+                      return r.isOngoing;
                     }
                     if (_selectedFilter == 'Completed') {
                       return r.isCompleted;
@@ -214,6 +218,14 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                                   isSelected: _selectedFilter == 'Pending',
                                   color: AppColors.statOrange,
                                   onTap: () => setState(() => _selectedFilter = 'Pending'),
+                                ),
+                                const SizedBox(width: 8),
+                                _ReferralFilterChip(
+                                  label: 'Ongoing',
+                                  count: ongoingCount,
+                                  isSelected: _selectedFilter == 'Ongoing',
+                                  color: AppColors.statBlue,
+                                  onTap: () => setState(() => _selectedFilter = 'Ongoing'),
                                 ),
                                 const SizedBox(width: 8),
                                 _ReferralFilterChip(

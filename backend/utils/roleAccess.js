@@ -71,13 +71,13 @@ function canAccessSchedule(requester, schedule) {
   if (requesterRole === 'bhw') {
     if (creatorId === requesterId) return true;
     if (!matchesBarangay) return false;
-    return targetRole === 'bhw' || targetRole === 'all' || targetRole === '' || targetRole === 'all barangays';
+    return true;
   }
 
   if (requesterRole === 'bns') {
     if (creatorId === requesterId) return true;
     if (!matchesBarangay) return false;
-    return targetRole === 'bns' || targetRole === 'all' || targetRole === '' || targetRole === 'all barangays';
+    return true;
   }
 
   return false;

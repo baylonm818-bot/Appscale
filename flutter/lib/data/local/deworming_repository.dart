@@ -3,6 +3,7 @@ import '../models/deworming_record.dart';
 import 'activity_log_repository.dart';
 import 'app_data_bus.dart';
 import 'hive_boxes.dart';
+import '../remote/beneficiary_api.dart';
 
 class DewormingRepository {
   Box get _box => Hive.box(HiveBoxes.deworming);
@@ -35,12 +36,63 @@ class DewormingRepository {
   }
 
   Future<void> save(DewormingRecord record) async {
-    await _box.put(record.id, record.toMap());
+    await _box.put(record.id, record.toMap()..['_syncStatus'] = 'pending');
     await ActivityLogRepository().logActivity(
       type: 'measurement_added',
       title: 'Dewormed: ${record.childName} (${record.drugName})',
     );
     AppDataBus.notifyChanged();
+
+    try {
+      final res = await BeneficiaryApi.syncChildService(
+        externalId: record.id,
+        childExternalId: record.childId,
+        serviceType: 'Deworming',
+        serviceName: record.drugName,
+        dosage: record.round,
+        serviceDate: record.dateGiven,
+        nextSchedule: record.nextDueDate,
+        providedBy: record.administeredBy,
+        notes: record.remarks,
+      );
+      if (res.success) {
+        await _box.put(record.id, record.toMap()..['_syncStatus'] = 'synced');
+      }
+    } catch (_) {}
+  }
+
+  int get pendingCount {
+    var count = 0;
+    for (final key in _box.keys) {
+      final raw = _box.get(key);
+      if (raw is Map && raw['_syncStatus'] == 'pending') count++;
+    }
+    return count;
+  }
+
+  Future<void> syncPending() async {
+    for (final key in _box.keys) {
+      final raw = _box.get(key);
+      if (raw is Map && raw['_syncStatus'] == 'pending') {
+        final record = DewormingRecord.fromMap(Map<String, dynamic>.from(raw));
+        try {
+          final res = await BeneficiaryApi.syncChildService(
+            externalId: record.id,
+            childExternalId: record.childId,
+            serviceType: 'Deworming',
+            serviceName: record.drugName,
+            dosage: record.round,
+            serviceDate: record.dateGiven,
+            nextSchedule: record.nextDueDate,
+            providedBy: record.administeredBy,
+            notes: record.remarks,
+          );
+          if (res.success) {
+            await _box.put(key, record.toMap()..['_syncStatus'] = 'synced');
+          }
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> delete(String id) async {

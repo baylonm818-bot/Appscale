@@ -1,6 +1,7 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'app_data_bus.dart';
 import 'hive_boxes.dart';
+import '../remote/beneficiary_api.dart';
 
 /// Attendance is now keyed by calendar date, not by a session object —
 /// marking today's attendance never requires creating anything first.
@@ -17,6 +18,36 @@ class FeedingAttendanceRepository {
   ) async {
     await _box.put(_key(barangay, date), statuses);
     AppDataBus.notifyChanged();
+
+    try {
+      await BeneficiaryApi.syncFeedingAttendance(
+        barangay: barangay,
+        date: date,
+        statuses: statuses,
+      );
+    } catch (_) {}
+  }
+
+  Future<void> syncPending() async {
+    for (final key in _box.keys) {
+      final parts = key.toString().split('|');
+      if (parts.length == 2) {
+        final barangay = parts[0];
+        final date = DateTime.tryParse(parts[1]);
+        if (date != null) {
+          final statuses = getForDate(barangay, date);
+          if (statuses.isNotEmpty) {
+            try {
+              await BeneficiaryApi.syncFeedingAttendance(
+                barangay: barangay,
+                date: date,
+                statuses: statuses,
+              );
+            } catch (_) {}
+          }
+        }
+      }
+    }
   }
 
   Map<String, String> getForDate(String barangay, DateTime date) {

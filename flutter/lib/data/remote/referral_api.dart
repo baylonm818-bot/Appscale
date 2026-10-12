@@ -34,6 +34,7 @@ class ReferralApi {
     final trimmedBeneficiaryId = referral.beneficiaryId.trim();
     final payload = <String, dynamic>{
       'beneficiary_type': referral.beneficiaryType,
+      'referral_type': referral.beneficiaryType,
       'beneficiary_name': referral.beneficiaryName.trim(),
       'barangay': referral.barangay.trim(),
       'facility': referral.facility.trim(),

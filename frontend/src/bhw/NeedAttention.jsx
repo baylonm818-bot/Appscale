@@ -9,6 +9,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  CheckCircle2,
 } from 'lucide-react';
 
 const statusColors = {
@@ -144,14 +145,28 @@ function NeedAttention() {
     e.stopPropagation();
     setReferTarget(child);
     // Default severity from child's nutrition status
-    if (child.overall_status === 'SAM' || child.weight_status === 'severely_underweight' || child.height_status === 'severely_stunted') {
-      setReferSeverity('high');
-    } else if (child.overall_status === 'MAM' || child.weight_status === 'underweight' || child.height_status === 'stunted') {
-      setReferSeverity('medium');
-    } else {
-      setReferSeverity('low');
+    const isSevere = child.overall_status === 'SAM' ||
+      child.weight_status === 'severely_underweight' ||
+      child.weight_status === 'severly_underweight' ||
+      child.height_status === 'severely_stunted' ||
+      child.height_status === 'severly_stunted';
+    const isModerate = child.overall_status === 'MAM' ||
+      child.weight_status === 'underweight' ||
+      child.height_status === 'stunted';
+
+    let defaultSev = 'low';
+    let defaultReason = 'Nutrition intervention and clinical follow-up needed.';
+
+    if (isSevere) {
+      defaultSev = 'high';
+      defaultReason = `Severely malnourished (${child.overall_status || 'SAM'}) - Urgent RHU medical and nutritional evaluation required.`;
+    } else if (isModerate) {
+      defaultSev = 'medium';
+      defaultReason = `Moderate malnutrition (${child.overall_status || 'MAM'}) - Supplementary feeding and medical evaluation needed.`;
     }
-    setReferReason('');
+
+    setReferSeverity(defaultSev);
+    setReferReason(defaultReason);
     setReferError('');
   };
 
@@ -162,15 +177,18 @@ function NeedAttention() {
     try {
       await axiosClient.post('/bhw/referrals', {
         child_id: referTarget.child_id,
+        referral_type: 'child',
+        beneficiary_type: 'child',
         severity: referSeverity,
         reason: referReason || 'Nutrition intervention follow-up needed',
+        notes: `Referred from Need Attention monitoring (${referTarget.overall_status || 'At Risk'})`,
         referred_by: user.user_id,
       });
       setReferTarget(null);
       await refetch();
-      alert('Referral submitted successfully.');
-    } catch {
-      setReferError('Failed to submit referral. Please try again.');
+      alert('Referral submitted successfully. Partner BNS has been notified.');
+    } catch (err) {
+      setReferError(err.response?.data?.message || 'Failed to submit referral. Please try again.');
     } finally {
       setReferSubmitting(false);
     }
@@ -223,9 +241,9 @@ function NeedAttention() {
       });
       await refetch();
       setVisitTarget(null);
-      alert('Health service recorded successfully.');
-    } catch {
-      setVisitError('Failed to log service visit. Please try again.');
+      alert('Health visit recorded successfully. Medical records and audit trail updated.');
+    } catch (err) {
+      setVisitError(err.response?.data?.message || 'Failed to log service visit. Please try again.');
     } finally {
       setVisitSubmitting(false);
     }
@@ -405,23 +423,34 @@ function NeedAttention() {
                         </p>
                       </td>
                       <td className="px-4 py-4 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5 flex-nowrap">
+                        <div className="flex items-center justify-center gap-2 flex-nowrap">
                           <button
                             type="button"
                             onClick={(e) => openVisitModal(c, e)}
                             aria-label={`Log visit for ${c.first_name} ${c.last_name}`}
-                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition inline-flex items-center gap-1 whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors shadow-2xs inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
                           >
-                            <Stethoscope size={13} /> Log Visit
+                            <Stethoscope size={13} className="text-emerald-700" /> Log Visit
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => openReferModal(c, e)}
-                            aria-label={`Refer ${c.first_name} ${c.last_name}`}
-                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 transition inline-flex items-center gap-1 whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-                          >
-                            <ClipboardPlus size={13} /> Refer
-                          </button>
+                          {Boolean(c.is_referred) ? (
+                            <button
+                              type="button"
+                              disabled
+                              title="An active referral is already pending or in progress for this child"
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                            >
+                              <CheckCircle2 size={13} className="text-gray-400" /> Referred
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => openReferModal(c, e)}
+                              aria-label={`Refer ${c.first_name} ${c.last_name}`}
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 transition-colors shadow-2xs inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer"
+                            >
+                              <ClipboardPlus size={13} className="text-amber-700" /> Refer
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -34,6 +34,7 @@ class ReferralDetailSheet extends StatelessWidget {
     switch (s) {
       case 'Pending':
         return AppColors.statOrange;
+      case 'Ongoing':
       case 'In Progress':
         return AppColors.statBlue;
       case 'Completed':
@@ -219,7 +220,7 @@ class ReferralDetailSheet extends StatelessWidget {
               Icons.event_available_outlined,
             ),
           ],
-          if (isCompleted) ...[
+          if (referral.itemsGiven.isNotEmpty || isCompleted) ...[
             const SizedBox(height: 10),
             _buildDetailRow(
               'Items / Supplies Given',
@@ -251,7 +252,7 @@ class ReferralDetailSheet extends StatelessWidget {
                     Icon(
                       isCompleted
                           ? Icons.check_circle
-                          : (referral.isInProgress
+                          : (referral.isOngoing || referral.isInProgress
                               ? Icons.timelapse
                               : Icons.hourglass_top),
                       size: 16,
@@ -261,8 +262,8 @@ class ReferralDetailSheet extends StatelessWidget {
                     Text(
                       isCompleted
                           ? 'Resolved by RHU / BHW'
-                          : (referral.isInProgress
-                              ? 'Under Review by RHU / BHW Staff'
+                          : (referral.isOngoing || referral.isInProgress
+                              ? 'Ongoing / Under Evaluation by RHU / BHW'
                               : 'Awaiting RHU / BHW Evaluation'),
                       style: AppTextStyles.body.copyWith(
                         fontSize: 12,

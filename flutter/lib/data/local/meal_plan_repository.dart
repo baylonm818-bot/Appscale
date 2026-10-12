@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import 'app_data_bus.dart';
 import 'hive_boxes.dart';
 import '../models/meal_plan.dart';
+import '../remote/beneficiary_api.dart';
 
 class MealPlanRepository {
   Box get _box => Hive.box(HiveBoxes.mealPlans);
@@ -26,11 +27,45 @@ class MealPlanRepository {
         final closed = existing.copyWith(
           effectiveTo: plan.effectiveFrom.subtract(const Duration(days: 1)),
         );
-        await _box.put(existing.id, closed.toMap());
+        await _box.put(existing.id, closed.toMap()..['_syncStatus'] = 'pending');
+        try {
+          await BeneficiaryApi.syncMealPlan(closed);
+        } catch (_) {}
       }
     }
-    await _box.put(plan.id, plan.toMap());
+    await _box.put(plan.id, plan.toMap()..['_syncStatus'] = 'pending');
     AppDataBus.notifyChanged();
+
+    try {
+      final res = await BeneficiaryApi.syncMealPlan(plan);
+      if (res.success) {
+        await _box.put(plan.id, plan.toMap()..['_syncStatus'] = 'synced');
+      }
+    } catch (_) {}
+  }
+
+  int get pendingCount {
+    var count = 0;
+    for (final key in _box.keys) {
+      final raw = _box.get(key);
+      if (raw is Map && raw['_syncStatus'] == 'pending') count++;
+    }
+    return count;
+  }
+
+  Future<void> syncPending() async {
+    for (final key in _box.keys) {
+      final raw = _box.get(key);
+      if (raw is Map && raw['_syncStatus'] == 'pending') {
+        final plan = MealPlan.fromMap(Map<String, dynamic>.from(raw));
+        try {
+          final res = await BeneficiaryApi.syncMealPlan(plan);
+          if (res.success) {
+            await _box.put(key, plan.toMap()..['_syncStatus'] = 'synced');
+          }
+        } catch (_) {}
+      }
+    }
   }
 
   MealPlan? getActiveForDate(String barangay, DateTime date) {

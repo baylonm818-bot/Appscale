@@ -23,6 +23,7 @@ function Referrals() {
   }
 
   // filters
+  const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'child', 'mother'
   const [statusFilter, setStatusFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [sortBy, setSortBy] = useState('severity');
@@ -59,8 +60,24 @@ function Referrals() {
     return s || 'Pending';
   };
 
+  const isMotherReferral = (r) => {
+    const t = String(r.referral_type || r.beneficiary_type || '').toLowerCase();
+    if (t === 'mother' || t === 'lactating_mother') return true;
+    if (r.mother_id && !r.child_id) return true;
+    return false;
+  };
+
+  const childReferralsCount = useMemo(() => referrals.filter((r) => !isMotherReferral(r)).length, [referrals]);
+  const motherReferralsCount = useMemo(() => referrals.filter((r) => isMotherReferral(r)).length, [referrals]);
+
+  const typeFilteredReferrals = useMemo(() => {
+    if (typeFilter === 'child') return referrals.filter((r) => !isMotherReferral(r));
+    if (typeFilter === 'mother') return referrals.filter((r) => isMotherReferral(r));
+    return referrals;
+  }, [referrals, typeFilter]);
+
   const filteredReferrals = useMemo(() => {
-    let list = [...referrals];
+    let list = [...typeFilteredReferrals];
 
     if (statusFilter !== 'all') {
       list = list.filter((r) => normalizeStatus(r.status) === statusFilter);
@@ -78,7 +95,7 @@ function Referrals() {
     }
 
     return list;
-  }, [referrals, statusFilter, severityFilter, sortBy]);
+  }, [typeFilteredReferrals, statusFilter, severityFilter, sortBy]);
 
   const openActionModal = (r) => {
     setActionTarget(r);
@@ -110,10 +127,11 @@ function Referrals() {
     }
   };
 
-  const pendingCount = referrals.filter((r) => normalizeStatus(r.status) === 'Pending').length;
-  const ongoingCount = referrals.filter((r) => normalizeStatus(r.status) === 'Ongoing').length;
-  const highSevCount = referrals.filter((r) => r.severity === 'high').length;
-  const completedCount = referrals.filter((r) => normalizeStatus(r.status) === 'Completed').length;
+  const totalCount = typeFilteredReferrals.length;
+  const pendingCount = typeFilteredReferrals.filter((r) => normalizeStatus(r.status) === 'Pending').length;
+  const ongoingCount = typeFilteredReferrals.filter((r) => normalizeStatus(r.status) === 'Ongoing').length;
+  const highSevCount = typeFilteredReferrals.filter((r) => r.severity === 'high').length;
+  const completedCount = typeFilteredReferrals.filter((r) => normalizeStatus(r.status) === 'Completed').length;
 
   if (loading) {
     return (
@@ -151,8 +169,8 @@ function Referrals() {
           }`}
         >
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Referrals</p>
-          <p className="text-2xl font-black text-gray-800 mt-1">{referrals.length}</p>
-          <p className="text-[11px] text-gray-400">All cases</p>
+          <p className="text-2xl font-black text-gray-800 mt-1">{totalCount}</p>
+          <p className="text-[11px] text-gray-400">{typeFilter === 'all' ? 'All cases' : `${typeFilter} cases`}</p>
         </button>
         <button
           type="button"
@@ -208,6 +226,44 @@ function Referrals() {
         </button>
       </div>
 
+      {/* ── Beneficiary Type Filter Tabs ── */}
+      <div className="flex items-center gap-2 bg-white p-2.5 rounded-2xl border border-gray-100 shadow-xs">
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-2 pr-1">Filter Type:</span>
+        <button
+          type="button"
+          onClick={() => setTypeFilter('all')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            typeFilter === 'all'
+              ? 'bg-gray-800 text-white shadow-xs'
+              : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          All ({referrals.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTypeFilter('child')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+            typeFilter === 'child'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-blue-700 hover:bg-blue-50'
+          }`}
+        >
+          Child ({childReferralsCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTypeFilter('mother')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+            typeFilter === 'mother'
+              ? 'bg-purple-600 text-white shadow-xs'
+              : 'text-purple-700 hover:bg-purple-50'
+          }`}
+        >
+          Lactating Mother ({motherReferralsCount})
+        </button>
+      </div>
+
       {/* ── Status Tabs & Sort Controls ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-xs">
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -220,7 +276,7 @@ function Referrals() {
                 : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            All Cases ({referrals.length})
+            All Cases ({totalCount})
           </button>
           <button
             type="button"
@@ -286,8 +342,12 @@ function Referrals() {
           <div className="p-12 text-center text-gray-400 text-xs">No referrals found matching the selected filters.</div>
         ) : (
           filteredReferrals.map((r) => {
-            const isChild = r.child_id != null || r.beneficiary_type === 'child';
-            const typeLabel = isChild ? 'Child Health Referral' : 'Maternal Health Referral';
+            const isMother = isMotherReferral(r);
+            const typeBadgeText = isMother ? 'LACTATING MOTHER' : 'CHILD';
+            const typeLabel = isMother ? 'MOTHER HEALTH REFERRAL' : 'CHILD HEALTH REFERRAL';
+            const badgeClass = isMother
+              ? 'bg-purple-50 text-purple-700 border-purple-200'
+              : 'bg-blue-50 text-blue-700 border-blue-200';
             const cleanNote = r.notes ? String(r.notes).replace(/Facility:\s*\d+\s+Facility:\s*/gi, 'Facility: ').replace(/(Facility:\s*)+/gi, 'Facility: ').trim() : '';
             const sev = String(r.severity || 'medium').toLowerCase();
             const sevClass = sev === 'high' ? 'bg-red-100 text-red-800 border-red-200' : sev === 'low' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200';
@@ -300,7 +360,10 @@ function Referrals() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sm text-gray-900">{(r.beneficiary_first_name || '') + ' ' + (r.beneficiary_last_name || '')}</span>
-                      <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${isChild ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-pink-50 text-pink-700 border-pink-200'}`}>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${badgeClass}`}>
+                        {typeBadgeText}
+                      </span>
+                      <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${badgeClass}`}>
                         {typeLabel}
                       </span>
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${sevClass}`}>
