@@ -67,10 +67,30 @@ class ChildProgramsTab extends StatelessWidget {
     DateTime? enrolledDate,
     int daysPresent,
   ) {
+    final repo = FeedingEnrollmentRepository();
+    final wasEverEnrolled = repo.wasEverEnrolled(child.id);
+    final unenrolledAt = repo.unenrolledAt(child.id);
+    final unenrollReason = repo.unenrollReason(child.id);
+    final history = repo.getHistory(child.id);
+
     final isSamOrMam =
         child.wastingStatus == 'SAM' ||
         child.wastingStatus == 'MAM' ||
         child.nutritionStatus.contains('Underweight');
+
+    String statusLabel = 'NOT ENROLLED';
+    Color statusColor = AppColors.textMuted;
+    Color statusBg = AppColors.surface;
+
+    if (isEnrolled) {
+      statusLabel = 'ENROLLED';
+      statusColor = AppColors.primaryGreen;
+      statusBg = AppColors.primaryGreen.withValues(alpha: 0.12);
+    } else if (wasEverEnrolled) {
+      statusLabel = 'UNENROLLED';
+      statusColor = AppColors.statAmber;
+      statusBg = AppColors.statAmber.withValues(alpha: 0.12);
+    }
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -108,11 +128,11 @@ class ChildProgramsTab extends StatelessWidget {
                     Text(
                       isEnrolled
                           ? 'Active Beneficiary'
-                          : 'Not Currently Enrolled',
+                          : (wasEverEnrolled ? 'Inactive / Unenrolled' : 'Not Currently Enrolled'),
                       style: AppTextStyles.caption.copyWith(
                         color: isEnrolled
                             ? AppColors.primaryGreen
-                            : AppColors.textMuted,
+                            : (wasEverEnrolled ? AppColors.statAmber : AppColors.textMuted),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -122,19 +142,15 @@ class ChildProgramsTab extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isEnrolled
-                      ? AppColors.primaryGreen.withValues(alpha: 0.1)
-                      : AppColors.surface,
+                  color: statusBg,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  isEnrolled ? 'ENROLLED' : 'NOT ENROLLED',
+                  statusLabel,
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: isEnrolled
-                        ? AppColors.primaryGreen
-                        : AppColors.textMuted,
+                    color: statusColor,
                   ),
                 ),
               ),
@@ -213,26 +229,129 @@ class ChildProgramsTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 36),
-                side: const BorderSide(color: AppColors.primaryGreen),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      side: const BorderSide(color: AppColors.primaryGreen),
+                    ),
+                    icon: const Icon(
+                      Icons.arrow_forward,
+                      size: 14,
+                      color: AppColors.primaryGreen,
+                    ),
+                    label: const Text(
+                      'View Program',
+                      style: TextStyle(color: AppColors.primaryGreen, fontSize: 12),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        appPageRoute(const FeedingProgramScreen()),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      side: const BorderSide(color: AppColors.statRed),
+                    ),
+                    icon: const Icon(
+                      Icons.person_remove_outlined,
+                      size: 14,
+                      color: AppColors.statRed,
+                    ),
+                    label: const Text(
+                      'Unenroll',
+                      style: TextStyle(color: AppColors.statRed, fontSize: 12),
+                    ),
+                    onPressed: () => _showUnenrollDialog(context),
+                  ),
+                ),
+              ],
+            ),
+          ] else if (wasEverEnrolled) ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.statAmber.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.statAmber.withValues(alpha: 0.3)),
               ),
-              icon: const Icon(
-                Icons.arrow_forward,
-                size: 14,
-                color: AppColors.primaryGreen,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 14, color: AppColors.statAmber),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Previously Enrolled',
+                        style: AppTextStyles.label.copyWith(
+                          fontSize: 12,
+                          color: AppColors.statAmber,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Unenrolled on ${unenrolledAt != null ? "${unenrolledAt.month}/${unenrolledAt.day}/${unenrolledAt.year}" : "N/A"} · Reason: ${unenrollReason ?? "Unspecified"}',
+                    style: AppTextStyles.caption.copyWith(fontSize: 11, color: AppColors.textSecondary),
+                  ),
+                  Text(
+                    'Total past attendance: $daysPresent days recorded (preserved).',
+                    style: AppTextStyles.caption.copyWith(fontSize: 11, color: AppColors.textMuted),
+                  ),
+                ],
               ),
-              label: const Text(
-                'View Feeding Program',
-                style: TextStyle(color: AppColors.primaryGreen, fontSize: 12),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  appPageRoute(const FeedingProgramScreen()),
-                );
-              },
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                if (history.isNotEmpty) ...[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 36),
+                        side: const BorderSide(color: AppColors.border),
+                      ),
+                      icon: const Icon(Icons.history, size: 14, color: AppColors.textSecondary),
+                      label: const Text('History', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      onPressed: () => _showHistoryDialog(context, history),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 36),
+                      elevation: 0,
+                    ),
+                    icon: const Icon(Icons.replay_rounded, size: 14),
+                    label: const Text('Re-enroll', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      await repo.enroll(child.id, notes: 'Re-enrolled by BHW');
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('${child.fullName} re-enrolled in Feeding Program'),
+                          backgroundColor: AppColors.primaryGreen,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ] else ...[
             Text(
@@ -275,6 +394,174 @@ class ChildProgramsTab extends StatelessWidget {
               },
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  void _showUnenrollDialog(BuildContext context) {
+    String selectedReason = 'Graduated / Reached Normal Nutritional Status';
+    final notesController = TextEditingController();
+
+    const reasons = [
+      'Graduated / Reached Normal Nutritional Status',
+      'Transferred Residence / Barangay',
+      'Caregiver Refused / Dropped Out',
+      'Medical Referral / Hospitalization',
+      'Age Out (> 59 months)',
+      'Other Reason',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Unenroll from Feeding Program', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Hindi mabubura ang mga naitalang datos (attendance, timbang). Papalitan lamang ang status at itatala ang dahilan.',
+                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text('Dahilan ng Pag-unenroll *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedReason,
+                          isExpanded: true,
+                          style: const TextStyle(fontSize: 12, color: Colors.black87),
+                          items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 12)))).toList(),
+                          onChanged: (val) {
+                            if (val != null) setDialogState(() => selectedReason = val);
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Karagdagang Tala (Optional)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: notesController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        hintText: 'Hal. Lumipat sa Brgy. Poblacion noong Oct 10',
+                        hintStyle: TextStyle(fontSize: 11),
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.all(8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.statRed),
+                  onPressed: () async {
+                    Navigator.pop(dialogCtx);
+                    final messenger = ScaffoldMessenger.of(context);
+                    await FeedingEnrollmentRepository().unenroll(
+                      child.id,
+                      reason: selectedReason,
+                      notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
+                    );
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('${child.fullName} has been unenrolled. All past records retained.'),
+                        backgroundColor: AppColors.statAmber,
+                      ),
+                    );
+                  },
+                  child: const Text('Confirm Unenroll'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showHistoryDialog(BuildContext context, List<Map<String, dynamic>> history) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('${child.fullName} — Enrollment History', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: history.isEmpty
+              ? const Text('Walang nakatalang history.', style: TextStyle(fontSize: 12))
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: history.length,
+                  separatorBuilder: (_, __) => const Divider(height: 16),
+                  itemBuilder: (context, idx) {
+                    final item = history[idx];
+                    final action = item['action']?.toString() ?? 'enrolled';
+                    final dateStr = item['date']?.toString();
+                    final parsed = dateStr != null ? DateTime.tryParse(dateStr) : null;
+                    final reason = item['reason']?.toString();
+                    final notes = item['notes']?.toString();
+
+                    Color iconColor = AppColors.primaryGreen;
+                    IconData iconData = Icons.check_circle_outline;
+                    String title = 'Enrolled in Program';
+
+                    if (action == 'unenrolled') {
+                      iconColor = AppColors.statRed;
+                      iconData = Icons.cancel_outlined;
+                      title = 'Unenrolled from Program';
+                    } else if (action == 're_enrolled') {
+                      iconColor = Colors.blue;
+                      iconData = Icons.replay;
+                      title = 'Re-enrolled in Program';
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(iconData, size: 18, color: iconColor),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: iconColor)),
+                              Text(
+                                parsed != null ? '${parsed.month}/${parsed.day}/${parsed.year}' : (dateStr ?? ''),
+                                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                              ),
+                              if (reason != null && reason.isNotEmpty)
+                                Text('Dahilan: $reason', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                              if (notes != null && notes.isNotEmpty)
+                                Text('Tala: $notes', style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.textMuted)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
         ],
       ),
     );

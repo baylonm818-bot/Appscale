@@ -222,19 +222,49 @@ exports.upsertChild = async (req, res) => {
             const cExtId = external_id || String(childId);
             const cName = `${firstName} ${lastName || ''}`.trim();
             const [existingEnr] = await pool.query(
-              'SELECT enrollment_id FROM program_enrollments WHERE child_id = ? AND program_type = "feeding" LIMIT 1',
+              'SELECT enrollment_id, status FROM program_enrollments WHERE child_id = ? AND program_type = "feeding" LIMIT 1',
               [childId]
             );
             if (existingEnr.length > 0) {
-              await pool.query(
-                'UPDATE program_enrollments SET status = ?, updated_at = NOW() WHERE enrollment_id = ?',
-                [isEnrolled ? 'active' : 'inactive', existingEnr[0].enrollment_id]
-              );
+              const currentStatus = existingEnr[0].status;
+              const newStatus = isEnrolled ? 'enrolled' : 'unenrolled';
+              if (currentStatus !== newStatus) {
+                if (!isEnrolled) {
+                  await pool.query(
+                    `UPDATE program_enrollments
+                     SET status = 'unenrolled', unenrolled_at = NOW(), unenrolled_by = ?, unenroll_reason = ?, updated_at = NOW()
+                     WHERE enrollment_id = ?`,
+                    [resolvedEncodedBy, req.body.unenroll_reason || 'Child profile sync unenrollment', existingEnr[0].enrollment_id]
+                  );
+                  await pool.query(
+                    `INSERT INTO feeding_enrollment_history (enrollment_id, child_id, child_external_id, barangay, action, action_date, action_by, reason)
+                     VALUES (?, ?, ?, ?, 'unenrolled', NOW(), ?, ?)`,
+                    [existingEnr[0].enrollment_id, childId, cExtId, resolvedBarangay, resolvedEncodedBy, req.body.unenroll_reason || 'Child profile sync unenrollment']
+                  );
+                } else {
+                  await pool.query(
+                    `UPDATE program_enrollments
+                     SET status = 'enrolled', enrolled_at = NOW(), enrolled_by = ?, unenrolled_at = NULL, unenrolled_by = NULL, unenroll_reason = NULL, cycle_number = cycle_number + 1, updated_at = NOW()
+                     WHERE enrollment_id = ?`,
+                    [resolvedEncodedBy, existingEnr[0].enrollment_id]
+                  );
+                  await pool.query(
+                    `INSERT INTO feeding_enrollment_history (enrollment_id, child_id, child_external_id, barangay, action, action_date, action_by, reason)
+                     VALUES (?, ?, ?, ?, 're_enrolled', NOW(), ?, 'Re-enrolled via child sync')`,
+                    [existingEnr[0].enrollment_id, childId, cExtId, resolvedBarangay, resolvedEncodedBy]
+                  );
+                }
+              }
             } else if (isEnrolled) {
-              await pool.query(
+              const [insResult] = await pool.query(
                 `INSERT INTO program_enrollments (external_id, program_type, beneficiary_type, child_id, child_external_id, beneficiary_name, barangay, enrolled_at, status, enrolled_by)
-                 VALUES (?, 'feeding', 'child', ?, ?, ?, ?, NOW(), 'active', ?)`,
+                 VALUES (?, 'feeding', 'child', ?, ?, ?, ?, NOW(), 'enrolled', ?)`,
                 [`${resolvedBarangay}|feeding|${cExtId}`, childId, cExtId, cName, resolvedBarangay, resolvedEncodedBy]
+              );
+              await pool.query(
+                `INSERT INTO feeding_enrollment_history (enrollment_id, child_id, child_external_id, barangay, action, action_date, action_by, reason)
+                 VALUES (?, ?, ?, ?, 'enrolled', NOW(), ?, 'Initial enrollment')`,
+                [insResult.insertId, childId, cExtId, resolvedBarangay, resolvedEncodedBy]
               );
             }
           } catch (enrErr) {
@@ -306,10 +336,15 @@ exports.upsertChild = async (req, res) => {
         const childId = result.insertId;
         const cExtId = external_id || String(childId);
         const cName = `${firstName} ${lastName || ''}`.trim();
-        await pool.query(
+        const [insResult] = await pool.query(
           `INSERT INTO program_enrollments (external_id, program_type, beneficiary_type, child_id, child_external_id, beneficiary_name, barangay, enrolled_at, status, enrolled_by)
-           VALUES (?, 'feeding', 'child', ?, ?, ?, ?, NOW(), 'active', ?)`,
+           VALUES (?, 'feeding', 'child', ?, ?, ?, ?, NOW(), 'enrolled', ?)`,
           [`${resolvedBarangay}|feeding|${cExtId}`, childId, cExtId, cName, resolvedBarangay, resolvedEncodedBy]
+        );
+        await pool.query(
+          `INSERT INTO feeding_enrollment_history (enrollment_id, child_id, child_external_id, barangay, action, action_date, action_by, reason)
+           VALUES (?, ?, ?, ?, 'enrolled', NOW(), ?, 'Initial enrollment upon registration')`,
+          [insResult.insertId, childId, cExtId, resolvedBarangay, resolvedEncodedBy]
         );
       } catch (enrErr) {
         console.error('Child is_enrolled insert error:', enrErr.message);
@@ -1276,10 +1311,17 @@ exports.getMobileSync = async (req, res) => {
 
 // ── PROGRAM ENROLLMENT ──
 exports.upsertProgramEnrollment = async (req, res) => {
-  const { external_id, program_type, beneficiary_type, child_external_id, child_id, mother_external_id, mother_id, beneficiary_name, barangay, enrolled_at, status, notes } = req.body;
+  const { external_id, program_type, beneficiary_type, child_external_id, child_id, mother_external_id, mother_id, beneficiary_name, barangay, enrolled_at, status, notes, unenroll_reason, unenroll_notes } = req.body;
   const scope = enforceScopedBarangay(req.user, barangay || null);
   const resolvedBarangay = scope.barangay;
-  const resolvedStatus = status || 'active';
+  
+  // Standardize status: enrolled vs unenrolled
+  let resolvedStatus = 'enrolled';
+  if (status === 'unenrolled' || status === 'inactive' || status === 'removed') {
+    resolvedStatus = 'unenrolled';
+  } else if (status === 'enrolled' || status === 'active') {
+    resolvedStatus = 'enrolled';
+  }
   const enrolledDate = enrolled_at || new Date().toISOString();
 
   try {
@@ -1295,7 +1337,7 @@ exports.upsertProgramEnrollment = async (req, res) => {
     }
 
     const [existing] = await pool.query(
-      `SELECT enrollment_id FROM program_enrollments
+      `SELECT * FROM program_enrollments
        WHERE (external_id IS NOT NULL AND external_id = ?)
           OR (program_type = ? AND child_id IS NOT NULL AND child_id = ?)
           OR (program_type = ? AND mother_id IS NOT NULL AND mother_id = ?)
@@ -1305,19 +1347,53 @@ exports.upsertProgramEnrollment = async (req, res) => {
     );
 
     if (existing.length > 0) {
-      await pool.query(
-        `UPDATE program_enrollments
-         SET status = ?, notes = COALESCE(?, notes), enrolled_at = COALESCE(?, enrolled_at), updated_at = NOW()
-         WHERE enrollment_id = ?`,
-        [resolvedStatus, notes || null, enrolledDate, existing[0].enrollment_id]
-      );
-      return res.status(200).json({ message: 'Program enrollment updated successfully.', enrollment_id: existing[0].enrollment_id });
+      const current = existing[0];
+      const prevStatus = current.status;
+
+      if (resolvedStatus === 'unenrolled' && prevStatus !== 'unenrolled') {
+        // UNENROLL: change status only, record reason and date
+        const reason = unenroll_reason || req.body.reason || 'Unenrolled by user';
+        await pool.query(
+          `UPDATE program_enrollments
+           SET status = 'unenrolled', unenrolled_at = NOW(), unenrolled_by = ?, unenroll_reason = ?, unenroll_notes = ?, updated_at = NOW()
+           WHERE enrollment_id = ?`,
+          [req.user?.user_id || null, reason, unenroll_notes || notes || null, current.enrollment_id]
+        );
+        await pool.query(
+          `INSERT INTO feeding_enrollment_history (enrollment_id, child_id, child_external_id, barangay, action, action_date, action_by, reason, notes)
+           VALUES (?, ?, ?, ?, 'unenrolled', NOW(), ?, ?, ?)`,
+          [current.enrollment_id, current.child_id, current.child_external_id, current.barangay, req.user?.user_id || null, reason, unenroll_notes || notes || null]
+        );
+        return res.status(200).json({ message: 'Beneficiary unenrolled successfully.', enrollment_id: current.enrollment_id, status: 'unenrolled' });
+      } else if (resolvedStatus === 'enrolled' && prevStatus === 'unenrolled') {
+        // RE-ENROLL: reactivate status, increment cycle, preserve past history
+        await pool.query(
+          `UPDATE program_enrollments
+           SET status = 'enrolled', enrolled_at = NOW(), enrolled_by = ?, unenrolled_at = NULL, unenrolled_by = NULL, unenroll_reason = NULL, unenroll_notes = NULL, cycle_number = cycle_number + 1, updated_at = NOW()
+           WHERE enrollment_id = ?`,
+          [req.user?.user_id || null, current.enrollment_id]
+        );
+        await pool.query(
+          `INSERT INTO feeding_enrollment_history (enrollment_id, child_id, child_external_id, barangay, action, action_date, action_by, reason, notes)
+           VALUES (?, ?, ?, ?, 're_enrolled', NOW(), ?, 'Re-enrolled into program', ?)`,
+          [current.enrollment_id, current.child_id, current.child_external_id, current.barangay, req.user?.user_id || null, notes || null]
+        );
+        return res.status(200).json({ message: 'Beneficiary re-enrolled successfully.', enrollment_id: current.enrollment_id, status: 'enrolled' });
+      } else {
+        await pool.query(
+          `UPDATE program_enrollments
+           SET notes = COALESCE(?, notes), updated_at = NOW()
+           WHERE enrollment_id = ?`,
+          [notes || null, current.enrollment_id]
+        );
+        return res.status(200).json({ message: 'Program enrollment updated successfully.', enrollment_id: current.enrollment_id, status: current.status });
+      }
     }
 
     const [result] = await pool.query(
       `INSERT INTO program_enrollments
        (external_id, program_type, beneficiary_type, child_id, mother_id, child_external_id, mother_external_id, beneficiary_name, barangay, enrolled_at, status, notes, enrolled_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'enrolled', ?, ?)`,
       [
         external_id || null,
         program_type || 'feeding',
@@ -1329,17 +1405,81 @@ exports.upsertProgramEnrollment = async (req, res) => {
         beneficiary_name || null,
         resolvedBarangay,
         enrolledDate,
-        resolvedStatus,
         notes || null,
         req.user?.user_id || null,
       ]
     );
 
-    return res.status(201).json({ message: 'Enrolled in program successfully.', enrollment_id: result.insertId });
+    await pool.query(
+      `INSERT INTO feeding_enrollment_history (enrollment_id, child_id, child_external_id, barangay, action, action_date, action_by, reason, notes)
+       VALUES (?, ?, ?, ?, 'enrolled', NOW(), ?, 'Initial program enrollment', ?)`,
+      [result.insertId, resolvedChildId, child_external_id || null, resolvedBarangay, req.user?.user_id || null, notes || null]
+    );
+
+    return res.status(201).json({ message: 'Enrolled in program successfully.', enrollment_id: result.insertId, status: 'enrolled' });
   } catch (error) {
     console.error('Upsert program enrollment error:', error);
     return res.status(500).json({ message: 'Server error saving program enrollment.' });
   }
+};
+
+exports.unenrollProgramBeneficiary = async (req, res) => {
+  const { enrollment_id, child_id, child_external_id, reason, notes } = req.body;
+  try {
+    const [rows] = await pool.query(
+      `SELECT * FROM program_enrollments
+       WHERE enrollment_id = ? OR child_id = ? OR (child_external_id IS NOT NULL AND child_external_id = ?)
+       LIMIT 1`,
+      [enrollment_id || -1, child_id || -1, child_external_id || '']
+    );
+    if (!rows.length) {
+      return res.status(404).json({ message: 'Enrollment record not found.' });
+    }
+    const current = rows[0];
+    const unenrollReason = reason || 'Unenrolled by user';
+
+    await pool.query(
+      `UPDATE program_enrollments
+       SET status = 'unenrolled', unenrolled_at = NOW(), unenrolled_by = ?, unenroll_reason = ?, unenroll_notes = ?, updated_at = NOW()
+       WHERE enrollment_id = ?`,
+      [req.user?.user_id || null, unenrollReason, notes || null, current.enrollment_id]
+    );
+
+    await pool.query(
+      `INSERT INTO feeding_enrollment_history (enrollment_id, child_id, child_external_id, barangay, action, action_date, action_by, reason, notes)
+       VALUES (?, ?, ?, ?, 'unenrolled', NOW(), ?, ?, ?)`,
+      [current.enrollment_id, current.child_id, current.child_external_id, current.barangay, req.user?.user_id || null, unenrollReason, notes || null]
+    );
+
+    return res.status(200).json({ message: 'Beneficiary unenrolled successfully.', enrollment_id: current.enrollment_id, status: 'unenrolled' });
+  } catch (err) {
+    console.error('Unenroll error:', err);
+    return res.status(500).json({ message: 'Failed to unenroll beneficiary.' });
+  }
+};
+
+exports.getEnrollmentHistory = async (req, res) => {
+  const { enrollment_id, child_id, child_external_id } = req.query;
+  try {
+    const [rows] = await pool.query(
+      `SELECT h.*, u.first_name, u.last_name, u.role
+       FROM feeding_enrollment_history h
+       LEFT JOIN users u ON u.user_id = h.action_by
+       WHERE (h.enrollment_id = ? OR h.child_id = ? OR (h.child_external_id IS NOT NULL AND h.child_external_id = ?))
+       ORDER BY h.action_date DESC, h.history_id DESC`,
+      [enrollment_id || -1, child_id || -1, child_external_id || '']
+    );
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error('Get enrollment history error:', err);
+    return res.status(500).json({ message: 'Failed to retrieve enrollment history.' });
+  }
+};
+
+exports.blockHardDeleteEnrollment = async (req, res) => {
+  return res.status(403).json({
+    message: 'Hard delete forbidden: Feeding program and enrollment data is permanent. Use unenroll (status update) instead.',
+  });
 };
 
 exports.getMobileProgramEnrollments = async (req, res) => {

@@ -171,6 +171,8 @@ class BeneficiaryApi {
     required bool isEnrolled,
     required String barangay,
     String? beneficiaryName,
+    String? unenrollReason,
+    String? notes,
   }) async {
     final settings = SettingsRepository();
     final token = settings.authToken;
@@ -187,8 +189,10 @@ class BeneficiaryApi {
       'child_external_id': childId,
       'beneficiary_name': beneficiaryName,
       'barangay': barangay,
-      'status': isEnrolled ? 'active' : 'inactive',
+      'status': isEnrolled ? 'enrolled' : 'unenrolled',
       'enrolled_at': DateTime.now().toIso8601String(),
+      if (!isEnrolled && unenrollReason != null) 'unenroll_reason': unenrollReason,
+      if (notes != null) 'notes': notes,
     }, token);
   }
 

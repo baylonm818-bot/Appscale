@@ -514,14 +514,25 @@ function NeedAttention() {
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Service Provided *</label>
                   <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]">
                     <option value="">Select service</option>
-                    {serviceOptions
-                      .filter((opt) => {
-                        const age = visitTarget.age_in_months ?? 0;
-                        if (opt.value === 'vitamin_a' && age < 6) return false;
-                        if (opt.value === 'deworming' && age < 12) return false;
-                        return true;
-                      })
-                      .map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    {serviceOptions.map((opt) => {
+                      const age = visitTarget?.age_in_months ?? 0;
+                      const isVitADisabled = opt.value === 'vitamin_a' && age < 6;
+                      const isDewormDisabled = opt.value === 'deworming' && age < 12;
+                      const isDisabled = isVitADisabled || isDewormDisabled;
+
+                      let label = opt.label;
+                      if (isVitADisabled) {
+                        label += ' (6+ buwan lamang)';
+                      } else if (isDewormDisabled) {
+                        label += ' (12+ buwan lamang)';
+                      }
+
+                      return (
+                        <option key={opt.value} value={opt.value} disabled={isDisabled} className={isDisabled ? 'text-gray-400' : ''}>
+                          {label}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 

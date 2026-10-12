@@ -12,6 +12,9 @@ const {
   getMobileNutritionRecords,
   getMobileSync,
   upsertProgramEnrollment,
+  unenrollProgramBeneficiary,
+  getEnrollmentHistory,
+  blockHardDeleteEnrollment,
   getMobileProgramEnrollments,
   upsertMealPlan,
   getMobileMealPlans,
@@ -37,6 +40,10 @@ router.post('/transfer', transferBeneficiary);
 
 // Programs & Services endpoints
 router.post('/program-enrollments', upsertProgramEnrollment);
+router.post('/program-enrollments/unenroll', unenrollProgramBeneficiary);
+router.get('/program-enrollments/history', getEnrollmentHistory);
+router.delete('/program-enrollments/:id', blockHardDeleteEnrollment);
+router.delete('/program-enrollments', blockHardDeleteEnrollment);
 router.get('/program-enrollments', getMobileProgramEnrollments);
 
 router.post('/meal-plans', upsertMealPlan);
