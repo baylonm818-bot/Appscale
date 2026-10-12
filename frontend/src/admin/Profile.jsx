@@ -95,10 +95,10 @@ const inputCls = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm f
 /* ══════════════════════════════════════════════════════════ */
 function Profile() {
   const storedUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
-  const { updateUser, updateAvatar } = useAuth();
+  const { user, updateUser, updateAvatar } = useAuth();
 
-  const [profile, setProfile]   = useState(null);
-  const [loading, setLoading]   = useState(true);
+  const [profile, setProfile]   = useState(() => user || (storedUser?.user_id ? storedUser : null));
+  const [loading, setLoading]   = useState(() => !(user || storedUser?.user_id));
   const [error, setError]       = useState('');
   const [activeTab, setActiveTab] = useState('profile');
   const [notificationPreferences, setNotificationPreferences] = useState(() => {
@@ -119,18 +119,22 @@ function Profile() {
   const [picError, setPicError]         = useState('');
   const [profileImageSrc, setProfileImageSrc] = useState(null);
 
+  // Keep local profile state synced with AuthContext
+  useEffect(() => {
+    if (user && user.user_id) {
+      setProfile((prev) => ({ ...(prev || {}), ...user }));
+    }
+  }, [user]);
+
   const fetchProfile = async () => {
     try {
       const res = await axiosClient.get('/profile/me');
       setProfile(res.data);
       if (updateUser) updateUser(res.data);
-    } catch {
-      try {
-        const fallbackId = storedUser?.user_id || 'me';
-        const res2 = await axiosClient.get(`/profile/${fallbackId}`);
-        setProfile(res2.data);
-        if (updateUser) updateUser(res2.data);
-      } catch {
+    } catch (err) {
+      console.warn('[Profile] Non-critical profile sync warning:', err?.message);
+      // Only set blocking error if no profile data exists at all
+      if (!profile && !user && !storedUser?.user_id) {
         setError('Failed to load profile.');
       }
     } finally {
@@ -196,6 +200,7 @@ function Profile() {
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to update profile. Please try again.';
       setProfileErr(msg);
+      setTimeout(() => setProfileErr(''), 5000);
       return false;
     }
   };
@@ -231,12 +236,14 @@ function Profile() {
         setTimeout(() => setProfileMsg(''), 4000);
       } catch (err) {
         setPicError(err.response?.data?.message || 'Failed to upload profile picture.');
+        setTimeout(() => setPicError(''), 5000);
       } finally {
         setUploadingPic(false);
       }
     };
     reader.onerror = () => {
       setPicError('Failed to read image file.');
+      setTimeout(() => setPicError(''), 5000);
       setUploadingPic(false);
     };
     reader.readAsDataURL(file);
@@ -272,6 +279,7 @@ function Profile() {
       setTimeout(() => setPasswordMsg(''), 4000);
     } catch (err) {
       setPasswordErr(err.response?.data?.message || 'Current password is incorrect or change failed.');
+      setTimeout(() => setPasswordErr(''), 5000);
     } finally {
       setSavingPassword(false);
     }

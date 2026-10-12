@@ -15,8 +15,18 @@ export const getProfileImageUrl = (value) => {
 
 export const getUserInitials = (user) => {
   const source = user || {};
-  const first = source.first_name || source.full_name || source.username || '';
-  const last = source.last_name || '';
-  const initials = `${first}`.trim() && `${last}`.trim() ? `${first.charAt(0)}${last.charAt(0)}` : `${(first || source.username || 'U').charAt(0)}`;
-  return initials.toUpperCase();
+  const first = (source.first_name || '').trim();
+  const last = (source.last_name || '').trim();
+  if (first && last) {
+    return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+  }
+  const full = (source.full_name || source.name || first || source.username || '').trim();
+  if (full) {
+    const parts = full.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+    }
+    return parts[0].charAt(0).toUpperCase();
+  }
+  return 'A';
 };

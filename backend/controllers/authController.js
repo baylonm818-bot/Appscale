@@ -201,16 +201,18 @@ exports.login = async (req, res) => {
   const normalizedLoginEmail = normalizeLoginEmail(loginEmail);
   const aliasVariants = Array.from(new Set([
     normalizedLoginEmail,
+    normalizedLoginEmail.replace(/@appscale\.local$/i, '@apscale.local'),
+    normalizedLoginEmail.replace(/@apscale\.local$/i, '@appscale.local'),
     canonicalizeEmailAlias(normalizedLoginEmail),
-    normalizedLoginEmail.replace('@appscale.local', '@apscale.local'),
   ])).filter(Boolean);
 
-  console.log('Login attempt for:', loginEmail);
+  console.log('Login attempt for:', loginEmail, 'Variants:', aliasVariants);
 
   try {
+    const placeholders = aliasVariants.map(() => '?').join(', ');
     const [rows] = await pool.query(
-      `SELECT * FROM users WHERE LOWER(TRIM(email)) IN (?, ?) AND deleted_at IS NULL LIMIT 1`,
-      [aliasVariants[0], aliasVariants[1] || aliasVariants[0]]
+      `SELECT * FROM users WHERE LOWER(TRIM(email)) IN (${placeholders}) AND deleted_at IS NULL LIMIT 1`,
+      aliasVariants
     );
 
     console.log('DB returned rows:', rows && rows.length);

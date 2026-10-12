@@ -153,8 +153,13 @@ exports.updateProfile = async (req, res) => {
 
     return res.status(200).json({ message: 'Profile updated successfully.', user: updatedUser });
   } catch (error) {
-    console.error('Update profile SQL error:', error.code, error.sqlMessage, error);
-    return res.status(500).json({ message: error.sqlMessage || 'Server error. Please try again later.' });
+    console.error('[Profile Controller] Update profile error:', {
+      id,
+      code: error.code,
+      sqlMessage: error.sqlMessage,
+      error: error.message,
+    });
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };
 
@@ -193,8 +198,13 @@ exports.changePassword = async (req, res) => {
     await pool.query('UPDATE users SET password_hash = ? WHERE user_id = ?', [newHash, id]);
     return res.status(200).json({ message: 'Password changed successfully.' });
   } catch (error) {
-    console.error('Change password SQL error:', error.code, error.sqlMessage, error);
-    return res.status(500).json({ message: error.sqlMessage || 'Server error. Please try again later.' });
+    console.error('[Profile Controller] Change password error:', {
+      id,
+      code: error.code,
+      sqlMessage: error.sqlMessage,
+      error: error.message,
+    });
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };
 
@@ -237,8 +247,13 @@ exports.uploadProfilePicture = async (req, res) => {
       user: updatedUser
     });
   } catch (error) {
-    console.error('Upload profile picture SQL error:', error.code, error.sqlMessage, error);
-    return res.status(500).json({ message: error.sqlMessage || 'Server error. Please try again later.' });
+    console.error('[Profile Controller] Upload profile picture error:', {
+      id,
+      code: error.code,
+      sqlMessage: error.sqlMessage,
+      error: error.message,
+    });
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };
 

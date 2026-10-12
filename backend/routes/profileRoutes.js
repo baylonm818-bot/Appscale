@@ -7,6 +7,7 @@ router.use(roleCheck(['admin', 'bhw', 'bns']));
 
 // Explicit /me endpoints for the logged-in user
 router.get('/me', getProfile);
+router.get('/me/picture/data', getProfilePictureData);
 router.put('/me', updateProfile);
 router.patch('/me/password', changePassword);
 
