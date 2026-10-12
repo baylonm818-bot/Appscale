@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -31,6 +33,27 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   bool _isUploadingPicture = false;
   String? _uploadError;
 
+  void _onDataChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    AppDataBus.version.addListener(_onDataChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SettingsRepository().refreshProfileFromServer().then((_) {
+        if (mounted) setState(() {});
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    AppDataBus.version.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
   @override
   void deactivate() {
     ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
@@ -44,6 +67,297 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     } catch (_) {
       return true;
     }
+  }
+
+  Future<void> _showEditProfileDialog() async {
+    final settings = SettingsRepository();
+    final user = settings.authUser ?? {};
+    final firstNameCtrl = TextEditingController(text: user['first_name']?.toString() ?? '');
+    final lastNameCtrl = TextEditingController(text: user['last_name']?.toString() ?? '');
+    final contactCtrl = TextEditingController(text: user['contact_number']?.toString() ?? '');
+    final formKey = GlobalKey<FormState>();
+    bool isSaving = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !isSaving,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Edit Profile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: firstNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'First Name',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'First name is required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: lastNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Last Name',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Last name is required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: contactCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Contact Number',
+                      hintText: 'e.g. 09123456789',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: isSaving ? null : () async {
+                if (!formKey.currentState!.validate()) return;
+                final messenger = ScaffoldMessenger.of(context);
+                final nav = Navigator.of(ctx);
+                setDialogState(() => isSaving = true);
+
+                final firstName = firstNameCtrl.text.trim();
+                final lastName = lastNameCtrl.text.trim();
+                final contact = contactCtrl.text.trim();
+                final userId = user['user_id']?.toString() ?? '';
+                final token = settings.authToken ?? '';
+
+                final updatedUser = Map<String, dynamic>.from(user);
+                updatedUser['first_name'] = firstName;
+                updatedUser['last_name'] = lastName;
+                updatedUser['full_name'] = '$firstName $lastName'.trim();
+                updatedUser['contact_number'] = contact;
+                await settings.setAuthUser(updatedUser);
+                AppDataBus.notifyChanged();
+
+                final payload = {
+                  'first_name': firstName,
+                  'last_name': lastName,
+                  'contact_number': contact,
+                };
+
+                final isOnline = await _checkOnline();
+                if (isOnline && token.isNotEmpty && userId.isNotEmpty) {
+                  try {
+                    await AuthApi.updateProfile(userId: userId, token: token, data: payload);
+                    await settings.setPendingProfileUpdate(null, userId: userId);
+                    await settings.refreshProfileFromServer();
+                    nav.pop();
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Profile updated successfully.'),
+                        backgroundColor: AppColors.primaryGreen,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  } catch (e) {
+                    debugPrint('API update profile failed, queueing offline: $e');
+                  }
+                }
+
+                // If offline or request failed
+                await settings.setPendingProfileUpdate(payload, userId: userId);
+                AppDataBus.notifyChanged();
+                nav.pop();
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Profile saved to device. Will sync to server when connected.'),
+                    backgroundColor: AppColors.statAmber,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: isSaving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showChangePasswordDialog() async {
+    final settings = SettingsRepository();
+    final user = settings.authUser ?? {};
+    final currentPassCtrl = TextEditingController();
+    final newPassCtrl = TextEditingController();
+    final confirmPassCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSaving = false;
+    String? dialogError;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !isSaving,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Change Password', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (dialogError != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Text(dialogError!, style: TextStyle(color: Colors.red.shade700, fontSize: 12)),
+                    ),
+                  ],
+                  TextFormField(
+                    controller: currentPassCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Current Password',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    validator: (v) => (v == null || v.isEmpty) ? 'Current password is required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: newPassCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'New Password',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'New password is required';
+                      if (v.length < 8) return 'Password must be at least 8 characters';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: confirmPassCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm New Password',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    validator: (v) {
+                      if (v != newPassCtrl.text) return 'Passwords do not match';
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: isSaving ? null : () async {
+                if (!formKey.currentState!.validate()) return;
+                final messenger = ScaffoldMessenger.of(context);
+                final nav = Navigator.of(ctx);
+                setDialogState(() {
+                  isSaving = true;
+                  dialogError = null;
+                });
+
+                final currentPass = currentPassCtrl.text;
+                final newPass = newPassCtrl.text;
+                final userId = user['user_id']?.toString() ?? '';
+                final token = settings.authToken ?? '';
+
+                final isOnline = await _checkOnline();
+                if (isOnline && token.isNotEmpty && userId.isNotEmpty) {
+                  try {
+                    await AuthApi.changePassword(
+                      userId: userId,
+                      token: token,
+                      currentPassword: currentPass,
+                      newPassword: newPass,
+                    );
+                    await settings.setPendingPasswordChange(null, userId: userId);
+                    nav.pop();
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Password changed successfully.'),
+                        backgroundColor: AppColors.primaryGreen,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  } catch (e) {
+                    final errStr = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+                    setDialogState(() {
+                      isSaving = false;
+                      dialogError = errStr;
+                    });
+                    return;
+                  }
+                }
+
+                // If offline
+                await settings.setPendingPasswordChange({
+                  'current_password': currentPass,
+                  'new_password': newPass,
+                }, userId: userId);
+                nav.pop();
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Password update queued. Will sync when connected.'),
+                    backgroundColor: AppColors.statAmber,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: isSaving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Update Password'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _pickAndUploadProfilePicture() async {
@@ -189,6 +503,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         serverUser['profile_picture'] = serverUrl;
         await settings.setAuthUser(serverUser);
         await settings.setPendingProfilePicturePath(null, userId: userId);
+        await settings.refreshProfileFromServer();
         AppDataBus.notifyChanged();
         if (!mounted) return;
         ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
@@ -278,8 +593,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       }
     }
 
+    if (trimmed.startsWith('data:')) {
+      try {
+        final commaIdx = trimmed.indexOf(',');
+        if (commaIdx != -1) {
+          final bytes = base64Decode(trimmed.substring(commaIdx + 1));
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              width: 72,
+              height: 72,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => fallback,
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('[UserProfileScreen] Base64 avatar decode error: $e');
+      }
+    }
+
     final normalizedUrl = (() {
-      if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
         return trimmed;
       }
       if (trimmed.startsWith('/')) {
@@ -495,6 +830,76 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ],
           ),
 
+          const SizedBox(height: AppSpacing.md),
+
+          // Profile Actions
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text(
+                    'Edit Profile',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  onPressed: _showEditProfileDialog,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.darkGreen,
+                    side: const BorderSide(color: AppColors.darkGreen),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  icon: const Icon(Icons.lock_outline, size: 16),
+                  label: const Text(
+                    'Change Password',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  onPressed: _showChangePasswordDialog,
+                ),
+              ),
+            ],
+          ),
+
+          if (settings.pendingProfileUpdate != null || settings.pendingPasswordChange != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.cloud_upload_outlined, color: Color(0xFFD97706), size: 16),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Profile changes saved locally. Will sync when online.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF92400E)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: AppSpacing.lg),
 
           // Official Information
@@ -526,7 +931,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 _buildInfoRow(
                   Icons.phone_outlined,
                   'Contact Number',
-                  '+63 912 345 6789',
+                  settings.authUser?['contact_number'] != null &&
+                          settings.authUser!['contact_number'].toString().trim().isNotEmpty
+                      ? settings.authUser!['contact_number'].toString().trim()
+                      : 'Not set',
                 ),
                 const Divider(height: 1, color: AppColors.border),
                 _buildInfoRow(

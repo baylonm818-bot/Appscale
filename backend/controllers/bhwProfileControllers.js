@@ -27,10 +27,10 @@ exports.getProfile = async (req, res) => {
     }
     const user = rows[0];
     const pic = user.profile_picture;
-    const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
-    user.profile_picture = pic
-      ? (pic.startsWith('http') ? pic : `${base}${pic}`)
-      : null;
+    if (pic && !pic.startsWith('data:') && !pic.startsWith('http')) {
+      const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
+      user.profile_picture = `${base}${pic.startsWith('/') ? '' : '/'}${pic}`;
+    }
     return res.status(200).json(user);
   } catch (error) {
     console.error('Get profile error:', error);
@@ -45,13 +45,27 @@ exports.updateProfile = async (req, res) => {
     return res.status(403).json({ message: 'Forbidden. You are not authorized to update this profile.' });
   }
 
-  const { first_name, middle_initial, last_name, email, contact_number, purok } = req.body;
+  const { first_name, middle_initial, last_name, email, contact_number, purok, profile_picture } = req.body;
 
   try {
-    if (email) {
+    const [existingUserRows] = await pool.query('SELECT * FROM users WHERE user_id = ?', [id]);
+    if (existingUserRows.length === 0) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+    const current = existingUserRows[0];
+
+    const updatedFirstName = first_name !== undefined ? String(first_name).trim() : current.first_name;
+    const updatedMiddleInitial = middle_initial !== undefined ? (middle_initial ? String(middle_initial).trim() : null) : current.middle_initial;
+    const updatedLastName = last_name !== undefined ? String(last_name).trim() : current.last_name;
+    const updatedEmail = email !== undefined ? String(email).trim() : current.email;
+    const updatedContactNumber = contact_number !== undefined ? String(contact_number).trim() : current.contact_number;
+    const updatedPurok = purok !== undefined ? (purok ? String(purok).trim() : null) : current.purok;
+    const updatedProfilePicture = profile_picture !== undefined ? profile_picture : current.profile_picture;
+
+    if (updatedEmail && updatedEmail.toLowerCase() !== String(current.email || '').toLowerCase()) {
       const [existing] = await pool.query(
         'SELECT user_id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND user_id <> ? LIMIT 1',
-        [email, id]
+        [updatedEmail, id]
       );
       if (existing.length > 0) {
         return res.status(409).json({ message: 'Email is already in use by another account.' });
@@ -59,11 +73,25 @@ exports.updateProfile = async (req, res) => {
     }
 
     await pool.query(
-      `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?
+      `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?, profile_picture = ?
        WHERE user_id = ?`,
-      [first_name, middle_initial || null, last_name, email, contact_number, purok || null, id]
+      [updatedFirstName, updatedMiddleInitial, updatedLastName, updatedEmail, updatedContactNumber, updatedPurok, updatedProfilePicture, id]
     );
-    return res.status(200).json({ message: 'Profile updated successfully.' });
+
+    const [updatedRows] = await pool.query(
+      `SELECT user_id, first_name, middle_initial, last_name, email, username,
+              role, municipality, barangay, purok, contact_number, profile_picture
+       FROM users WHERE user_id = ?`,
+      [id]
+    );
+    const updatedUser = updatedRows[0];
+    updatedUser.full_name = `${updatedUser.first_name || ''} ${updatedUser.last_name || ''}`.trim() || updatedUser.username;
+    if (updatedUser.profile_picture && !updatedUser.profile_picture.startsWith('data:') && !updatedUser.profile_picture.startsWith('http')) {
+      const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
+      updatedUser.profile_picture = `${base}${updatedUser.profile_picture.startsWith('/') ? '' : '/'}${updatedUser.profile_picture}`;
+    }
+
+    return res.status(200).json({ message: 'Profile updated successfully.', user: updatedUser });
   } catch (error) {
     console.error('Update profile error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });

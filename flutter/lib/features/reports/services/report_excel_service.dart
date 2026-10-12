@@ -211,7 +211,7 @@ class ReportExcelService {
       setCell(6, curRow, 'DATE ACCOMPLISHED: ${_fmtDateOnly(DateTime.now())}', bold: true);
       curRow++;
       setCell(0, curRow, 'NO. OF UNDERWEIGHT: $boysUw', bold: true);
-      final bnsName = signatory?.bnsName.isNotEmpty == true ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+      final bnsName = signatory?.bnsName.isNotEmpty == true ? signatory!.bnsName : '';
       setCell(6, curRow, 'ACCOMPLISHED BY: $bnsName', bold: true);
       curRow += 2;
 
@@ -361,7 +361,7 @@ class ReportExcelService {
     }
     sheet.setColumnWidth(19, 16.0); // REMARKS
 
-    final bnsName = signatory?.bnsName.isNotEmpty == true ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+    final bnsName = signatory?.bnsName.isNotEmpty == true ? signatory!.bnsName : '';
 
     void buildGenderTable(String sectionLabel, List<dynamic> kids) {
       // Header Block (Left & Right)
@@ -535,10 +535,15 @@ class ReportExcelService {
   }
 
   void _appendSignatoryBlock(xls.Sheet sheet, int startRow, ReportSignatory? signatory) {
-    final sig1 = signatory?.bnsName.isNotEmpty == true ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
-    final sig2 = signatory?.punongBarangayName.isNotEmpty == true ? signatory!.punongBarangayName : 'FELIX S. NAMBIO JR.';
-    final sig3 = signatory?.mnaoAdminAideName.isNotEmpty == true ? signatory!.mnaoAdminAideName : 'MA. THERESA F. LAUDIT';
-    final sig4 = signatory?.dnpcName.isNotEmpty == true ? signatory!.dnpcName : 'MAUREEN F. LEYCO';
+    final sig1 = signatory?.bnsName.isNotEmpty == true ? signatory!.bnsName : '';
+    final sig2 = signatory?.punongBarangayName.isNotEmpty == true ? signatory!.punongBarangayName : '';
+    final sig3 = signatory?.mnaoAdminAideName.isNotEmpty == true ? signatory!.mnaoAdminAideName : '';
+    final sig4 = signatory?.dnpcName.isNotEmpty == true ? signatory!.dnpcName : '';
+
+    final bnsPos = (signatory?.bnsPosition.isNotEmpty ?? false) ? signatory!.bnsPosition : 'BARANGAY NUTRITION SCHOLAR (BNS)';
+    final pbPos = (signatory?.punongBarangayPosition.isNotEmpty ?? false) ? signatory!.punongBarangayPosition : 'PUNONG BARANGAY';
+    final mnaoPos = (signatory?.mnaoAdminAidePosition.isNotEmpty ?? false) ? signatory!.mnaoAdminAidePosition : 'ADMIN AIDE IV- MNAO OIC';
+    final dnpcPos = (signatory?.dnpcPosition.isNotEmpty ?? false) ? signatory!.dnpcPosition : 'DNPC';
 
     int r = startRow + 1;
 
@@ -555,16 +560,28 @@ class ReportExcelService {
     setC(8, r, 'APPROVED BY:', bold: true);
     r += 2;
 
+    setC(0, r, '_________________________');
+    setC(4, r, '_________________________');
+    setC(8, r, '_________________________');
+    setC(12, r, '_________________________');
+    r++;
+
     setC(0, r, sig1, bold: true);
     setC(4, r, sig2, bold: true);
     setC(8, r, sig3, bold: true);
     setC(12, r, sig4, bold: true);
     r++;
 
-    setC(0, r, 'BARANGAY NUTRITION SCHOLAR (BNS)');
-    setC(4, r, 'PUNONG BARANGAY');
-    setC(8, r, 'ADMIN AIDE IV- MNAO OIC');
-    setC(12, r, 'DNPC');
+    setC(0, r, bnsPos);
+    setC(4, r, pbPos);
+    setC(8, r, mnaoPos);
+    setC(12, r, dnpcPos);
+    r++;
+
+    setC(0, r, 'Date: ____________________');
+    setC(4, r, 'Date: ____________________');
+    setC(8, r, 'Date: ____________________');
+    setC(12, r, 'Date: ____________________');
   }
 
   Future<void> exportAndShare({
@@ -645,10 +662,15 @@ class ReportExcelService {
 
     sheet.appendRow([]);
     sheet.appendRow([]);
-    final sig1 = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
-    final sig2 = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : 'FELIX S. NAMBIO JR.';
-    final sig3 = (signatory?.mnaoAdminAideName.isNotEmpty ?? false) ? signatory!.mnaoAdminAideName : 'MA. THERESA F. LAUDIT';
-    final sig4 = (signatory?.dnpcName.isNotEmpty ?? false) ? signatory!.dnpcName : 'MAUREEN F. LEYCO';
+    final sig1 = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
+    final sig2 = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : '';
+    final sig3 = (signatory?.mnaoAdminAideName.isNotEmpty ?? false) ? signatory!.mnaoAdminAideName : '';
+    final sig4 = (signatory?.dnpcName.isNotEmpty ?? false) ? signatory!.dnpcName : '';
+
+    final bnsPos = (signatory?.bnsPosition.isNotEmpty ?? false) ? signatory!.bnsPosition : 'BARANGAY NUTRITION SCHOLAR (BNS)';
+    final pbPos = (signatory?.punongBarangayPosition.isNotEmpty ?? false) ? signatory!.punongBarangayPosition : 'PUNONG BARANGAY';
+    final mnaoPos = (signatory?.mnaoAdminAidePosition.isNotEmpty ?? false) ? signatory!.mnaoAdminAidePosition : 'ADMIN AIDE IV- MNAO OIC';
+    final dnpcPos = (signatory?.dnpcPosition.isNotEmpty ?? false) ? signatory!.dnpcPosition : 'DNPC';
 
     sheet.appendRow([
       xls.TextCellValue('SUBMITTED / ACCOMPLISHED BY:'), xls.TextCellValue(''), xls.TextCellValue(''),
@@ -657,16 +679,28 @@ class ReportExcelService {
     ]);
     sheet.appendRow([]);
     sheet.appendRow([
+      xls.TextCellValue('_________________________'), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue('_________________________'), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue('_________________________'), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue('_________________________')
+    ]);
+    sheet.appendRow([
       xls.TextCellValue(sig1), xls.TextCellValue(''), xls.TextCellValue(''),
       xls.TextCellValue(sig2), xls.TextCellValue(''), xls.TextCellValue(''),
       xls.TextCellValue(sig3), xls.TextCellValue(''), xls.TextCellValue(''),
       xls.TextCellValue(sig4)
     ]);
     sheet.appendRow([
-      xls.TextCellValue('BARANGAY NUTRITION SCHOLAR (BNS)'), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue('PUNONG BARANGAY'), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue('ADMIN AIDE IV- MNAO OIC'), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue('DNPC')
+      xls.TextCellValue(bnsPos), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue(pbPos), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue(mnaoPos), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue(dnpcPos)
+    ]);
+    sheet.appendRow([
+      xls.TextCellValue('Date: ____________________'), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue('Date: ____________________'), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue('Date: ____________________'), xls.TextCellValue(''), xls.TextCellValue(''),
+      xls.TextCellValue('Date: ____________________')
     ]);
 
     final bytes = workbook.encode();

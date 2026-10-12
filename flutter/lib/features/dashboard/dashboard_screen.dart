@@ -91,7 +91,9 @@ class _DashboardBodyState extends State<DashboardBody> {
                     _motherRepo.pendingCount +
                     _measurementRepo.pendingCount +
                     _referralRepo.pendingCount +
-                    (_settings.pendingProfilePicturePath != null ? 1 : 0),
+                    (_settings.pendingProfilePicturePath != null ? 1 : 0) +
+                    (_settings.pendingProfileUpdate != null ? 1 : 0) +
+                    (_settings.pendingPasswordChange != null ? 1 : 0),
                 unreadNotificationCount: unreadNotifs,
                 profileImageUrl:
                     _settings.authUser?['profile_picture']?.toString() ??

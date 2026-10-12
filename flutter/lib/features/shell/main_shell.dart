@@ -174,13 +174,19 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         _mealPlanRepo.pendingCount +
         _vitaminARepo.pendingCount +
         _dewormingRepo.pendingCount +
-        _motherVisitRepo.pendingCount;
+        _motherVisitRepo.pendingCount +
+        (_settings.pendingProfilePicturePath != null ? 1 : 0) +
+        (_settings.pendingProfileUpdate != null ? 1 : 0) +
+        (_settings.pendingPasswordChange != null ? 1 : 0);
     if (totalPending == 0) {
+      // Still refresh profile periodically in case modified from web
+      await _settings.refreshProfileFromServer();
       return;
     }
 
     _isAutoSyncing = true;
     try {
+      await _settings.syncPendingProfileChanges();
       await _motherRepo.syncPending();
       await _childRepo.syncPending();
       await _measurementRepo.syncPending();
@@ -191,6 +197,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       await _vitaminARepo.syncPending();
       await _dewormingRepo.syncPending();
       await _motherVisitRepo.syncPending();
+      await _settings.refreshProfileFromServer();
       AppDataBus.notifyChanged();
 
       // Show snackbar only if some records were actually synced
@@ -202,7 +209,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           _mealPlanRepo.pendingCount +
           _vitaminARepo.pendingCount +
           _dewormingRepo.pendingCount +
-          _motherVisitRepo.pendingCount;
+          _motherVisitRepo.pendingCount +
+          (_settings.pendingProfilePicturePath != null ? 1 : 0) +
+          (_settings.pendingProfileUpdate != null ? 1 : 0) +
+          (_settings.pendingPasswordChange != null ? 1 : 0);
       final synced = totalPending - remaining;
       if (synced > 0 && mounted) {
         AppNotificationUI.showSuccess(
@@ -238,6 +248,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       // then attempt to sync pending records in the background.
       AppDataBus.notifyChanged();
       try {
+        await _settings.syncPendingProfileChanges();
+        await _settings.refreshProfileFromServer();
         await _childRepo.syncPending();
         await _motherRepo.syncPending();
         await _measurementRepo.syncPending();

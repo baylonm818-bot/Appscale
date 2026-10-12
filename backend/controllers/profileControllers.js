@@ -105,7 +105,7 @@ exports.updateProfile = async (req, res) => {
     return res.status(403).json({ message: 'Forbidden. You are not authorized to update this profile.' });
   }
 
-  const { first_name, middle_initial, last_name, email, contact_number, purok } = req.body;
+  const { first_name, middle_initial, last_name, email, contact_number, purok, profile_picture, password, new_password } = req.body;
 
   try {
     const [existingUserRows] = await pool.query('SELECT * FROM users WHERE user_id = ?', [id]);
@@ -120,6 +120,7 @@ exports.updateProfile = async (req, res) => {
     const updatedEmail = email !== undefined ? String(email).trim() : current.email;
     const updatedContactNumber = contact_number !== undefined ? String(contact_number).trim() : current.contact_number;
     const updatedPurok = purok !== undefined ? (purok ? String(purok).trim() : null) : current.purok;
+    const updatedProfilePicture = profile_picture !== undefined ? profile_picture : current.profile_picture;
 
     // Check if email is already taken by another user
     if (updatedEmail && updatedEmail.toLowerCase() !== String(current.email || '').toLowerCase()) {
@@ -132,11 +133,24 @@ exports.updateProfile = async (req, res) => {
       }
     }
 
-    await pool.query(
-      `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?
-       WHERE user_id = ?`,
-      [updatedFirstName, updatedMiddleInitial, updatedLastName, updatedEmail, updatedContactNumber, updatedPurok, id]
-    );
+    const nextPassword = new_password || password;
+    if (nextPassword) {
+      if (String(nextPassword).length < 8) {
+        return res.status(400).json({ message: 'New password must be at least 8 characters.' });
+      }
+      const newHash = await bcrypt.hash(String(nextPassword), 10);
+      await pool.query(
+        `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?, profile_picture = ?, password_hash = ?
+         WHERE user_id = ?`,
+        [updatedFirstName, updatedMiddleInitial, updatedLastName, updatedEmail, updatedContactNumber, updatedPurok, updatedProfilePicture, newHash, id]
+      );
+    } else {
+      await pool.query(
+        `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?, profile_picture = ?
+         WHERE user_id = ?`,
+        [updatedFirstName, updatedMiddleInitial, updatedLastName, updatedEmail, updatedContactNumber, updatedPurok, updatedProfilePicture, id]
+      );
+    }
 
     const [updatedRows] = await pool.query(
       `SELECT user_id, first_name, middle_initial, last_name, email, username,

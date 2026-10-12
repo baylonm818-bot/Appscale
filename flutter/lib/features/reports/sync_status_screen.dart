@@ -323,6 +323,36 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       ));
     }
 
+    // 7. Profile Details
+    final pendingProfile = _settings.pendingProfileUpdate;
+    if (pendingProfile != null) {
+      final userName = _settings.authUser?['full_name'] ??
+          _settings.authUser?['first_name'] ??
+          'User';
+      items.add(SyncItem(
+        id: 'profile_update',
+        type: 'profile_update',
+        title: 'Profile details pending',
+        subtitle: userName.toString(),
+        status: 'pending',
+        timestamp: DateTime.now(),
+      ));
+    }
+
+    // 8. Password Change
+    final pendingPassword = _settings.pendingPasswordChange;
+    if (pendingPassword != null) {
+      final userName = _settings.authUser?['username'] ?? 'Account';
+      items.add(SyncItem(
+        id: 'password_update',
+        type: 'password_update',
+        title: 'Password change pending',
+        subtitle: userName.toString(),
+        status: 'pending',
+        timestamp: DateTime.now(),
+      ));
+    }
+
     // Pinakabago ang nasa itaas (Newest first)
     items.sort((a, b) {
       if (a.status != 'synced' && b.status == 'synced') return -1;
@@ -497,6 +527,48 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         if (mounted) setState(() {});
       }
 
+      // Step 5b: Sync Profile Details if pending
+      final pendingProfile = _settings.pendingProfileUpdate;
+      if (pendingProfile != null &&
+          userId.isNotEmpty &&
+          token != null &&
+          token.isNotEmpty) {
+        try {
+          await AuthApi.updateProfile(
+            userId: userId,
+            token: token,
+            data: pendingProfile,
+          );
+          await _settings.setPendingProfileUpdate(null, userId: userId);
+        } catch (e) {
+          errors.add('Profile details update failed: $e');
+        }
+        if (mounted) setState(() {});
+      }
+
+      // Step 5c: Sync Password Change if pending
+      final pendingPass = _settings.pendingPasswordChange;
+      if (pendingPass != null &&
+          userId.isNotEmpty &&
+          token != null &&
+          token.isNotEmpty) {
+        try {
+          await AuthApi.changePassword(
+            userId: userId,
+            token: token,
+            currentPassword: pendingPass['current_password'] ?? '',
+            newPassword: pendingPass['new_password'] ?? '',
+          );
+          await _settings.setPendingPasswordChange(null, userId: userId);
+        } catch (e) {
+          errors.add('Password update failed: $e');
+        }
+        if (mounted) setState(() {});
+      }
+
+      // Refresh profile data from server
+      await _settings.refreshProfileFromServer();
+
       // Step 6: Pull fresh data from cloud backend
       if (_currentBarangay.isNotEmpty && token != null && token.isNotEmpty) {
         final pullResult = await SyncService.instance.pullFromServer(
@@ -518,7 +590,9 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           _mothers.pendingCount +
           _measurements.pendingCount +
           _referrals.pendingCount +
-          (_settings.pendingProfilePicturePath != null ? 1 : 0);
+          (_settings.pendingProfilePicturePath != null ? 1 : 0) +
+          (_settings.pendingProfileUpdate != null ? 1 : 0) +
+          (_settings.pendingPasswordChange != null ? 1 : 0);
 
       setState(() {
         _isSyncing = false;

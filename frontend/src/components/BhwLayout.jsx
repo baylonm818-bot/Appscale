@@ -37,11 +37,34 @@ function BHWLayout() {
   
   const navigate = useNavigate();
   const location = useLocation();
-  const { user: authUser } = useAuth();
+  const { user: authUser, updateUser } = useAuth();
   const user = authUser || JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
   const [profileImageSrc, setProfileImageSrc] = useState(null);
   const notificationRootRef = useRef(null);
   const profileRootRef = useRef(null);
+
+  // Synchronize user profile from API and storage
+  useEffect(() => {
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    if (token) {
+      axiosClient.get('/profile/me')
+        .then((res) => {
+          if (res.data && updateUser) updateUser(res.data);
+        })
+        .catch(() => {});
+    }
+
+    const handleUserUpdate = () => {
+      const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
+      if (stored && updateUser) {
+        try {
+          updateUser(JSON.parse(stored));
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('user:updated', handleUserUpdate);
+    return () => window.removeEventListener('user:updated', handleUserUpdate);
+  }, []);
 
   const fetchUnreadCount = useCallback(async () => {
     setNotificationsLoading(true);
@@ -107,12 +130,20 @@ function BHWLayout() {
 
   useEffect(() => {
     let cancelled = false;
-    setProfileImageSrc(null);
     const pic = user?.profile_picture;
-    if (!pic || typeof pic !== 'string') return;
+    if (!pic || typeof pic !== 'string') {
+      setProfileImageSrc(null);
+      return;
+    }
     const trimmed = pic.trim();
-    if (!trimmed) return;
-    if (/^(data:|https?:)?\/\//i.test(trimmed)) return;
+    if (!trimmed) {
+      setProfileImageSrc(null);
+      return;
+    }
+    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || /^(https?:)?\/\//i.test(trimmed)) {
+      setProfileImageSrc(trimmed);
+      return;
+    }
 
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token) return;

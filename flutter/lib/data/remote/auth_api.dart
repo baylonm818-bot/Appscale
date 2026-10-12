@@ -11,6 +11,10 @@ class AuthUser {
   final String? barangay;
   final String? municipality;
   final String? profilePicture;
+  final String? firstName;
+  final String? lastName;
+  final String? contactNumber;
+  final String? email;
 
   const AuthUser({
     required this.userId,
@@ -20,6 +24,10 @@ class AuthUser {
     this.barangay,
     this.municipality,
     this.profilePicture,
+    this.firstName,
+    this.lastName,
+    this.contactNumber,
+    this.email,
   });
 
   factory AuthUser.fromMap(Map<String, dynamic> map) {
@@ -33,6 +41,10 @@ class AuthUser {
       barangay: map['barangay']?.toString(),
       municipality: map['municipality']?.toString(),
       profilePicture: map['profile_picture']?.toString(),
+      firstName: map['first_name']?.toString(),
+      lastName: map['last_name']?.toString(),
+      contactNumber: map['contact_number']?.toString(),
+      email: map['email']?.toString(),
     );
   }
 }
@@ -49,6 +61,10 @@ class AuthSession {
       'user_id': user.userId,
       'username': user.username,
       'full_name': user.fullName,
+      'first_name': user.firstName,
+      'last_name': user.lastName,
+      'contact_number': user.contactNumber,
+      'email': user.email,
       'role': user.role,
       'barangay': user.barangay,
       'municipality': user.municipality,
@@ -217,5 +233,82 @@ class AuthApi {
       }
     } catch (_) {}
     throw Exception(message);
+  }
+
+  static Future<Map<String, dynamic>> getCurrentUser({
+    required String token,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/auth/me'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    ).timeout(const Duration(seconds: 15));
+
+    final body = _decodeJson(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = body['message'] ?? 'Failed to fetch current user.';
+      throw Exception(message);
+    }
+
+    if (body['profile_picture'] is String) {
+      final pic = (body['profile_picture'] as String).trim();
+      if (pic.isNotEmpty && !RegExp(r'^https?://', caseSensitive: false).hasMatch(pic) && !pic.startsWith('data:') && pic.startsWith('/')) {
+        body['profile_picture'] = 'https://appscale-1.onrender.com$pic';
+      }
+    }
+
+    return body;
+  }
+
+  static Future<Map<String, dynamic>> updateProfile({
+    required String userId,
+    required String token,
+    required Map<String, dynamic> data,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$_baseUrl/profile/$userId'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    ).timeout(const Duration(seconds: 15));
+
+    final body = _decodeJson(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = body['message'] ?? 'Failed to update profile.';
+      throw Exception(message);
+    }
+
+    return body;
+  }
+
+  static Future<String> changePassword({
+    required String userId,
+    required String token,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('$_baseUrl/profile/$userId/password'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      }),
+    ).timeout(const Duration(seconds: 15));
+
+    final body = _decodeJson(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = body['message'] ?? 'Failed to change password.';
+      throw Exception(message);
+    }
+
+    return (body['message'] ?? 'Password changed successfully.').toString();
   }
 }

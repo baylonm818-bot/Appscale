@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Printer, FileText } from 'lucide-react';
+import { X, Printer, FileText, CheckSquare, Square, Trash2 } from 'lucide-react';
 import { getBarangaySealPath } from '../../utils/barangayLogos';
 
 export default function ReportPreviewModal({ isOpen, onClose, reportData, title, barangay }) {
@@ -8,6 +8,56 @@ export default function ReportPreviewModal({ isOpen, onClose, reportData, title,
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const storedUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+  const isBns = String(storedUser.role || '').toLowerCase() === 'bns';
+  const bnsAutoName = (storedUser.full_name || `${storedUser.first_name || ''} ${storedUser.last_name || ''}`.trim() || storedUser.username || '').toUpperCase();
+
+  const storageKey = `report_signatories_${storedUser.user_id || 'default'}`;
+  const savedData = (() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  })();
+
+  const [remember, setRemember] = useState(Boolean(savedData));
+  const [preparedByName, setPreparedByName] = useState(() => {
+    if (isBns) return bnsAutoName;
+    return savedData?.preparedByName || '';
+  });
+  const [preparedByPosition, setPreparedByPosition] = useState(() => {
+    if (isBns) return 'Barangay Nutrition Scholar (BNS)';
+    return savedData?.preparedByPosition || (String(storedUser.role || '').toLowerCase() === 'admin' ? 'Nutrition Action Officer' : 'Barangay Health Worker (BHW)');
+  });
+  const [notedByName, setNotedByName] = useState(() => savedData?.notedByName || '');
+  const [notedByPosition, setNotedByPosition] = useState(() => savedData?.notedByPosition || 'Punong Barangay');
+
+  const handleSaveRemember = (willRemember, prepName, prepPos, notName, notPos) => {
+    setRemember(willRemember);
+    if (willRemember) {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          preparedByName: isBns ? '' : prepName,
+          preparedByPosition: prepPos,
+          notedByName: notName,
+          notedByPosition: notPos,
+        })
+      );
+    } else {
+      localStorage.removeItem(storageKey);
+    }
+  };
+
+  const handleClearRemembered = () => {
+    localStorage.removeItem(storageKey);
+    setRemember(false);
+    if (!isBns) setPreparedByName('');
+    setNotedByName('');
   };
 
   const today = new Date().toLocaleDateString('en-US', {
@@ -65,6 +115,88 @@ export default function ReportPreviewModal({ isOpen, onClose, reportData, title,
             >
               <X size={18} />
             </button>
+          </div>
+        </div>
+
+        {/* Signatory Configuration (Toolbar / Form - Hidden during print) */}
+        <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 print:hidden">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Report Signatories</h3>
+            {localStorage.getItem(storageKey) && (
+              <button
+                type="button"
+                onClick={handleClearRemembered}
+                className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 cursor-pointer"
+              >
+                <Trash2 size={13} /> Clear remembered names
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white p-3 rounded-xl border border-gray-200 space-y-2">
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block">
+                Prepared by {isBns && <span className="text-green-700 font-semibold">(Your BNS Name)</span>}
+              </label>
+              <input
+                type="text"
+                disabled={isBns}
+                value={isBns ? bnsAutoName : preparedByName}
+                onChange={(e) => {
+                  setPreparedByName(e.target.value);
+                  if (remember) handleSaveRemember(true, e.target.value, preparedByPosition, notedByName, notedByPosition);
+                }}
+                placeholder="Enter name (or leave blank for physical signature)"
+                className="w-full text-xs font-semibold px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-600"
+              />
+              <input
+                type="text"
+                value={preparedByPosition}
+                onChange={(e) => {
+                  setPreparedByPosition(e.target.value);
+                  if (remember) handleSaveRemember(true, preparedByName, e.target.value, notedByName, notedByPosition);
+                }}
+                placeholder="Position (e.g. Barangay Nutrition Scholar)"
+                className="w-full text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+              />
+            </div>
+
+            <div className="bg-white p-3 rounded-xl border border-gray-200 space-y-2">
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block">
+                Noted by / Verified by
+              </label>
+              <input
+                type="text"
+                value={notedByName}
+                onChange={(e) => {
+                  setNotedByName(e.target.value);
+                  if (remember) handleSaveRemember(true, preparedByName, preparedByPosition, e.target.value, notedByPosition);
+                }}
+                placeholder="Enter name (or leave blank for physical signature)"
+                className="w-full text-xs font-semibold px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-600"
+              />
+              <input
+                type="text"
+                value={notedByPosition}
+                onChange={(e) => {
+                  setNotedByPosition(e.target.value);
+                  if (remember) handleSaveRemember(true, preparedByName, preparedByPosition, notedByName, e.target.value);
+                }}
+                placeholder="Position (e.g. Punong Barangay)"
+                className="w-full text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+              />
+            </div>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="remember_signatories"
+              checked={remember}
+              onChange={(e) => handleSaveRemember(e.target.checked, preparedByName, preparedByPosition, notedByName, notedByPosition)}
+              className="rounded text-green-700 focus:ring-green-600 h-3.5 w-3.5 cursor-pointer"
+            />
+            <label htmlFor="remember_signatories" className="text-xs text-gray-600 cursor-pointer">
+              Remember for next time (saves typed names for your account only)
+            </label>
           </div>
         </div>
 
@@ -249,18 +381,24 @@ export default function ReportPreviewModal({ isOpen, onClose, reportData, title,
           </div>
 
           {/* Signatures Footer (matching official document) */}
-          <div className="grid grid-cols-2 gap-12 pt-6 border-t border-gray-200 print:pt-6 print:break-inside-avoid">
+          <div className="grid grid-cols-2 gap-12 pt-6 border-t border-gray-200 print:pt-6 print:break-inside-avoid break-inside-avoid">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Prepared by:</p>
-              <div className="mt-10 border-b border-gray-400 w-52" />
-              <p className="text-xs font-bold text-gray-800 mt-1.5">Barangay Nutrition Scholar (BNS)</p>
-              <p className="text-[10px] text-gray-400">Signature over printed name</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-6">Prepared by:</p>
+              <div className="border-b border-gray-800 w-56 max-w-full mb-1.5" />
+              <p className="text-xs font-bold text-gray-900 uppercase tracking-wide break-words min-h-[1rem]">
+                {activePreparedName || ''}
+              </p>
+              <p className="text-[11px] font-medium text-gray-600">{preparedByPosition}</p>
+              <p className="text-[10px] text-gray-500 mt-2">Date: ____________________</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Noted by:</p>
-              <div className="mt-10 border-b border-gray-400 w-52" />
-              <p className="text-xs font-bold text-gray-800 mt-1.5">Punong Barangay</p>
-              <p className="text-[10px] text-gray-400">Signature over printed name</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-6">Noted by:</p>
+              <div className="border-b border-gray-800 w-56 max-w-full mb-1.5" />
+              <p className="text-xs font-bold text-gray-900 uppercase tracking-wide break-words min-h-[1rem]">
+                {notedByName || ''}
+              </p>
+              <p className="text-[11px] font-medium text-gray-600">{notedByPosition}</p>
+              <p className="text-[10px] text-gray-500 mt-2">Date: ____________________</p>
             </div>
           </div>
 

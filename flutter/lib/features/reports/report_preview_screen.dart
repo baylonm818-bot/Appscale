@@ -21,6 +21,7 @@ import '../../data/growth_standards/growth_classifier.dart';
 import '../../data/local/app_data_bus.dart';
 import '../../shared/utils/app_page_route.dart';
 import 'sync_status_screen.dart';
+import 'report_signatories_screen.dart';
 
 class ReportPreviewScreen extends StatefulWidget {
   final ReportTypeInfo reportType;
@@ -64,6 +65,9 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   String get _currentProvince =>
       _settings.authUser?['province']?.toString() ?? 'MARINDUQUE';
 
+  ReportSignatory get _activeSignatory =>
+      ReportSignatoryRepository().resolveForUser(_settings.authUser);
+
   Future<void> _pickPeriod() async {
     final picked = await showAppDatePicker(
       context: context,
@@ -95,7 +99,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       _currentBarangay,
       year: _period.year,
     );
-    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+    final signatory = _activeSignatory;
 
     await ReportPdfService().exportMatrixAndShare(
       fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
@@ -113,7 +117,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       _currentBarangay,
       year: _period.year,
     );
-    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+    final signatory = _activeSignatory;
 
     await ReportExcelService().exportConsolidationMatrixAndShare(
       fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
@@ -126,7 +130,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   Future<void> _exportPdf() async {
     setState(() => _isExporting = true);
-    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+    final signatory = _activeSignatory;
 
     if (widget.reportType.id == 'lactating_mothers_masterlist') {
       final motherRepo = MotherRepository();
@@ -173,7 +177,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   Future<void> _exportExcel() async {
     setState(() => _isExporting = true);
-    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+    final signatory = _activeSignatory;
     final childRepo = ChildRepository();
     final measurementRepo = MeasurementRepository();
 
@@ -356,6 +360,37 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                           style: AppTextStyles.h2.copyWith(
                             color: Colors.white,
                             fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            appPageRoute(const ReportSignatoriesScreen()),
+                          );
+                          setState(() {});
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.draw_outlined, color: Colors.white, size: 15),
+                              SizedBox(width: 4),
+                              Text(
+                                'Signatories',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -556,19 +591,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       year: _period.year,
     );
 
-    final signatory = ReportSignatoryRepository().get(_currentBarangay);
-    final sig1 = (signatory?.bnsName.isNotEmpty ?? false)
-        ? signatory!.bnsName
-        : 'LORNA D. TAPAR/ DAISY J. MALINAO';
-    final sig2 = (signatory?.punongBarangayName.isNotEmpty ?? false)
-        ? signatory!.punongBarangayName
-        : 'FELIX S. NAMBIO JR.';
-    final sig3 = (signatory?.mnaoAdminAideName.isNotEmpty ?? false)
-        ? signatory!.mnaoAdminAideName
-        : 'MA. THERESA F. LAUDIT';
-    final sig4 = (signatory?.dnpcName.isNotEmpty ?? false)
-        ? signatory!.dnpcName
-        : 'MAUREEN F. LEYCO';
+    final signatory = _activeSignatory;
+    final sig1 = signatory.bnsName;
+    final sig2 = signatory.punongBarangayName;
+    final sig3 = signatory.mnaoAdminAideName;
+    final sig4 = signatory.dnpcName;
 
     final is2459 = matrix.reportTypeId == 'consolidation_24_59';
 
@@ -672,7 +699,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   Widget _buildPreviewSigCol(String title, String name, String position) {
     return SizedBox(
-      width: 125,
+      width: 140,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -684,13 +711,18 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               color: AppColors.textMuted,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 12),
+          Container(
+            height: 1,
+            width: double.infinity,
+            color: Colors.black45,
+          ),
+          const SizedBox(height: 4),
           Text(
-            name,
+            name.isNotEmpty ? name.toUpperCase() : '',
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              decoration: TextDecoration.underline,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -699,12 +731,20 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           Text(
             position,
             style: const TextStyle(
-              fontSize: 9,
+              fontSize: 8.5,
               color: AppColors.textMuted,
             ),
             maxLines: 2,
             softWrap: true,
             overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Date: ___________',
+            style: TextStyle(
+              fontSize: 8,
+              color: AppColors.textMuted,
+            ),
           ),
         ],
       ),
@@ -724,7 +764,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   Widget _buildMonthly0to23Preview() {
     final childRepo = ChildRepository();
     final measurementRepo = MeasurementRepository();
-    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+    final signatory = _activeSignatory;
 
     final children = childRepo
         .getByBarangay(_currentBarangay)
@@ -859,7 +899,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         ],
       );
 
-      final bnsName = signatory?.bnsName.isNotEmpty == true ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+      final bnsName = signatory.bnsName;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1026,7 +1066,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   Widget _buildQuarterly24to59Preview() {
     final childRepo = ChildRepository();
     final measurementRepo = MeasurementRepository();
-    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+    final signatory = _activeSignatory;
 
     final children = childRepo.getByBarangay(_currentBarangay).where((c) => c.isActive).toList();
     final boys = children.where((c) => c.gender == 'Male').toList()
@@ -1034,7 +1074,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     final girls = children.where((c) => c.gender == 'Female').toList()
       ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
 
-    final bnsName = signatory?.bnsName.isNotEmpty == true ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
+    final bnsName = signatory.bnsName;
 
     final qMonths = [
       [1, 2, 3],
@@ -1364,10 +1404,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   }
 
   Widget _buildSignatoryFooter(ReportSignatory? signatory) {
-    final sig1 = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
-    final sig2 = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : 'FELIX S. NAMBIO JR.';
-    final sig3 = (signatory?.mnaoAdminAideName.isNotEmpty ?? false) ? signatory!.mnaoAdminAideName : 'MA. THERESA F. LAUDIT';
-    final sig4 = (signatory?.dnpcName.isNotEmpty ?? false) ? signatory!.dnpcName : 'MAUREEN F. LEYCO';
+    final sig1 = signatory?.bnsName ?? '';
+    final sig2 = signatory?.punongBarangayName ?? '';
+    final sig3 = signatory?.mnaoAdminAideName ?? '';
+    final sig4 = signatory?.dnpcName ?? '';
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -1388,7 +1428,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   Widget _buildGenericRecordPreview() {
     final data = _buildExcelData(widget.reportType.id);
-    final signatory = ReportSignatoryRepository().get(_currentBarangay);
+    final signatory = _activeSignatory;
 
     return Container(
       decoration: BoxDecoration(

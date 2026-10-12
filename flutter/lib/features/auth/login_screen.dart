@@ -75,6 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       await _settings.setAuthUser(userMap);
+      await _settings.refreshProfileFromServer();
 
       // ── Restore server data to local Hive ────────────────────────────────
       // This ensures data survives app reinstalls and account switches.

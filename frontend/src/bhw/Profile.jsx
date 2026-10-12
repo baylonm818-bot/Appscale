@@ -127,42 +127,84 @@ function Profile() {
     return () => { cancelled = true; };
   }, [profile?.profile_picture, profile?.user_id]);
 
+const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve(null);
+    if (!file.type || !file.type.startsWith('image/')) {
+      return reject(new Error('Selected file is not an image.'));
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read image file.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Failed to decode image data.'));
+      img.onload = () => {
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas context unavailable.'));
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
   const handleFieldSave = async (fieldName, value) => {
     const updated = { ...profile, [fieldName]: value };
     setProfileMsg(''); setProfileErr('');
     try {
-      await axiosClient.put(`/profile/${storedUser.user_id}`, {
+      const res = await axiosClient.put(`/profile/${storedUser.user_id}`, {
         first_name: updated.first_name, middle_initial: updated.middle_initial,
         last_name: updated.last_name, email: updated.email,
         contact_number: updated.contact_number, purok: updated.purok,
       });
-      setProfile(updated); updateUser(updated);
+      const returnedUser = res.data?.user || updated;
+      setProfile(returnedUser);
+      if (typeof updateUser === 'function') updateUser(returnedUser);
       setProfileMsg('Updated successfully.');
       setTimeout(() => setProfileMsg(''), 2500);
     } catch (err) { setProfileErr(err.response?.data?.message || 'Update failed.'); }
   };
 
   const handlePictureChange = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = '';
     setPicError('');
     setUploadingPic(true);
-    const localPreview = URL.createObjectURL(file);
-    setProfileImageSrc(localPreview);
 
-    const fd = new FormData();
-    fd.append('profile_picture', file);
     try {
-      const res = await axiosClient.post(`/profile/${storedUser.user_id}/picture`, fd, { headers: { 'Content-Type': undefined } });
-      const serverPath = res.data.profile_picture;
-      const resolved = serverPath ? getProfileImageUrl(serverPath) : serverPath;
-      const cacheBusted = resolved ? `${resolved}?t=${Date.now()}` : serverPath;
-      setProfile((prev) => ({ ...prev, profile_picture: cacheBusted }));
-      setProfileImageSrc(cacheBusted);
+      const base64Data = await resizeImageFile(file, 512, 0.82);
+      if (!base64Data) throw new Error('Could not process image.');
+      setProfileImageSrc(base64Data);
+
+      const res = await axiosClient.post(`/profile/${storedUser.user_id}/picture`, {
+        profile_picture: base64Data,
+      });
+      const savedPic = res.data?.profile_picture || base64Data;
+      const updatedUser = res.data?.user || { ...profile, profile_picture: savedPic };
+      setProfile(updatedUser);
+      setProfileImageSrc(savedPic);
       if (typeof updateAvatar === 'function') {
-        updateAvatar(cacheBusted);
-      } else if (typeof updateUser === 'function') {
-        updateUser({ profile_picture: cacheBusted });
+        updateAvatar(savedPic);
+      }
+      if (typeof updateUser === 'function') {
+        updateUser(updatedUser);
       }
     } catch {
       setPicError('Failed to upload profile picture.');

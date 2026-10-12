@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
@@ -105,6 +106,36 @@ class DashboardHeader extends StatelessWidget {
             ),
           ),
         );
+      }
+    }
+
+    if (trimmed.startsWith('data:')) {
+      try {
+        final commaIdx = trimmed.indexOf(',');
+        if (commaIdx != -1) {
+          final bytes = base64Decode(trimmed.substring(commaIdx + 1));
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              width: 36,
+              height: 36,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.white,
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    color: AppColors.darkGreen,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('[DashboardHeader] Base64 avatar decode error: $e');
       }
     }
 

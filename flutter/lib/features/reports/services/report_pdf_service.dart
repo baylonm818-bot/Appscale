@@ -117,8 +117,10 @@ class ReportPdfService {
     required ReportSignatory? signatory,
   }) async {
     final doc = pw.Document();
-    final bns = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
-    final pb = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : 'FELIX S. NAMBIO JR.';
+    final bns = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
+    final pb = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : '';
+    final bnsPos = (signatory?.bnsPosition.isNotEmpty ?? false) ? signatory!.bnsPosition : 'BARANGAY NUTRITION SCHOLAR';
+    final pbPos = (signatory?.punongBarangayPosition.isNotEmpty ?? false) ? signatory!.punongBarangayPosition : 'PUNONG BARANGAY';
 
     doc.addPage(
       pw.Page(
@@ -148,8 +150,8 @@ class ReportPdfService {
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                _sigCol('PREPARED BY:', bns, 'BARANGAY NUTRITION SCHOLAR'),
-                _sigCol('NOTED BY:', pb, 'PUNONG BARANGAY'),
+                _sigCol('PREPARED BY:', bns, bnsPos),
+                _sigCol('NOTED BY:', pb, pbPos),
               ],
             ),
           ],
@@ -175,13 +177,16 @@ class ReportPdfService {
     final doc = pw.Document();
     final bns = (signatory?.bnsName.isNotEmpty ?? false)
         ? signatory!.bnsName
-        : 'LORNA D. TAPAR/DAISY J. MALINAO';
+        : '';
     final pb = (signatory?.punongBarangayName.isNotEmpty ?? false)
         ? signatory!.punongBarangayName
-        : 'FELIX S. NAMBIO JR.';
-    final pbPosition = (signatory?.punongBarangayName.isNotEmpty ?? false)
-        ? 'Punong Barangay'
-        : 'Acting Punong Barangay';
+        : '';
+    final pbPosition = (signatory?.punongBarangayPosition.isNotEmpty ?? false)
+        ? signatory!.punongBarangayPosition
+        : 'Punong Barangay';
+    final bnsPosition = (signatory?.bnsPosition.isNotEmpty ?? false)
+        ? signatory!.bnsPosition
+        : 'Barangay Nutrition Scholar';
 
     final bagongPilipinas = await _loadAssetImage('assets/images/logos/bagong_pilipinas.png');
     final nnc = await _loadAssetImage('assets/images/logos/nnc.png');
@@ -241,32 +246,44 @@ class ReportPdfService {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               // Prepared by
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text('Prepared by;', style: const pw.TextStyle(fontSize: 10)),
-                  pw.SizedBox(height: 16),
-                  pw.Text(
-                    bns,
-                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold,
-                        decoration: pw.TextDecoration.underline),
-                  ),
-                  pw.Text('Barangay Nutrition Scholar', style: const pw.TextStyle(fontSize: 9)),
-                ],
+              pw.ConstrainedBox(
+                constraints: const pw.BoxConstraints(maxWidth: 200),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Prepared by:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 16),
+                    pw.Container(height: 0.5, width: 170, color: PdfColors.black),
+                    pw.SizedBox(height: 3),
+                    pw.Text(
+                      bns.isNotEmpty ? bns.toUpperCase() : '',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                    ),
+                    pw.Text(bnsPosition, style: const pw.TextStyle(fontSize: 9)),
+                    pw.SizedBox(height: 2),
+                    pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                  ],
+                ),
               ),
               // Noted by
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text('Noted by;', style: const pw.TextStyle(fontSize: 10)),
-                  pw.SizedBox(height: 16),
-                  pw.Text(
-                    pb,
-                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold,
-                        decoration: pw.TextDecoration.underline),
-                  ),
-                  pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 9)),
-                ],
+              pw.ConstrainedBox(
+                constraints: const pw.BoxConstraints(maxWidth: 200),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Noted by:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 16),
+                    pw.Container(height: 0.5, width: 170, color: PdfColors.black),
+                    pw.SizedBox(height: 3),
+                    pw.Text(
+                      pb.isNotEmpty ? pb.toUpperCase() : '',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                    ),
+                    pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 9)),
+                    pw.SizedBox(height: 2),
+                    pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                  ],
+                ),
               ),
             ],
           ),
@@ -292,13 +309,16 @@ class ReportPdfService {
     final doc = pw.Document();
     final bns = (signatory?.bnsName.isNotEmpty ?? false)
         ? signatory!.bnsName
-        : 'LORNA D. TAPAR/DAISY J. MALINAO';
+        : '';
     final pb = (signatory?.punongBarangayName.isNotEmpty ?? false)
         ? signatory!.punongBarangayName
-        : 'FELIX S. NAMBIO JR.';
-    final pbPosition = (signatory?.punongBarangayName.isNotEmpty ?? false)
-        ? 'Punong Barangay'
-        : 'Acting Punong Barangay';
+        : '';
+    final pbPosition = (signatory?.punongBarangayPosition.isNotEmpty ?? false)
+        ? signatory!.punongBarangayPosition
+        : 'Punong Barangay';
+    final bnsPosition = (signatory?.bnsPosition.isNotEmpty ?? false)
+        ? signatory!.bnsPosition
+        : 'Barangay Nutrition Scholar';
 
     final bagongPilipinas = await _loadAssetImage('assets/images/logos/bagong_pilipinas.png');
     final nnc = await _loadAssetImage('assets/images/logos/nnc.png');
@@ -357,37 +377,45 @@ class ReportPdfService {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text('Prepared by;', style: const pw.TextStyle(fontSize: 10)),
-                  pw.SizedBox(height: 16),
-                  pw.Text(
-                    bns,
-                    style: pw.TextStyle(
-                      fontSize: 10,
-                      fontWeight: pw.FontWeight.bold,
-                      decoration: pw.TextDecoration.underline,
+              // Prepared by
+              pw.ConstrainedBox(
+                constraints: const pw.BoxConstraints(maxWidth: 200),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Prepared by:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 16),
+                    pw.Container(height: 0.5, width: 170, color: PdfColors.black),
+                    pw.SizedBox(height: 3),
+                    pw.Text(
+                      bns.isNotEmpty ? bns.toUpperCase() : '',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
                     ),
-                  ),
-                  pw.Text('Barangay Nutrition Scholar', style: const pw.TextStyle(fontSize: 9)),
-                ],
+                    pw.Text(bnsPosition, style: const pw.TextStyle(fontSize: 9)),
+                    pw.SizedBox(height: 2),
+                    pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                  ],
+                ),
               ),
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text('Noted by;', style: const pw.TextStyle(fontSize: 10)),
-                  pw.SizedBox(height: 16),
-                  pw.Text(
-                    pb,
-                    style: pw.TextStyle(
-                      fontSize: 10,
-                      fontWeight: pw.FontWeight.bold,
-                      decoration: pw.TextDecoration.underline,
+              // Noted by
+              pw.ConstrainedBox(
+                constraints: const pw.BoxConstraints(maxWidth: 200),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Noted by:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 16),
+                    pw.Container(height: 0.5, width: 170, color: PdfColors.black),
+                    pw.SizedBox(height: 3),
+                    pw.Text(
+                      pb.isNotEmpty ? pb.toUpperCase() : '',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
                     ),
-                  ),
-                  pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 9)),
-                ],
+                    pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 9)),
+                    pw.SizedBox(height: 2),
+                    pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                  ],
+                ),
               ),
             ],
           ),
@@ -583,33 +611,52 @@ class ReportPdfService {
   }
 
   pw.Widget _buildFourSignatoryBlock(ReportSignatory? s) {
-    final bns = (s?.bnsName.isNotEmpty ?? false) ? s!.bnsName : 'LORNA D. TAPAR/ DAISY J. MALINAO';
-    final pb = (s?.punongBarangayName.isNotEmpty ?? false) ? s!.punongBarangayName : 'FELIX S. NAMBIO JR.';
-    final mnao = (s?.mnaoAdminAideName.isNotEmpty ?? false) ? s!.mnaoAdminAideName : 'MA. THERESA F. LAUDIT';
-    final dnpc = (s?.dnpcName.isNotEmpty ?? false) ? s!.dnpcName : 'MAUREEN F. LEYCO';
+    final bns = (s?.bnsName.isNotEmpty ?? false) ? s!.bnsName : '';
+    final pb = (s?.punongBarangayName.isNotEmpty ?? false) ? s!.punongBarangayName : '';
+    final mnao = (s?.mnaoAdminAideName.isNotEmpty ?? false) ? s!.mnaoAdminAideName : '';
+    final dnpc = (s?.dnpcName.isNotEmpty ?? false) ? s!.dnpcName : '';
+
+    final bnsPos = (s?.bnsPosition.isNotEmpty ?? false) ? s!.bnsPosition : 'BNS';
+    final pbPos = (s?.punongBarangayPosition.isNotEmpty ?? false) ? s!.punongBarangayPosition : 'PUNONG BARANGAY';
+    final mnaoPos = (s?.mnaoAdminAidePosition.isNotEmpty ?? false) ? s!.mnaoAdminAidePosition : 'ADMIN AIDE IV- MNAO OIC';
+    final dnpcPos = (s?.dnpcPosition.isNotEmpty ?? false) ? s!.dnpcPosition : 'DNPC';
 
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        _sigCol('SUBMITTED BY:', bns, 'BNS'),
-        _sigCol('NOTED BY:', pb, 'PUNONG BARANGAY'),
-        _sigCol('APPROVED BY:', mnao, 'ADMIN AIDE IV- MNAO OIC'),
-        _sigCol('APPROVED BY:', dnpc, 'DNPC'),
+        _sigCol('SUBMITTED BY:', bns, bnsPos),
+        _sigCol('NOTED BY:', pb, pbPos),
+        _sigCol('APPROVED BY:', mnao, mnaoPos),
+        _sigCol('APPROVED BY:', dnpc, dnpcPos),
       ],
     );
   }
 
   pw.Widget _sigCol(String title, String name, String role) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(title, style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 12),
-        pw.Text(name, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 2),
-        pw.Text(role, style: const pw.TextStyle(fontSize: 6.5)),
-      ],
+    return pw.ConstrainedBox(
+      constraints: const pw.BoxConstraints(maxWidth: 160),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(title, style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 14),
+          pw.Container(
+            height: 0.5,
+            width: 130,
+            color: PdfColors.black,
+          ),
+          pw.SizedBox(height: 2),
+          pw.Text(
+            name.isNotEmpty ? name.toUpperCase() : '',
+            style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 1),
+          pw.Text(role, style: const pw.TextStyle(fontSize: 6.5)),
+          pw.SizedBox(height: 1),
+          pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey700)),
+        ],
+      ),
     );
   }
 
@@ -642,37 +689,54 @@ class ReportPdfService {
   }
 
   pw.Widget _buildSignatureBlock(ReportSignatory s) {
+    final bnsPos = s.bnsPosition.isNotEmpty ? s.bnsPosition : 'Submitted by, BNS';
+    final pbPos = s.punongBarangayPosition.isNotEmpty ? s.punongBarangayPosition : 'Noted by, Punong Barangay';
+    final mnaoPos = s.mnaoAdminAidePosition.isNotEmpty ? s.mnaoAdminAidePosition : 'Approved by, Admin Aide, MNAO';
+    final dnpcPos = s.dnpcPosition.isNotEmpty ? s.dnpcPosition : 'Approved by, DNPC';
+
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        _sigLine(s.bnsName, 'Submitted by, BNS'),
-        pw.SizedBox(height: 10),
-        _sigLine(s.punongBarangayName, 'Noted by, Punong Barangay'),
-        pw.SizedBox(height: 10),
-        _sigLine(s.mnaoAdminAideName, 'Approved by, Admin Aide, MNAO'),
-        pw.SizedBox(height: 10),
-        _sigLine(s.dnpcName, 'Approved by, DNPC'),
+        _sigLine(s.bnsName, bnsPos),
+        pw.SizedBox(height: 12),
+        _sigLine(s.punongBarangayName, pbPos),
+        pw.SizedBox(height: 12),
+        _sigLine(s.mnaoAdminAideName, mnaoPos),
+        pw.SizedBox(height: 12),
+        _sigLine(s.dnpcName, dnpcPos),
       ],
     );
   }
 
   pw.Widget _sigLine(String name, String label) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(
-          name,
-          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.Container(
-          width: 200,
-          decoration: const pw.BoxDecoration(
-            border: pw.Border(top: pw.BorderSide(width: 0.5)),
+    return pw.ConstrainedBox(
+      constraints: const pw.BoxConstraints(maxWidth: 220),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(height: 10),
+          pw.Container(
+            width: 200,
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(top: pw.BorderSide(width: 0.5)),
+            ),
+            padding: const pw.EdgeInsets.only(top: 2),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  name.isNotEmpty ? name.toUpperCase() : '',
+                  style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                ),
+                pw.SizedBox(height: 1),
+                pw.Text(label, style: const pw.TextStyle(fontSize: 8)),
+                pw.SizedBox(height: 1),
+                pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
+              ],
+            ),
           ),
-          padding: const pw.EdgeInsets.only(top: 2),
-          child: pw.Text(label, style: const pw.TextStyle(fontSize: 8)),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
