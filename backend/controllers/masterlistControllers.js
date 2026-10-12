@@ -45,16 +45,35 @@ exports.getChildren = async (req, res) => {
            ELSE '24-59'
          END AS age_group,
          c.guardian_name, c.barangay, c.status,
-         nr.weight_kg, nr.height_cm, nr.overall_status, nr.record_date AS last_visit
+         nr.weight_kg, nr.height_cm,
+         CASE
+           WHEN nr.overall_status IN ('SAM', 'sam') THEN 'SAM'
+           WHEN nr.weight_status IN ('severely_underweight', 'severly_underweight') THEN 'severely_underweight'
+           WHEN nr.height_status IN ('severely_stunted', 'severly_stunted') THEN 'severely_stunted'
+           WHEN nr.overall_status IN ('MAM', 'mam') THEN 'MAM'
+           WHEN nr.height_status = 'stunted' THEN 'stunted'
+           WHEN nr.weight_status = 'underweight' THEN 'underweight'
+           WHEN nr.weight_status = 'obese' OR nr.overall_status = 'obese' THEN 'obese'
+           WHEN nr.weight_status = 'overweight' OR nr.overall_status = 'overweight' THEN 'overweight'
+           WHEN nr.record_id IS NULL THEN 'no_record'
+           ELSE 'normal'
+         END AS overall_status,
+         nr.weight_status, nr.height_status,
+         nr.record_date AS last_visit
        FROM children c
        LEFT JOIN (
          SELECT nr1.*
          FROM nutrition_records nr1
          INNER JOIN (
-           SELECT child_id, MAX(record_id) AS max_id
-           FROM nutrition_records
+           SELECT child_id, MAX(record_id) AS latest_id
+           FROM nutrition_records nr_inner
+           INNER JOIN (
+             SELECT child_id AS cid, MAX(record_date) AS max_date
+             FROM nutrition_records
+             GROUP BY child_id
+           ) m ON nr_inner.child_id = m.cid AND nr_inner.record_date = m.max_date
            GROUP BY child_id
-         ) nr2 ON nr1.record_id = nr2.max_id
+         ) latest ON nr1.record_id = latest.latest_id
        ) nr ON nr.child_id = c.child_id
        WHERE ${whereClause}
        ORDER BY c.first_name ASC`, params

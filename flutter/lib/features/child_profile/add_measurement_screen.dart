@@ -67,7 +67,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     return history.isNotEmpty ? history.first : null;
   }
 
-  bool get _isMuacEligible => widget.child.ageInMonths >= 6;
+  int get _assessmentAgeMonths => widget.child.ageInMonthsAt(_monthYear);
+  bool get _isMuacEligible => _assessmentAgeMonths >= 6;
 
   @override
   void initState() {
@@ -135,7 +136,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       });
       return;
     }
-    final res = MeasurementValidator.checkWeight(w, widget.child.ageInMonths);
+    final res = MeasurementValidator.checkWeight(w, _assessmentAgeMonths);
     setState(() {
       _weightValidation = res;
     });
@@ -161,7 +162,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     }
     final res = MeasurementValidator.checkHeight(
       h,
-      widget.child.ageInMonths,
+      _assessmentAgeMonths,
       previousHeightCm: _previousEntry?.heightCm,
     );
     setState(() {
@@ -186,7 +187,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       });
       return;
     }
-    final res = MeasurementValidator.checkMuac(m, widget.child.ageInMonths);
+    final res = MeasurementValidator.checkMuac(m, _assessmentAgeMonths);
     setState(() => _muacValidation = res);
   }
 
@@ -199,12 +200,12 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
     final weightStatus = GrowthClassifier.classifyWeightForAge(
       weightKg: w,
-      ageMonths: widget.child.ageInMonths,
+      ageMonths: _assessmentAgeMonths,
       gender: widget.child.gender,
     );
     final heightStatus = GrowthClassifier.classifyHeightForAge(
       heightCm: h,
-      ageMonths: widget.child.ageInMonths,
+      ageMonths: _assessmentAgeMonths,
       gender: widget.child.gender,
     );
     final wastingStatus = GrowthClassifier.classifyWeightForLength(
@@ -247,7 +248,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             severity: ValidationSeverity.error,
             message: 'Weight is required.',
           )
-        : MeasurementValidator.checkWeight(rawW, widget.child.ageInMonths);
+        : MeasurementValidator.checkWeight(rawW, _assessmentAgeMonths);
 
     final heightRes = rawH == null
         ? const ValidationResult(
@@ -256,7 +257,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
           )
         : MeasurementValidator.checkHeight(
             rawH,
-            widget.child.ageInMonths,
+            _assessmentAgeMonths,
             previousHeightCm: _previousEntry?.heightCm,
           );
 
@@ -266,7 +267,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                 severity: ValidationSeverity.error,
                 message: 'MUAC is required for children 6 months and older.',
               )
-            : MeasurementValidator.checkMuac(rawM, widget.child.ageInMonths))
+            : MeasurementValidator.checkMuac(rawM, _assessmentAgeMonths))
         : const ValidationResult();
 
     setState(() {
@@ -299,7 +300,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
         weight: rawW,
         height: rawH,
         muac: rawM,
-        ageMonths: widget.child.ageInMonths,
+        ageMonths: _assessmentAgeMonths,
         previousHeightCm: _previousEntry?.heightCm,
       );
       if (plausibilityErr != null) {
@@ -431,12 +432,12 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
     final weightStatus = GrowthClassifier.classifyWeightForAge(
       weightKg: w,
-      ageMonths: widget.child.ageInMonths,
+      ageMonths: _assessmentAgeMonths,
       gender: widget.child.gender,
     );
     final heightStatus = GrowthClassifier.classifyHeightForAge(
       heightCm: h,
-      ageMonths: widget.child.ageInMonths,
+      ageMonths: _assessmentAgeMonths,
       gender: widget.child.gender,
     );
     final wastingStatus = GrowthClassifier.classifyWeightForLength(

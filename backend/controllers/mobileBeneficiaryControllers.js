@@ -19,10 +19,13 @@ function normalizeNutritionStatus(value) {
   const normalized = raw.toLowerCase().replace(/\s+/g, '_');
   const aliases = {
     'severely_underweight': 'severely_underweight',
+    'severly_underweight': 'severely_underweight',
     'underweight': 'underweight',
     'normal': 'normal',
     'severely_stunted': 'severely_stunted',
+    'severly_stunted': 'severely_stunted',
     'stunted': 'stunted',
+    'tall': 'normal',
     'obese': 'obese',
     'overweight': 'overweight',
     'sam': 'SAM',
