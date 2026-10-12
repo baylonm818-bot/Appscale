@@ -2,11 +2,11 @@ const pool = require('../config/db');
 
 exports.getAdminStats = async (req, res) => {
   try {
-    const range = req.query.range || '3M';
+    const range = req.query.range || '3Months';
     let rangeFilter = '1=1';
-    if (range === '3M') rangeFilter = 'nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)';
-    else if (range === '6M') rangeFilter = 'nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)';
-    else if (range === '1Y') rangeFilter = 'nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)';
+    if (range === '3Months') rangeFilter = 'nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)';
+    else if (range === '6Months') rangeFilter = 'nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)';
+    else if (range === '1Year') rangeFilter = 'nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)';
 
     // Helper to verify a column exists in the current active DB
     const hasColumn = async (table, column) => {
