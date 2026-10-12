@@ -15,7 +15,6 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown,
 } from 'lucide-react';
 
 const menuItems = [
@@ -361,7 +360,7 @@ function AdminLayout() {
                 aria-label="Open profile menu"
                 aria-expanded={isProfileMenuOpen}
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className="flex items-center gap-2.5 rounded-full py-1 px-1.5 sm:pr-3 transition hover:bg-green-50 focus:outline-none border border-transparent hover:border-green-100"
+                className="flex items-center justify-center rounded-full p-0.5 transition hover:ring-2 hover:ring-green-400 focus:outline-none focus:ring-2 focus:ring-[#1b5e20]"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-sm font-bold text-white shadow-sm ring-2 ring-green-100">
                   {user?.profile_picture ? (
@@ -383,15 +382,6 @@ function AdminLayout() {
                     <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">{getUserInitials(user)}</div>
                   )}
                 </span>
-                <div className="hidden sm:flex flex-col text-left">
-                  <span className="text-xs font-bold text-gray-800 leading-tight truncate max-w-[140px]">
-                    {user?.full_name || user?.username || "Admin"}
-                  </span>
-                  <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">
-                    {user?.role || "Administrator"}
-                  </span>
-                </div>
-                <ChevronDown size={14} className="text-gray-400 hidden sm:block ml-0.5" />
               </button>
 
               {isProfileMenuOpen && (

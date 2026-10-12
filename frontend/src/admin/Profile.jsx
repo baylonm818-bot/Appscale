@@ -92,6 +92,53 @@ const TABS = [
 
 const inputCls = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition";
 
+/* ── Client-side image compressor for avatar uploads ── */
+const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve(null);
+    if (!file.type || !file.type.startsWith('image/')) {
+      return reject(new Error('Selected file is not an image.'));
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read image file.'));
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Failed to load image for processing.'));
+      img.onload = () => {
+        try {
+          let { width, height } = img;
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, width);
+          canvas.height = Math.max(1, height);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            return resolve(event.target.result);
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        } catch {
+          resolve(event.target.result);
+        }
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
 /* ══════════════════════════════════════════════════════════ */
 function Profile() {
   const storedUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
@@ -206,47 +253,48 @@ function Profile() {
   };
 
   const handlePictureChange = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
+    // Reset file input so selecting the same file again triggers onChange
+    e.target.value = '';
+
     setPicError('');
     setProfileMsg('');
     setUploadingPic(true);
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64Data = reader.result;
+    try {
+      // Compress image client-side to keep size small (~40KB), avoiding any payload limits
+      const base64Data = await resizeImageFile(file, 512, 0.82);
+      if (!base64Data) {
+        throw new Error('Could not process selected image.');
+      }
       setProfileImageSrc(base64Data);
 
-      try {
-        const targetId = profile?.user_id || 'me';
-        const res = await axiosClient.post(`/profile/${targetId}/picture`, {
-          profile_picture: base64Data,
-        });
-        const savedPic = res.data.profile_picture || base64Data;
-        const updatedUser = res.data.user || { ...profile, profile_picture: savedPic };
-        setProfile(updatedUser);
-        setProfileImageSrc(savedPic);
-        if (typeof updateAvatar === 'function') {
-          updateAvatar(savedPic);
-        }
-        if (typeof updateUser === 'function') {
-          updateUser(updatedUser);
-        }
-        setProfileMsg('Profile picture updated successfully.');
-        setTimeout(() => setProfileMsg(''), 4000);
-      } catch (err) {
-        setPicError(err.response?.data?.message || 'Failed to upload profile picture.');
-        setTimeout(() => setPicError(''), 5000);
-      } finally {
-        setUploadingPic(false);
+      const targetId = profile?.user_id || 'me';
+      const res = await axiosClient.post(`/profile/${targetId}/picture`, {
+        profile_picture: base64Data,
+      });
+
+      const savedPic = res.data?.profile_picture || base64Data;
+      const updatedUser = res.data?.user || { ...profile, profile_picture: savedPic };
+      setProfile(updatedUser);
+      setProfileImageSrc(savedPic);
+      if (typeof updateAvatar === 'function') {
+        updateAvatar(savedPic);
       }
-    };
-    reader.onerror = () => {
-      setPicError('Failed to read image file.');
+      if (typeof updateUser === 'function') {
+        updateUser(updatedUser);
+      }
+      setProfileMsg('Profile picture updated successfully.');
+      setTimeout(() => setProfileMsg(''), 4000);
+    } catch (err) {
+      console.error('Upload profile picture error:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to upload profile picture. Please try again.';
+      setPicError(msg);
       setTimeout(() => setPicError(''), 5000);
+    } finally {
       setUploadingPic(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handlePasswordChange = (e) => setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
