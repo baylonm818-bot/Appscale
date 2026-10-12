@@ -183,7 +183,7 @@ class BeneficiaryApi {
         message: 'Session expired. Please log in again.',
       );
     }
-    return _post('/mobile/program-enrollments', {
+    final payload = {
       'program_type': 'feeding',
       'beneficiary_type': 'child',
       'child_external_id': childId,
@@ -191,9 +191,12 @@ class BeneficiaryApi {
       'barangay': barangay,
       'status': isEnrolled ? 'enrolled' : 'unenrolled',
       'enrolled_at': DateTime.now().toIso8601String(),
-      if (!isEnrolled && unenrollReason != null) 'unenroll_reason': unenrollReason,
-      if (notes != null) 'notes': notes,
-    }, token);
+      if (!isEnrolled) 'unenroll_reason': unenrollReason,
+    };
+    if (notes != null) {
+      payload['notes'] = notes;
+    }
+    return _post('/mobile/program-enrollments', payload, token);
   }
 
   static Future<ApiResponse> syncMealPlan(MealPlan plan) async {

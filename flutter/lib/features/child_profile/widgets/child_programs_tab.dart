@@ -511,7 +511,7 @@ class ChildProgramsTab extends StatelessWidget {
               : ListView.separated(
                   shrinkWrap: true,
                   itemCount: history.length,
-                  separatorBuilder: (_, __) => const Divider(height: 16),
+                  separatorBuilder: (_, _) => const Divider(height: 16),
                   itemBuilder: (context, idx) {
                     final item = history[idx];
                     final action = item['action']?.toString() ?? 'enrolled';
