@@ -362,14 +362,14 @@ function NeedAttention() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed min-w-175">
+          <table className="w-full text-sm table-fixed min-w-[800px]">
             <colgroup>
-              <col className="w-[23%]" />
-              <col className="w-[9%]" />
-              <col className="w-[13%]" />
-              <col className="w-[16%]" />
+              <col className="w-[24%]" />
+              <col className="w-[8%]" />
+              <col className="w-[12%]" />
+              <col className="w-[18%]" />
               <col className="w-[14%]" />
-              <col className="w-[25%]" />
+              <col className="w-[24%]" />
             </colgroup>
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80 border-b border-gray-100">
@@ -414,7 +414,10 @@ function NeedAttention() {
                         <p className="text-gray-400">{c.height_cm ? `${c.height_cm} cm` : '—'}</p>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase whitespace-nowrap inline-block ${statusColors[c.overall_status] || 'bg-gray-100 text-gray-700'}`}>
+                        <span
+                          style={{ overflowWrap: 'normal', wordBreak: 'keep-all', whiteSpace: 'nowrap' }}
+                          className={`px-3 py-1 rounded-full text-xs font-bold uppercase whitespace-nowrap inline-block shrink-0 ${statusColors[c.overall_status] || 'bg-gray-100 text-gray-700'}`}
+                        >
                           {c.overall_status || 'At Risk'}
                         </span>
                       </td>
