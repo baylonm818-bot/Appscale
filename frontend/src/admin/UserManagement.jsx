@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { Users, Archive, Plus, Search, Shield, Lock, Unlock, X, ChevronDown } from 'lucide-react';
+import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
 const GASAN_BARANGAYS = [
   'Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang',
@@ -133,11 +134,14 @@ function UserManagement() {
     fetchData();
   }, []);
 
+  const [fieldErrors, setFieldErrors] = useState({});
+
   const openAddModal = (role = 'bhw') => {
     setEditingUser(null);
     setViewOnly(false);
     setForm({ ...emptyForm, role });
     setFormError('');
+    setFieldErrors({});
     setShowModal(true);
   };
 
@@ -158,6 +162,7 @@ function UserManagement() {
       contact_number: u.contact_number || '',
     });
     setFormError('');
+    setFieldErrors({});
     setShowModal(true);
   };
 
@@ -179,6 +184,12 @@ function UserManagement() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const processedValue = name === 'contact_number' ? sanitizeContact(value) : value;
+
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+
     if (name === 'barangay') {
       const normalizedBarangay = (value || '').trim().toLowerCase();
       const bnsTaken = !!value && users.some((u) =>
@@ -206,12 +217,38 @@ function UserManagement() {
       setForm((prev) => ({ ...prev, barangay: value, role: nextRole }));
       return;
     }
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: processedValue }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
+
+    const errs = {};
+    if (!form.first_name?.trim()) errs.first_name = 'This field is required';
+    if (!form.last_name?.trim()) errs.last_name = 'This field is required';
+    if (!form.email?.trim()) errs.email = 'This field is required';
+    if (!editingUser && !form.password?.trim()) errs.password = 'This field is required';
+    if (!form.barangay) errs.barangay = 'This field is required';
+    if (form.contact_number && form.contact_number.trim()) {
+      const contactErr = validateContact(form.contact_number, false);
+      if (contactErr) errs.contact_number = contactErr;
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      const firstInvalidKey = Object.keys(errs)[0];
+      setTimeout(() => {
+        const el = document.querySelector(`[name="${firstInvalidKey}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.focus();
+        }
+      }, 50);
+      return;
+    }
+
+    setFieldErrors({});
     setSaving(true);
     try {
       if (form.role === 'bns' && isBnsTaken) {
@@ -229,11 +266,6 @@ function UserManagement() {
       if (editingUser) {
         await axiosClient.put(`/users/${editingUser.user_id}`, form);
       } else {
-        if (!form.password) {
-          setFormError('Password is required for new users.');
-          setSaving(false);
-          return;
-        }
         await axiosClient.post('/users', form);
       }
       setShowModal(false);
@@ -559,10 +591,12 @@ function UserManagement() {
                 </div>
               )}
 
-              <form id="userForm" onSubmit={handleSubmit} className="space-y-3.5">
+              {!viewOnly && <FormRequiredNote />}
+
+              <form id="userForm" onSubmit={handleSubmit} noValidate className="space-y-3.5">
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Role *</label>
+                  <FormLabel label="Role" required />
                   <select
                     name="role"
                     value={form.role}
@@ -601,38 +635,72 @@ function UserManagement() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">First Name *</label>
-                    <input name="first_name" placeholder="First Name" value={form.first_name} onChange={handleChange} disabled={viewOnly} required className={inputCls} />
+                    <FormLabel label="First Name" required />
+                    <input
+                      name="first_name"
+                      placeholder="First Name"
+                      value={form.first_name}
+                      onChange={handleChange}
+                      disabled={viewOnly}
+                      className={`${inputCls} ${fieldErrors.first_name ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F] focus:ring-[#D32F2F]' : ''}`}
+                    />
+                    {fieldErrors.first_name && <p className="text-xs text-[#D32F2F] mt-1">{fieldErrors.first_name}</p>}
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Last Name *</label>
-                    <input name="last_name" placeholder="Last Name" value={form.last_name} onChange={handleChange} disabled={viewOnly} required className={inputCls} />
+                    <FormLabel label="Last Name" required />
+                    <input
+                      name="last_name"
+                      placeholder="Last Name"
+                      value={form.last_name}
+                      onChange={handleChange}
+                      disabled={viewOnly}
+                      className={`${inputCls} ${fieldErrors.last_name ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F] focus:ring-[#D32F2F]' : ''}`}
+                    />
+                    {fieldErrors.last_name && <p className="text-xs text-[#D32F2F] mt-1">{fieldErrors.last_name}</p>}
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Middle Initial</label>
-                  <input name="middle_initial" placeholder="e.g. M" value={form.middle_initial} onChange={handleChange} disabled={viewOnly} className={inputCls} />
+                  <FormLabel label="Middle Initial" />
+                  <input
+                    name="middle_initial"
+                    placeholder="e.g. M"
+                    value={form.middle_initial}
+                    onChange={handleChange}
+                    disabled={viewOnly}
+                    className={inputCls}
+                  />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Email Address *</label>
-                  <input name="email" type="email" placeholder="email@address.com" value={form.email} onChange={handleChange} disabled={viewOnly} required className={inputCls} />
+                  <FormLabel label="Email Address" required />
+                  <input
+                    name="email"
+                    type="email"
+                    placeholder="email@address.com"
+                    value={form.email}
+                    onChange={handleChange}
+                    disabled={viewOnly}
+                    className={`${inputCls} ${fieldErrors.email ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F] focus:ring-[#D32F2F]' : ''}`}
+                  />
+                  {fieldErrors.email && <p className="text-xs text-[#D32F2F] mt-1">{fieldErrors.email}</p>}
                 </div>
 
                 {!viewOnly && (
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
-                      {editingUser ? 'Reset Password (leave blank to keep current)' : 'Password *'}
-                    </label>
+                    <FormLabel
+                      label={editingUser ? 'Reset Password (leave blank to keep current)' : 'Password'}
+                      required={!editingUser}
+                    />
                     <input
                       name="password"
                       type="password"
                       placeholder={editingUser ? 'Enter new password only' : '••••••••'}
                       value={form.password}
                       onChange={handleChange}
-                      className={inputCls}
+                      className={`${inputCls} ${fieldErrors.password ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F] focus:ring-[#D32F2F]' : ''}`}
                     />
+                    {fieldErrors.password && <p className="text-xs text-[#D32F2F] mt-1">{fieldErrors.password}</p>}
                     {editingUser && (
                       <p className="mt-1 text-[10px] text-gray-500">The current password is not shown and cannot be viewed.</p>
                     )}
@@ -641,26 +709,44 @@ function UserManagement() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Municipality</label>
-                    <input name="municipality" value={form.municipality} onChange={handleChange} disabled={viewOnly} required className={inputCls} />
+                    <FormLabel label="Municipality" />
+                    <input name="municipality" value={form.municipality} onChange={handleChange} disabled={viewOnly} className={inputCls} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Barangay *</label>
-                    <select name="barangay" value={form.barangay} onChange={handleChange} disabled={viewOnly} required className={inputCls}>
+                    <FormLabel label="Barangay" required />
+                    <select
+                      name="barangay"
+                      value={form.barangay}
+                      onChange={handleChange}
+                      disabled={viewOnly}
+                      className={`${inputCls} ${fieldErrors.barangay ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F] focus:ring-[#D32F2F]' : ''}`}
+                    >
                       <option value="">Select Barangay</option>
                       {GASAN_BARANGAYS.map((b) => <option key={b} value={b}>{b}</option>)}
                     </select>
+                    {fieldErrors.barangay && <p className="text-xs text-[#D32F2F] mt-1">{fieldErrors.barangay}</p>}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Purok</label>
+                    <FormLabel label="Purok" />
                     <input name="purok" placeholder="Purok" value={form.purok} onChange={handleChange} disabled={viewOnly} className={inputCls} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Contact Number</label>
-                    <input name="contact_number" placeholder="09xxxxxxxxx" value={form.contact_number} onChange={handleChange} disabled={viewOnly} className={inputCls} />
+                    <FormLabel label="Contact Number" />
+                    <input
+                      name="contact_number"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={11}
+                      placeholder="09xxxxxxxxx"
+                      value={form.contact_number}
+                      onChange={handleChange}
+                      disabled={viewOnly}
+                      className={`${inputCls} ${fieldErrors.contact_number ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F] focus:ring-[#D32F2F]' : ''}`}
+                    />
+                    {fieldErrors.contact_number && <p className="text-xs text-[#D32F2F] mt-1">{fieldErrors.contact_number}</p>}
                   </div>
                 </div>
 

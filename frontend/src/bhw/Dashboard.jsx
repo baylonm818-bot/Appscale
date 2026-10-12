@@ -90,8 +90,8 @@ function Dashboard() {
     return (
       <div className="space-y-6">
         <div className="h-36 rounded-2xl bg-gray-200 animate-pulse" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="h-28 rounded-2xl bg-white p-5 shadow-sm border border-gray-100 animate-pulse flex flex-col justify-between">
               <div className="h-4 bg-gray-200 rounded w-1/2" />
               <div className="h-7 bg-gray-200 rounded w-1/3" />
@@ -135,8 +135,8 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* ── 4 Stat Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── 5 Stat Cards ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           icon={Users}
           label="Total Children"
@@ -166,6 +166,14 @@ function Dashboard() {
           sublabel="Low BMI / Underweight"
           to="/bhw/need-attention"
           accent="red"
+        />
+        <StatCard
+          icon={AlertCircle}
+          label="Pending Referrals"
+          value={s.pendingReferrals}
+          sublabel="Awaiting BHW action"
+          to="/bhw/referrals?status=Pending"
+          accent="amber"
         />
       </div>
 

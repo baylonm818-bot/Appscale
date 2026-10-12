@@ -3,22 +3,45 @@ import axiosClient from '../api/axiosClient';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import { useAuth } from '../components/AuthContext';
 import { Camera, Lock, Bell, ShieldCheck, User, ChevronRight } from 'lucide-react';
+import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
 /* ── Inline-edit field row ── */
 function ProfileInfoRow({ label, value, name, onSave }) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value || '');
   const [saving, setSaving] = useState(false);
+  const [errorText, setErrorText] = useState('');
 
-  useEffect(() => { setTempValue(value || ''); }, [value]);
+  useEffect(() => {
+    setTempValue(value || '');
+    setErrorText('');
+  }, [value, isEditing]);
 
   const handleSave = async () => {
+    if (name === 'contact_number' && tempValue.trim()) {
+      const err = validateContact(tempValue, false);
+      if (err) {
+        setErrorText(err);
+        return;
+      }
+    }
+    setErrorText('');
     setSaving(true);
-    const success = await onSave(name, tempValue);
+    const success = await onSave(name, tempValue.trim());
     setSaving(false);
     if (success !== false) {
       setIsEditing(false);
     }
+  };
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    if (name === 'contact_number') {
+      setTempValue(sanitizeContact(val));
+    } else {
+      setTempValue(val);
+    }
+    if (errorText) setErrorText('');
   };
 
   return (
@@ -26,17 +49,26 @@ function ProfileInfoRow({ label, value, name, onSave }) {
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
         {isEditing ? (
-          <input
-            autoFocus
-            disabled={saving}
-            value={tempValue}
-            onChange={(e) => setTempValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSave();
-              if (e.key === 'Escape') { setIsEditing(false); setTempValue(value || ''); }
-            }}
-            className="border border-[#2e7d32] rounded-xl px-3 py-1.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-green-100 transition disabled:bg-gray-50"
-          />
+          <div>
+            <input
+              autoFocus
+              disabled={saving}
+              type={name === 'contact_number' ? 'tel' : 'text'}
+              inputMode={name === 'contact_number' ? 'numeric' : undefined}
+              maxLength={name === 'contact_number' ? 11 : undefined}
+              placeholder={name === 'contact_number' ? '09xxxxxxxxx' : undefined}
+              value={tempValue}
+              onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave();
+                if (e.key === 'Escape') { setIsEditing(false); setTempValue(value || ''); setErrorText(''); }
+              }}
+              className={`border rounded-xl px-3 py-1.5 text-sm w-full focus:outline-none transition disabled:bg-gray-50 ${
+                errorText ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-[#2e7d32] focus:ring-2 focus:ring-green-100'
+              }`}
+            />
+            {errorText && <p className="text-xs text-[#D32F2F] mt-1">{errorText}</p>}
+          </div>
         ) : (
           <p className="text-sm font-semibold text-gray-800 truncate">{value || <span className="text-gray-400 font-normal">—</span>}</p>
         )}
@@ -52,7 +84,7 @@ function ProfileInfoRow({ label, value, name, onSave }) {
               {saving ? 'Saving…' : 'Save'}
             </button>
             <button
-              onClick={() => { setIsEditing(false); setTempValue(value || ''); }}
+              onClick={() => { setIsEditing(false); setTempValue(value || ''); setErrorText(''); }}
               disabled={saving}
               className="text-xs font-semibold text-gray-400 hover:text-gray-600 px-2 py-1.5 rounded-lg transition"
             >
@@ -297,16 +329,31 @@ function Profile() {
     }
   };
 
-  const handlePasswordChange = (e) => setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
+  const [passwordErrors, setPasswordErrors] = useState({});
+
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordForm({ ...passwordForm, [name]: value });
+    if (passwordErrors[name]) {
+      setPasswordErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
 
   const submitPassword = async (e) => {
     e.preventDefault();
     setPasswordMsg('');
     setPasswordErr('');
-    if (!passwordForm.current_password || !passwordForm.new_password) {
-      setPasswordErr('Please fill in all password fields.');
+
+    const errs = {};
+    if (!passwordForm.current_password) errs.current_password = 'This field is required';
+    if (!passwordForm.new_password) errs.new_password = 'This field is required';
+    if (!passwordForm.confirm_password) errs.confirm_password = 'This field is required';
+
+    if (Object.keys(errs).length > 0) {
+      setPasswordErrors(errs);
       return;
     }
+
     if (passwordForm.new_password.length < 8) {
       setPasswordErr('New password must be at least 8 characters long.');
       return;
@@ -315,6 +362,8 @@ function Profile() {
       setPasswordErr('New passwords do not match.');
       return;
     }
+
+    setPasswordErrors({});
     setSavingPassword(true);
     try {
       const targetId = profile?.user_id || 'me';
@@ -477,15 +526,23 @@ function Profile() {
             </div>
             {passwordMsg && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">{passwordMsg}</div>}
             {passwordErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">{passwordErr}</div>}
-            <form onSubmit={submitPassword} className="space-y-4">
+            <form onSubmit={submitPassword} noValidate className="space-y-4">
+              <FormRequiredNote />
               {[
                 { name: 'current_password', label: 'Current Password' },
                 { name: 'new_password',     label: 'New Password'     },
                 { name: 'confirm_password', label: 'Confirm New Password' },
               ].map(({ name, label }) => (
                 <div key={name}>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">{label}</label>
-                  <input name={name} type="password" value={passwordForm[name]} onChange={handlePasswordChange} required className={inputCls} />
+                  <FormLabel label={label} required />
+                  <input
+                    name={name}
+                    type="password"
+                    value={passwordForm[name]}
+                    onChange={handlePasswordChange}
+                    className={`${inputCls} ${passwordErrors[name] ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+                  />
+                  {passwordErrors[name] && <p className="text-xs text-[#D32F2F] mt-1">{passwordErrors[name]}</p>}
                 </div>
               ))}
               <button type="submit" disabled={savingPassword}

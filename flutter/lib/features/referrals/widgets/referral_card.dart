@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../data/local/child_repository.dart';
-import '../../../data/local/mother_repository.dart';
 import '../../../data/models/referral.dart';
 import 'referral_detail_sheet.dart';
 
@@ -17,6 +15,9 @@ class ReferralCard extends StatelessWidget {
   });
 
   Color get _statusColor {
+    if (referral.isArchived) {
+      return const Color(0xFF475569);
+    }
     final s = referral.statusDisplay;
     switch (s) {
       case 'Pending':
@@ -37,22 +38,7 @@ class ReferralCard extends StatelessWidget {
       referral.beneficiaryType.toLowerCase() == 'mother' ||
       referral.beneficiaryType.toLowerCase() == 'lactating_mother';
 
-  String get _displayName {
-    if (referral.beneficiaryName.trim().isNotEmpty) {
-      return referral.beneficiaryName.trim();
-    }
-    // Fallback: lookup in MotherRepository
-    final mother = MotherRepository().getById(referral.beneficiaryId);
-    if (mother != null && mother.fullName.trim().isNotEmpty) {
-      return mother.fullName.trim();
-    }
-    // Fallback: lookup in ChildRepository
-    final child = ChildRepository().getById(referral.beneficiaryId);
-    if (child != null && child.fullName.trim().isNotEmpty) {
-      return child.fullName.trim();
-    }
-    return referral.beneficiaryType == 'mother' ? 'Mother' : 'Child Beneficiary';
-  }
+  String get _displayName => referral.resolvedBeneficiaryName;
 
   String get _facilityDisplay {
     final f = referral.facility.trim();
@@ -162,7 +148,10 @@ class ReferralCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (isCompleted) ...[
+                          if (referral.isArchived) ...[
+                            Icon(Icons.archive_outlined, size: 12, color: statusColor),
+                            const SizedBox(width: 4),
+                          ] else if (isCompleted) ...[
                             Icon(Icons.check_circle, size: 12, color: statusColor),
                             const SizedBox(width: 4),
                           ] else ...[
@@ -177,7 +166,7 @@ class ReferralCard extends StatelessWidget {
                             const SizedBox(width: 5),
                           ],
                           Text(
-                            referral.statusDisplay,
+                            referral.isArchived ? 'Archived' : referral.statusDisplay,
                             style: TextStyle(
                               color: statusColor,
                               fontSize: 11,

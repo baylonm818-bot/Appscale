@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
+import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
 
 /* ── Helpers ── */
 const statusLabels = { pending: 'Scheduled', done: 'Completed', cancelled: 'Cancelled', archived: 'Archived', missed: 'Missed' };
@@ -144,6 +145,7 @@ function Schedule() {
   const [showModal, setShowModal]     = useState(false);
   const [form, setForm]               = useState(emptyForm);
   const [formError, setFormError]     = useState('');
+  const [schedErrors, setSchedErrors] = useState({});
   const [saving, setSaving]           = useState(false);
   const [users, setUsers]             = useState([]);
 
@@ -167,16 +169,47 @@ function Schedule() {
     catch { alert('Failed to update schedule.'); }
   };
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    if (schedErrors[name]) {
+      setSchedErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
 
   const handleRecipientChange = (e) => {
     setForm({ ...form, recipient_type: e.target.value,
       barangay: e.target.value === 'all' ? 'All Barangays' : '',
       assigned_to: '', target_role: '' });
+    setSchedErrors((prev) => ({ ...prev, barangay: '', target_role: '', assigned_to: '' }));
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); setFormError(''); setSaving(true);
+    e.preventDefault();
+    setFormError('');
+
+    const errs = {};
+    if (!form.title?.trim()) errs.title = 'This field is required';
+    if (!form.schedule_date) errs.schedule_date = 'This field is required';
+    if (form.recipient_type === 'barangay' && !form.barangay) errs.barangay = 'This field is required';
+    if (form.recipient_type === 'role' && !form.target_role) errs.target_role = 'This field is required';
+    if (form.recipient_type === 'user' && !form.assigned_to) errs.assigned_to = 'This field is required';
+
+    if (Object.keys(errs).length > 0) {
+      setSchedErrors(errs);
+      const firstInvalid = Object.keys(errs)[0];
+      setTimeout(() => {
+        const el = document.querySelector(`[name="${firstInvalid}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.focus();
+        }
+      }, 50);
+      return;
+    }
+
+    setSchedErrors({});
+    setSaving(true);
     try {
       const { recipient_type, ...schedule } = form;
       if (recipient_type === 'all')      { schedule.barangay = 'All Barangays'; schedule.assigned_to = null; schedule.target_role = null; }
@@ -318,16 +351,23 @@ function Schedule() {
                   {formError}
                 </div>
               )}
-              <form id="schedForm" onSubmit={handleSubmit} className="space-y-3.5">
+              <form id="schedForm" onSubmit={handleSubmit} noValidate className="space-y-3.5">
+                <FormRequiredNote />
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Activity Title *</label>
-                  <input name="title" placeholder="e.g. Feeding Program – Brgy. Poblacion" value={form.title}
-                    onChange={handleChange} required className={fieldCls} />
+                  <FormLabel label="Activity Title" required />
+                  <input
+                    name="title"
+                    placeholder="e.g. Feeding Program – Brgy. Poblacion"
+                    value={form.title}
+                    onChange={handleChange}
+                    className={`${fieldCls} ${schedErrors.title ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+                  />
+                  {schedErrors.title && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.title}</p>}
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Activity Type</label>
+                  <FormLabel label="Activity Type" />
                   <select name="schedule_type" value={form.schedule_type} onChange={handleChange} className={fieldCls}>
                     <option value="feeding">Feeding</option>
                     <option value="home_visit">Home Visit</option>
@@ -338,17 +378,24 @@ function Schedule() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Date *</label>
-                    <input name="schedule_date" type="date" value={form.schedule_date} onChange={handleChange} required className={fieldCls} />
+                    <FormLabel label="Date" required />
+                    <input
+                      name="schedule_date"
+                      type="date"
+                      value={form.schedule_date}
+                      onChange={handleChange}
+                      className={`${fieldCls} ${schedErrors.schedule_date ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+                    />
+                    {schedErrors.schedule_date && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.schedule_date}</p>}
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Time</label>
+                    <FormLabel label="Time" />
                     <input name="schedule_time" type="time" value={form.schedule_time} onChange={handleChange} className={fieldCls} />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Send To</label>
+                  <FormLabel label="Send To" />
                   <select name="recipient_type" value={form.recipient_type} onChange={handleRecipientChange} className={fieldCls}>
                     <option value="all">📍 Whole Municipality (All Barangays)</option>
                     <option value="barangay">🏘️ Specific Barangay</option>
@@ -358,48 +405,75 @@ function Schedule() {
                 </div>
 
                 {form.recipient_type === 'barangay' && (
-                  <select name="barangay" value={form.barangay} onChange={handleChange} required className={fieldCls}>
-                    <option value="">Select barangay…</option>
-                    {[...new Set(users.map((u) => u.barangay).filter(Boolean))].sort().map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
+                  <div>
+                    <FormLabel label="Barangay" required />
+                    <select
+                      name="barangay"
+                      value={form.barangay}
+                      onChange={handleChange}
+                      className={`${fieldCls} ${schedErrors.barangay ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+                    >
+                      <option value="">Select barangay…</option>
+                      {[...new Set(users.map((u) => u.barangay).filter(Boolean))].sort().map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+                    {schedErrors.barangay && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.barangay}</p>}
+                  </div>
                 )}
 
                 {form.recipient_type === 'role' && (
-                  <select name="target_role" value={form.target_role} onChange={handleChange} required className={fieldCls}>
-                    <option value="">Select role…</option>
-                    <option value="bhw">BHW — Barangay Health Worker</option>
-                    <option value="bns">BNS — Barangay Nutrition Scholar</option>
-                  </select>
+                  <div>
+                    <FormLabel label="Target Role" required />
+                    <select
+                      name="target_role"
+                      value={form.target_role}
+                      onChange={handleChange}
+                      className={`${fieldCls} ${schedErrors.target_role ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+                    >
+                      <option value="">Select role…</option>
+                      <option value="bhw">BHW — Barangay Health Worker</option>
+                      <option value="bns">BNS — Barangay Nutrition Scholar</option>
+                    </select>
+                    {schedErrors.target_role && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.target_role}</p>}
+                  </div>
                 )}
 
                 {form.recipient_type === 'user' && (
-                  <select name="assigned_to" value={form.assigned_to} onChange={(e) => {
-                    const u = users.find((x) => String(x.user_id) === e.target.value);
-                    setForm({ ...form, assigned_to: e.target.value, barangay: u?.barangay || '' });
-                  }} required className={fieldCls}>
-                    <option value="">Select user…</option>
-                    {users.map((u) => (
-                      <option key={u.user_id} value={u.user_id}>
-                        {u.first_name} {u.last_name} ({u.role.toUpperCase()}) — {u.barangay}
-                      </option>
-                    ))}
-                  </select>
+                  <div>
+                    <FormLabel label="Assigned User" required />
+                    <select
+                      name="assigned_to"
+                      value={form.assigned_to}
+                      onChange={(e) => {
+                        const u = users.find((x) => String(x.user_id) === e.target.value);
+                        setForm({ ...form, assigned_to: e.target.value, barangay: u?.barangay || '' });
+                      }}
+                      className={`${fieldCls} ${schedErrors.assigned_to ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+                    >
+                      <option value="">Select user…</option>
+                      {users.map((u) => (
+                        <option key={u.user_id} value={u.user_id}>
+                          {u.first_name} {u.last_name} ({u.role.toUpperCase()}) — {u.barangay}
+                        </option>
+                      ))}
+                    </select>
+                    {schedErrors.assigned_to && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.assigned_to}</p>}
+                  </div>
                 )}
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Venue</label>
+                  <FormLabel label="Venue" />
                   <input name="venue" placeholder="e.g. Barangay Hall" value={form.venue} onChange={handleChange} className={fieldCls} />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Facilitator</label>
+                  <FormLabel label="Facilitator" />
                   <input name="facilitator" placeholder="e.g. Dr. Santos" value={form.facilitator} onChange={handleChange} className={fieldCls} />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Notes</label>
+                  <FormLabel label="Notes" />
                   <textarea name="notes" placeholder="Optional notes or reminders…" value={form.notes}
                     onChange={handleChange} rows={3} className={`${fieldCls} resize-none`} />
                 </div>

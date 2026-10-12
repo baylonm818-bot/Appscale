@@ -9,6 +9,9 @@ class AppDateField extends StatelessWidget {
   final ValueChanged<DateTime> onChanged;
   final DateTime? firstDate;
   final DateTime? lastDate;
+  final bool isRequired;
+  final bool hasError;
+  final String? errorText;
 
   const AppDateField({
     super.key,
@@ -17,6 +20,9 @@ class AppDateField extends StatelessWidget {
     required this.onChanged,
     this.firstDate,
     this.lastDate,
+    this.isRequired = false,
+    this.hasError = false,
+    this.errorText,
   });
 
   Future<void> _pickDate(BuildContext context) async {
@@ -39,10 +45,37 @@ class AppDateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String cleanLabel = label;
+    bool showAsterisk = isRequired;
+    if (cleanLabel.endsWith(' *')) {
+      cleanLabel = cleanLabel.substring(0, cleanLabel.length - 2);
+      showAsterisk = true;
+    } else if (cleanLabel.endsWith('*')) {
+      cleanLabel = cleanLabel.substring(0, cleanLabel.length - 1).trimRight();
+      showAsterisk = true;
+    }
+
+    final isInvalid = hasError || errorText != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTextStyles.label),
+        RichText(
+          text: TextSpan(
+            text: cleanLabel,
+            style: AppTextStyles.label,
+            children: [
+              if (showAsterisk)
+                const TextSpan(
+                  text: ' *',
+                  style: TextStyle(
+                    color: AppColors.requiredAsterisk,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+            ],
+          ),
+        ),
         const SizedBox(height: 6),
         InkWell(
           onTap: () => _pickDate(context),
@@ -51,7 +84,10 @@ class AppDateField extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(
+                color: isInvalid ? AppColors.requiredAsterisk : AppColors.border,
+                width: isInvalid ? 1.4 : 1.0,
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -80,6 +116,17 @@ class AppDateField extends StatelessWidget {
             ),
           ),
         ),
+        if (errorText != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            errorText!,
+            style: const TextStyle(
+              color: AppColors.requiredAsterisk,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ],
     );
   }

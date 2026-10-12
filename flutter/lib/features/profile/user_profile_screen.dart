@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/theme/app_colors.dart';
@@ -17,6 +18,7 @@ import '../../data/local/measurement_repository.dart';
 import '../../data/local/referral_repository.dart';
 import '../../data/remote/auth_api.dart';
 import '../../shared/utils/app_user_identity.dart';
+import '../../shared/widgets/form_required_note.dart';
 import '../auth/login_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -90,25 +92,53 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const FormRequiredNote(padding: EdgeInsets.only(bottom: 14)),
                   TextFormField(
                     controller: firstNameCtrl,
                     decoration: const InputDecoration(
-                      labelText: 'First Name',
+                      label: Text.rich(
+                        TextSpan(
+                          text: 'First Name ',
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                          children: [
+                            TextSpan(
+                              text: '*',
+                              style: TextStyle(color: AppColors.requiredAsterisk, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
                       border: OutlineInputBorder(),
+                      errorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.2)),
+                      focusedErrorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.4)),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'First name is required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'This field is required' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: lastNameCtrl,
                     decoration: const InputDecoration(
-                      labelText: 'Last Name',
+                      label: Text.rich(
+                        TextSpan(
+                          text: 'Last Name ',
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                          children: [
+                            TextSpan(
+                              text: '*',
+                              style: TextStyle(color: AppColors.requiredAsterisk, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
                       border: OutlineInputBorder(),
+                      errorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.2)),
+                      focusedErrorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.4)),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Last name is required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'This field is required' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -117,9 +147,25 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       labelText: 'Contact Number',
                       hintText: 'e.g. 09123456789',
                       border: OutlineInputBorder(),
+                      errorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.2)),
+                      focusedErrorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.4)),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                     keyboardType: TextInputType.phone,
+                    maxLength: 11,
+                    buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(11),
+                    ],
+                    validator: (v) {
+                      if (v != null && v.trim().isNotEmpty) {
+                        if (!AppUserIdentity.isValidPhilippineContactNumber(v.trim())) {
+                          return 'Contact number must be 11 digits (e.g. 09123456789)';
+                        }
+                      }
+                      return null;
+                    },
                   ),
                 ],
               ),
@@ -144,7 +190,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
                 final firstName = firstNameCtrl.text.trim();
                 final lastName = lastNameCtrl.text.trim();
-                final contact = contactCtrl.text.trim();
+                final contact = AppUserIdentity.sanitizeMobileNumber(contactCtrl.text.trim());
                 final userId = user['user_id']?.toString() ?? '';
                 final token = settings.authToken ?? '';
 
@@ -226,7 +272,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const FormRequiredNote(padding: EdgeInsets.only(bottom: 14)),
                   if (dialogError != null) ...[
                     Container(
                       padding: const EdgeInsets.all(8),
@@ -243,23 +291,49 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     controller: currentPassCtrl,
                     obscureText: true,
                     decoration: const InputDecoration(
-                      labelText: 'Current Password',
+                      label: Text.rich(
+                        TextSpan(
+                          text: 'Current Password ',
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                          children: [
+                            TextSpan(
+                              text: '*',
+                              style: TextStyle(color: AppColors.requiredAsterisk, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
                       border: OutlineInputBorder(),
+                      errorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.2)),
+                      focusedErrorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.4)),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Current password is required' : null,
+                    validator: (v) => (v == null || v.isEmpty) ? 'This field is required' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: newPassCtrl,
                     obscureText: true,
                     decoration: const InputDecoration(
-                      labelText: 'New Password',
+                      label: Text.rich(
+                        TextSpan(
+                          text: 'New Password ',
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                          children: [
+                            TextSpan(
+                              text: '*',
+                              style: TextStyle(color: AppColors.requiredAsterisk, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
                       border: OutlineInputBorder(),
+                      errorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.2)),
+                      focusedErrorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.4)),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'New password is required';
+                      if (v == null || v.isEmpty) return 'This field is required';
                       if (v.length < 8) return 'Password must be at least 8 characters';
                       return null;
                     },
@@ -269,11 +343,25 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     controller: confirmPassCtrl,
                     obscureText: true,
                     decoration: const InputDecoration(
-                      labelText: 'Confirm New Password',
+                      label: Text.rich(
+                        TextSpan(
+                          text: 'Confirm New Password ',
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                          children: [
+                            TextSpan(
+                              text: '*',
+                              style: TextStyle(color: AppColors.requiredAsterisk, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
                       border: OutlineInputBorder(),
+                      errorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.2)),
+                      focusedErrorBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.requiredAsterisk, width: 1.4)),
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                     validator: (v) {
+                      if (v == null || v.isEmpty) return 'This field is required';
                       if (v != newPassCtrl.text) return 'Passwords do not match';
                       return null;
                     },

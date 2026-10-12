@@ -4,8 +4,11 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/activity_log_repository.dart';
 import '../../data/local/hive_boxes.dart';
+import '../../data/local/notification_repository.dart';
 import '../../data/local/referral_repository.dart';
+import '../../data/models/app_notification.dart';
 import '../../data/models/referral.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../shared/widgets/app_dropdown_field.dart';
 import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/form_action_buttons.dart';
@@ -69,6 +72,7 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
       _selected != null && _reasonController.text.trim().isNotEmpty;
 
   Future<void> _handleSubmit() async {
+    if (_isSaving) return; // Prevent double submission
     if (!_isFormValid) {
       AppNotificationUI.showWarning(
         context,
@@ -80,11 +84,41 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
 
     setState(() => _isSaving = true);
 
+    // Resolve clean beneficiary name with proper fallback
+    final isMother = _type.toLowerCase() == 'mother';
+    String resolvedName = (_selected?.name ?? '').trim();
+    if (resolvedName.isEmpty ||
+        RegExp(r'^\d+$').hasMatch(resolvedName) ||
+        resolvedName.toLowerCase().startsWith('child #') ||
+        resolvedName.toLowerCase().startsWith('mother #') ||
+        resolvedName.toLowerCase() == 'beneficiary') {
+      try {
+        if (isMother && Hive.isBoxOpen(HiveBoxes.mothers)) {
+          final m = Hive.box(HiveBoxes.mothers).get(_selected?.id);
+          if (m is Map && (m['fullName'] ?? '').toString().trim().isNotEmpty) {
+            resolvedName = m['fullName'].toString().trim();
+          }
+        } else if (!isMother && Hive.isBoxOpen(HiveBoxes.children)) {
+          final c = Hive.box(HiveBoxes.children).get(_selected?.id);
+          if (c is Map && (c['fullName'] ?? '').toString().trim().isNotEmpty) {
+            resolvedName = c['fullName'].toString().trim();
+          }
+        }
+      } catch (_) {}
+    }
+    if (resolvedName.isEmpty ||
+        RegExp(r'^\d+$').hasMatch(resolvedName) ||
+        resolvedName.toLowerCase().startsWith('child #') ||
+        resolvedName.toLowerCase().startsWith('mother #') ||
+        resolvedName.toLowerCase() == 'beneficiary') {
+      resolvedName = isMother ? 'a mother' : 'a child';
+    }
+
     final referral = Referral(
       id: ReferralRepository.generateId(),
       beneficiaryType: _type,
       beneficiaryId: _selected!.id,
-      beneficiaryName: _selected!.name,
+      beneficiaryName: resolvedName,
       barangay: _currentBarangay,
       reason: _reasonController.text.trim(),
       facility: _facility,
@@ -94,31 +128,57 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
     );
 
     await _referralRepo.add(referral);
+
+    // Add local in-app notification so user sees it in the notifications list immediately
+    await NotificationRepository().add(
+      AppNotification(
+        id: NotificationRepository.generateId(),
+        title: 'Referral Sent',
+        message: 'Referral sent for $resolvedName.',
+        type: 'referral_sent',
+        referralId: referral.id,
+        timestamp: DateTime.now().toUtc(),
+      ),
+    );
+
+    bool syncedOnline = false;
+    String? conflictMessage;
     try {
       final res = await _referralRepo.syncToWeb(referral);
       if (res.success) {
-        // show server confirmation including referral id if present
-        final serverId = _referralRepo.getById(referral.id)?.toMap()['server_id'];
-        final msg = serverId != null ? 'Referral submitted (ID: $serverId).' : 'Referral submitted successfully.';
-        if (mounted) AppNotificationUI.showSuccess(context, msg);
+        syncedOnline = true;
+      } else if (res.statusCode == 409) {
+        conflictMessage = res.message;
       }
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _isSaving = false);
-      AppNotificationUI.showWarning(
-        context,
-        'Saved locally, but server sync failed: ${error.toString().replaceFirst('Exception: ', '')}',
-        title: 'Offline Saved',
-      );
-      return;
+    } catch (_) {
+      // Offline / network failure handled gracefully below
     }
+
     await _activityRepo.logActivity(
       type: 'referral_created',
-      title: 'Referral created for ${referral.beneficiaryName}',
+      title: 'Referral created for $resolvedName',
     );
 
     if (!mounted) return;
     setState(() => _isSaving = false);
+
+    if (conflictMessage != null && conflictMessage.isNotEmpty) {
+      AppNotificationUI.showWarning(
+        context,
+        conflictMessage,
+      );
+    } else if (syncedOnline) {
+      AppNotificationUI.showSuccess(
+        context,
+        'Referral sent for $resolvedName.',
+      );
+    } else {
+      AppNotificationUI.showSuccess(
+        context,
+        'Referral saved for $resolvedName. Will sync when online.',
+      );
+    }
+
     Navigator.pop(context, referral);
   }
 

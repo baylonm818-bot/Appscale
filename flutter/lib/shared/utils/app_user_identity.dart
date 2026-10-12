@@ -53,13 +53,14 @@ class AppUserIdentity {
   static String sanitizeMobileNumber(String? raw) {
     if (raw == null) return '';
     final digits = raw.replaceAll(RegExp(r'\D+'), '');
-    return digits;
+    return digits.length > 11 ? digits.substring(0, 11) : digits;
   }
 
   static bool isValidPhilippineContactNumber(String? raw) {
     if (raw == null) return false;
-    if (raw.trim().isEmpty) return true;
-    final sanitized = sanitizeMobileNumber(raw);
-    return RegExp(r'^(?:09\d{9}|63\d{10})$').hasMatch(sanitized);
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return true;
+    final sanitized = sanitizeMobileNumber(trimmed);
+    return RegExp(r'^09\d{9}$').hasMatch(sanitized);
   }
 }

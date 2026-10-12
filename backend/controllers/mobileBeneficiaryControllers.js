@@ -2,6 +2,7 @@ const pool = require('../config/db');
 const { isDuplicateNutritionRecord } = require('../utils/mobileSyncSafety');
 const { enforceScopedBarangay } = require('../utils/roleAccess');
 const { validateMeasurementPlausibility } = require('../utils/growthRangeValidator');
+const { validateContactNumber } = require('../utils/contactValidation');
 
 function splitName(fullName) {
   const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
@@ -131,6 +132,13 @@ exports.upsertChild = async (req, res) => {
     return res.status(400).json({
       message: 'Child first name, birth date, and barangay are required.',
     });
+  }
+
+  if (guardian_contact !== undefined && guardian_contact !== null && String(guardian_contact).trim() !== '') {
+    const contactCheck = validateContactNumber(guardian_contact);
+    if (!contactCheck.valid) {
+      return res.status(400).json({ message: contactCheck.message });
+    }
   }
 
   // Item 36: Strictly limit child age to 0-59 months (0 to 5 years old)
@@ -381,6 +389,13 @@ exports.upsertMother = async (req, res) => {
 
   if (!firstName || !resolvedBarangay) {
     return res.status(400).json({ message: 'Mother first name and barangay are required.' });
+  }
+
+  if (contact_number !== undefined && contact_number !== null && String(contact_number).trim() !== '') {
+    const contactCheck = validateContactNumber(contact_number);
+    if (!contactCheck.valid) {
+      return res.status(400).json({ message: contactCheck.message });
+    }
   }
 
   const resolvedEncodedBy = encoded_by || req.user?.user_id || null;
@@ -1089,10 +1104,11 @@ exports.getMobileSync = async (req, res) => {
         scheduleParams
       ),
       pool.query(
-        `SELECT r.referral_id, r.child_id, r.mother_id,
+        `SELECT r.referral_id, r.child_id, r.mother_id, r.external_id,
                 COALESCE(r.referral_type, CASE WHEN r.mother_id IS NOT NULL THEN 'mother' ELSE 'child' END) AS referral_type,
                 r.reason, r.referred_to,
                 r.status, r.notes, r.created_at, r.updated_at,
+                r.archived_at, r.archived_by,
                 COALESCE(c.first_name, m.first_name) AS beneficiary_first_name,
                 COALESCE(c.last_name, m.last_name) AS beneficiary_last_name,
                 COALESCE(c.external_id, m.external_id) AS beneficiary_external_id,

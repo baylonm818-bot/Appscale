@@ -3,26 +3,65 @@ import axiosClient from '../api/axiosClient';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import { useAuth } from '../components/AuthContext';
 import { Camera, Lock, User, ShieldCheck, ChevronRight } from 'lucide-react';
+import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
 function ProfileInfoRow({ label, value, name, onSave }) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value || '');
+  const [errorText, setErrorText] = useState('');
 
-  useEffect(() => { setTempValue(value || ''); }, [value]);
+  useEffect(() => {
+    setTempValue(value || '');
+    setErrorText('');
+  }, [value, isEditing]);
 
-  const handleSave = () => { onSave(name, tempValue); setIsEditing(false); };
+  const handleSave = () => {
+    if (name === 'contact_number' && tempValue.trim()) {
+      const err = validateContact(tempValue, false);
+      if (err) {
+        setErrorText(err);
+        return;
+      }
+    }
+    setErrorText('');
+    onSave(name, tempValue.trim());
+    setIsEditing(false);
+  };
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    if (name === 'contact_number') {
+      setTempValue(sanitizeContact(val));
+    } else {
+      setTempValue(val);
+    }
+    if (errorText) setErrorText('');
+  };
 
   return (
     <div className="flex items-center justify-between py-4 border-b border-gray-50 last:border-0">
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
         {isEditing ? (
-          <input
-            autoFocus
-            value={tempValue}
-            onChange={(e) => setTempValue(e.target.value)}
-            className="border border-[#2e7d32] rounded-xl px-3 py-1.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-green-100 transition"
-          />
+          <div>
+            <input
+              autoFocus
+              type={name === 'contact_number' ? 'tel' : 'text'}
+              inputMode={name === 'contact_number' ? 'numeric' : undefined}
+              maxLength={name === 'contact_number' ? 11 : undefined}
+              placeholder={name === 'contact_number' ? '09xxxxxxxxx' : undefined}
+              value={tempValue}
+              onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave();
+                if (e.key === 'Escape') { setIsEditing(false); setTempValue(value || ''); setErrorText(''); }
+              }}
+              className={`border rounded-xl px-3 py-1.5 text-sm w-full focus:outline-none transition ${
+                errorText ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-[#2e7d32] focus:ring-2 focus:ring-green-100'
+              }`}
+            />
+            {errorText && <p className="text-xs text-[#D32F2F] mt-1">{errorText}</p>}
+          </div>
         ) : (
           <p className="text-sm font-semibold text-gray-800 truncate">{value || <span className="text-gray-400 font-normal">—</span>}</p>
         )}
@@ -34,7 +73,7 @@ function ProfileInfoRow({ label, value, name, onSave }) {
               className="text-xs font-bold text-white bg-[#2e7d32] hover:bg-[#256427] px-3 py-1.5 rounded-lg transition">
               Save
             </button>
-            <button onClick={() => { setIsEditing(false); setTempValue(value || ''); }}
+            <button onClick={() => { setIsEditing(false); setTempValue(value || ''); setErrorText(''); }}
               className="text-xs font-semibold text-gray-400 hover:text-gray-600 px-2 py-1.5 rounded-lg transition">
               Cancel
             </button>
@@ -213,20 +252,49 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
     }
   };
 
-  const handlePasswordChange = (e) => setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
+  const [passwordErrors, setPasswordFieldErrors] = useState({});
+
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordForm({ ...passwordForm, [name]: value });
+    if (passwordErrors[name]) {
+      setPasswordFieldErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
 
   const submitPassword = async (e) => {
-    e.preventDefault(); setPasswordMsg(''); setPasswordErr('');
-    if (passwordForm.new_password !== passwordForm.confirm_password) { setPasswordErr('New passwords do not match.'); return; }
+    e.preventDefault();
+    setPasswordMsg('');
+    setPasswordErr('');
+
+    const errs = {};
+    if (!passwordForm.current_password) errs.current_password = 'This field is required';
+    if (!passwordForm.new_password) errs.new_password = 'This field is required';
+    if (!passwordForm.confirm_password) errs.confirm_password = 'This field is required';
+
+    if (Object.keys(errs).length > 0) {
+      setPasswordFieldErrors(errs);
+      return;
+    }
+
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordErr('New passwords do not match.');
+      return;
+    }
+    setPasswordFieldErrors({});
     setSavingPassword(true);
     try {
       await axiosClient.patch(`/profile/${storedUser.user_id}/password`, {
-        current_password: passwordForm.current_password, new_password: passwordForm.new_password,
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password,
       });
       setPasswordMsg('Password changed successfully.');
       setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
-    } catch (err) { setPasswordErr(err.response?.data?.message || 'Failed to update password.'); }
-    finally { setSavingPassword(false); }
+    } catch (err) {
+      setPasswordErr(err.response?.data?.message || 'Failed to update password.');
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   if (loading) {
@@ -363,15 +431,23 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
             </div>
             {passwordMsg && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">{passwordMsg}</div>}
             {passwordErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">{passwordErr}</div>}
-            <form onSubmit={submitPassword} className="space-y-4 max-w-lg">
+            <form onSubmit={submitPassword} noValidate className="space-y-4 max-w-lg">
+              <FormRequiredNote />
               {[
                 { name: 'current_password', label: 'Current Password' },
                 { name: 'new_password',     label: 'New Password'     },
                 { name: 'confirm_password', label: 'Confirm New Password' },
               ].map(({ name, label }) => (
                 <div key={name}>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">{label}</label>
-                  <input name={name} type="password" value={passwordForm[name]} onChange={handlePasswordChange} required className={inputCls} />
+                  <FormLabel label={label} required />
+                  <input
+                    name={name}
+                    type="password"
+                    value={passwordForm[name]}
+                    onChange={handlePasswordChange}
+                    className={`${inputCls} ${passwordErrors[name] ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+                  />
+                  {passwordErrors[name] && <p className="text-xs text-[#D32F2F] mt-1">{passwordErrors[name]}</p>}
                 </div>
               ))}
               <button type="submit" disabled={savingPassword}

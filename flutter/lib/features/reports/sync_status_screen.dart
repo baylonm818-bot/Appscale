@@ -180,11 +180,12 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     for (final key in measurementBox.keys) {
       final childId = key.toString();
       final childRaw = childBox.get(childId);
-      String childName = 'Child #$childId';
-      if (childRaw is Map && childRaw['fullName'] != null) {
+      String childName = (childRaw is Map && childRaw['fullName'] != null && childRaw['fullName'].toString().trim().isNotEmpty)
+          ? childRaw['fullName'].toString().trim()
+          : 'a child';
+      if (childRaw is Map) {
         final b = childRaw['barangay']?.toString() ?? '';
         if (current.isNotEmpty && b.isNotEmpty && b != current) continue;
-        childName = childRaw['fullName'].toString();
       }
 
       final list = (measurementBox.get(childId) as List?) ?? [];
@@ -236,7 +237,8 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       if (current.isNotEmpty && b.isNotEmpty && b != current) continue;
 
       final status = map['_syncStatus']?.toString() ?? 'synced';
-      final name = map['beneficiaryName']?.toString() ?? 'Beneficiary';
+      final referral = Referral.fromMap(map);
+      final name = referral.resolvedBeneficiaryName;
       final error = map['_lastSyncError']?.toString();
       final timeStr = map['_syncedAt'] ?? map['createdAt'];
       DateTime dt;
@@ -248,18 +250,24 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
 
       String title;
       if (status == 'synced') {
-        title = 'Referral synced';
+        title = 'Referral synced - $name';
       } else if (status == 'failed') {
-        title = 'Referral sync failed';
+        title = 'Referral sync failed - $name';
       } else {
-        title = 'Referral pending';
+        title = 'Referral pending - $name';
       }
+
+      final reason = (map['reason'] ?? '').toString().trim();
+      final facility = (map['facility'] ?? '').toString().trim();
+      final sub = reason.isNotEmpty
+          ? (facility.isNotEmpty ? '$reason ($facility)' : reason)
+          : (facility.isNotEmpty ? facility : name);
 
       items.add(SyncItem(
         id: map['id']?.toString() ?? '',
         type: 'referral',
         title: title,
-        subtitle: name,
+        subtitle: sub,
         status: status,
         timestamp: dt,
         error: error,
@@ -689,13 +697,22 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         if (raw is Map) {
           final referral = Referral.fromMap(Map<String, dynamic>.from(raw));
           final res = await _referrals.trySync(referral);
-          if (mounted && res != null && !res.success) {
-            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-              SnackBar(
-                content: Text('Retry failed: ${res.message}'),
-                backgroundColor: AppColors.statRed,
-              ),
-            );
+          if (mounted) {
+            if (res != null && !res.success) {
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                SnackBar(
+                  content: Text('Retry failed for ${referral.resolvedBeneficiaryName}: ${res.message}'),
+                  backgroundColor: AppColors.statRed,
+                ),
+              );
+            } else {
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                SnackBar(
+                  content: Text('Referral synced for ${referral.resolvedBeneficiaryName}'),
+                  backgroundColor: AppColors.primaryGreen,
+                ),
+              );
+            }
           }
         }
       } else if (item.type == 'measurement') {

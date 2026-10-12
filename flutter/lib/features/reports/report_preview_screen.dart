@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -16,6 +17,7 @@ import 'services/consolidation_computation_service.dart';
 import 'services/excel_table_data.dart';
 import 'services/report_excel_service.dart';
 import 'services/report_pdf_service.dart';
+import 'widgets/report_result_sheet.dart';
 
 import '../../data/growth_standards/growth_classifier.dart';
 import '../../data/local/app_data_bus.dart';
@@ -94,152 +96,247 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   Future<void> _exportConsolidationPdf() async {
     setState(() => _isExporting = true);
-    final matrix = ConsolidationComputationService().computeMatrix(
-      widget.reportType.id,
-      _currentBarangay,
-      year: _period.year,
-    );
-    final signatory = _activeSignatory;
+    try {
+      final matrix = ConsolidationComputationService().computeMatrix(
+        widget.reportType.id,
+        _currentBarangay,
+        year: _period.year,
+      );
+      final signatory = _activeSignatory;
 
-    await ReportPdfService().exportMatrixAndShare(
-      fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
-      matrix: matrix,
-      signatory: signatory,
-    );
+      final file = await ReportPdfService().exportMatrixAndShare(
+        fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
+        matrix: matrix,
+        signatory: signatory,
+      );
 
-    if (mounted) setState(() => _isExporting = false);
+      if (mounted) {
+        setState(() => _isExporting = false);
+        await ReportResultSheet.show(
+          context,
+          file: file,
+          title: widget.reportType.title,
+          mimeType: 'application/pdf',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isExporting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate PDF: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _exportConsolidationExcel() async {
     setState(() => _isExporting = true);
-    final matrix = ConsolidationComputationService().computeMatrix(
-      widget.reportType.id,
-      _currentBarangay,
-      year: _period.year,
-    );
-    final signatory = _activeSignatory;
+    try {
+      final matrix = ConsolidationComputationService().computeMatrix(
+        widget.reportType.id,
+        _currentBarangay,
+        year: _period.year,
+      );
+      final signatory = _activeSignatory;
 
-    await ReportExcelService().exportConsolidationMatrixAndShare(
-      fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
-      matrix: matrix,
-      signatory: signatory,
-    );
+      final file = await ReportExcelService().exportConsolidationMatrixAndShare(
+        fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
+        matrix: matrix,
+        signatory: signatory,
+      );
 
-    if (mounted) setState(() => _isExporting = false);
+      if (mounted) {
+        setState(() => _isExporting = false);
+        await ReportResultSheet.show(
+          context,
+          file: file,
+          title: widget.reportType.title,
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isExporting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate Excel: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _exportPdf() async {
     setState(() => _isExporting = true);
-    final signatory = _activeSignatory;
+    try {
+      final signatory = _activeSignatory;
+      File file;
 
-    if (widget.reportType.id == 'lactating_mothers_masterlist') {
-      final motherRepo = MotherRepository();
-      final mothers = motherRepo
-          .getAll()
-          .where((m) => m.barangay == _currentBarangay && m.isActive)
-          .toList();
-      final names = mothers.map((m) => m.fullName).toList();
-      await ReportPdfService().exportLactatingMasterlistPdf(
-        fileTitle: 'lactating_masterlist_${_period.year}_$_currentBarangay',
-        barangay: _currentBarangay,
-        year: _period.year,
-        names: names,
-        signatory: signatory,
-      );
-    } else if (widget.reportType.id == 'children_masterlist') {
-      final childRepo = ChildRepository();
-      final children = childRepo
-          .getByBarangay(_currentBarangay)
-          .where((c) => c.isActive)
-          .toList();
-      final names = children.map((c) => c.fullName).toList();
+      if (widget.reportType.id == 'lactating_mothers_masterlist') {
+        final motherRepo = MotherRepository();
+        final mothers = motherRepo
+            .getAll()
+            .where((m) => m.barangay == _currentBarangay && m.isActive)
+            .toList();
+        final names = mothers.map((m) => m.fullName).toList();
+        file = await ReportPdfService().exportLactatingMasterlistPdf(
+          fileTitle: 'lactating_masterlist_${_period.year}_$_currentBarangay',
+          barangay: _currentBarangay,
+          year: _period.year,
+          names: names,
+          signatory: signatory,
+        );
+      } else if (widget.reportType.id == 'children_masterlist') {
+        final childRepo = ChildRepository();
+        final children = childRepo
+            .getByBarangay(_currentBarangay)
+            .where((c) => c.isActive)
+            .toList();
+        final names = children.map((c) => c.fullName).toList();
 
-      await ReportPdfService().exportChildrenMasterlistPdf(
-        fileTitle: 'children_masterlist_${_period.year}_$_currentBarangay',
-        barangay: _currentBarangay,
-        year: _period.year,
-        names: names,
-        signatory: signatory,
-      );
-    } else {
-      final data = _buildExcelData(widget.reportType.id);
-      await ReportPdfService().exportTableAndShare(
-        fileTitle: '${widget.reportType.id}_$_currentBarangay',
-        title: widget.reportType.title,
-        barangay: _currentBarangay,
-        headers: data.headers,
-        rows: data.rows,
-        signatory: signatory,
-      );
+        file = await ReportPdfService().exportChildrenMasterlistPdf(
+          fileTitle: 'children_masterlist_${_period.year}_$_currentBarangay',
+          barangay: _currentBarangay,
+          year: _period.year,
+          names: names,
+          signatory: signatory,
+        );
+      } else if (widget.reportType.id == 'quarterly_weighing') {
+        final childRepo = ChildRepository();
+        final measurementRepo = MeasurementRepository();
+        final children = childRepo
+            .getByBarangay(_currentBarangay)
+            .where((c) => c.isActive)
+            .toList();
+        final boys = children.where((c) => c.gender == 'Male').toList()
+          ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+        final girls = children.where((c) => c.gender == 'Female').toList()
+          ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+
+        file = await ReportPdfService().exportQuarterlyPdf(
+          fileTitle: 'Quarterly_24-59_${_period.year}_$_currentBarangay',
+          barangay: _currentBarangay,
+          municipality: _currentMunicipality,
+          province: _currentProvince,
+          year: _period.year,
+          boys: boys,
+          girls: girls,
+          measurementRepo: measurementRepo,
+          signatory: signatory,
+        );
+      } else {
+        final data = _buildExcelData(widget.reportType.id);
+        file = await ReportPdfService().exportTableAndShare(
+          fileTitle: '${widget.reportType.id}_$_currentBarangay',
+          title: widget.reportType.title,
+          barangay: _currentBarangay,
+          headers: data.headers,
+          rows: data.rows,
+          signatory: signatory,
+        );
+      }
+
+      if (mounted) {
+        setState(() => _isExporting = false);
+        await ReportResultSheet.show(
+          context,
+          file: file,
+          title: widget.reportType.title,
+          mimeType: 'application/pdf',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isExporting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate PDF: $e')),
+        );
+      }
     }
-    if (mounted) setState(() => _isExporting = false);
   }
 
   Future<void> _exportExcel() async {
     setState(() => _isExporting = true);
-    final signatory = _activeSignatory;
-    final childRepo = ChildRepository();
-    final measurementRepo = MeasurementRepository();
+    try {
+      final signatory = _activeSignatory;
+      final childRepo = ChildRepository();
+      final measurementRepo = MeasurementRepository();
+      File file;
 
-    if (widget.reportType.id == 'monthly_weight_record') {
-      final children = childRepo
-          .getByBarangay(_currentBarangay)
-          .where((c) => _isEligible0to23(c, _period.year))
-          .toList();
+      if (widget.reportType.id == 'monthly_weight_record') {
+        final children = childRepo
+            .getByBarangay(_currentBarangay)
+            .where((c) => _isEligible0to23(c, _period.year))
+            .toList();
 
-      final boys = children.where((c) => c.gender == 'Male').toList()
-        ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+        final boys = children.where((c) => c.gender == 'Male').toList()
+          ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
 
-      final girls = children.where((c) => c.gender == 'Female').toList()
-        ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+        final girls = children.where((c) => c.gender == 'Female').toList()
+          ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
 
-      await ReportExcelService().exportMonthly0to23Excel(
-        fileTitle: 'Monthly_0-23_${_period.year}',
-        barangay: _currentBarangay,
-        municipality: _currentMunicipality,
-        province: _currentProvince,
-        year: _period.year,
-        boys: boys,
-        girls: girls,
-        measurementRepo: measurementRepo,
-        signatory: signatory,
-      );
-    } else if (widget.reportType.id == 'quarterly_weighing') {
-      final children = childRepo
-          .getByBarangay(_currentBarangay)
-          .where((c) => c.isActive)
-          .toList();
+        file = await ReportExcelService().exportMonthly0to23Excel(
+          fileTitle: 'Monthly_0-23_${_period.year}',
+          barangay: _currentBarangay,
+          municipality: _currentMunicipality,
+          province: _currentProvince,
+          year: _period.year,
+          boys: boys,
+          girls: girls,
+          measurementRepo: measurementRepo,
+          signatory: signatory,
+        );
+      } else if (widget.reportType.id == 'quarterly_weighing') {
+        final children = childRepo
+            .getByBarangay(_currentBarangay)
+            .where((c) => c.isActive)
+            .toList();
 
-      final boys = children.where((c) => c.gender == 'Male').toList()
-        ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+        final boys = children.where((c) => c.gender == 'Male').toList()
+          ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
 
-      final girls = children.where((c) => c.gender == 'Female').toList()
-        ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
+        final girls = children.where((c) => c.gender == 'Female').toList()
+          ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
 
-      await ReportExcelService().exportQuarterlyRecord24to59Excel(
-        fileTitle: 'Quarterly_24-59_${_period.year}',
-        barangay: _currentBarangay,
-        municipality: _currentMunicipality,
-        province: _currentProvince,
-        year: _period.year,
-        boys: boys,
-        girls: girls,
-        measurementRepo: measurementRepo,
-        signatory: signatory,
-      );
-    } else {
-      final data = _buildExcelData(widget.reportType.id);
-      await ReportExcelService().exportIndividualRecordAndShare(
-        reportTypeId: widget.reportType.id,
-        fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
-        title: widget.reportType.title,
-        barangay: _currentBarangay,
-        year: _period.year,
-        data: data,
-        signatory: signatory,
-      );
+        file = await ReportExcelService().exportQuarterlyRecord24to59Excel(
+          fileTitle: 'Quarterly_24-59_${_period.year}',
+          barangay: _currentBarangay,
+          municipality: _currentMunicipality,
+          province: _currentProvince,
+          year: _period.year,
+          boys: boys,
+          girls: girls,
+          measurementRepo: measurementRepo,
+          signatory: signatory,
+        );
+      } else {
+        final data = _buildExcelData(widget.reportType.id);
+        file = await ReportExcelService().exportIndividualRecordAndShare(
+          reportTypeId: widget.reportType.id,
+          fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
+          title: widget.reportType.title,
+          barangay: _currentBarangay,
+          year: _period.year,
+          data: data,
+          signatory: signatory,
+        );
+      }
+
+      if (mounted) {
+        setState(() => _isExporting = false);
+        await ReportResultSheet.show(
+          context,
+          file: file,
+          title: widget.reportType.title,
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isExporting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate Excel: $e')),
+        );
+      }
     }
-    if (mounted) setState(() => _isExporting = false);
   }
 
   ExcelTableData _buildExcelData(String reportTypeId) {
@@ -699,40 +796,45 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   Widget _buildPreviewSigCol(String title, String name, String position) {
     return SizedBox(
-      width: 140,
+      width: 155,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
             style: const TextStyle(
-              fontSize: 9,
+              fontSize: 9.5,
               fontWeight: FontWeight.bold,
               color: AppColors.textMuted,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           Container(
-            height: 1,
             width: double.infinity,
-            color: Colors.black45,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            name.isNotEmpty ? name.toUpperCase() : '',
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Colors.black87, width: 1.0)),
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Text(
+              name.isNotEmpty ? name.toUpperCase() : '',
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+                height: 1.35,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(
             position,
             style: const TextStyle(
-              fontSize: 8.5,
-              color: AppColors.textMuted,
+              fontSize: 9,
+              color: AppColors.textSecondary,
+              height: 1.3,
             ),
             maxLines: 2,
             softWrap: true,
@@ -740,9 +842,9 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           ),
           const SizedBox(height: 2),
           const Text(
-            'Date: ___________',
+            'Date: ____________________',
             style: TextStyle(
-              fontSize: 8,
+              fontSize: 8.5,
               color: AppColors.textMuted,
             ),
           ),
@@ -1262,6 +1364,115 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       );
     }
 
+    // ── Nutritional-status summary for preview ──────────────────────────
+    const statusLabelsQ = [
+      'Normal', 'Underweight', 'Severely Underweight', 'Overweight',
+      'Stunted', 'Severely Stunted', 'MAM', 'SAM',
+    ];
+    final boyCounts = <String, int>{for (final s in statusLabelsQ) s: 0};
+    final girlCounts = <String, int>{for (final s in statusLabelsQ) s: 0};
+
+    void countChildPreview(Child child, Map<String, int> counts) {
+      final meas = measurementRepo.getForChild(child.id);
+      final inYear = meas.where((m) => m.date.year == _period.year).toList();
+      if (inYear.isEmpty) return;
+      final latest = inYear.first;
+      final age = Child.monthsBetween(child.birthDate, latest.date);
+      final wfa = GrowthClassifier.classifyWeightForAge(
+        weightKg: latest.weightKg, ageMonths: age, gender: child.gender,
+      );
+      final hfa = GrowthClassifier.classifyHeightForAge(
+        heightCm: latest.heightCm, ageMonths: age, gender: child.gender,
+      );
+      final wfl = GrowthClassifier.classifyWeightForLength(
+        weightKg: latest.weightKg, heightCm: latest.heightCm, gender: child.gender,
+      );
+      if (wfl == 'SAM') { counts['SAM'] = counts['SAM']! + 1; }
+      else if (wfl == 'MAM') { counts['MAM'] = counts['MAM']! + 1; }
+      else if (hfa == 'Severely Stunted') { counts['Severely Stunted'] = counts['Severely Stunted']! + 1; }
+      else if (hfa == 'Stunted') { counts['Stunted'] = counts['Stunted']! + 1; }
+      else if (wfa == 'Severely Underweight') { counts['Severely Underweight'] = counts['Severely Underweight']! + 1; }
+      else if (wfa == 'Underweight') { counts['Underweight'] = counts['Underweight']! + 1; }
+      else if (wfa == 'Overweight' || wfl == 'Overweight' || wfl == 'Obese') { counts['Overweight'] = counts['Overweight']! + 1; }
+      else { counts['Normal'] = counts['Normal']! + 1; }
+    }
+
+    for (final child in boys) { countChildPreview(child, boyCounts); }
+    for (final child in girls) { countChildPreview(child, girlCounts); }
+
+    final grandTotal = boys.length + girls.length;
+
+    Widget buildSummaryTable() {
+      return Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: Table(
+          columnWidths: const {
+            0: FlexColumnWidth(3),
+            1: FixedColumnWidth(60),
+            2: FixedColumnWidth(60),
+            3: FixedColumnWidth(60),
+            4: FixedColumnWidth(80),
+          },
+          border: TableBorder.all(color: AppColors.border, width: 0.5),
+          children: [
+            // Header row
+            TableRow(
+              decoration: const BoxDecoration(color: AppColors.darkGreen),
+              children: [
+                for (final h in ['Nutritional Status', 'Boys', 'Girls', 'Total', 'Percentage (%)'])
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                    child: Text(h, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        textAlign: h == 'Nutritional Status' ? TextAlign.left : TextAlign.center),
+                  ),
+              ],
+            ),
+            // Data rows
+            ...(statusLabelsQ).map((label) {
+              final b = boyCounts[label]!;
+              final g = girlCounts[label]!;
+              final t = b + g;
+              final pct = grandTotal > 0 ? ((t / grandTotal) * 100).toStringAsFixed(1) : '0.0';
+              return TableRow(
+                children: [
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Text(label, style: const TextStyle(fontSize: 9))),
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Text('$b', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9))),
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Text('$g', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9))),
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Text('$t', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Text('$pct%', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9))),
+                ],
+              );
+            }),
+            // Totals row
+            TableRow(
+              decoration: BoxDecoration(color: AppColors.background),
+              children: [
+                const Padding(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Text('TOTAL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
+                Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Text('${boys.length}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
+                Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Text('${girls.length}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
+                Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Text('$grandTotal', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
+                Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Text(grandTotal > 0 ? '100.0%' : '0.0%', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -1272,6 +1483,16 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Summary nutritional status table
+          const Text(
+            'NUTRITIONAL STATUS SUMMARY',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          buildSummaryTable(),
+          const SizedBox(height: 20),
+
+          // Per-gender weighing record tables
           buildQuarterlySection('BOYS', boys),
           const SizedBox(height: 20),
           buildQuarterlySection('GIRLS', girls),
@@ -1415,11 +1636,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildPreviewSigCol('SUBMITTED BY:', sig1, 'BNS'),
-          const SizedBox(width: 24),
+          const SizedBox(width: 48),
           _buildPreviewSigCol('NOTED BY:', sig2, 'PUNONG BARANGAY'),
-          const SizedBox(width: 24),
+          const SizedBox(width: 48),
           _buildPreviewSigCol('APPROVED BY:', sig3, 'ADMIN AIDE IV- MNAO OIC'),
-          const SizedBox(width: 24),
+          const SizedBox(width: 48),
           _buildPreviewSigCol('APPROVED BY:', sig4, 'DNPC'),
         ],
       ),

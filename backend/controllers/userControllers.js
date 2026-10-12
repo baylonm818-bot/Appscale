@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const bcrypt = require('bcrypt');
 const { canViewUserList, canEditUser, ensureSingleActiveRolePerBarangay } = require('../utils/roleAccess');
+const { validateContactNumber } = require('../utils/contactValidation');
 
 exports.getUsers = async (req, res) => {
   try {
@@ -10,7 +11,7 @@ exports.getUsers = async (req, res) => {
 
     // Exclude common test accounts from regular listings unless explicitly requesting archived/test entries
     const testFilter = "AND LOWER(TRIM(email)) NOT LIKE '%@example.com' AND LOWER(TRIM(username)) NOT LIKE 'test%' AND LOWER(TRIM(email)) NOT LIKE 'test%'";
-    let baseQuery = `SELECT user_id, first_name, middle_initial, last_name, email, username, role, municipality, barangay, status, created_at, deleted_at 
+    let baseQuery = `SELECT user_id, first_name, middle_initial, last_name, email, username, role, municipality, barangay, purok, contact_number, status, created_at, deleted_at 
       FROM users 
       WHERE ${includeArchived ? '1 = 1' : 'deleted_at IS NULL'} AND role IN ('bhw', 'bns') ${includeArchived ? '' : testFilter}`;
     const params = [];
@@ -70,14 +71,22 @@ exports.getUserStats = async (req, res) => {
 };
 
     exports.createUsers = async (req, res) => {
-        const { first_name, middle_initial, last_name, email, username, password, role, municipality, barangay , purok, contact_number} = req.body;
+        const { first_name, middle_initial, last_name, email, username, password, role, municipality, barangay, purok, contact_number } = req.body;
 
         if (!first_name || !last_name || !email || !password || !role || !barangay) {
             return res.status(400).json({ message: 'First name, last name, email, password, role, and barangay are required.' });
         }
+
+        if (contact_number !== undefined && contact_number !== null && String(contact_number).trim() !== '') {
+            const contactCheck = validateContactNumber(contact_number);
+            if (!contactCheck.valid) {
+                return res.status(400).json({ message: contactCheck.message });
+            }
+        }
+
         const finalUsername = (username && username.trim()) ? username.trim() : email.trim();
 
-        try{
+        try {
             const [existingUsers] = await pool.query(
                 `SELECT role, barangay, status, deleted_at FROM users WHERE deleted_at IS NULL AND status = 'active'`
             );
@@ -92,10 +101,11 @@ exports.getUserStats = async (req, res) => {
             }
 
             const hashedPassword = await bcrypt.hash(password, 10);
+            const cleanContact = (contact_number && String(contact_number).trim()) ? String(contact_number).trim() : null;
 
             await pool.query(
-                'INSERT INTO users (first_name, middle_initial, last_name, email, username, password_hash, role, municipality, barangay, purok , contact_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)',
-                [first_name, middle_initial  || null, last_name, email, finalUsername, hashedPassword, role, municipality, barangay, purok, contact_number]
+                'INSERT INTO users (first_name, middle_initial, last_name, email, username, password_hash, role, municipality, barangay, purok, contact_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [first_name, middle_initial || null, last_name, email, finalUsername, hashedPassword, role, municipality, barangay, purok || null, cleanContact]
             );
             return res.status(201).json({ message: 'User created successfully.' });
         } catch (error) {
@@ -109,11 +119,18 @@ exports.getUserStats = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   const { user_id } = req.params;
-  const { first_name, middle_initial, last_name, email, username, password, role, municipality, barangay } = req.body;
+  const { first_name, middle_initial, last_name, email, username, password, role, municipality, barangay, purok, contact_number } = req.body;
+
+  if (contact_number !== undefined && contact_number !== null && String(contact_number).trim() !== '') {
+    const contactCheck = validateContactNumber(contact_number);
+    if (!contactCheck.valid) {
+      return res.status(400).json({ message: contactCheck.message });
+    }
+  }
 
   try {
     const [[targetUser]] = await pool.query(
-      'SELECT user_id, role, barangay FROM users WHERE user_id = ? AND deleted_at IS NULL LIMIT 1',
+      'SELECT user_id, role, barangay, purok, contact_number FROM users WHERE user_id = ? AND deleted_at IS NULL LIMIT 1',
       [user_id]
     );
 
@@ -138,13 +155,16 @@ exports.updateUser = async (req, res) => {
     }
 
     const finalUsername = (username && username.trim()) ? username.trim() : email.trim();
-    const updateValues = [first_name, middle_initial || null, last_name, email, finalUsername, role, municipality, barangay, user_id];
-    let query = 'UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, username = ?, role = ?, municipality = ?, barangay = ? WHERE user_id = ?';
+    const finalPurok = purok !== undefined ? (purok ? String(purok).trim() : null) : targetUser.purok;
+    const finalContact = contact_number !== undefined ? (contact_number && String(contact_number).trim() ? String(contact_number).trim() : null) : targetUser.contact_number;
+
+    let query = 'UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, username = ?, role = ?, municipality = ?, barangay = ?, purok = ?, contact_number = ? WHERE user_id = ?';
+    let updateValues = [first_name, middle_initial || null, last_name, email, finalUsername, role, municipality, barangay, finalPurok, finalContact, user_id];
 
     if (password) {
       const hashed = await bcrypt.hash(password, 10);
-      query = 'UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, username = ?, password_hash = ?, role = ?, municipality = ?, barangay = ? WHERE user_id = ?';
-      updateValues.splice(5, 0, hashed);
+      query = 'UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, username = ?, password_hash = ?, role = ?, municipality = ?, barangay = ?, purok = ?, contact_number = ? WHERE user_id = ?';
+      updateValues = [first_name, middle_initial || null, last_name, email, finalUsername, hashed, role, municipality, barangay, finalPurok, finalContact, user_id];
     }
 
     await pool.query(query, updateValues);

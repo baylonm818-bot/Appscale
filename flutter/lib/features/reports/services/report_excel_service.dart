@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:excel/excel.dart' as xls;
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../../data/local/measurement_repository.dart';
 import '../../../data/models/child.dart';
 import '../../../data/models/report_signatory.dart';
@@ -12,6 +11,21 @@ import 'excel_table_data.dart';
 /// Builds real .xlsx files on-device, entirely offline.
 /// Exact matching layouts for DOH/NNC "0-23 mos." and "24-59 MOS." templates.
 class ReportExcelService {
+  Future<File> _saveExcelToDocuments({
+    required String fileTitle,
+    required List<int> bytes,
+  }) async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    final reportsDir = Directory('${docsDir.path}/reports');
+    if (!reportsDir.existsSync()) {
+      reportsDir.createSync(recursive: true);
+    }
+    final cleanTitle = fileTitle.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final file = File('${reportsDir.path}/$cleanTitle.xlsx');
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
   static String normalizeCellValue(Object? value) {
     if (value == null) return '';
     if (value is String) return value;
@@ -32,7 +46,7 @@ class ReportExcelService {
   }
 
   /// Exports Monthly Record of Weight and Weight Status (0-23 Months) to Excel (Sheet "0-23 mos.")
-  Future<void> exportMonthly0to23Excel({
+  Future<File> exportMonthly0to23Excel({
     required String fileTitle,
     required String barangay,
     required String municipality,
@@ -313,17 +327,12 @@ class ReportExcelService {
     _appendSignatoryBlock(sheet, curRow, signatory);
 
     final bytes = workbook.encode();
-    if (bytes == null) return;
-
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/$fileTitle.xlsx');
-    await file.writeAsBytes(bytes);
-
-    await Share.shareXFiles([XFile(file.path)], text: fileTitle);
+    if (bytes == null) throw Exception('Failed to encode Excel file');
+    return _saveExcelToDocuments(fileTitle: fileTitle, bytes: bytes);
   }
 
   /// Exports Quarterly Full Weighing Record (24-59 Months) to Excel (Sheet "24-59 MOS.")
-  Future<void> exportQuarterlyRecord24to59Excel({
+  Future<File> exportQuarterlyRecord24to59Excel({
     required String fileTitle,
     required String barangay,
     required String municipality,
@@ -525,13 +534,8 @@ class ReportExcelService {
     _appendSignatoryBlock(sheet, curRow, signatory);
 
     final bytes = workbook.encode();
-    if (bytes == null) return;
-
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/$fileTitle.xlsx');
-    await file.writeAsBytes(bytes);
-
-    await Share.shareXFiles([XFile(file.path)], text: fileTitle);
+    if (bytes == null) throw Exception('Failed to encode Excel file');
+    return _saveExcelToDocuments(fileTitle: fileTitle, bytes: bytes);
   }
 
   void _appendSignatoryBlock(xls.Sheet sheet, int startRow, ReportSignatory? signatory) {
@@ -584,7 +588,7 @@ class ReportExcelService {
     setC(12, r, 'Date: ____________________');
   }
 
-  Future<void> exportAndShare({
+  Future<File> exportAndShare({
     required String fileTitle,
     required ExcelTableData data,
     required String metadataLine,
@@ -606,16 +610,11 @@ class ReportExcelService {
     }
 
     final bytes = workbook.encode();
-    if (bytes == null) return;
-
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/$fileTitle.xlsx');
-    await file.writeAsBytes(bytes);
-
-    await Share.shareXFiles([XFile(file.path)], text: fileTitle);
+    if (bytes == null) throw Exception('Failed to encode Excel file');
+    return _saveExcelToDocuments(fileTitle: fileTitle, bytes: bytes);
   }
 
-  Future<void> exportIndividualRecordAndShare({
+  Future<File> exportIndividualRecordAndShare({
     required String reportTypeId,
     required String fileTitle,
     required String title,
@@ -704,16 +703,11 @@ class ReportExcelService {
     ]);
 
     final bytes = workbook.encode();
-    if (bytes == null) return;
-
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/$fileTitle.xlsx');
-    await file.writeAsBytes(bytes);
-
-    await Share.shareXFiles([XFile(file.path)], text: fileTitle);
+    if (bytes == null) throw Exception('Failed to encode Excel file');
+    return _saveExcelToDocuments(fileTitle: fileTitle, bytes: bytes);
   }
 
-  Future<void> exportConsolidationMatrixAndShare({
+  Future<File> exportConsolidationMatrixAndShare({
     required String fileTitle,
     required ConsolidationMatrixData matrix,
     required ReportSignatory? signatory,
@@ -772,12 +766,7 @@ class ReportExcelService {
     _appendSignatoryBlock(sheet, matrix.rows.length + 5, signatory);
 
     final bytes = workbook.encode();
-    if (bytes == null) return;
-
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/$fileTitle.xlsx');
-    await file.writeAsBytes(bytes);
-
-    await Share.shareXFiles([XFile(file.path)], text: fileTitle);
+    if (bytes == null) throw Exception('Failed to encode Excel file');
+    return _saveExcelToDocuments(fileTitle: fileTitle, bytes: bytes);
   }
 }

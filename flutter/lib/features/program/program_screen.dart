@@ -5,6 +5,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../data/local/app_data_bus.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/program_schedule_repository.dart';
+import '../../data/local/referral_repository.dart';
 import '../../data/models/program_schedule.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../referrals/referrals_overview_screen.dart';
@@ -182,16 +183,27 @@ class _ProgramScreenState extends State<ProgramScreen> {
           ),
         ),
         const Divider(color: AppColors.border),
-        ProgramTile(
-          icon: Icons.local_hospital_outlined,
-          iconColor: const Color(0xFFD23369),
-          title: 'Referral Monitoring',
-          subtitle:
-              'Monitor referred children and mothers and their follow-up status.',
-          onTap: () => Navigator.push(
-            context,
-            appPageRoute(const ReferralsOverviewScreen()),
-          ),
+        Builder(
+          builder: (context) {
+            final pendingReferralsCount = ReferralRepository()
+                .getForBarangay(_currentBarangay)
+                .where((r) => r.isPending)
+                .length;
+            return ProgramTile(
+              icon: Icons.local_hospital_outlined,
+              iconColor: const Color(0xFFD23369),
+              title: 'Referral Monitoring',
+              subtitle: pendingReferralsCount > 0
+                  ? '$pendingReferralsCount pending referrals awaiting response.'
+                  : 'Monitor referred children and mothers and their follow-up status.',
+              onTap: () => Navigator.push(
+                context,
+                appPageRoute(ReferralsOverviewScreen(
+                  initialFilter: pendingReferralsCount > 0 ? 'Pending' : 'Ongoing',
+                )),
+              ),
+            );
+          },
         ),
         const Divider(color: AppColors.border),
         ProgramTile(

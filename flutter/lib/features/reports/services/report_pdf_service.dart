@@ -1,9 +1,13 @@
+import 'dart:typed_data';
+import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import '../../../data/local/measurement_repository.dart';
+import '../../../data/models/child.dart';
 import '../../../data/models/report_signatory.dart';
+import '../../../data/growth_standards/growth_classifier.dart';
 import '../../../shared/utils/barangay_assets.dart';
 import 'consolidation_computation_service.dart';
 
@@ -11,7 +15,22 @@ import 'consolidation_computation_service.dart';
 /// Supports both single-period summary and official multi-month / quarterly
 /// matrix tables matching DOH/NNC form standards.
 class ReportPdfService {
-  Future<void> exportAndShare({
+  Future<File> _savePdfToDocuments({
+    required String fileTitle,
+    required Uint8List bytes,
+  }) async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    final reportsDir = Directory('${docsDir.path}/reports');
+    if (!reportsDir.existsSync()) {
+      reportsDir.createSync(recursive: true);
+    }
+    final cleanTitle = fileTitle.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final file = File('${reportsDir.path}/$cleanTitle.pdf');
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
+  Future<File> exportAndShare({
     required String fileTitle,
     required String title,
     required String barangay,
@@ -25,7 +44,7 @@ class ReportPdfService {
     doc.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(28),
+        margin: const pw.EdgeInsets.all(20 * PdfPageFormat.mm),
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
@@ -56,13 +75,11 @@ class ReportPdfService {
       ),
     );
 
-    await Printing.sharePdf(
-      bytes: await doc.save(),
-      filename: '$fileTitle.pdf',
-    );
+    final bytes = await doc.save();
+    return _savePdfToDocuments(fileTitle: fileTitle, bytes: bytes);
   }
 
-  Future<void> exportMatrixAndShare({
+  Future<File> exportMatrixAndShare({
     required String fileTitle,
     required ConsolidationMatrixData matrix,
     required ReportSignatory? signatory,
@@ -72,7 +89,7 @@ class ReportPdfService {
     doc.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.all(20),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 16 * PdfPageFormat.mm, vertical: 20 * PdfPageFormat.mm),
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
@@ -102,13 +119,11 @@ class ReportPdfService {
       ),
     );
 
-    await Printing.sharePdf(
-      bytes: await doc.save(),
-      filename: '$fileTitle.pdf',
-    );
+    final bytes = await doc.save();
+    return _savePdfToDocuments(fileTitle: fileTitle, bytes: bytes);
   }
 
-  Future<void> exportTableAndShare({
+  Future<File> exportTableAndShare({
     required String fileTitle,
     required String title,
     required String barangay,
@@ -125,7 +140,7 @@ class ReportPdfService {
     doc.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.all(24),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 18 * PdfPageFormat.mm, vertical: 20 * PdfPageFormat.mm),
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
@@ -141,8 +156,11 @@ class ReportPdfService {
             pw.TableHelper.fromTextArray(
               headers: headers,
               data: rows,
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
-              cellStyle: const pw.TextStyle(fontSize: 7.5),
+              headerCount: 1,
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, lineSpacing: 1.35),
+              cellStyle: const pw.TextStyle(fontSize: 7.5, lineSpacing: 1.35),
+              headerPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
               cellAlignment: pw.Alignment.centerLeft,
               border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
             ),
@@ -159,15 +177,13 @@ class ReportPdfService {
       ),
     );
 
-    await Printing.sharePdf(
-      bytes: await doc.save(),
-      filename: '$fileTitle.pdf',
-    );
+    final bytes = await doc.save();
+    return _savePdfToDocuments(fileTitle: fileTitle, bytes: bytes);
   }
 
   /// Exports Lactating Mothers Masterlist as a simple portrait A4 numbered list,
   /// matching the official MASTERLIST OF LACTATING MOTHER form.
-  Future<void> exportLactatingMasterlistPdf({
+  Future<File> exportLactatingMasterlistPdf({
     required String fileTitle,
     required String barangay,
     required int year,
@@ -247,19 +263,32 @@ class ReportPdfService {
             children: [
               // Prepared by
               pw.ConstrainedBox(
-                constraints: const pw.BoxConstraints(maxWidth: 200),
+                constraints: const pw.BoxConstraints(maxWidth: 210),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text('Prepared by:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 16),
-                    pw.Container(height: 0.5, width: 170, color: PdfColors.black),
-                    pw.SizedBox(height: 3),
-                    pw.Text(
-                      bns.isNotEmpty ? bns.toUpperCase() : '',
-                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                    pw.SizedBox(height: 24),
+                    pw.Container(
+                      width: 175,
+                      decoration: const pw.BoxDecoration(
+                        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
+                      ),
+                      padding: const pw.EdgeInsets.only(bottom: 2),
+                      child: pw.Text(
+                        bns.isNotEmpty ? bns.toUpperCase() : '',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                          decoration: pw.TextDecoration.underline,
+                          lineSpacing: 1.35,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                        maxLines: 1,
+                      ),
                     ),
-                    pw.Text(bnsPosition, style: const pw.TextStyle(fontSize: 9)),
+                    pw.SizedBox(height: 3),
+                    pw.Text(bnsPosition, style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3)),
                     pw.SizedBox(height: 2),
                     pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
                   ],
@@ -267,19 +296,32 @@ class ReportPdfService {
               ),
               // Noted by
               pw.ConstrainedBox(
-                constraints: const pw.BoxConstraints(maxWidth: 200),
+                constraints: const pw.BoxConstraints(maxWidth: 210),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text('Noted by:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 16),
-                    pw.Container(height: 0.5, width: 170, color: PdfColors.black),
-                    pw.SizedBox(height: 3),
-                    pw.Text(
-                      pb.isNotEmpty ? pb.toUpperCase() : '',
-                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                    pw.SizedBox(height: 24),
+                    pw.Container(
+                      width: 175,
+                      decoration: const pw.BoxDecoration(
+                        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
+                      ),
+                      padding: const pw.EdgeInsets.only(bottom: 2),
+                      child: pw.Text(
+                        pb.isNotEmpty ? pb.toUpperCase() : '',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                          decoration: pw.TextDecoration.underline,
+                          lineSpacing: 1.35,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                        maxLines: 1,
+                      ),
                     ),
-                    pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 9)),
+                    pw.SizedBox(height: 3),
+                    pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3)),
                     pw.SizedBox(height: 2),
                     pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
                   ],
@@ -291,15 +333,13 @@ class ReportPdfService {
       ),
     );
 
-    await Printing.sharePdf(
-      bytes: await doc.save(),
-      filename: '$fileTitle.pdf',
-    );
+    final bytes = await doc.save();
+    return _savePdfToDocuments(fileTitle: fileTitle, bytes: bytes);
   }
 
   /// Exports Children Masterlist as a simple portrait A4 numbered list,
   /// matching the official masterlist form format.
-  Future<void> exportChildrenMasterlistPdf({
+  Future<File> exportChildrenMasterlistPdf({
     required String fileTitle,
     required String barangay,
     required int year,
@@ -379,19 +419,32 @@ class ReportPdfService {
             children: [
               // Prepared by
               pw.ConstrainedBox(
-                constraints: const pw.BoxConstraints(maxWidth: 200),
+                constraints: const pw.BoxConstraints(maxWidth: 210),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text('Prepared by:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 16),
-                    pw.Container(height: 0.5, width: 170, color: PdfColors.black),
-                    pw.SizedBox(height: 3),
-                    pw.Text(
-                      bns.isNotEmpty ? bns.toUpperCase() : '',
-                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                    pw.SizedBox(height: 24),
+                    pw.Container(
+                      width: 175,
+                      decoration: const pw.BoxDecoration(
+                        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
+                      ),
+                      padding: const pw.EdgeInsets.only(bottom: 2),
+                      child: pw.Text(
+                        bns.isNotEmpty ? bns.toUpperCase() : '',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                          decoration: pw.TextDecoration.underline,
+                          lineSpacing: 1.35,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                        maxLines: 1,
+                      ),
                     ),
-                    pw.Text(bnsPosition, style: const pw.TextStyle(fontSize: 9)),
+                    pw.SizedBox(height: 3),
+                    pw.Text(bnsPosition, style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3)),
                     pw.SizedBox(height: 2),
                     pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
                   ],
@@ -399,19 +452,32 @@ class ReportPdfService {
               ),
               // Noted by
               pw.ConstrainedBox(
-                constraints: const pw.BoxConstraints(maxWidth: 200),
+                constraints: const pw.BoxConstraints(maxWidth: 210),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text('Noted by:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 16),
-                    pw.Container(height: 0.5, width: 170, color: PdfColors.black),
-                    pw.SizedBox(height: 3),
-                    pw.Text(
-                      pb.isNotEmpty ? pb.toUpperCase() : '',
-                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                    pw.SizedBox(height: 24),
+                    pw.Container(
+                      width: 175,
+                      decoration: const pw.BoxDecoration(
+                        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
+                      ),
+                      padding: const pw.EdgeInsets.only(bottom: 2),
+                      child: pw.Text(
+                        pb.isNotEmpty ? pb.toUpperCase() : '',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                          decoration: pw.TextDecoration.underline,
+                          lineSpacing: 1.35,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                        maxLines: 1,
+                      ),
                     ),
-                    pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 9)),
+                    pw.SizedBox(height: 3),
+                    pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3)),
                     pw.SizedBox(height: 2),
                     pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
                   ],
@@ -423,10 +489,8 @@ class ReportPdfService {
       ),
     );
 
-    await Printing.sharePdf(
-      bytes: await doc.save(),
-      filename: '$fileTitle.pdf',
-    );
+    final bytes = await doc.save();
+    return _savePdfToDocuments(fileTitle: fileTitle, bytes: bytes);
   }
 
   Future<pw.MemoryImage?> _loadAssetImage(String assetPath) async {
@@ -639,25 +703,365 @@ class ReportPdfService {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(title, style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 14),
+          pw.Text(title, style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 20),
           pw.Container(
-            height: 0.5,
-            width: 130,
-            color: PdfColors.black,
+            width: 135,
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
+            ),
+            padding: const pw.EdgeInsets.only(bottom: 2),
+            child: pw.Text(
+              name.isNotEmpty ? name.toUpperCase() : '',
+              style: pw.TextStyle(
+                fontSize: 8,
+                fontWeight: pw.FontWeight.bold,
+                decoration: pw.TextDecoration.underline,
+                lineSpacing: 1.3,
+              ),
+              textAlign: pw.TextAlign.center,
+              maxLines: 1,
+            ),
           ),
+          pw.SizedBox(height: 3),
+          pw.Text(role, style: const pw.TextStyle(fontSize: 6.5, lineSpacing: 1.3)),
           pw.SizedBox(height: 2),
-          pw.Text(
-            name.isNotEmpty ? name.toUpperCase() : '',
-            style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 1),
-          pw.Text(role, style: const pw.TextStyle(fontSize: 6.5)),
-          pw.SizedBox(height: 1),
           pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey700)),
         ],
       ),
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // QUARTERLY FULL WEIGHING RECORD (24–59 months) PDF
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Exports the Quarterly Full Weighing Record as a PDF.
+  /// Includes:
+  ///   1. Official logo header
+  ///   2. Summary nutritional-status table (each child counted once using
+  ///      their latest measurement within the selected quarter)
+  ///   3. Per-gender quarterly weighing record tables (matching form BNS 1-A)
+  ///   4. Signature block (BNS auto-filled; others blank if not typed)
+  Future<File> exportQuarterlyPdf({
+    required String fileTitle,
+    required String barangay,
+    required String municipality,
+    required String province,
+    required int year,
+    required List<Child> boys,
+    required List<Child> girls,
+    required MeasurementRepository measurementRepo,
+    required ReportSignatory? signatory,
+  }) async {
+    final doc = pw.Document();
+
+    final bagongPilipinas = await _loadAssetImage('assets/images/logos/bagong_pilipinas.png');
+    final nnc = await _loadAssetImage('assets/images/logos/nnc.png');
+    final gasanSeal = await _loadAssetImage('assets/images/logos/gasan_seal.png');
+    final barangaySeal = await _loadBarangayImage(barangay, signatory);
+    final nutritionLogo = await _loadAssetImage('assets/images/logos/nutrition_logo.png');
+
+    final bnsName = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
+    final today = DateTime.now();
+    final fmtDate = '${today.month.toString().padLeft(2, '0')}/'
+        '${today.day.toString().padLeft(2, '0')}/${today.year}';
+
+    // ── Compute summary table data ───────────────────────────────────────
+
+    // Status labels and order
+    const statusLabels = [
+      'Normal',
+      'Underweight',
+      'Severely Underweight',
+      'Overweight',
+      'Stunted',
+      'Severely Stunted',
+      'MAM',
+      'SAM',
+    ];
+
+    // For each quarter, count each child once with their latest measurement
+    // For the summary table we count across the full year (all 4 quarters).
+    final boyCounts = <String, int>{for (final s in statusLabels) s: 0};
+    final girlCounts = <String, int>{for (final s in statusLabels) s: 0};
+
+    void countChild(Child child, Map<String, int> counts) {
+      final measurements = measurementRepo.getForChild(child.id);
+      // Find latest measurement within the selected year
+      final inYear = measurements.where((m) => m.date.year == year).toList();
+      if (inYear.isEmpty) return;
+      // getForChild returns most-recent-first
+      final latest = inYear.first;
+      final age = Child.monthsBetween(child.birthDate, latest.date);
+
+      final wfa = GrowthClassifier.classifyWeightForAge(
+        weightKg: latest.weightKg,
+        ageMonths: age,
+        gender: child.gender,
+      );
+      final hfa = GrowthClassifier.classifyHeightForAge(
+        heightCm: latest.heightCm,
+        ageMonths: age,
+        gender: child.gender,
+      );
+      final wfl = GrowthClassifier.classifyWeightForLength(
+        weightKg: latest.weightKg,
+        heightCm: latest.heightCm,
+        gender: child.gender,
+      );
+
+      // Record worst status per dimension
+      if (wfl == 'SAM') {
+        counts['SAM'] = counts['SAM']! + 1;
+      } else if (wfl == 'MAM') {
+        counts['MAM'] = counts['MAM']! + 1;
+      } else if (hfa == 'Severely Stunted') {
+        counts['Severely Stunted'] = counts['Severely Stunted']! + 1;
+      } else if (hfa == 'Stunted') {
+        counts['Stunted'] = counts['Stunted']! + 1;
+      } else if (wfa == 'Severely Underweight') {
+        counts['Severely Underweight'] = counts['Severely Underweight']! + 1;
+      } else if (wfa == 'Underweight') {
+        counts['Underweight'] = counts['Underweight']! + 1;
+      } else if (wfa == 'Overweight' || wfl == 'Overweight' || wfl == 'Obese') {
+        counts['Overweight'] = counts['Overweight']! + 1;
+      } else {
+        counts['Normal'] = counts['Normal']! + 1;
+      }
+    }
+
+    for (final child in boys) { countChild(child, boyCounts); }
+    for (final child in girls) { countChild(child, girlCounts); }
+
+    final totalBoys = boys.length;
+    final totalGirls = girls.length;
+    final grandTotal = totalBoys + totalGirls;
+
+    // ── Build summary table rows ─────────────────────────────────────────
+    List<List<String>> summaryRows() {
+      final rows = <List<String>>[];
+      int runningTotal = 0;
+      for (final label in statusLabels) {
+        final b = boyCounts[label]!;
+        final g = girlCounts[label]!;
+        final t = b + g;
+        runningTotal += t;
+        final pct = grandTotal > 0
+            ? '${((t / grandTotal) * 100).toStringAsFixed(1)}%'
+            : '0.0%';
+        rows.add([label, '$b', '$g', '$t', pct]);
+      }
+      final pct = grandTotal > 0
+          ? '${((runningTotal / grandTotal) * 100).toStringAsFixed(1)}%'
+          : '0.0%';
+      rows.add(['TOTAL', '$totalBoys', '$totalGirls', '$grandTotal', pct]);
+      return rows;
+    }
+
+    // ── Helpers for the per-gender weighing tables ───────────────────────
+    const qMonths = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]];
+
+    String mapWtStatus(String raw) {
+      final s = raw.toLowerCase();
+      if (s.contains('severely') && s.contains('underweight')) return 'SUW';
+      if (s.contains('underweight')) return 'UW';
+      if (s.contains('overweight') || s.contains('obese')) return 'OW';
+      if (s.contains('normal')) return 'N';
+      return '';
+    }
+
+    pw.Widget buildWeighingTable(String genderLabel, List<Child> kids) {
+      // Headers
+      const qtrs = ['1ST', '2ND', '3RD', '4TH'];
+      final headerData = [
+        ['NAME OF CHILD / $genderLabel', 'DATE OF BIRTH',
+          ...List.generate(4, (i) => 'DATE\nWT${i + 1}'),
+          ...List.generate(4, (i) => 'AGE\n${qtrs[i]}'),
+          ...List.generate(4, (i) => 'WT\n${qtrs[i]}'),
+          ...List.generate(4, (i) => 'STATUS\n${qtrs[i]}'),
+          'REMARKS',
+        ],
+      ];
+
+      final dataRows = kids.map((child) {
+        final meas = measurementRepo.getForChild(child.id);
+        final dates = <String>[];
+        final ages = <String>[];
+        final weights = <String>[];
+        final statuses = <String>[];
+
+        for (int q = 0; q < 4; q++) {
+          final qRecs = meas
+              .where((m) => m.date.year == year && qMonths[q].contains(m.date.month))
+              .toList();
+          if (qRecs.isNotEmpty) {
+            final rec = qRecs.first;
+            final ageAtW = Child.monthsBetween(child.birthDate, rec.date);
+            dates.add('${rec.date.month}/${rec.date.day}/${rec.date.year}');
+            ages.add(ageAtW > 59 ? 'OA' : '$ageAtW');
+            weights.add(rec.weightKg.toStringAsFixed(1));
+            statuses.add(mapWtStatus(
+              GrowthClassifier.classifyWeightForAge(
+                weightKg: rec.weightKg,
+                ageMonths: ageAtW,
+                gender: child.gender,
+              ),
+            ));
+          } else {
+            final targetMonth = (q + 1) * 3;
+            final est = (year - child.birthDate.year) * 12 +
+                (targetMonth - child.birthDate.month);
+            dates.add('');
+            ages.add(est > 59 ? 'OA' : (est >= 24 ? '$est' : ''));
+            weights.add('');
+            statuses.add('');
+          }
+        }
+
+        return [
+          child.fullName,
+          '${child.birthDate.month}/${child.birthDate.day}/${child.birthDate.year}',
+          ...dates,
+          ...ages,
+          ...weights,
+          ...statuses,
+          '',
+        ];
+      }).toList();
+
+      const colWidths = <int, pw.TableColumnWidth>{
+        0: pw.FlexColumnWidth(2.5),
+        1: pw.FixedColumnWidth(54),
+        2: pw.FixedColumnWidth(42), 3: pw.FixedColumnWidth(42),
+        4: pw.FixedColumnWidth(42), 5: pw.FixedColumnWidth(42),
+        6: pw.FixedColumnWidth(30), 7: pw.FixedColumnWidth(30),
+        8: pw.FixedColumnWidth(30), 9: pw.FixedColumnWidth(30),
+        10: pw.FixedColumnWidth(36), 11: pw.FixedColumnWidth(36),
+        12: pw.FixedColumnWidth(36), 13: pw.FixedColumnWidth(36),
+        14: pw.FixedColumnWidth(36), 15: pw.FixedColumnWidth(36),
+        16: pw.FixedColumnWidth(36), 17: pw.FixedColumnWidth(36),
+        18: pw.FixedColumnWidth(46),
+      };
+
+      return pw.TableHelper.fromTextArray(
+        headers: headerData[0],
+        data: dataRows,
+        headerStyle: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+        headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF1B5E20)),
+        cellStyle: const pw.TextStyle(fontSize: 7),
+        cellPadding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+        border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.4),
+        columnWidths: colWidths,
+        cellAlignment: pw.Alignment.center,
+        headerCount: 1,
+      );
+    }
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 16 * PdfPageFormat.mm, vertical: 14 * PdfPageFormat.mm),
+        build: (context) => [
+          // ── Logos ──
+          _buildHeaderLogos(
+            barangay: barangay,
+            bagongPilipinas: bagongPilipinas,
+            nnc: nnc,
+            gasanSeal: gasanSeal,
+            barangaySeal: barangaySeal,
+            nutritionLogo: nutritionLogo,
+          ),
+          pw.SizedBox(height: 10),
+
+          // ── Title block ──
+          pw.Center(
+            child: pw.Column(
+              children: [
+                pw.Text(
+                  'QUARTERLY FULL WEIGHING RECORD',
+                  style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                ),
+                pw.Text(
+                  'CHILDREN 24–59 MONTHS · Year: $year',
+                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                ),
+                pw.SizedBox(height: 2),
+                pw.Text(
+                  'Province: ${province.toUpperCase()}  ·  Municipality: ${municipality.toUpperCase()}  ·  Barangay: ${barangay.toUpperCase()}',
+                  style: const pw.TextStyle(fontSize: 8),
+                ),
+                pw.Text(
+                  'BNS: $bnsName  ·  Date Generated: $fmtDate',
+                  style: const pw.TextStyle(fontSize: 8),
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+
+          // ── Summary nutritional status table ──
+          pw.Text(
+            'NUTRITIONAL STATUS SUMMARY',
+            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 4),
+          pw.TableHelper.fromTextArray(
+            headers: ['Nutritional Status', 'Boys', 'Girls', 'Total', 'Percentage (%)'],
+            data: summaryRows(),
+            headerStyle: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF1B5E20)),
+            cellStyle: const pw.TextStyle(fontSize: 8),
+            cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+            columnWidths: {
+              0: const pw.FlexColumnWidth(3),
+              1: const pw.FixedColumnWidth(48),
+              2: const pw.FixedColumnWidth(48),
+              3: const pw.FixedColumnWidth(48),
+              4: const pw.FixedColumnWidth(72),
+            },
+            cellAlignments: {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.center,
+              2: pw.Alignment.center,
+              3: pw.Alignment.center,
+              4: pw.Alignment.center,
+            },
+            headerCount: 1,
+          ),
+          pw.SizedBox(height: 16),
+
+          // ── BOYS weighing table ──
+          pw.Text('BOYS (Total: $totalBoys)',
+              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 4),
+          if (boys.isEmpty)
+            pw.Text('No boys recorded.', style: const pw.TextStyle(fontSize: 8))
+          else
+            buildWeighingTable('BOYS', boys),
+          pw.SizedBox(height: 12),
+
+          // ── GIRLS weighing table ──
+          pw.Text('GIRLS (Total: $totalGirls)',
+              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 4),
+          if (girls.isEmpty)
+            pw.Text('No girls recorded.', style: const pw.TextStyle(fontSize: 8))
+          else
+            buildWeighingTable('GIRLS', girls),
+          pw.SizedBox(height: 24),
+
+          // ── Signature block ──
+          pw.Divider(color: PdfColors.grey400),
+          pw.SizedBox(height: 8),
+          _buildFourSignatoryBlock(signatory),
+        ],
+      ),
+    );
+
+    final bytes = await doc.save();
+    return _savePdfToDocuments(fileTitle: fileTitle, bytes: bytes);
   }
 
   pw.Widget _buildTable(
@@ -710,31 +1114,33 @@ class ReportPdfService {
 
   pw.Widget _sigLine(String name, String label) {
     return pw.ConstrainedBox(
-      constraints: const pw.BoxConstraints(maxWidth: 220),
+      constraints: const pw.BoxConstraints(maxWidth: 240),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.SizedBox(height: 10),
+          pw.SizedBox(height: 20),
           pw.Container(
-            width: 200,
+            width: 210,
             decoration: const pw.BoxDecoration(
-              border: pw.Border(top: pw.BorderSide(width: 0.5)),
+              border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
             ),
-            padding: const pw.EdgeInsets.only(top: 2),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  name.isNotEmpty ? name.toUpperCase() : '',
-                  style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.SizedBox(height: 1),
-                pw.Text(label, style: const pw.TextStyle(fontSize: 8)),
-                pw.SizedBox(height: 1),
-                pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
-              ],
+            padding: const pw.EdgeInsets.only(bottom: 2),
+            child: pw.Text(
+              name.isNotEmpty ? name.toUpperCase() : '',
+              style: pw.TextStyle(
+                fontSize: 10,
+                fontWeight: pw.FontWeight.bold,
+                decoration: pw.TextDecoration.underline,
+                lineSpacing: 1.35,
+              ),
+              textAlign: pw.TextAlign.center,
+              maxLines: 1,
             ),
           ),
+          pw.SizedBox(height: 3),
+          pw.Text(label, style: const pw.TextStyle(fontSize: 8, lineSpacing: 1.3)),
+          pw.SizedBox(height: 2),
+          pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
         ],
       ),
     );

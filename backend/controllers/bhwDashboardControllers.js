@@ -66,6 +66,19 @@ exports.getBhwStats = async (req, res) => {
       [barangay, barangay]
     );
 
+    // ── Referral counts (pending, ongoing, total) - excluding archived ──
+    const [[referralStats]] = await pool.query(
+      `SELECT 
+         COUNT(CASE WHEN r.archived_at IS NULL THEN 1 END) AS totalReferrals,
+         SUM(CASE WHEN LOWER(TRIM(r.status)) = 'pending' AND r.archived_at IS NULL THEN 1 ELSE 0 END) AS pendingReferrals,
+         SUM(CASE WHEN LOWER(TRIM(r.status)) IN ('ongoing', 'responded') AND r.archived_at IS NULL THEN 1 ELSE 0 END) AS ongoingReferrals
+       FROM referrals r
+       LEFT JOIN children c ON c.child_id = r.child_id
+       LEFT JOIN mothers m ON m.mother_id = r.mother_id
+       WHERE (LOWER(TRIM(COALESCE(c.barangay, m.barangay))) = LOWER(TRIM(?)) OR ? = 'All Barangays')`,
+      [barangay, barangay]
+    );
+
     // ── Monthly monitoring trend for past 6 months ──
     const [monthlyRows] = await pool.query(
       `SELECT DATE_FORMAT(nr.record_date, '%Y-%m') AS month_key,
@@ -98,6 +111,8 @@ exports.getBhwStats = async (req, res) => {
       totalMothers: motherStats.totalMothers || 0,
       atRiskChildren,
       atRiskMothers: atRiskMothersRow.atRiskMothers || 0,
+      pendingReferrals: Number(referralStats?.pendingReferrals || 0),
+      totalReferrals: Number(referralStats?.totalReferrals || 0),
       normal,
       stunted,
       wasted,

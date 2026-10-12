@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import ReportPreviewModal from '../components/ui/ReportPreviewModal';
+import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
 const statusColors = {
   normal: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200',
@@ -63,6 +64,8 @@ function MedicalRecords() {
   const [addBeneficiarySubmitting, setAddBeneficiarySubmitting] = useState(false);
   const [addBeneficiaryError, setAddBeneficiaryError] = useState('');
   const [addBeneficiarySuccess, setAddBeneficiarySuccess] = useState('');
+  const [addBeneficiaryErrors, setAddBeneficiaryErrors] = useState({});
+  const [interventionErrors, setInterventionErrors] = useState({});
 
   // ── Children state ──
   const [search, setSearch] = useState('');
@@ -233,18 +236,25 @@ function MedicalRecords() {
     setNextSchedule('');
     setInterventionNotes('');
     setModalError('');
+    setInterventionErrors({});
     setShowAddModal(true);
   };
 
   const submitIntervention = async (e) => {
     e.preventDefault();
-    if (!serviceName.trim()) {
-      setModalError('Please enter the medication, supplement, or intervention name.');
+    setModalError('');
+
+    const errs = {};
+    if (!serviceName.trim()) errs.serviceName = 'This field is required';
+    if (!serviceDate) errs.serviceDate = 'This field is required';
+
+    if (Object.keys(errs).length > 0) {
+      setInterventionErrors(errs);
       return;
     }
 
+    setInterventionErrors({});
     setModalSubmitting(true);
-    setModalError('');
 
     try {
       if (modalBeneficiaryType === 'child') {
@@ -1103,11 +1113,12 @@ function MedicalRecords() {
               </button>
             </div>
 
-            <form onSubmit={submitIntervention} className="p-6 space-y-3.5 overflow-y-auto flex-1">
+            <form onSubmit={submitIntervention} noValidate className="p-6 space-y-3.5 overflow-y-auto flex-1">
               {modalError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{modalError}</div>}
+              <FormRequiredNote />
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Intervention Category *</label>
+                <FormLabel label="Intervention Category" required />
                 <select
                   value={interventionCategory}
                   onChange={(e) => setInterventionCategory(e.target.value)}
@@ -1120,10 +1131,12 @@ function MedicalRecords() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">
-                  {interventionCategory === 'Medication' ? 'Medication Name *' : interventionCategory === 'Supplement' ? 'Supplement Name *' : 'Intervention Name *'}
-                </label>
+                <FormLabel
+                  label={interventionCategory === 'Medication' ? 'Medication Name' : interventionCategory === 'Supplement' ? 'Supplement Name' : 'Intervention Name'}
+                  required
+                />
                 <input
+                  name="serviceName"
                   type="text"
                   placeholder={
                     interventionCategory === 'Medication' ? 'e.g., Amoxicillin, Paracetamol' :
@@ -1131,14 +1144,19 @@ function MedicalRecords() {
                     'e.g., Exclusive Breastfeeding Counseling, Nutrition Advice'
                   }
                   value={serviceName}
-                  onChange={(e) => setServiceName(e.target.value)}
-                  required
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                  onChange={(e) => {
+                    setServiceName(e.target.value);
+                    if (interventionErrors.serviceName) setInterventionErrors((prev) => ({ ...prev, serviceName: '' }));
+                  }}
+                  className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none transition ${
+                    interventionErrors.serviceName ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
+                  }`}
                 />
+                {interventionErrors.serviceName && <p className="text-xs text-[#D32F2F] mt-1">{interventionErrors.serviceName}</p>}
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Dosage / Frequency</label>
+                <FormLabel label="Dosage / Frequency" />
                 <input
                   type="text"
                   placeholder="e.g., 1 capsule once daily, 5ml every 8 hours"
@@ -1150,17 +1168,23 @@ function MedicalRecords() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Date Administered *</label>
+                  <FormLabel label="Date Administered" required />
                   <input
+                    name="serviceDate"
                     type="date"
                     value={serviceDate}
-                    onChange={(e) => setServiceDate(e.target.value)}
-                    required
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                    onChange={(e) => {
+                      setServiceDate(e.target.value);
+                      if (interventionErrors.serviceDate) setInterventionErrors((prev) => ({ ...prev, serviceDate: '' }));
+                    }}
+                    className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none transition ${
+                      interventionErrors.serviceDate ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
+                    }`}
                   />
+                  {interventionErrors.serviceDate && <p className="text-xs text-[#D32F2F] mt-1">{interventionErrors.serviceDate}</p>}
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Next Follow-up</label>
+                  <FormLabel label="Next Follow-up" />
                   <input
                     type="date"
                     value={nextSchedule}
@@ -1228,7 +1252,35 @@ function MedicalRecords() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                // Call handlesubmit default
+                setAddBeneficiaryError('');
+                setAddBeneficiarySuccess('');
+
+                const errs = {};
+                if (!newFirstName.trim()) errs.first_name = 'This field is required';
+                if (!newLastName.trim()) errs.last_name = 'This field is required';
+                if (beneficiaryType === 'child') {
+                  if (!newBirthDate) errs.birth_date = 'This field is required';
+                  if (!newSex) errs.sex = 'This field is required';
+                }
+
+                if (newGuardianContact && newGuardianContact.trim()) {
+                  const contactErr = validateContact(newGuardianContact, false);
+                  if (contactErr) errs.contact_number = contactErr;
+                }
+
+                if (Object.keys(errs).length > 0) {
+                  setAddBeneficiaryErrors(errs);
+                  const firstInvalid = Object.keys(errs)[0];
+                  setTimeout(() => {
+                    const el = document.querySelector(`[name="${firstInvalid}"]`);
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      el.focus();
+                    }
+                  }, 50);
+                  return;
+                }
+
                 const bDate = newBirthDate ? new Date(newBirthDate) : null;
                 const now = new Date();
                 if (beneficiaryType === 'child' && bDate) {
@@ -1239,26 +1291,27 @@ function MedicalRecords() {
                     return;
                   }
                 }
-                setAddBeneficiaryError('');
+
+                setAddBeneficiaryErrors({});
                 setAddBeneficiarySubmitting(true);
                 const endpoint = beneficiaryType === 'child' ? '/mobile/children' : '/mobile/mothers';
                 const payload = beneficiaryType === 'child' ? {
-                  first_name: newFirstName,
-                  middle_initial: newMiddleInitial || null,
-                  last_name: newLastName,
+                  first_name: newFirstName.trim(),
+                  middle_initial: newMiddleInitial.trim() || null,
+                  last_name: newLastName.trim(),
                   birth_date: newBirthDate,
                   sex: newSex,
-                  guardian_name: newGuardianName,
-                  guardian_contact: newGuardianContact,
+                  guardian_name: newGuardianName.trim() || null,
+                  guardian_contact: newGuardianContact.trim() || null,
                   barangay: newBarangay || user.barangay,
-                  purok: newPurok || null,
+                  purok: newPurok.trim() || null,
                 } : {
-                  first_name: newFirstName,
-                  middle_initial: newMiddleInitial || null,
-                  last_name: newLastName,
-                  contact_number: newGuardianContact,
+                  first_name: newFirstName.trim(),
+                  middle_initial: newMiddleInitial.trim() || null,
+                  last_name: newLastName.trim(),
+                  contact_number: newGuardianContact.trim() || null,
                   barangay: newBarangay || user.barangay,
-                  purok: newPurok || null,
+                  purok: newPurok.trim() || null,
                 };
                 axiosClient.post(endpoint, payload)
                   .then(() => {
@@ -1269,6 +1322,7 @@ function MedicalRecords() {
                   .catch((err) => setAddBeneficiaryError(err.response?.data?.message || 'Failed to register beneficiary.'))
                   .finally(() => setAddBeneficiarySubmitting(false));
               }}
+              noValidate
               className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"
             >
               {addBeneficiaryError && (
@@ -1284,18 +1338,20 @@ function MedicalRecords() {
                 </div>
               )}
 
+              <FormRequiredNote />
+
               {/* Beneficiary Type Selector */}
               <div className="grid grid-cols-2 gap-2 bg-gray-100 p-1 rounded-xl">
                 <button
                   type="button"
-                  onClick={() => setBeneficiaryType('child')}
+                  onClick={() => { setBeneficiaryType('child'); setAddBeneficiaryErrors({}); }}
                   className={`py-2 text-xs font-bold rounded-lg transition ${beneficiaryType === 'child' ? 'bg-white text-green-900 shadow-xs' : 'text-gray-600'}`}
                 >
                   Child (0–59 Months)
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBeneficiaryType('mother')}
+                  onClick={() => { setBeneficiaryType('mother'); setAddBeneficiaryErrors({}); }}
                   className={`py-2 text-xs font-bold rounded-lg transition ${beneficiaryType === 'mother' ? 'bg-white text-green-900 shadow-xs' : 'text-gray-600'}`}
                 >
                   Lactating Mother
@@ -1305,19 +1361,26 @@ function MedicalRecords() {
               {/* Names */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-1">
-                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">First Name *</label>
+                  <FormLabel label="First Name" required />
                   <input
+                    name="first_name"
                     type="text"
-                    required
                     value={newFirstName}
-                    onChange={(e) => setNewFirstName(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                    onChange={(e) => {
+                      setNewFirstName(e.target.value);
+                      if (addBeneficiaryErrors.first_name) setAddBeneficiaryErrors(prev => ({ ...prev, first_name: '' }));
+                    }}
+                    className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition ${
+                      addBeneficiaryErrors.first_name ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-green-600'
+                    }`}
                     placeholder="First Name"
                   />
+                  {addBeneficiaryErrors.first_name && <p className="text-xs text-[#D32F2F] mt-1">{addBeneficiaryErrors.first_name}</p>}
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">M.I.</label>
+                  <FormLabel label="M.I." />
                   <input
+                    name="middle_initial"
                     type="text"
                     maxLength={2}
                     value={newMiddleInitial}
@@ -1327,68 +1390,143 @@ function MedicalRecords() {
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">Last Name *</label>
+                  <FormLabel label="Last Name" required />
                   <input
+                    name="last_name"
                     type="text"
-                    required
                     value={newLastName}
-                    onChange={(e) => setNewLastName(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                    onChange={(e) => {
+                      setNewLastName(e.target.value);
+                      if (addBeneficiaryErrors.last_name) setAddBeneficiaryErrors(prev => ({ ...prev, last_name: '' }));
+                    }}
+                    className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition ${
+                      addBeneficiaryErrors.last_name ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-green-600'
+                    }`}
                     placeholder="Last Name"
                   />
+                  {addBeneficiaryErrors.last_name && <p className="text-xs text-[#D32F2F] mt-1">{addBeneficiaryErrors.last_name}</p>}
                 </div>
               </div>
 
               {beneficiaryType === 'child' && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <FormLabel label="Birth Date (0-59 mos)" required />
+                      <input
+                        name="birth_date"
+                        type="date"
+                        value={newBirthDate}
+                        onChange={(e) => {
+                          setNewBirthDate(e.target.value);
+                          if (addBeneficiaryErrors.birth_date) setAddBeneficiaryErrors(prev => ({ ...prev, birth_date: '' }));
+                        }}
+                        className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition ${
+                          addBeneficiaryErrors.birth_date ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-green-600'
+                        }`}
+                      />
+                      {addBeneficiaryErrors.birth_date && <p className="text-xs text-[#D32F2F] mt-1">{addBeneficiaryErrors.birth_date}</p>}
+                    </div>
+                    <div>
+                      <FormLabel label="Sex" required />
+                      <select
+                        name="sex"
+                        value={newSex}
+                        onChange={(e) => {
+                          setNewSex(e.target.value);
+                          if (addBeneficiaryErrors.sex) setAddBeneficiaryErrors(prev => ({ ...prev, sex: '' }));
+                        }}
+                        className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition ${
+                          addBeneficiaryErrors.sex ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-green-600'
+                        }`}
+                      >
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                      </select>
+                      {addBeneficiaryErrors.sex && <p className="text-xs text-[#D32F2F] mt-1">{addBeneficiaryErrors.sex}</p>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <FormLabel label="Guardian Name" />
+                      <input
+                        name="guardian_name"
+                        type="text"
+                        value={newGuardianName}
+                        onChange={(e) => setNewGuardianName(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                        placeholder="Mother/Father Name"
+                      />
+                    </div>
+                    <div>
+                      <FormLabel label="Guardian Contact" />
+                      <input
+                        name="contact_number"
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={11}
+                        value={newGuardianContact}
+                        onChange={(e) => {
+                          setNewGuardianContact(sanitizeContact(e.target.value));
+                          if (addBeneficiaryErrors.contact_number) setAddBeneficiaryErrors(prev => ({ ...prev, contact_number: '' }));
+                        }}
+                        className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition ${
+                          addBeneficiaryErrors.contact_number ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-green-600'
+                        }`}
+                        placeholder="09123456789"
+                      />
+                      {addBeneficiaryErrors.contact_number && <p className="text-xs text-[#D32F2F] mt-1">{addBeneficiaryErrors.contact_number}</p>}
+                    </div>
+                    <div>
+                      <FormLabel label="Purok / Zone" />
+                      <input
+                        name="purok"
+                        type="text"
+                        value={newPurok}
+                        onChange={(e) => setNewPurok(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                        placeholder="Purok 1"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {beneficiaryType === 'mother' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">Birth Date (0-59 mos) *</label>
+                    <FormLabel label="Contact Number" />
                     <input
-                      type="date"
-                      required
-                      value={newBirthDate}
-                      onChange={(e) => setNewBirthDate(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                      name="contact_number"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={11}
+                      value={newGuardianContact}
+                      onChange={(e) => {
+                        setNewGuardianContact(sanitizeContact(e.target.value));
+                        if (addBeneficiaryErrors.contact_number) setAddBeneficiaryErrors(prev => ({ ...prev, contact_number: '' }));
+                      }}
+                      className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition ${
+                        addBeneficiaryErrors.contact_number ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-green-600'
+                      }`}
+                      placeholder="09123456789"
                     />
+                    {addBeneficiaryErrors.contact_number && <p className="text-xs text-[#D32F2F] mt-1">{addBeneficiaryErrors.contact_number}</p>}
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">Sex *</label>
-                    <select
-                      value={newSex}
-                      onChange={(e) => setNewSex(e.target.value)}
+                    <FormLabel label="Purok / Zone" />
+                    <input
+                      name="purok"
+                      type="text"
+                      value={newPurok}
+                      onChange={(e) => setNewPurok(e.target.value)}
                       className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
-                    >
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                    </select>
+                      placeholder="Purok 1"
+                    />
                   </div>
                 </div>
               )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
-                    {beneficiaryType === 'child' ? 'Guardian Name' : 'Contact Number'}
-                  </label>
-                  <input
-                    type="text"
-                    value={beneficiaryType === 'child' ? newGuardianName : newGuardianContact}
-                    onChange={(e) => beneficiaryType === 'child' ? setNewGuardianName(e.target.value) : setNewGuardianContact(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
-                    placeholder={beneficiaryType === 'child' ? 'Mother/Father Name' : '09123456789'}
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">Purok / Zone</label>
-                  <input
-                    type="text"
-                    value={newPurok}
-                    onChange={(e) => setNewPurok(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
-                    placeholder="Purok 1"
-                  />
-                </div>
-              </div>
 
               {/* Action Buttons: Includes "Save & Add Another" so user is NOT kicked out to home (Item 25) */}
               <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
@@ -1401,7 +1539,7 @@ function MedicalRecords() {
                 </button>
                 <button
                   type="submit"
-                  disabled={addBeneficiarySubmitting || !newFirstName || !newLastName}
+                  disabled={addBeneficiarySubmitting}
                   className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:opacity-95 disabled:opacity-50 cursor-pointer"
                 >
                   {addBeneficiarySubmitting ? 'Saving…' : 'Save & Add Another'}

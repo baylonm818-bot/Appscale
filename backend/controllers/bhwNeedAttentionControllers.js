@@ -294,6 +294,7 @@ exports.getNeedAttention = async (req, res) => {
          FROM referrals
          WHERE LOWER(status) IN ('pending', 'ongoing', 'responded', 'in progress')
            AND child_id IS NOT NULL
+           AND archived_at IS NULL
          GROUP BY child_id
        ) active_ref ON active_ref.child_id = c.child_id
        WHERE ${barangayCondition}

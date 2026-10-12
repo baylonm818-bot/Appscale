@@ -200,7 +200,13 @@ class _NotificationTile extends StatelessWidget {
       case 'referral_completed':
         return Icons.check_circle_outline;
       case 'referral_in_progress':
+      case 'referral_update':
         return Icons.sync_outlined;
+      case 'referral_sent':
+        return Icons.send_outlined;
+      case 'referral_cancelled':
+      case 'referral_rejected':
+        return Icons.cancel_outlined;
       default:
         return Icons.notifications_outlined;
     }
@@ -211,10 +217,24 @@ class _NotificationTile extends StatelessWidget {
       case 'referral_completed':
         return AppColors.primaryGreen;
       case 'referral_in_progress':
+      case 'referral_update':
         return AppColors.statBlue;
+      case 'referral_sent':
+        return AppColors.darkGreen;
+      case 'referral_cancelled':
+      case 'referral_rejected':
+        return AppColors.statRed;
       default:
         return AppColors.textMuted;
     }
+  }
+
+  String get _displayMessage {
+    var msg = notification.message;
+    if (msg.contains(' ay Completed.')) {
+      msg = msg.replaceFirst(RegExp(r'Referral ni (.*?) ay Completed\.'), 'Referral completed for \$1.');
+    }
+    return msg;
   }
 
   @override
@@ -280,7 +300,7 @@ class _NotificationTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        notification.message,
+                        _displayMessage,
                         style: AppTextStyles.body.copyWith(
                           fontSize: 12,
                           color: AppColors.textPrimary.withValues(alpha: 0.85),

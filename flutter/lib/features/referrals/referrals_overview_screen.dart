@@ -13,7 +13,8 @@ import 'create_referral_screen.dart';
 import 'widgets/referral_card.dart';
 
 class ReferralsOverviewScreen extends StatefulWidget {
-  const ReferralsOverviewScreen({super.key});
+  final String? initialFilter;
+  const ReferralsOverviewScreen({super.key, this.initialFilter});
 
   @override
   State<ReferralsOverviewScreen> createState() => _ReferralsOverviewScreenState();
@@ -24,11 +25,14 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
   String get _currentBarangay =>
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
-  String _selectedFilter = 'All'; // 'All', 'Pending', 'Completed'
+  late String _selectedFilter;
+  late bool _userSelectedFilter;
 
   @override
   void initState() {
     super.initState();
+    _userSelectedFilter = widget.initialFilter != null;
+    _selectedFilter = widget.initialFilter ?? 'Pending';
     // Pull fresh referral records from server when screen opens
     ReferralRepository().pullLatest(barangay: _currentBarangay);
   }
@@ -79,6 +83,9 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                   final referrals = ReferralRepository().getForBarangay(
                     _currentBarangay,
                   );
+                  final archivedReferrals = ReferralRepository().getArchivedForBarangay(
+                    _currentBarangay,
+                  );
 
                   final pendingCount =
                       referrals.where((r) => r.isPending).length;
@@ -86,19 +93,33 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                       referrals.where((r) => r.isOngoing).length;
                   final completedCount =
                       referrals.where((r) => r.isCompleted).length;
+                  final archivedCount = archivedReferrals.length;
 
-                  final filteredReferrals = referrals.where((r) {
-                    if (_selectedFilter == 'Pending') {
-                      return r.isPending;
+                  String activeFilter = _selectedFilter;
+                  if (!_userSelectedFilter) {
+                    if (pendingCount > 0) {
+                      activeFilter = 'Pending';
+                    } else if (ongoingCount > 0) {
+                      activeFilter = 'Ongoing';
+                    } else {
+                      activeFilter = 'All';
                     }
-                    if (_selectedFilter == 'Ongoing') {
-                      return r.isOngoing;
-                    }
-                    if (_selectedFilter == 'Completed') {
-                      return r.isCompleted;
-                    }
-                    return true;
-                  }).toList();
+                  }
+
+                  final filteredReferrals = activeFilter == 'Archived'
+                      ? archivedReferrals
+                      : referrals.where((r) {
+                          if (activeFilter == 'Pending') {
+                            return r.isPending;
+                          }
+                          if (activeFilter == 'Ongoing') {
+                            return r.isOngoing;
+                          }
+                          if (activeFilter == 'Completed') {
+                            return r.isCompleted;
+                          }
+                          return true;
+                        }).toList();
 
                   return RefreshIndicator(
                     onRefresh: _handleRefresh,
@@ -191,7 +212,7 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                                 style: AppTextStyles.h2.copyWith(fontSize: 15),
                               ),
                               Text(
-                                '${filteredReferrals.length} of ${referrals.length}',
+                                '${filteredReferrals.length} of ${activeFilter == 'Archived' ? archivedCount : referrals.length}',
                                 style: AppTextStyles.body.copyWith(
                                   fontSize: 11,
                                   color: AppColors.textMuted,
@@ -200,7 +221,7 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          // Filter Chips: All, Pending, Completed
+                          // Filter Chips: All, Pending, Ongoing, Completed
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: Row(
@@ -208,43 +229,109 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                                 _ReferralFilterChip(
                                   label: 'All',
                                   count: referrals.length,
-                                  isSelected: _selectedFilter == 'All',
-                                  onTap: () => setState(() => _selectedFilter = 'All'),
+                                  isSelected: activeFilter == 'All',
+                                  onTap: () => setState(() {
+                                    _userSelectedFilter = true;
+                                    _selectedFilter = 'All';
+                                  }),
                                 ),
                                 const SizedBox(width: 8),
                                 _ReferralFilterChip(
                                   label: 'Pending',
                                   count: pendingCount,
-                                  isSelected: _selectedFilter == 'Pending',
+                                  isSelected: activeFilter == 'Pending',
                                   color: AppColors.statOrange,
-                                  onTap: () => setState(() => _selectedFilter = 'Pending'),
+                                  onTap: () => setState(() {
+                                    _userSelectedFilter = true;
+                                    _selectedFilter = 'Pending';
+                                  }),
                                 ),
                                 const SizedBox(width: 8),
                                 _ReferralFilterChip(
                                   label: 'Ongoing',
                                   count: ongoingCount,
-                                  isSelected: _selectedFilter == 'Ongoing',
+                                  isSelected: activeFilter == 'Ongoing',
                                   color: AppColors.statBlue,
-                                  onTap: () => setState(() => _selectedFilter = 'Ongoing'),
+                                  onTap: () => setState(() {
+                                    _userSelectedFilter = true;
+                                    _selectedFilter = 'Ongoing';
+                                  }),
                                 ),
                                 const SizedBox(width: 8),
                                 _ReferralFilterChip(
                                   label: 'Completed',
                                   count: completedCount,
-                                  isSelected: _selectedFilter == 'Completed',
+                                  isSelected: activeFilter == 'Completed',
                                   color: AppColors.primaryGreen,
-                                  onTap: () => setState(() => _selectedFilter = 'Completed'),
+                                  onTap: () => setState(() {
+                                    _userSelectedFilter = true;
+                                    _selectedFilter = 'Completed';
+                                  }),
+                                ),
+                                const SizedBox(width: 8),
+                                _ReferralFilterChip(
+                                  label: 'Archived',
+                                  count: archivedCount,
+                                  isSelected: activeFilter == 'Archived',
+                                  color: const Color(0xFF475569),
+                                  onTap: () => setState(() {
+                                    _userSelectedFilter = true;
+                                    _selectedFilter = 'Archived';
+                                  }),
                                 ),
                               ],
                             ),
                           ),
+                          if (activeFilter == 'Completed' && completedCount > 0) ...[
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF475569),
+                                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                ),
+                                icon: const Icon(Icons.archive_outlined, size: 14),
+                                label: Text('Archive All Completed ($completedCount)'),
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Archive Completed Referrals'),
+                                      content: Text('Archive all $completedCount completed referrals for Barangay $_currentBarangay? They will be moved to the Archived tab.'),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Archive All')),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirm == true) {
+                                    final completedList = referrals.where((r) => r.isCompleted).toList();
+                                    for (final r in completedList) {
+                                      await ReferralRepository().archive(r.id);
+                                    }
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Archived $completedCount completed referrals'),
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: AppSpacing.sm),
                           if (filteredReferrals.isEmpty)
                             EmptyState(
                               icon: Icons.local_hospital_outlined,
-                              message: _selectedFilter == 'All'
+                              message: activeFilter == 'All'
                                   ? 'No referrals recorded yet.'
-                                  : 'No $_selectedFilter referrals found.',
+                                  : 'No $activeFilter referrals found.',
                             )
                           else
                             ...filteredReferrals.map(

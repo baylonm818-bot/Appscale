@@ -15,6 +15,7 @@ import '../../shared/widgets/app_dropdown_field.dart';
 import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/app_yes_no_toggle.dart';
 import '../../shared/widgets/form_action_buttons.dart';
+import '../../shared/widgets/form_required_note.dart';
 import '../../shared/widgets/form_section_card.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../shared/utils/app_user_identity.dart';
@@ -83,6 +84,18 @@ class _AddChildScreenState extends State<AddChildScreen> {
   final _scrollController = ScrollController();
   final _fullNameFocusNode = FocusNode();
 
+  final _fullNameKey = GlobalKey();
+  final _birthDateKey = GlobalKey();
+  final _addressKey = GlobalKey();
+  final _guardianNameKey = GlobalKey();
+  final _guardianContactKey = GlobalKey();
+
+  String? _fullNameError;
+  String? _birthDateError;
+  String? _addressError;
+  String? _guardianNameError;
+  String? _guardianContactError;
+
   DateTime? _birthDate;
   String _gender = 'Female';
   bool _belongsToIpGroup = false;
@@ -111,12 +124,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
       }
     }
   }
-
-  bool get _isFormValid =>
-      _fullNameController.text.trim().isNotEmpty &&
-      _birthDate != null &&
-      _addressController.text.trim().isNotEmpty &&
-      _guardianNameController.text.trim().isNotEmpty;
 
   bool _hasUnsavedInput() {
     if (widget.isEditMode) {
@@ -190,28 +197,82 @@ class _AddChildScreenState extends State<AddChildScreen> {
   Future<void> _handleSave() async {
     if (_isSaving) return;
 
-    if (!_isFormValid) {
-      AppNotificationUI.showWarning(
-        context,
-        'Please fill in all required fields marked with *',
-        title: 'Required Information Missing',
-      );
-      return;
-    }
+    String? fullNameErr;
+    String? birthDateErr;
+    String? addressErr;
+    String? guardianNameErr;
+    String? guardianContactErr;
 
-    setState(() => _isSaving = true);
+    if (_fullNameController.text.trim().isEmpty) {
+      fullNameErr = 'This field is required';
+    }
+    if (_birthDate == null) {
+      birthDateErr = 'This field is required';
+    }
+    if (_addressController.text.trim().isEmpty) {
+      addressErr = 'This field is required';
+    }
+    if (_guardianNameController.text.trim().isEmpty) {
+      guardianNameErr = 'This field is required';
+    }
 
     final rawContact = _guardianContactController.text.trim();
     final sanitizedGuardianContact = AppUserIdentity.sanitizeMobileNumber(rawContact);
     if (rawContact.isNotEmpty && !AppUserIdentity.isValidPhilippineContactNumber(rawContact)) {
+      guardianContactErr = 'Contact number must be 11 digits (e.g. 09123456789)';
+    }
+
+    if (fullNameErr != null ||
+        birthDateErr != null ||
+        addressErr != null ||
+        guardianNameErr != null ||
+        guardianContactErr != null) {
+      setState(() {
+        _fullNameError = fullNameErr;
+        _birthDateError = birthDateErr;
+        _addressError = addressErr;
+        _guardianNameError = guardianNameErr;
+        _guardianContactError = guardianContactErr;
+      });
+
+      GlobalKey? firstInvalidKey;
+      if (fullNameErr != null) {
+        firstInvalidKey = _fullNameKey;
+      } else if (birthDateErr != null) {
+        firstInvalidKey = _birthDateKey;
+      } else if (addressErr != null) {
+        firstInvalidKey = _addressKey;
+      } else if (guardianNameErr != null) {
+        firstInvalidKey = _guardianNameKey;
+      } else if (guardianContactErr != null) {
+        firstInvalidKey = _guardianContactKey;
+      }
+
+      if (firstInvalidKey?.currentContext != null) {
+        Scrollable.ensureVisible(
+          firstInvalidKey!.currentContext!,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.1,
+        );
+      }
+
       AppNotificationUI.showWarning(
         context,
-        'Please enter a valid 11-digit guardian mobile number starting with 09 (e.g. 09123456789).',
-        title: 'Invalid Contact Number',
+        'Please correct the highlighted fields.',
+        title: 'Validation Error',
       );
-      setState(() => _isSaving = false);
       return;
     }
+
+    setState(() {
+      _isSaving = true;
+      _fullNameError = null;
+      _birthDateError = null;
+      _addressError = null;
+      _guardianNameError = null;
+      _guardianContactError = null;
+    });
 
     Mother? targetMother = _linkedMother;
     final isMotherGuardian = _relationship.trim().toLowerCase() == 'mother';
@@ -347,6 +408,11 @@ class _AddChildScreenState extends State<AddChildScreen> {
     _gender = 'Female';
     _disabilityController.clear();
     _sequenceNo = _childRepo.generateSequenceNo(barangayCode: _currentBarangayCode);
+    _fullNameError = null;
+    _birthDateError = null;
+    _addressError = null;
+    _guardianNameError = null;
+    _guardianContactError = null;
 
     if (!_keepMotherDetails) {
       _addressController.clear();
@@ -407,6 +473,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const FormRequiredNote(),
                       FormSectionCard(
                         title: 'Personal Information',
                         highlighted: true,
@@ -442,28 +509,44 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             ),
                           ),
                           AppTextField(
-                            label: 'Full Name *',
+                            key: _fullNameKey,
+                            label: 'Full Name',
+                            isRequired: true,
                             hint: "Enter child's full name",
                             icon: Icons.badge_outlined,
                             controller: _fullNameController,
                             focusNode: _fullNameFocusNode,
+                            hasError: _fullNameError != null,
+                            errorText: _fullNameError,
+                            onChanged: (_) {
+                              if (_fullNameError != null) {
+                                setState(() => _fullNameError = null);
+                              }
+                            },
                           ),
                           Row(
                             children: [
                               Expanded(
                                 child: AppDateField(
-                                  label: 'Birth date *',
+                                  key: _birthDateKey,
+                                  label: 'Birth date',
+                                  isRequired: true,
                                   value: _birthDate,
+                                  hasError: _birthDateError != null,
+                                  errorText: _birthDateError,
                                   firstDate: DateTime.now().subtract(const Duration(days: 365 * 6)),
                                   lastDate: DateTime.now(),
-                                  onChanged: (d) =>
-                                      setState(() => _birthDate = d),
+                                  onChanged: (d) => setState(() {
+                                    _birthDate = d;
+                                    _birthDateError = null;
+                                  }),
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.md),
                               Expanded(
                                 child: AppDropdownField(
-                                  label: 'Gender *',
+                                  label: 'Gender',
+                                  isRequired: true,
                                   value: _gender,
                                   options: const ['Female', 'Male'],
                                   onChanged: (v) => setState(() => _gender = v!),
@@ -472,10 +555,19 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             ],
                           ),
                           AppTextField(
-                            label: 'Address *',
+                            key: _addressKey,
+                            label: 'Address',
+                            isRequired: true,
                             hint: 'Purok, Tiguion',
                             icon: Icons.location_on_outlined,
                             controller: _addressController,
+                            hasError: _addressError != null,
+                            errorText: _addressError,
+                            onChanged: (_) {
+                              if (_addressError != null) {
+                                setState(() => _addressError = null);
+                              }
+                            },
                           ),
                           AppYesNoToggle(
                             label: 'Belongs to IP group',
@@ -498,10 +590,19 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             'Required for every child, even if not a monitored mother',
                         children: [
                           AppTextField(
-                            label: 'Full Name *',
+                            key: _guardianNameKey,
+                            label: 'Full Name',
+                            isRequired: true,
                             hint: "Enter guardian's name",
                             icon: Icons.person_outline,
                             controller: _guardianNameController,
+                            hasError: _guardianNameError != null,
+                            errorText: _guardianNameError,
+                            onChanged: (_) {
+                              if (_guardianNameError != null) {
+                                setState(() => _guardianNameError = null);
+                              }
+                            },
                           ),
                           Row(
                             children: [
@@ -522,11 +623,21 @@ class _AddChildScreenState extends State<AddChildScreen> {
                               const SizedBox(width: AppSpacing.md),
                               Expanded(
                                 child: AppTextField(
+                                  key: _guardianContactKey,
                                   label: 'Contact no.',
                                   hint: '09XXXXXXXXX',
                                   icon: Icons.call_outlined,
                                   controller: _guardianContactController,
                                   isNumericOnly: true,
+                                  maxLength: 11,
+                                  keyboardType: TextInputType.phone,
+                                  hasError: _guardianContactError != null,
+                                  errorText: _guardianContactError,
+                                  onChanged: (_) {
+                                    if (_guardianContactError != null) {
+                                      setState(() => _guardianContactError = null);
+                                    }
+                                  },
                                 ),
                               ),
                             ],

@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { validateContactNumber } = require('../utils/contactValidation');
 
 const allowedMime = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'application/octet-stream'];
 const allowedExt = ['.jpg', '.jpeg', '.png', '.webp'];
@@ -118,7 +119,20 @@ exports.updateProfile = async (req, res) => {
     const updatedMiddleInitial = middle_initial !== undefined ? (middle_initial ? String(middle_initial).trim() : null) : current.middle_initial;
     const updatedLastName = last_name !== undefined ? String(last_name).trim() : current.last_name;
     const updatedEmail = email !== undefined ? String(email).trim() : current.email;
-    const updatedContactNumber = contact_number !== undefined ? String(contact_number).trim() : current.contact_number;
+
+    let updatedContactNumber = current.contact_number;
+    if (contact_number !== undefined) {
+      if (contact_number && String(contact_number).trim() !== '') {
+        const contactCheck = validateContactNumber(contact_number);
+        if (!contactCheck.valid) {
+          return res.status(400).json({ message: contactCheck.message });
+        }
+        updatedContactNumber = contactCheck.value;
+      } else {
+        updatedContactNumber = null;
+      }
+    }
+
     const updatedPurok = purok !== undefined ? (purok ? String(purok).trim() : null) : current.purok;
     const updatedProfilePicture = profile_picture !== undefined ? profile_picture : current.profile_picture;
 

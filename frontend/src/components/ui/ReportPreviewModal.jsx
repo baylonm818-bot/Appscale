@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Printer, FileText, CheckSquare, Square, Trash2 } from 'lucide-react';
+import { X, Printer, Download, FileText, CheckSquare, Square, Trash2 } from 'lucide-react';
 import { getBarangaySealPath } from '../../utils/barangayLogos';
 
 export default function ReportPreviewModal({ isOpen, onClose, reportData, title, barangay }) {
   if (!isOpen || !reportData) return null;
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const storedUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
   const isBns = String(storedUser.role || '').toLowerCase() === 'bns';
   const bnsAutoName = (storedUser.full_name || `${storedUser.first_name || ''} ${storedUser.last_name || ''}`.trim() || storedUser.username || '').toUpperCase();
+  const activePreparedName = isBns ? bnsAutoName : preparedByName;
 
   const storageKey = `report_signatories_${storedUser.user_id || 'default'}`;
   const savedData = (() => {
@@ -84,6 +81,41 @@ export default function ReportPreviewModal({ isOpen, onClose, reportData, title,
       ? barangay
       : (firstItem.barangay || barangay || 'Tiguion');
 
+  const getReportFileName = () => {
+    const rawTitle = String(title || 'Report')
+      .replace(/^BHW\s+/i, '')
+      .replace(/\s+Report$/i, '')
+      .trim();
+    const cleanTitle = rawTitle.replace(/[^a-zA-Z0-9]+/g, '-') || 'Report';
+    const cleanBarangay = String(resolvedBarangay || 'Antipolo')
+      .trim()
+      .replace(/[^a-zA-Z0-9]+/g, '-');
+    const d = new Date();
+    const year = d.getFullYear();
+    const quarter = `Q${Math.floor(d.getMonth() / 3) + 1}`;
+    return `${cleanTitle}-${cleanBarangay}-${year}-${quarter}.pdf`;
+  };
+
+  const handleDownload = () => {
+    const fileName = getReportFileName();
+    const originalTitle = document.title;
+    document.title = fileName.replace(/\.pdf$/i, '');
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1200);
+  };
+
+  const handlePrint = () => {
+    const fileName = getReportFileName();
+    const originalTitle = document.title;
+    document.title = fileName.replace(/\.pdf$/i, '');
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1200);
+  };
+
   const barangaySealSrc = getBarangaySealPath(resolvedBarangay);
 
   return createPortal(
@@ -102,11 +134,20 @@ export default function ReportPreviewModal({ isOpen, onClose, reportData, title,
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handlePrint}
+              onClick={handleDownload}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-green-900 font-bold text-xs hover:bg-green-50 transition shadow-sm cursor-pointer"
+              title={`Download as ${getReportFileName()}`}
+            >
+              <Download size={15} />
+              Download PDF
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs transition shadow-sm cursor-pointer"
             >
               <Printer size={15} />
-              Print / Save PDF
+              Print
             </button>
             <button
               type="button"
@@ -381,23 +422,25 @@ export default function ReportPreviewModal({ isOpen, onClose, reportData, title,
           </div>
 
           {/* Signatures Footer (matching official document) */}
-          <div className="grid grid-cols-2 gap-12 pt-6 border-t border-gray-200 print:pt-6 print:break-inside-avoid break-inside-avoid">
+          <div className="grid grid-cols-2 gap-16 md:gap-24 pt-8 mt-6 border-t border-gray-200 print:pt-8 print:break-inside-avoid break-inside-avoid report-signature-block">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-6">Prepared by:</p>
-              <div className="border-b border-gray-800 w-56 max-w-full mb-1.5" />
-              <p className="text-xs font-bold text-gray-900 uppercase tracking-wide break-words min-h-[1rem]">
-                {activePreparedName || ''}
-              </p>
-              <p className="text-[11px] font-medium text-gray-600">{preparedByPosition}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-8">Prepared by:</p>
+              <div className="border-b border-gray-900 w-64 max-w-full pb-1 mb-1 min-h-[1.75rem] flex items-end">
+                <span className="text-xs font-bold text-gray-900 uppercase tracking-wide underline underline-offset-4 decoration-1 leading-normal">
+                  {activePreparedName || ''}
+                </span>
+              </div>
+              <p className="text-[11px] font-medium text-gray-600 leading-normal mt-1">{preparedByPosition}</p>
               <p className="text-[10px] text-gray-500 mt-2">Date: ____________________</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-6">Noted by:</p>
-              <div className="border-b border-gray-800 w-56 max-w-full mb-1.5" />
-              <p className="text-xs font-bold text-gray-900 uppercase tracking-wide break-words min-h-[1rem]">
-                {notedByName || ''}
-              </p>
-              <p className="text-[11px] font-medium text-gray-600">{notedByPosition}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-8">Noted by:</p>
+              <div className="border-b border-gray-900 w-64 max-w-full pb-1 mb-1 min-h-[1.75rem] flex items-end">
+                <span className="text-xs font-bold text-gray-900 uppercase tracking-wide underline underline-offset-4 decoration-1 leading-normal">
+                  {notedByName || ''}
+                </span>
+              </div>
+              <p className="text-[11px] font-medium text-gray-600 leading-normal mt-1">{notedByPosition}</p>
               <p className="text-[10px] text-gray-500 mt-2">Date: ____________________</p>
             </div>
           </div>

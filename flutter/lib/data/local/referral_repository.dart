@@ -59,7 +59,8 @@ class ReferralRepository {
   }
 
   int get pendingCount => _box.values
-      .where((raw) => (raw as Map?)?['_syncStatus'] == 'pending')
+      .where((raw) =>
+          raw is Map && (raw['_syncStatus'] == 'pending' || raw['_archiveQueue'] != null))
       .length;
 
   int get failedCount => _box.values
@@ -70,6 +71,22 @@ class ReferralRepository {
     final errors = <String>[];
     for (final raw in _box.values) {
       final map = Map<String, dynamic>.from(raw as Map);
+
+      // Handle pending archive/unarchive queue
+      if (map['_archiveQueue'] != null) {
+        final serverId = map['server_id']?.toString() ?? map['serverId']?.toString();
+        if (serverId != null && serverId.isNotEmpty) {
+          final isArch = map['_archiveQueue'] == 'archive';
+          final aRes = isArch
+              ? await ReferralApi.archive(serverId)
+              : await ReferralApi.unarchive(serverId);
+          if (aRes.success) {
+            map.remove('_archiveQueue');
+            await _box.put(map['id'] ?? serverId, map);
+          }
+        }
+      }
+
       if (map['_syncStatus'] == 'synced') continue;
 
       final referral = Referral.fromMap(map);
@@ -78,13 +95,13 @@ class ReferralRepository {
       final retryCount = (map['_retryCount'] as int?) ?? 0;
       final maxRetries = 4;
       if (retryCount >= maxRetries && map['_syncStatus'] == 'failed') {
-        errors.add('${referral.beneficiaryName}: ${map['_lastSyncError'] ?? 'Repeated failures'}');
+        errors.add('${referral.resolvedBeneficiaryName}: ${map['_lastSyncError'] ?? 'Repeated failures'}');
         continue;
       }
 
       final res = await _trySync(referral);
       if (res != null && !res.success) {
-        errors.add('${referral.beneficiaryName}: ${res.message}');
+        errors.add('${referral.resolvedBeneficiaryName}: ${res.message}');
       }
       // If failed and will retry, wait with backoff before continuing loop
       final updated = _box.get(referral.id) as Map?;
@@ -103,7 +120,7 @@ class ReferralRepository {
     final res = await ReferralApi.submit(referral);
     final existing = _box.get(referral.id) as Map?;
     final map = Map<String, dynamic>.from(existing ?? referral.toMap());
-    if (res.success) {
+    if (res.success || res.statusCode == 409) {
       // Mark as synced and capture server-assigned referral id if provided
       map['_syncStatus'] = 'synced';
       map['_syncedAt'] = DateTime.now().toIso8601String();
@@ -151,8 +168,18 @@ class ReferralRepository {
 
   Referral? getById(String id) {
     final raw = _box.get(id);
-    if (raw == null) return null;
-    return Referral.fromMap(Map<String, dynamic>.from(raw as Map));
+    if (raw != null) {
+      return Referral.fromMap(Map<String, dynamic>.from(raw as Map));
+    }
+    // Also look up by server_id if not found by primary key
+    for (final val in _box.values) {
+      if (val is Map) {
+        if (val['server_id']?.toString() == id || val['serverId']?.toString() == id) {
+          return Referral.fromMap(Map<String, dynamic>.from(val));
+        }
+      }
+    }
+    return null;
   }
 
   /// Pulls the latest referrals from the backend and reconciles them with Hive.
@@ -256,25 +283,56 @@ class ReferralRepository {
             existingUpdatedAt == null ||
             !serverUpdatedAt.isBefore(existingUpdatedAt) ||
             serverStatus == 'Completed' ||
-            serverStatus == 'In Progress';
+            serverStatus == 'Ongoing' ||
+            serverStatus == 'In Progress' ||
+            serverStatus == 'Cancelled';
 
         final effectiveStatus = shouldUpdateStatus ? serverStatus : previousStatus;
 
-        // Trigger notification if newly completed by BHW
-        if (previousStatus != 'Completed' && serverStatus == 'Completed') {
-          final resolvedName = name.isNotEmpty
-              ? name
-              : (matchedMap['beneficiaryName']?.toString() ?? 'Beneficiary');
-          await NotificationRepository().add(
-            AppNotification(
-              id: NotificationRepository.generateId(),
-              title: 'Referral Completed',
-              message: 'Referral ni $resolvedName ay Completed.',
-              type: 'referral_completed',
-              referralId: matchedKey,
-              timestamp: DateTime.now(),
-            ),
-          );
+        final refObj = Referral.fromMap({
+          ...matchedMap,
+          if (name.isNotEmpty) 'beneficiaryName': name,
+          'beneficiaryType': beneficiaryType,
+          'beneficiaryId': beneficiaryId,
+        });
+        final resolvedName = refObj.resolvedBeneficiaryName;
+
+        // Trigger notification if status updated by RHU/BHW
+        if (previousStatus != effectiveStatus) {
+          if (effectiveStatus == 'Completed') {
+            await NotificationRepository().add(
+              AppNotification(
+                id: NotificationRepository.generateId(),
+                title: 'Referral Completed',
+                message: 'Referral completed for $resolvedName.',
+                type: 'referral_completed',
+                referralId: matchedKey,
+                timestamp: DateTime.now().toUtc(),
+              ),
+            );
+          } else if (effectiveStatus == 'Ongoing') {
+            await NotificationRepository().add(
+              AppNotification(
+                id: NotificationRepository.generateId(),
+                title: 'Referral In Progress',
+                message: 'Referral in progress for $resolvedName.',
+                type: 'referral_in_progress',
+                referralId: matchedKey,
+                timestamp: DateTime.now().toUtc(),
+              ),
+            );
+          } else if (effectiveStatus == 'Cancelled') {
+            await NotificationRepository().add(
+              AppNotification(
+                id: NotificationRepository.generateId(),
+                title: 'Referral Cancelled',
+                message: 'Referral cancelled for $resolvedName.',
+                type: 'referral_cancelled',
+                referralId: matchedKey,
+                timestamp: DateTime.now().toUtc(),
+              ),
+            );
+          }
         }
 
         final updatedRecord = {
@@ -283,8 +341,10 @@ class ReferralRepository {
           'status': effectiveStatus,
           'notes': serverNotes.isNotEmpty ? serverNotes : (matchedMap['notes'] ?? ''),
           'facility': facility,
-          if (name.isNotEmpty) 'beneficiaryName': name,
+          'beneficiaryName': resolvedName,
           'itemsGiven': items,
+          if (r['archived_at'] != null) 'archived_at': r['archived_at']?.toString(),
+          if (r['archived_by'] != null) 'archived_by': r['archived_by'],
           'updatedAt': (serverUpdatedAt ?? DateTime.now()).toIso8601String(),
           '_syncStatus': 'synced',
         };
@@ -304,9 +364,14 @@ class ReferralRepository {
           'status': serverStatus,
           'createdAt': serverCreatedAt.toIso8601String(),
           'updatedAt': (serverUpdatedAt ?? serverCreatedAt).toIso8601String(),
+          if (r['archived_at'] != null) 'archived_at': r['archived_at']?.toString(),
+          if (r['archived_by'] != null) 'archived_by': r['archived_by'],
           'itemsGiven': items,
           '_syncStatus': 'synced',
         };
+        final newReferral = Referral.fromMap(newRecord);
+        final newResolvedName = newReferral.resolvedBeneficiaryName;
+        newRecord['beneficiaryName'] = newResolvedName;
         await _box.put(serverId, newRecord);
 
         if (serverStatus == 'Completed') {
@@ -314,10 +379,21 @@ class ReferralRepository {
             AppNotification(
               id: NotificationRepository.generateId(),
               title: 'Referral Completed',
-              message: 'Referral ni ${name.isNotEmpty ? name : "Beneficiary"} ay Completed.',
+              message: 'Referral completed for $newResolvedName.',
               type: 'referral_completed',
               referralId: serverId,
-              timestamp: DateTime.now(),
+              timestamp: DateTime.now().toUtc(),
+            ),
+          );
+        } else if (serverStatus == 'Ongoing') {
+          await NotificationRepository().add(
+            AppNotification(
+              id: NotificationRepository.generateId(),
+              title: 'Referral In Progress',
+              message: 'Referral in progress for $newResolvedName.',
+              type: 'referral_in_progress',
+              referralId: serverId,
+              timestamp: DateTime.now().toUtc(),
             ),
           );
         }
@@ -346,26 +422,38 @@ class ReferralRepository {
     await _box.put(updated.id, updated.toMap()..['_syncStatus'] = 'synced');
 
     // Dispatch notification to mobile user
+    final resolvedName = updated.resolvedBeneficiaryName;
     if (normStatus == 'Completed') {
       await NotificationRepository().add(
         AppNotification(
           id: NotificationRepository.generateId(),
           title: 'Referral Completed',
-          message: 'Referral ni ${updated.beneficiaryName} ay Completed.',
+          message: 'Referral completed for $resolvedName.',
           type: 'referral_completed',
           referralId: updated.id,
-          timestamp: DateTime.now(),
+          timestamp: DateTime.now().toUtc(),
         ),
       );
-    } else if (normStatus == 'In Progress') {
+    } else if (normStatus == 'Ongoing' || normStatus == 'In Progress') {
       await NotificationRepository().add(
         AppNotification(
           id: NotificationRepository.generateId(),
-          title: 'Referral In Progress at RHU',
-          message: 'RHU/BHW is currently evaluating ${updated.beneficiaryName}.',
+          title: 'Referral In Progress',
+          message: 'Referral in progress for $resolvedName.',
           type: 'referral_in_progress',
           referralId: updated.id,
-          timestamp: DateTime.now(),
+          timestamp: DateTime.now().toUtc(),
+        ),
+      );
+    } else if (normStatus == 'Cancelled') {
+      await NotificationRepository().add(
+        AppNotification(
+          id: NotificationRepository.generateId(),
+          title: 'Referral Cancelled',
+          message: 'Referral cancelled for $resolvedName.',
+          type: 'referral_cancelled',
+          referralId: updated.id,
+          timestamp: DateTime.now().toUtc(),
         ),
       );
     }
@@ -465,14 +553,18 @@ class ReferralRepository {
   }
 
   /// Barangay-wide view: Pending and In-Progress cases surface first,
-  /// completed cases at the bottom.
-  List<Referral> getForBarangay(String barangay) {
+  /// completed cases at the bottom. By default, hides archived referrals.
+  List<Referral> getForBarangay(String barangay, {bool includeArchived = false}) {
     final list = getAll()
-        .where((r) => r.barangay == barangay && !r.isCancelled)
+        .where((r) =>
+            r.barangay == barangay &&
+            !r.isCancelled &&
+            (includeArchived || !r.isArchived))
         .toList();
     list.sort((a, b) {
       const order = {
         'Pending': 0,
+        'Ongoing': 1,
         'In Progress': 1,
         'Completed': 2,
       };
@@ -484,10 +576,62 @@ class ReferralRepository {
     return list;
   }
 
+  List<Referral> getArchivedForBarangay(String barangay) {
+    final list = getAll()
+        .where((r) => r.barangay == barangay && r.isArchived)
+        .toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> archive(String referralId) async {
+    final raw = _box.get(referralId);
+    if (raw is! Map) return;
+    final map = Map<String, dynamic>.from(raw);
+    map['archived_at'] = DateTime.now().toIso8601String();
+    map['_archiveQueue'] = 'archive';
+    await _box.put(referralId, map);
+    AppDataBus.notifyChanged();
+
+    final serverId = map['server_id']?.toString() ?? map['serverId']?.toString();
+    if (serverId != null && serverId.isNotEmpty) {
+      try {
+        final res = await ReferralApi.archive(serverId);
+        if (res.success) {
+          map.remove('_archiveQueue');
+          await _box.put(referralId, map);
+        }
+      } catch (_) {}
+    }
+  }
+
+  Future<void> unarchive(String referralId) async {
+    final raw = _box.get(referralId);
+    if (raw is! Map) return;
+    final map = Map<String, dynamic>.from(raw);
+    map.remove('archived_at');
+    map.remove('archivedAt');
+    map['_archiveQueue'] = 'unarchive';
+    await _box.put(referralId, map);
+    AppDataBus.notifyChanged();
+
+    final serverId = map['server_id']?.toString() ?? map['serverId']?.toString();
+    if (serverId != null && serverId.isNotEmpty) {
+      try {
+        final res = await ReferralApi.unarchive(serverId);
+        if (res.success) {
+          map.remove('_archiveQueue');
+          await _box.put(referralId, map);
+        }
+      } catch (_) {}
+    }
+  }
+
   int countOpenForBarangay(String barangay) => getAll()
       .where(
         (r) =>
             r.barangay == barangay &&
+            !r.isArchived &&
             (r.isPending || r.isInProgress),
       )
       .length;

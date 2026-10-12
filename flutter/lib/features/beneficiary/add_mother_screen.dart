@@ -15,6 +15,7 @@ import '../../shared/widgets/app_dropdown_field.dart';
 import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/app_yes_no_toggle.dart';
 import '../../shared/widgets/form_action_buttons.dart';
+import '../../shared/widgets/form_required_note.dart';
 import '../../shared/widgets/form_section_card.dart';
 import 'widgets/child_picker_field.dart';
 import '../../data/local/mother_visit_repository.dart';
@@ -74,6 +75,16 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
   final _scrollController = ScrollController();
   final _fullNameFocusNode = FocusNode();
 
+  final _fullNameKey = GlobalKey();
+  final _birthDateKey = GlobalKey();
+  final _contactKey = GlobalKey();
+  final _addressKey = GlobalKey();
+
+  String? _fullNameError;
+  String? _birthDateError;
+  String? _contactError;
+  String? _addressError;
+
   DateTime? _birthDate;
   String _breastfeedingPractice = 'Exclusive breastfeeding';
   bool _belongsToIpGroup = false;
@@ -96,11 +107,6 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
       _linkedChildren = _childRepo.getByIds(existing.linkedChildIds);
     }
   }
-
-  bool get _isFormValid =>
-      _fullNameController.text.trim().isNotEmpty &&
-      _birthDate != null &&
-      _addressController.text.trim().isNotEmpty;
 
   bool _hasUnsavedInput() {
     if (widget.isEditMode) {
@@ -171,28 +177,70 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
   Future<void> _handleSave() async {
     if (_isSaving) return;
 
-    if (!_isFormValid) {
-      AppNotificationUI.showWarning(
-        context,
-        'Please fill in all required fields marked with *',
-        title: 'Required Information Missing',
-      );
-      return;
-    }
+    String? fullNameErr;
+    String? birthDateErr;
+    String? addressErr;
+    String? contactErr;
 
-    setState(() => _isSaving = true);
+    if (_fullNameController.text.trim().isEmpty) {
+      fullNameErr = 'This field is required';
+    }
+    if (_birthDate == null) {
+      birthDateErr = 'This field is required';
+    }
+    if (_addressController.text.trim().isEmpty) {
+      addressErr = 'This field is required';
+    }
 
     final rawContact = _contactController.text.trim();
     final sanitizedContact = AppUserIdentity.sanitizeMobileNumber(rawContact);
     if (rawContact.isNotEmpty && !AppUserIdentity.isValidPhilippineContactNumber(rawContact)) {
+      contactErr = 'Contact number must be 11 digits (e.g. 09123456789)';
+    }
+
+    if (fullNameErr != null || birthDateErr != null || addressErr != null || contactErr != null) {
+      setState(() {
+        _fullNameError = fullNameErr;
+        _birthDateError = birthDateErr;
+        _addressError = addressErr;
+        _contactError = contactErr;
+      });
+
+      GlobalKey? firstInvalidKey;
+      if (fullNameErr != null) {
+        firstInvalidKey = _fullNameKey;
+      } else if (birthDateErr != null) {
+        firstInvalidKey = _birthDateKey;
+      } else if (addressErr != null) {
+        firstInvalidKey = _addressKey;
+      } else if (contactErr != null) {
+        firstInvalidKey = _contactKey;
+      }
+
+      if (firstInvalidKey?.currentContext != null) {
+        Scrollable.ensureVisible(
+          firstInvalidKey!.currentContext!,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.1,
+        );
+      }
+
       AppNotificationUI.showWarning(
         context,
-        'Please enter a valid 11-digit mobile contact number starting with 09 (e.g. 09123456789).',
-        title: 'Invalid Contact Number',
+        'Please correct the highlighted fields.',
+        title: 'Validation Error',
       );
-      setState(() => _isSaving = false);
       return;
     }
+
+    setState(() {
+      _isSaving = true;
+      _fullNameError = null;
+      _birthDateError = null;
+      _addressError = null;
+      _contactError = null;
+    });
 
     final motherAge = DateTime.now().year - _birthDate!.year;
     if (motherAge < 18) {
@@ -326,6 +374,10 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
     _breastfeedingPractice = 'Exclusive breastfeeding';
     _belongsToIpGroup = false;
     _linkedChildren = [];
+    _fullNameError = null;
+    _birthDateError = null;
+    _addressError = null;
+    _contactError = null;
 
     setState(() => _isSaving = false);
 
@@ -412,46 +464,81 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const FormRequiredNote(),
                       FormSectionCard(
                         title: 'Personal Information',
                         highlighted: true,
                         children: [
                           AppTextField(
-                            label: 'Full Name *',
+                            key: _fullNameKey,
+                            label: 'Full Name',
+                            isRequired: true,
                             hint: "Enter mother's full name",
                             icon: Icons.badge_outlined,
                             controller: _fullNameController,
                             focusNode: _fullNameFocusNode,
+                            hasError: _fullNameError != null,
+                            errorText: _fullNameError,
+                            onChanged: (_) {
+                              if (_fullNameError != null) {
+                                setState(() => _fullNameError = null);
+                              }
+                            },
                           ),
                           Row(
                             children: [
                               Expanded(
                                 child: AppDateField(
-                                  label: 'Birth Date *',
+                                  key: _birthDateKey,
+                                  label: 'Birth Date',
+                                  isRequired: true,
                                   value: _birthDate,
+                                  hasError: _birthDateError != null,
+                                  errorText: _birthDateError,
                                   firstDate: DateTime(1940),
                                   lastDate: DateTime.now(),
-                                  onChanged: (d) =>
-                                      setState(() => _birthDate = d),
+                                  onChanged: (d) => setState(() {
+                                    _birthDate = d;
+                                    _birthDateError = null;
+                                  }),
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.md),
                               Expanded(
                                 child: AppTextField(
+                                  key: _contactKey,
                                   label: 'Contact no.',
                                   hint: '09XXXXXXXXX',
                                   icon: Icons.call_outlined,
                                   controller: _contactController,
                                   isNumericOnly: true,
+                                  maxLength: 11,
+                                  keyboardType: TextInputType.phone,
+                                  hasError: _contactError != null,
+                                  errorText: _contactError,
+                                  onChanged: (_) {
+                                    if (_contactError != null) {
+                                      setState(() => _contactError = null);
+                                    }
+                                  },
                                 ),
                               ),
                             ],
                           ),
                           AppTextField(
-                            label: 'Address *',
+                            key: _addressKey,
+                            label: 'Address',
+                            isRequired: true,
                             hint: 'Purok, Tiguion',
                             icon: Icons.location_on_outlined,
                             controller: _addressController,
+                            hasError: _addressError != null,
+                            errorText: _addressError,
+                            onChanged: (_) {
+                              if (_addressError != null) {
+                                setState(() => _addressError = null);
+                              }
+                            },
                           ),
                           if (_hasLoggedVisits)
                             Container(

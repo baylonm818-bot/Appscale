@@ -31,6 +31,8 @@ async function getReferralTableMeta() {
 
 exports.createReferral = async (req, res) => {
   const {
+    client_id,
+    external_id,
     child_id,
     mother_id,
     beneficiary_name,
@@ -43,6 +45,27 @@ exports.createReferral = async (req, res) => {
     reason,
     referred_by,
   } = req.body;
+
+  const idempotencyKey = String(client_id || external_id || '').trim();
+
+  if (idempotencyKey) {
+    try {
+      const [[existingByExtId]] = await pool.query(
+        `SELECT referral_id, status FROM referrals WHERE external_id = ? LIMIT 1`,
+        [idempotencyKey]
+      );
+      if (existingByExtId) {
+        return res.status(200).json({
+          message: 'Referral already recorded.',
+          referral_id: existingByExtId.referral_id,
+          status: existingByExtId.status,
+          is_duplicate: true,
+        });
+      }
+    } catch (e) {
+      // Non-fatal if column check fails
+    }
+  }
 
   if ((!child_id && !mother_id && !beneficiary_name) || !reason) {
     return res.status(400).json({ message: 'Beneficiary and referral reason are required.' });
@@ -265,8 +288,8 @@ exports.createReferral = async (req, res) => {
       if (existing.length > 0) {
         await conn.rollback();
         conn.release();
-        return res.status(400).json({
-          message: 'This beneficiary already has an active referral in progress.',
+        return res.status(409).json({
+          message: `${targetLabel} already has an active referral.`,
           referral_id: existing[0].referral_id,
           status: existing[0].status,
         });
@@ -275,6 +298,11 @@ exports.createReferral = async (req, res) => {
       // ── Build dynamic INSERT based on actual table columns ────────────────
       const insertFields = [];
       const insertValues = [];
+
+      if (idempotencyKey) {
+        insertFields.push('external_id');
+        insertValues.push(idempotencyKey);
+      }
 
       if (hasChildId && resolvedChildId) {
         insertFields.push('child_id');
@@ -372,6 +400,16 @@ exports.getReferrals = async (req, res) => {
   }
 
   try {
+    const includeArchived = req.query.include_archived === 'true' || req.query.include_archived === '1';
+    const statusQuery = String(req.query.status || '').toLowerCase();
+
+    let archiveFilter = '';
+    if (statusQuery === 'archived') {
+      archiveFilter = ' AND r.archived_at IS NOT NULL';
+    } else if (!includeArchived) {
+      archiveFilter = ' AND r.archived_at IS NULL';
+    }
+
     const whereClause = isAdmin
       ? '1=1'
       : 'COALESCE(c.barangay, m.barangay) = ?';
@@ -397,6 +435,9 @@ exports.getReferrals = async (req, res) => {
          r.referred_to,
          r.notes AS response_notes,
          r.created_at,
+         r.archived_at,
+         r.archived_by,
+         CASE WHEN r.archived_at IS NOT NULL THEN 1 ELSE 0 END AS is_archived,
          c.child_id,
          c.first_name AS child_first_name,
          c.last_name AS child_last_name,
@@ -420,7 +461,7 @@ exports.getReferrals = async (req, res) => {
            GROUP BY child_id
          ) nr2 ON nr1.child_id = nr2.child_id AND nr1.record_date = nr2.max_date
        ) nr ON nr.child_id = c.child_id
-       WHERE ${whereClause}
+       WHERE ${whereClause}${archiveFilter}
        ORDER BY FIELD(LOWER(r.status), 'pending', 'ongoing', 'responded', 'cancelled', 'completed', 'closed'), r.created_at DESC`,
       params
     );
@@ -465,6 +506,9 @@ exports.getReferrals = async (req, res) => {
         status: normalizedStatus,
         response_notes: notes,
         notes: notes,
+        archived_at: ref.archived_at,
+        archived_by: ref.archived_by,
+        is_archived: Boolean(ref.archived_at),
         items_given: itemsByReferral[ref.referral_id] || [],
       };
     }).filter((referral) => canAccessReferral(user, referral));
@@ -496,7 +540,7 @@ exports.updateReferralStatus = async (req, res) => {
 
   try {
     const [[referral]] = await pool.query(
-      `SELECT r.child_id, r.mother_id,
+      `SELECT r.child_id, r.mother_id, r.barangay, r.referred_by,
               COALESCE(c.first_name, m.first_name) AS first_name,
               COALESCE(c.last_name, m.last_name) AS last_name
        FROM referrals r
@@ -565,9 +609,179 @@ exports.updateReferralStatus = async (req, res) => {
       console.warn('Non-fatal referral audit trail insert error:', auditErr.message);
     }
 
+    // Notification for status change (non-fatal)
+    try {
+      const benName = `${referral.first_name || ''} ${referral.last_name || ''}`.trim() ||
+        (referral.child_id ? 'a child' : (referral.mother_id ? 'a mother' : 'a beneficiary'));
+
+      const [notifCols] = await pool.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications'`
+      );
+      const notifColSet = new Set(notifCols.map((c) => c.COLUMN_NAME));
+
+      const notifTitle = `Referral ${normalizedStatus}`;
+      const notifMessage = `Referral for ${benName} is now ${normalizedStatus}.`;
+      const nf = ['title', 'message', 'type', 'is_read'];
+      const nv = [notifTitle, notifMessage, 'referral', false];
+      if (notifColSet.has('related_id')) { nf.push('related_id'); nv.push(id); }
+      if (notifColSet.has('barangay')) { nf.push('barangay'); nv.push(referral.barangay || null); }
+      if (notifColSet.has('recipient_role')) { nf.push('recipient_role'); nv.push('bns'); }
+      if (notifColSet.has('recipient_user_id') && referral.referred_by) {
+        nf.push('recipient_user_id');
+        nv.push(referral.referred_by);
+      }
+
+      await pool.query(
+        `INSERT INTO notifications (${nf.join(', ')}) VALUES (${nf.map(() => '?').join(', ')})`,
+        nv
+      );
+    } catch (notifErr) {
+      console.warn('Referral status update notification insert failed (non-fatal):', notifErr.message);
+    }
+
     return res.status(200).json({ message: 'Referral status updated.', status: normalizedStatus });
   } catch (error) {
     console.error('Update referral status error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+function canManageReferralArchive(user, referral) {
+  if (!user || !referral) return false;
+  const role = String(user.role || '').toLowerCase();
+  if (role === 'admin') return true;
+  const referralBarangay = referral.beneficiary_barangay || referral.barangay;
+  const userBarangay = user.barangay;
+  const isSameBarangay = userBarangay && referralBarangay &&
+    String(userBarangay).trim().toLowerCase() === String(referralBarangay).trim().toLowerCase();
+
+  if (role === 'bhw' && isSameBarangay) return true;
+  if (role === 'bns') {
+    if (referral.referred_by && Number(referral.referred_by) === Number(user.user_id)) return true;
+    if (isSameBarangay) return true;
+  }
+  return false;
+}
+
+exports.archiveReferral = async (req, res) => {
+  const { id } = req.params;
+  const user = req.user;
+
+  try {
+    const [[referral]] = await pool.query(
+      `SELECT r.*, COALESCE(c.barangay, m.barangay) AS beneficiary_barangay
+       FROM referrals r
+       LEFT JOIN children c ON c.child_id = r.child_id
+       LEFT JOIN mothers m ON m.mother_id = r.mother_id
+       WHERE r.referral_id = ?`,
+      [id]
+    );
+
+    if (!referral) {
+      return res.status(404).json({ message: 'Referral not found.' });
+    }
+
+    const normStatus = String(referral.status || '').toLowerCase();
+    if (!['completed', 'closed'].includes(normStatus)) {
+      return res.status(400).json({ message: 'Only completed referrals can be archived.' });
+    }
+
+    if (!canManageReferralArchive(user, referral)) {
+      return res.status(403).json({ message: 'You do not have permission to archive this referral.' });
+    }
+
+    await pool.query(
+      `UPDATE referrals SET archived_at = NOW(), archived_by = ? WHERE referral_id = ?`,
+      [user.user_id || null, id]
+    );
+
+    return res.status(200).json({
+      message: 'Referral archived successfully.',
+      referral_id: Number(id),
+      is_archived: true,
+      archived_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Archive referral error:', error);
+    return res.status(500).json({ message: 'Failed to archive referral.' });
+  }
+};
+
+exports.unarchiveReferral = async (req, res) => {
+  const { id } = req.params;
+  const user = req.user;
+
+  try {
+    const [[referral]] = await pool.query(
+      `SELECT r.*, COALESCE(c.barangay, m.barangay) AS beneficiary_barangay
+       FROM referrals r
+       LEFT JOIN children c ON c.child_id = r.child_id
+       LEFT JOIN mothers m ON m.mother_id = r.mother_id
+       WHERE r.referral_id = ?`,
+      [id]
+    );
+
+    if (!referral) {
+      return res.status(404).json({ message: 'Referral not found.' });
+    }
+
+    if (!canManageReferralArchive(user, referral)) {
+      return res.status(403).json({ message: 'You do not have permission to unarchive this referral.' });
+    }
+
+    await pool.query(
+      `UPDATE referrals SET archived_at = NULL, archived_by = NULL WHERE referral_id = ?`,
+      [id]
+    );
+
+    return res.status(200).json({
+      message: 'Referral unarchived successfully.',
+      referral_id: Number(id),
+      is_archived: false,
+      archived_at: null,
+    });
+  } catch (error) {
+    console.error('Unarchive referral error:', error);
+    return res.status(500).json({ message: 'Failed to unarchive referral.' });
+  }
+};
+
+exports.archiveCompletedReferrals = async (req, res) => {
+  const user = req.user;
+  const targetBarangay = req.body?.barangay || req.query?.barangay || user.barangay;
+
+  try {
+    let whereClause = `LOWER(r.status) IN ('completed', 'closed') AND r.archived_at IS NULL`;
+    const params = [user.user_id || null];
+
+    const role = String(user?.role || '').toLowerCase();
+    if (role !== 'admin') {
+      if (!targetBarangay) {
+        return res.status(400).json({ message: 'Barangay is required.' });
+      }
+      whereClause += ` AND COALESCE(c.barangay, m.barangay) = ?`;
+      params.push(targetBarangay);
+    } else if (targetBarangay && targetBarangay !== 'All Barangays') {
+      whereClause += ` AND COALESCE(c.barangay, m.barangay) = ?`;
+      params.push(targetBarangay);
+    }
+
+    const [result] = await pool.query(
+      `UPDATE referrals r
+       LEFT JOIN children c ON c.child_id = r.child_id
+       LEFT JOIN mothers m ON m.mother_id = r.mother_id
+       SET r.archived_at = NOW(), r.archived_by = ?
+       WHERE ${whereClause}`,
+      params
+    );
+
+    return res.status(200).json({
+      message: `${result.affectedRows || 0} completed referral(s) archived successfully.`,
+      archived_count: result.affectedRows || 0,
+    });
+  } catch (error) {
+    console.error('Batch archive completed referrals error:', error);
+    return res.status(500).json({ message: 'Failed to archive completed referrals.' });
   }
 };

@@ -399,3 +399,56 @@ button, a {
   font-size: 0.9rem;
   margin-top: 0.5rem;
 }
+
+/* Official Report Print Styles */
+@media print {
+  @page {
+    margin: 20mm;
+    size: auto;
+  }
+  
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Repeat table headers on every page */
+  table thead {
+    display: table-header-group !important;
+  }
+  
+  table tfoot {
+    display: table-footer-group !important;
+  }
+
+  /* Never split a table row across pages */
+  table tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Never split a heading from its table */
+  h1, h2, h3, h4, .report-heading, .report-section-header {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Keep signature section together at the end of the last page */
+  .report-signature-block,
+  .print-signature-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-top: 32px !important;
+  }
+
+  /* Table padding */
+  table th {
+    padding: 10px 12px !important;
+    line-height: 1.4 !important;
+  }
+  table td {
+    padding: 8px 12px !important;
+    line-height: 1.4 !important;
+  }
+}

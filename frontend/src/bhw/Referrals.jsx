@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
@@ -22,11 +23,32 @@ function Referrals() {
     user = {};
   }
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlStatusParam = searchParams.get('status');
+
+  const normalizeFilterParam = (p) => {
+    if (!p) return null;
+    const lower = p.toLowerCase();
+    if (lower === 'pending') return 'Pending';
+    if (lower === 'ongoing') return 'Ongoing';
+    if (lower === 'completed') return 'Completed';
+    if (lower === 'archived') return 'Archived';
+    if (lower === 'all') return 'all';
+    return null;
+  };
+
+  const initialStatus = normalizeFilterParam(urlStatusParam);
+
   // filters
   const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'child', 'mother'
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(initialStatus || 'Pending');
+  const [userInteractedWithFilter, setUserInteractedWithFilter] = useState(Boolean(initialStatus));
   const [severityFilter, setSeverityFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('severity');
+  const [sortBy, setSortBy] = useState('date');
+
+  // archive state
+  const [rowLoadingId, setRowLoadingId] = useState(null);
+  const [batchArchiving, setBatchArchiving] = useState(false);
 
   // update status modal
   const [actionTarget, setActionTarget] = useState(null);
@@ -40,7 +62,9 @@ function Referrals() {
   const { data, isLoading, error: queryError, refetch } = useQuery({
     queryKey: ['referrals', user.barangay || ''],
     queryFn: async () => {
-      const res = await axiosClient.get('/bhw/referrals', { params: { barangay: user.barangay } });
+      const res = await axiosClient.get('/bhw/referrals', {
+        params: { barangay: user.barangay, include_archived: true },
+      });
       return res.data || [];
     },
     staleTime: 1000 * 20,
@@ -67,8 +91,33 @@ function Referrals() {
     return false;
   };
 
+  const isArchived = (r) => Boolean(r.archived_at || r.is_archived);
+
   const childReferralsCount = useMemo(() => referrals.filter((r) => !isMotherReferral(r)).length, [referrals]);
   const motherReferralsCount = useMemo(() => referrals.filter((r) => isMotherReferral(r)).length, [referrals]);
+
+  // Default tab rule: Pending if any pending, else Ongoing if any ongoing, else all
+  useEffect(() => {
+    if (!userInteractedWithFilter && referrals.length > 0) {
+      const activeList = referrals.filter((r) => !isArchived(r));
+      const hasPending = activeList.some((r) => normalizeStatus(r.status) === 'Pending');
+      const hasOngoing = activeList.some((r) => normalizeStatus(r.status) === 'Ongoing');
+      if (hasPending) {
+        setStatusFilter('Pending');
+      } else if (hasOngoing) {
+        setStatusFilter('Ongoing');
+      } else {
+        setStatusFilter('all');
+      }
+    }
+  }, [referrals, userInteractedWithFilter]);
+
+  const handleSelectStatusFilter = (tab) => {
+    setUserInteractedWithFilter(true);
+    setStatusFilter(tab);
+    setSeverityFilter('all');
+    setSearchParams(tab === 'all' ? {} : { status: tab }, { replace: true });
+  };
 
   const typeFilteredReferrals = useMemo(() => {
     if (typeFilter === 'child') return referrals.filter((r) => !isMotherReferral(r));
@@ -76,12 +125,21 @@ function Referrals() {
     return referrals;
   }, [referrals, typeFilter]);
 
-  const filteredReferrals = useMemo(() => {
-    let list = [...typeFilteredReferrals];
+  const activeTypeFiltered = useMemo(() => {
+    return typeFilteredReferrals.filter((r) => !isArchived(r));
+  }, [typeFilteredReferrals]);
 
-    if (statusFilter !== 'all') {
-      list = list.filter((r) => normalizeStatus(r.status) === statusFilter);
+  const filteredReferrals = useMemo(() => {
+    let list;
+    if (statusFilter === 'Archived') {
+      list = typeFilteredReferrals.filter(isArchived);
+    } else {
+      list = [...activeTypeFiltered];
+      if (statusFilter !== 'all') {
+        list = list.filter((r) => normalizeStatus(r.status) === statusFilter);
+      }
     }
+
     if (severityFilter !== 'all') {
       list = list.filter((r) => r.severity === severityFilter);
     }
@@ -95,7 +153,47 @@ function Referrals() {
     }
 
     return list;
-  }, [typeFilteredReferrals, statusFilter, severityFilter, sortBy]);
+  }, [typeFilteredReferrals, activeTypeFiltered, statusFilter, severityFilter, sortBy]);
+
+  const handleArchiveRow = async (referralId, benName) => {
+    if (!window.confirm(`Archive referral for ${benName || 'beneficiary'}?`)) return;
+    setRowLoadingId(referralId);
+    try {
+      await axiosClient.patch(`/bhw/referrals/${referralId}/archive`);
+      await refetch();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to archive referral.');
+    } finally {
+      setRowLoadingId(null);
+    }
+  };
+
+  const handleUnarchiveRow = async (referralId, benName) => {
+    if (!window.confirm(`Unarchive referral for ${benName || 'beneficiary'}?`)) return;
+    setRowLoadingId(referralId);
+    try {
+      await axiosClient.patch(`/bhw/referrals/${referralId}/unarchive`);
+      await refetch();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to unarchive referral.');
+    } finally {
+      setRowLoadingId(null);
+    }
+  };
+
+  const handleBatchArchiveCompleted = async () => {
+    if (!window.confirm(`Archive all completed referrals in ${user.barangay || 'your barangay'}?`)) return;
+    setBatchArchiving(true);
+    try {
+      const res = await axiosClient.patch('/bhw/referrals/archive-completed', { barangay: user.barangay });
+      alert(res.data?.message || 'Completed referrals archived successfully.');
+      await refetch();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to archive completed referrals.');
+    } finally {
+      setBatchArchiving(false);
+    }
+  };
 
   const openActionModal = (r) => {
     setActionTarget(r);
@@ -127,23 +225,19 @@ function Referrals() {
     }
   };
 
-  const totalCount = typeFilteredReferrals.length;
-  const pendingCount = typeFilteredReferrals.filter((r) => normalizeStatus(r.status) === 'Pending').length;
-  const ongoingCount = typeFilteredReferrals.filter((r) => normalizeStatus(r.status) === 'Ongoing').length;
-  const highSevCount = typeFilteredReferrals.filter((r) => r.severity === 'high').length;
-  const completedCount = typeFilteredReferrals.filter((r) => normalizeStatus(r.status) === 'Completed').length;
+  const allCount = activeTypeFiltered.length;
+  const pendingCount = activeTypeFiltered.filter((r) => normalizeStatus(r.status) === 'Pending').length;
+  const ongoingCount = activeTypeFiltered.filter((r) => normalizeStatus(r.status) === 'Ongoing').length;
+  const completedCount = activeTypeFiltered.filter((r) => normalizeStatus(r.status) === 'Completed').length;
+  const archivedCount = typeFilteredReferrals.filter(isArchived).length;
 
   if (loading) {
     return (
       <div className="space-y-6 bg-gray-50 min-h-screen p-6">
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-24 rounded-2xl bg-white p-4 shadow-sm border border-gray-100 animate-pulse" />
-          ))}
-        </div>
+        <div className="h-14 rounded-2xl bg-white p-3 shadow-xs border border-gray-100 animate-pulse" />
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 rounded-xl bg-white p-4 shadow-sm border border-gray-100 animate-pulse" />
+            <div key={i} className="h-24 rounded-xl bg-white p-4 shadow-xs border border-gray-100 animate-pulse" />
           ))}
         </div>
       </div>
@@ -158,182 +252,119 @@ function Referrals() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <button
-          type="button"
-          onClick={() => { setStatusFilter('all'); setSeverityFilter('all'); }}
-          className={`text-left rounded-2xl p-4 shadow-sm border transition cursor-pointer ${
-            statusFilter === 'all' && severityFilter === 'all'
-              ? 'bg-green-50 border-green-300 ring-2 ring-green-600'
-              : 'bg-white border-gray-100 hover:border-gray-200'
-          }`}
-        >
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Referrals</p>
-          <p className="text-2xl font-black text-gray-800 mt-1">{totalCount}</p>
-          <p className="text-[11px] text-gray-400">{typeFilter === 'all' ? 'All cases' : `${typeFilter} cases`}</p>
-        </button>
-        <button
-          type="button"
-          onClick={() => { setStatusFilter('Pending'); setSeverityFilter('all'); }}
-          className={`text-left rounded-2xl p-4 shadow-sm border transition cursor-pointer ${
-            statusFilter === 'Pending' && severityFilter === 'all'
-              ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-500'
-              : 'bg-white border-amber-100 hover:border-amber-200'
-          }`}
-        >
-          <p className="text-[11px] font-semibold text-amber-600 uppercase tracking-wider">Pending</p>
-          <p className="text-2xl font-black text-amber-600 mt-1">{pendingCount}</p>
-          <p className="text-[11px] text-amber-600">Awaiting action</p>
-        </button>
-        <button
-          type="button"
-          onClick={() => { setStatusFilter('Ongoing'); setSeverityFilter('all'); }}
-          className={`text-left rounded-2xl p-4 shadow-sm border transition cursor-pointer ${
-            statusFilter === 'Ongoing' && severityFilter === 'all'
-              ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-500'
-              : 'bg-white border-blue-100 hover:border-blue-200'
-          }`}
-        >
-          <p className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider">Ongoing</p>
-          <p className="text-2xl font-black text-blue-600 mt-1">{ongoingCount}</p>
-          <p className="text-[11px] text-blue-600">In-progress</p>
-        </button>
-        <button
-          type="button"
-          onClick={() => { setSeverityFilter('high'); setStatusFilter('all'); }}
-          className={`text-left rounded-2xl p-4 shadow-sm border transition cursor-pointer ${
-            severityFilter === 'high'
-              ? 'bg-red-50 border-red-300 ring-2 ring-red-500'
-              : 'bg-white border-red-100 hover:border-red-200'
-          }`}
-        >
-          <p className="text-[11px] font-semibold text-red-600 uppercase tracking-wider">High Severity</p>
-          <p className="text-2xl font-black text-red-600 mt-1">{highSevCount}</p>
-          <p className="text-[11px] text-red-600">Urgent cases</p>
-        </button>
-        <button
-          type="button"
-          onClick={() => { setStatusFilter('Completed'); setSeverityFilter('all'); }}
-          className={`text-left rounded-2xl p-4 shadow-sm border transition cursor-pointer ${
-            statusFilter === 'Completed' && severityFilter === 'all'
-              ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500'
-              : 'bg-white border-emerald-100 hover:border-emerald-200'
-          }`}
-        >
-          <p className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider">Completed</p>
-          <p className="text-2xl font-black text-emerald-600 mt-1">{completedCount}</p>
-          <p className="text-[11px] text-emerald-600">Resolved</p>
-        </button>
-      </div>
-
-      {/* ── Beneficiary Type Filter Tabs ── */}
-      <div className="flex items-center gap-2 bg-white p-2.5 rounded-2xl border border-gray-100 shadow-xs">
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-2 pr-1">Filter Type:</span>
-        <button
-          type="button"
-          onClick={() => setTypeFilter('all')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-            typeFilter === 'all'
-              ? 'bg-gray-800 text-white shadow-xs'
-              : 'text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          All ({referrals.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setTypeFilter('child')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-            typeFilter === 'child'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-blue-700 hover:bg-blue-50'
-          }`}
-        >
-          Child ({childReferralsCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setTypeFilter('mother')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-            typeFilter === 'mother'
-              ? 'bg-purple-600 text-white shadow-xs'
-              : 'text-purple-700 hover:bg-purple-50'
-          }`}
-        >
-          Lactating Mother ({motherReferralsCount})
-        </button>
-      </div>
-
-      {/* ── Status Tabs & Sort Controls ── */}
+      {/* ── Status Tabs (Single Top Filter Bar: All | Pending | Ongoing | Completed | Archived) ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-xs">
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
-            onClick={() => { setStatusFilter('all'); setSeverityFilter('all'); }}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-              statusFilter === 'all' && severityFilter === 'all'
-                ? 'bg-[#1b5e20] text-white shadow-xs'
-                : 'text-gray-600 hover:bg-gray-100'
+            onClick={() => handleSelectStatusFilter('all')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+              statusFilter === 'all'
+                ? 'bg-[#1b5e20] text-white border-[#1b5e20] shadow-xs'
+                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
             }`}
           >
-            All Cases ({totalCount})
+            All <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>{allCount}</span>
           </button>
           <button
             type="button"
-            onClick={() => { setStatusFilter('Pending'); setSeverityFilter('all'); }}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-              statusFilter === 'Pending' && severityFilter === 'all'
-                ? 'bg-amber-500 text-white shadow-xs'
-                : 'text-amber-700 hover:bg-amber-50'
+            onClick={() => handleSelectStatusFilter('Pending')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+              statusFilter === 'Pending'
+                ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
             }`}
           >
-            Pending ({pendingCount})
+            Pending <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Pending' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'}`}>{pendingCount}</span>
           </button>
           <button
             type="button"
-            onClick={() => { setStatusFilter('Ongoing'); setSeverityFilter('all'); }}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-              statusFilter === 'Ongoing' && severityFilter === 'all'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-blue-700 hover:bg-blue-50'
+            onClick={() => handleSelectStatusFilter('Ongoing')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+              statusFilter === 'Ongoing'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
             }`}
           >
-            Ongoing ({ongoingCount})
+            Ongoing <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Ongoing' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'}`}>{ongoingCount}</span>
           </button>
           <button
             type="button"
-            onClick={() => { setStatusFilter('Completed'); setSeverityFilter('all'); }}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-              statusFilter === 'Completed' && severityFilter === 'all'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-emerald-700 hover:bg-emerald-50'
+            onClick={() => handleSelectStatusFilter('Completed')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+              statusFilter === 'Completed'
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
             }`}
           >
-            Completed ({completedCount})
+            Completed <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Completed' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>{completedCount}</span>
           </button>
           <button
             type="button"
-            onClick={() => { setSeverityFilter('high'); setStatusFilter('all'); }}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-              severityFilter === 'high'
-                ? 'bg-red-600 text-white shadow-xs'
-                : 'text-red-700 hover:bg-red-50'
+            onClick={() => handleSelectStatusFilter('Archived')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+              statusFilter === 'Archived'
+                ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
             }`}
           >
-            High Severity ({highSevCount})
+            Archived <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Archived' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>{archivedCount}</span>
           </button>
+          {statusFilter === 'Completed' && completedCount > 0 && (
+            <button
+              type="button"
+              disabled={batchArchiving}
+              onClick={handleBatchArchiveCompleted}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+            >
+              {batchArchiving ? 'Archiving…' : `Archive All Completed (${completedCount})`}
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-gray-500">Sort by:</label>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-gray-700 focus:outline-none focus:border-[#2e7d32]"
-          >
-            <option value="severity">Severity (High first)</option>
-            <option value="date">Date (Newest first)</option>
-          </select>
+        {/* Secondary controls: Beneficiary Type & Sort By */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200">
+            <button
+              type="button"
+              onClick={() => setTypeFilter('all')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                typeFilter === 'all' ? 'bg-white text-gray-800 shadow-xs font-bold' : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              All Types
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeFilter('child')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                typeFilter === 'child' ? 'bg-white text-blue-700 shadow-xs font-bold' : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              Child ({childReferralsCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeFilter('mother')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                typeFilter === 'mother' ? 'bg-white text-purple-700 shadow-xs font-bold' : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              Mother ({motherReferralsCount})
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-medium text-gray-500">Sort by:</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-gray-700 focus:outline-none focus:border-[#2e7d32]"
+            >
+              <option value="date">Date (Newest first)</option>
+              <option value="severity">Severity (High first)</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -352,14 +383,23 @@ function Referrals() {
             const sev = String(r.severity || 'medium').toLowerCase();
             const sevClass = sev === 'high' ? 'bg-red-100 text-red-800 border-red-200' : sev === 'low' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200';
             const normStatus = normalizeStatus(r.status);
-            const statusClass = normStatus === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : normStatus === 'Ongoing' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200';
+            const isItemArchived = isArchived(r);
+            const statusClass = isItemArchived
+              ? 'bg-slate-100 text-slate-700 border-slate-200'
+              : normStatus === 'Completed'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : normStatus === 'Ongoing'
+              ? 'bg-blue-50 text-blue-700 border-blue-200'
+              : 'bg-amber-50 text-amber-700 border-amber-200';
+            const displayStatus = isItemArchived ? 'Archived' : normStatus;
+            const benFullName = `${r.beneficiary_first_name || ''} ${r.beneficiary_last_name || ''}`.trim();
 
             return (
               <div key={r.referral_id} className="p-4 rounded-xl border border-gray-100 hover:border-gray-200 transition bg-white space-y-2.5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-sm text-gray-900">{(r.beneficiary_first_name || '') + ' ' + (r.beneficiary_last_name || '')}</span>
+                      <span className="font-bold text-sm text-gray-900">{benFullName}</span>
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${badgeClass}`}>
                         {typeBadgeText}
                       </span>
@@ -370,7 +410,7 @@ function Referrals() {
                         {sev} severity
                       </span>
                       <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${statusClass}`}>
-                        {normStatus}
+                        {displayStatus}
                       </span>
                       <span className="text-[11px] text-gray-400">{new Date(r.created_at).toLocaleDateString()}</span>
                     </div>
@@ -378,7 +418,37 @@ function Referrals() {
                     {cleanNote && <p className="text-xs text-gray-600 italic">"{cleanNote}"</p>}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button aria-label={`Update status for ${r.beneficiary_first_name} ${r.beneficiary_last_name}`} type="button" onClick={() => openActionModal(r)} className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-white">Update Status</button>
+                    {isItemArchived ? (
+                      <button
+                        type="button"
+                        disabled={rowLoadingId === r.referral_id}
+                        onClick={() => handleUnarchiveRow(r.referral_id, benFullName)}
+                        className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        {rowLoadingId === r.referral_id ? 'Unarchiving…' : 'Unarchive'}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          aria-label={`Update status for ${r.beneficiary_first_name} ${r.beneficiary_last_name}`}
+                          type="button"
+                          onClick={() => openActionModal(r)}
+                          className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
+                        >
+                          Update Status
+                        </button>
+                        {normStatus === 'Completed' && (
+                          <button
+                            type="button"
+                            disabled={rowLoadingId === r.referral_id}
+                            onClick={() => handleArchiveRow(r.referral_id, benFullName)}
+                            className="bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 px-3 py-2 rounded-xl text-xs font-semibold transition shadow-xs cursor-pointer disabled:opacity-50"
+                          >
+                            {rowLoadingId === r.referral_id ? 'Archiving…' : 'Archive'}
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,3 +1,6 @@
+import 'package:hive_flutter/hive_flutter.dart';
+import '../local/hive_boxes.dart';
+
 class Referral {
   final String id;
   final String? serverId;
@@ -11,6 +14,8 @@ class Referral {
   final String status; // 'Pending', 'In Progress', 'Completed', 'Cancelled'
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final DateTime? archivedAt;
+  final dynamic archivedBy;
   final List<Map<String, dynamic>> itemsGiven;
 
   const Referral({
@@ -26,6 +31,8 @@ class Referral {
     required this.status,
     required this.createdAt,
     this.updatedAt,
+    this.archivedAt,
+    this.archivedBy,
     this.itemsGiven = const [],
   });
 
@@ -60,7 +67,46 @@ class Referral {
   bool get isOngoing => normalizeStatus(status) == 'Ongoing';
   bool get isInProgress => isOngoing; // backward compatibility alias
   bool get isCancelled => normalizeStatus(status) == 'Cancelled';
-  String get statusDisplay => normalizeStatus(status);
+  bool get isArchived => archivedAt != null;
+  String get statusDisplay => isArchived ? 'Archived' : normalizeStatus(status);
+
+  /// Returns the person's full name, resolving from local Hive records
+  /// if beneficiaryName is missing, numeric, or a placeholder like "Child #12".
+  /// Falls back to "a child" or "a mother", never an ID or empty string.
+  String get resolvedBeneficiaryName {
+    final raw = beneficiaryName.trim();
+    if (raw.isNotEmpty &&
+        !RegExp(r'^\d+$').hasMatch(raw) &&
+        !raw.toLowerCase().startsWith('child #') &&
+        !raw.toLowerCase().startsWith('mother #') &&
+        raw.toLowerCase() != 'beneficiary') {
+      return raw;
+    }
+
+    final isMother = beneficiaryType.toLowerCase() == 'mother' ||
+        beneficiaryType.toLowerCase() == 'lactating_mother' ||
+        beneficiaryType.toLowerCase() == 'pregnant';
+
+    try {
+      if (isMother) {
+        if (Hive.isBoxOpen(HiveBoxes.mothers)) {
+          final m = Hive.box(HiveBoxes.mothers).get(beneficiaryId);
+          if (m is Map && (m['fullName'] ?? '').toString().trim().isNotEmpty) {
+            return m['fullName'].toString().trim();
+          }
+        }
+      } else {
+        if (Hive.isBoxOpen(HiveBoxes.children)) {
+          final c = Hive.box(HiveBoxes.children).get(beneficiaryId);
+          if (c is Map && (c['fullName'] ?? '').toString().trim().isNotEmpty) {
+            return c['fullName'].toString().trim();
+          }
+        }
+      }
+    } catch (_) {}
+
+    return isMother ? 'a mother' : 'a child';
+  }
 
   String? get formattedCompletedDate {
     final d = updatedAt ?? (isCompleted ? createdAt : null);
@@ -91,6 +137,8 @@ class Referral {
     String? status,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? archivedAt,
+    dynamic archivedBy,
     List<Map<String, dynamic>>? itemsGiven,
   }) => Referral(
     id: id ?? this.id,
@@ -105,6 +153,8 @@ class Referral {
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    archivedAt: archivedAt ?? this.archivedAt,
+    archivedBy: archivedBy ?? this.archivedBy,
     itemsGiven: itemsGiven ?? this.itemsGiven,
   );
 
@@ -121,6 +171,8 @@ class Referral {
     'status': status,
     'createdAt': createdAt.toIso8601String(),
     if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
+    if (archivedAt != null) 'archived_at': archivedAt!.toIso8601String(),
+    if (archivedBy != null) 'archived_by': archivedBy,
     'itemsGiven': itemsGiven,
   };
 
@@ -138,6 +190,12 @@ class Referral {
     DateTime? updatedDt;
     if (updatedRaw != null) {
       updatedDt = DateTime.tryParse(updatedRaw.toString());
+    }
+
+    final archivedRaw = map['archived_at'] ?? map['archivedAt'];
+    DateTime? archivedDt;
+    if (archivedRaw != null) {
+      archivedDt = DateTime.tryParse(archivedRaw.toString());
     }
 
     final createdRaw = map['createdAt'] ?? map['created_at'];
@@ -164,6 +222,8 @@ class Referral {
       status: normalizeStatus(map['status']?.toString()),
       createdAt: createdDt,
       updatedAt: updatedDt,
+      archivedAt: archivedDt,
+      archivedBy: map['archived_by'] ?? map['archivedBy'],
       itemsGiven: parsedItems,
     );
   }

@@ -493,7 +493,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
               '${widget.child.fullName} is at high risk of nutritional concerns: $severeReason (Computed BMI: ${measurement.bmi} kg/m²). Referral to BHW recommended.',
           timestamp: DateTime.now().toUtc(),
           isRead: false,
-          referralId: widget.child.id,
+          referralId: null,
           type: 'urgent',
         ),
       );

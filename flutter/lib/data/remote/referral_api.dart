@@ -33,6 +33,8 @@ class ReferralApi {
 
     final trimmedBeneficiaryId = referral.beneficiaryId.trim();
     final payload = <String, dynamic>{
+      'client_id': referral.id,
+      'external_id': referral.id,
       'beneficiary_type': referral.beneficiaryType,
       'referral_type': referral.beneficiaryType,
       'beneficiary_name': referral.beneficiaryName.trim(),
@@ -100,9 +102,11 @@ class ReferralApi {
     final token = settings.authToken;
     if (token == null || token.isEmpty) return null;
 
-    final query = (barangay != null && barangay.isNotEmpty)
-        ? '?barangay=${Uri.encodeComponent(barangay)}'
-        : '';
+    final params = <String>[
+      if (barangay != null && barangay.isNotEmpty) 'barangay=${Uri.encodeComponent(barangay)}',
+      'include_archived=true',
+    ];
+    final query = params.isNotEmpty ? '?${params.join('&')}' : '';
     final url = Uri.parse('$_baseUrl/bhw/referrals$query');
 
     try {
@@ -123,6 +127,86 @@ class ReferralApi {
       return null;
     } catch (_) {
       return null;
+    }
+  }
+
+  static Future<ApiResponse> archive(String referralServerId) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+    final url = Uri.parse('$_baseUrl/bhw/referrals/$referralServerId/archive');
+    try {
+      final response = await http.patch(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      Map<String, dynamic>? body;
+      try {
+        body = jsonDecode(response.body) as Map<String, dynamic>?;
+      } catch (_) {}
+
+      final msg = body?['message']?.toString();
+      return ApiResponse(
+        success: response.statusCode >= 200 && response.statusCode < 300,
+        statusCode: response.statusCode,
+        message: msg ?? (response.statusCode >= 200 && response.statusCode < 300 ? 'Referral archived.' : 'Failed to archive referral.'),
+      );
+    } catch (e) {
+      return ApiResponse(
+        success: false,
+        statusCode: 0,
+        message: 'Network error archiving referral: $e',
+      );
+    }
+  }
+
+  static Future<ApiResponse> unarchive(String referralServerId) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+    final url = Uri.parse('$_baseUrl/bhw/referrals/$referralServerId/unarchive');
+    try {
+      final response = await http.patch(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      Map<String, dynamic>? body;
+      try {
+        body = jsonDecode(response.body) as Map<String, dynamic>?;
+      } catch (_) {}
+
+      final msg = body?['message']?.toString();
+      return ApiResponse(
+        success: response.statusCode >= 200 && response.statusCode < 300,
+        statusCode: response.statusCode,
+        message: msg ?? (response.statusCode >= 200 && response.statusCode < 300 ? 'Referral unarchived.' : 'Failed to unarchive referral.'),
+      );
+    } catch (e) {
+      return ApiResponse(
+        success: false,
+        statusCode: 0,
+        message: 'Network error unarchiving referral: $e',
+      );
     }
   }
 }

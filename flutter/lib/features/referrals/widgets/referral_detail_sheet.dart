@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../data/local/child_repository.dart';
-import '../../../data/local/mother_repository.dart';
 import '../../../data/models/referral.dart';
+import '../../../data/local/referral_repository.dart';
 
 /// Read-only referral detail sheet for BNS mobile users.
 ///
@@ -30,6 +29,9 @@ class ReferralDetailSheet extends StatelessWidget {
   }
 
   Color get _statusColor {
+    if (referral.isArchived) {
+      return const Color(0xFF475569);
+    }
     final s = referral.statusDisplay;
     switch (s) {
       case 'Pending':
@@ -46,20 +48,7 @@ class ReferralDetailSheet extends StatelessWidget {
     }
   }
 
-  String get _displayName {
-    if (referral.beneficiaryName.trim().isNotEmpty) {
-      return referral.beneficiaryName.trim();
-    }
-    final mother = MotherRepository().getById(referral.beneficiaryId);
-    if (mother != null && mother.fullName.trim().isNotEmpty) {
-      return mother.fullName.trim();
-    }
-    final child = ChildRepository().getById(referral.beneficiaryId);
-    if (child != null && child.fullName.trim().isNotEmpty) {
-      return child.fullName.trim();
-    }
-    return referral.beneficiaryType == 'mother' ? 'Mother' : 'Child Beneficiary';
-  }
+  String get _displayName => referral.resolvedBeneficiaryName;
 
   String get _facilityDisplay {
     final f = referral.facility.trim();
@@ -136,7 +125,10 @@ class ReferralDetailSheet extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (isCompleted) ...[
+                    if (referral.isArchived) ...[
+                      Icon(Icons.archive_outlined, size: 13, color: statusColor),
+                      const SizedBox(width: 5),
+                    ] else if (isCompleted) ...[
                       Icon(Icons.check_circle, size: 13, color: statusColor),
                       const SizedBox(width: 5),
                     ] else ...[
@@ -151,7 +143,7 @@ class ReferralDetailSheet extends StatelessWidget {
                       const SizedBox(width: 5),
                     ],
                     Text(
-                      referral.statusDisplay,
+                      referral.isArchived ? 'Archived' : referral.statusDisplay,
                       style: TextStyle(
                         color: statusColor,
                         fontSize: 11,
@@ -297,6 +289,65 @@ class ReferralDetailSheet extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xl),
 
+          if (referral.isCompleted && !referral.isArchived) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await ReferralRepository().archive(referral.id);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Referral for ${referral.resolvedBeneficiaryName} archived'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.archive_outlined, size: 16),
+                label: const Text('Archive Referral'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF475569),
+                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ] else if (referral.isArchived) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await ReferralRepository().unarchive(referral.id);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Referral for ${referral.resolvedBeneficiaryName} unarchived'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.unarchive_outlined, size: 16),
+                label: const Text('Unarchive Referral'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.darkGreen,
+                  side: const BorderSide(color: AppColors.darkGreen),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
           SizedBox(
             width: double.infinity,
             child: FilledButton(

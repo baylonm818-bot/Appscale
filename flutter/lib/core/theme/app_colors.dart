@@ -29,5 +29,6 @@ class AppColors {
   static const statPurple = Color(0xFF6C4BE9);
   static const statBlue = Color(0xFF2E7FE0);
   static const statOrange = Color(0xFFEF9F27);
+  static const requiredAsterisk = Color(0xFFD32F2F);
   static const notWeighed = neutralGray;
 }

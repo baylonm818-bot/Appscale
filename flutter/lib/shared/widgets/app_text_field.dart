@@ -16,6 +16,8 @@ class AppTextField extends StatefulWidget {
   final FocusNode? focusNode;
   final bool hasError;
   final bool hasWarning;
+  final bool isRequired;
+  final int? maxLength;
   final String? errorText;
   final TextInputAction? textInputAction;
   final Iterable<String>? autofillHints;
@@ -29,6 +31,8 @@ class AppTextField extends StatefulWidget {
     required this.icon,
     this.isPassword = false,
     this.isNumericOnly = false,
+    this.isRequired = false,
+    this.maxLength,
     this.controller,
     this.focusNode,
     this.hasError = false,
@@ -58,23 +62,54 @@ class _AppTextFieldState extends State<AppTextField> {
 
   @override
   Widget build(BuildContext context) {
+    String cleanLabel = widget.label;
+    bool showAsterisk = widget.isRequired;
+    if (cleanLabel.endsWith(' *')) {
+      cleanLabel = cleanLabel.substring(0, cleanLabel.length - 2);
+      showAsterisk = true;
+    } else if (cleanLabel.endsWith('*')) {
+      cleanLabel = cleanLabel.substring(0, cleanLabel.length - 1).trimRight();
+      showAsterisk = true;
+    }
+
     final resolvedKeyboardType = widget.keyboardType ??
         (widget.isNumericOnly ? TextInputType.number : null);
     final resolvedFormatters = <TextInputFormatter>[
       ...?widget.inputFormatters,
       if (widget.isNumericOnly) FilteringTextInputFormatter.digitsOnly,
+      if (widget.maxLength != null)
+        LengthLimitingTextInputFormatter(widget.maxLength),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: AppTextStyles.label),
+        RichText(
+          text: TextSpan(
+            text: cleanLabel,
+            style: AppTextStyles.label,
+            children: [
+              if (showAsterisk)
+                const TextSpan(
+                  text: ' *',
+                  style: TextStyle(
+                    color: AppColors.requiredAsterisk,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+            ],
+          ),
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: widget.controller,
           focusNode: widget.focusNode,
           obscureText: _obscure,
           keyboardType: resolvedKeyboardType,
+          maxLength: widget.maxLength,
+          buildCounter: widget.maxLength != null
+              ? (context, {required currentLength, required isFocused, maxLength}) => null
+              : null,
           inputFormatters: resolvedFormatters,
           textInputAction: widget.textInputAction,
           autofillHints: widget.autofillHints,
@@ -107,7 +142,7 @@ class _AppTextFieldState extends State<AppTextField> {
             errorText: widget.errorText,
             errorMaxLines: 3,
             errorStyle: const TextStyle(
-              color: AppColors.statRed,
+              color: AppColors.requiredAsterisk,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -119,7 +154,7 @@ class _AppTextFieldState extends State<AppTextField> {
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
                 color: (widget.hasError || widget.errorText != null)
-                    ? AppColors.statRed
+                    ? AppColors.requiredAsterisk
                     : widget.hasWarning
                         ? AppColors.statOrange
                         : AppColors.border,
@@ -130,7 +165,7 @@ class _AppTextFieldState extends State<AppTextField> {
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
                 color: (widget.hasError || widget.errorText != null)
-                    ? AppColors.statRed
+                    ? AppColors.requiredAsterisk
                     : widget.hasWarning
                         ? AppColors.statOrange
                         : AppColors.borderFocused,
@@ -139,11 +174,11 @@ class _AppTextFieldState extends State<AppTextField> {
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.statRed, width: 1.2),
+              borderSide: const BorderSide(color: AppColors.requiredAsterisk, width: 1.2),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.statRed, width: 1.4),
+              borderSide: const BorderSide(color: AppColors.requiredAsterisk, width: 1.4),
             ),
           ),
         ),

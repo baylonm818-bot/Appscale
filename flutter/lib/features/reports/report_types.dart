@@ -65,7 +65,7 @@ class ReportTypes {
     id: 'quarterly_weighing',
     title: 'Quarterly Full Weighing Record (24–59 Months)',
     category: ReportCategory.individualRecord,
-    formats: [ExportFormat.excel],
+    formats: [ExportFormat.pdf, ExportFormat.excel],
   );
   static const optPlus = ReportTypeInfo(
     id: 'opt_plus',

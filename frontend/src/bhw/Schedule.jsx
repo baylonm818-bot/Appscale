@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { Calendar, Clock, CheckCircle2, Archive, Search, X } from 'lucide-react';
+import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
 
 const statusLabels = { pending: 'Scheduled', done: 'Completed', cancelled: 'Cancelled', archived: 'Archived', missed: 'Missed' };
 
@@ -131,6 +132,7 @@ function Schedule() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [schedErrors, setSchedErrors] = useState({});
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
 
   const fetchActivities = async () => {
@@ -162,8 +164,27 @@ function Schedule() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title || !form.schedule_date) { setFormError('Title and date are required.'); return; }
-    setSaving(true); setFormError('');
+    setFormError('');
+
+    const errs = {};
+    if (!form.title?.trim()) errs.title = 'This field is required';
+    if (!form.schedule_date) errs.schedule_date = 'This field is required';
+
+    if (Object.keys(errs).length > 0) {
+      setSchedErrors(errs);
+      const firstInvalid = Object.keys(errs)[0];
+      setTimeout(() => {
+        const el = document.querySelector(`[name="${firstInvalid}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.focus();
+        }
+      }, 50);
+      return;
+    }
+
+    setSchedErrors({});
+    setSaving(true);
     try {
       await axiosClient.post('/bhw/schedule', form);
       setShowModal(false); setForm(emptyForm); fetchActivities();
@@ -342,21 +363,29 @@ function Schedule() {
                   {formError}
                 </div>
               )}
-              <form id="bhwSchedForm" onSubmit={handleSubmit} className="space-y-4">
+              <form id="bhwSchedForm" onSubmit={handleSubmit} noValidate className="space-y-4">
+                <FormRequiredNote />
+
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Activity Title *</label>
+                  <FormLabel label="Activity Title" required />
                   <input
+                    name="title"
                     type="text"
-                    required
                     placeholder="e.g. Supplemental Feeding Session"
                     value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100"
+                    onChange={(e) => {
+                      setForm({ ...form, title: e.target.value });
+                      if (schedErrors.title) setSchedErrors((prev) => ({ ...prev, title: '' }));
+                    }}
+                    className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
+                      schedErrors.title ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100'
+                    }`}
                   />
+                  {schedErrors.title && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.title}</p>}
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Activity Type</label>
+                  <FormLabel label="Activity Type" />
                   <select
                     value={form.schedule_type}
                     onChange={(e) => setForm({ ...form, schedule_type: e.target.value })}
@@ -371,18 +400,25 @@ function Schedule() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Date *</label>
+                    <FormLabel label="Date" required />
                     <input
+                      name="schedule_date"
                       type="date"
-                      required
                       value={form.schedule_date}
-                      onChange={(e) => setForm({ ...form, schedule_date: e.target.value })}
-                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                      onChange={(e) => {
+                        setForm({ ...form, schedule_date: e.target.value });
+                        if (schedErrors.schedule_date) setSchedErrors((prev) => ({ ...prev, schedule_date: '' }));
+                      }}
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
+                        schedErrors.schedule_date ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
+                      }`}
                     />
+                    {schedErrors.schedule_date && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.schedule_date}</p>}
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Time</label>
+                    <FormLabel label="Time" />
                     <input
+                      name="schedule_time"
                       type="time"
                       value={form.schedule_time}
                       onChange={(e) => setForm({ ...form, schedule_time: e.target.value })}
@@ -392,8 +428,9 @@ function Schedule() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5 block">Venue / Location</label>
+                  <FormLabel label="Venue / Location" />
                   <input
+                    name="venue"
                     type="text"
                     placeholder="e.g. Barangay Health Center Hall"
                     value={form.venue}

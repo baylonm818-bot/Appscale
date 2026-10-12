@@ -171,9 +171,10 @@ function NeedAttention() {
   };
 
   const submitReferral = async () => {
-    if (!referTarget) return;
+    if (!referTarget || referSubmitting) return;
     setReferSubmitting(true);
     setReferError('');
+    const benName = `${referTarget.first_name || ''} ${referTarget.last_name || ''}`.trim() || 'the child';
     try {
       await axiosClient.post('/bhw/referrals', {
         child_id: referTarget.child_id,
@@ -186,7 +187,7 @@ function NeedAttention() {
       });
       setReferTarget(null);
       await refetch();
-      alert('Referral submitted successfully. Partner BNS has been notified.');
+      alert(`Referral submitted for ${benName}. Partner BNS has been notified.`);
     } catch (err) {
       setReferError(err.response?.data?.message || 'Failed to submit referral. Please try again.');
     } finally {
