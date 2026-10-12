@@ -13,6 +13,8 @@ import '../../../../shared/utils/app_pickers.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/empty_state.dart';
 
+import '../../../../data/local/app_data_bus.dart';
+
 class AttendanceTab extends StatefulWidget {
   const AttendanceTab({super.key});
 
@@ -22,12 +24,30 @@ class AttendanceTab extends StatefulWidget {
 
 class _AttendanceTabState extends State<AttendanceTab> {
   final _settings = SettingsRepository();
+  final _enrollmentRepo = FeedingEnrollmentRepository();
 
   String get _currentBarangay =>
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   DateTime _selectedDate = DateTime.now();
   Map<String, String> _draftStatuses = {};
+  final Set<String> _withdrawingIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    AppDataBus.version.addListener(_onDataChanged);
+  }
+
+  @override
+  void dispose() {
+    AppDataBus.version.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) setState(() {});
+  }
 
   void _openEnrollSearch() {
     showModalBottomSheet(
@@ -56,23 +76,118 @@ class _AttendanceTabState extends State<AttendanceTab> {
     }
   }
 
+  Future<void> _confirmWithdraw(Child child) async {
+    final reasonController = TextEditingController(text: 'Completed feeding cycle');
+    String selectedReason = 'Completed feeding cycle';
+    final reasons = [
+      'Completed feeding cycle',
+      'Normal nutritional status achieved',
+      'Moved to another barangay',
+      'Opted out / Caregiver request',
+      'Other',
+    ];
+
+    final shouldWithdraw = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Withdraw from Feeding Program'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to withdraw ${child.fullName} from the Feeding Program? All historical attendance and records will remain preserved.',
+                style: AppTextStyles.body.copyWith(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Reason for withdrawal:',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                initialValue: selectedReason,
+                isExpanded: true,
+                items: reasons
+                    .map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 12))))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setDialogState(() {
+                      selectedReason = val;
+                      reasonController.text = val;
+                    });
+                  }
+                },
+                decoration: const InputDecoration(
+                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (selectedReason == 'Other') ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: reasonController,
+                  decoration: const InputDecoration(
+                    labelText: 'Specify reason',
+                    border: OutlineInputBorder(),
+                  ),
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.statRed),
+              child: const Text('Withdraw'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (shouldWithdraw == true && mounted) {
+      setState(() => _withdrawingIds.add(child.id));
+      try {
+        await _enrollmentRepo.unenroll(child.id, reason: reasonController.text.trim());
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${child.fullName} withdrawn from program')),
+        );
+      } finally {
+        if (mounted) setState(() => _withdrawingIds.remove(child.id));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final enrolled = FeedingEnrollmentRepository().getEnrolledChildren(
-      _currentBarangay,
-    );
+    final enrolled = _enrollmentRepo.getEnrolledChildren(_currentBarangay);
     final suggested = FeedingSuggestionService().getSuggested(_currentBarangay);
     final saved = FeedingAttendanceRepository().getForDate(
       _currentBarangay,
       _selectedDate,
     );
-    final statuses = {...saved, ..._draftStatuses};
+
+    // Only keep statuses for enrolled children.
+    final Map<String, String> statuses = {};
     for (final c in enrolled) {
-      statuses.putIfAbsent(c.id, () => 'Present');
+      final existingStatus = _draftStatuses[c.id] ?? saved[c.id];
+      statuses[c.id] = existingStatus ?? 'Present';
     }
-    final presentCount = statuses.values.where((s) => s == 'Present').length;
-    final absentCount = statuses.values.where((s) => s == 'Absent').length;
-    final excusedCount = statuses.values.where((s) => s == 'Excused').length;
+
+    // Counts must reflect ONLY currently enrolled children
+    final presentCount = enrolled.where((c) => statuses[c.id] == 'Present').length;
+    final absentCount = enrolled.where((c) => statuses[c.id] == 'Absent').length;
+    final excusedCount = enrolled.where((c) => statuses[c.id] == 'Excused').length;
+
     final mealPlan = MealPlanRepository().getActiveForDate(
       _currentBarangay,
       _selectedDate,
@@ -89,7 +204,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${enrolled.length} enrolled children',
+                '${enrolled.length} enrolled ${enrolled.length == 1 ? "child" : "children"}',
                 style: AppTextStyles.h2.copyWith(fontSize: 15),
               ),
               InkWell(
@@ -205,65 +320,126 @@ class _AttendanceTabState extends State<AttendanceTab> {
             )
           else
             ...enrolled.map(
-              (c) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      c.fullName,
-                      style: AppTextStyles.label.copyWith(fontSize: 13),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _statusChip(
-                            'Present',
-                            c.id,
-                            statuses,
-                            AppColors.primaryGreen,
+              (c) {
+                final isPending = _enrollmentRepo.isPendingSync(c.id);
+                final isWithdrawing = _withdrawingIds.contains(c.id);
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    c.fullName,
+                                    style: AppTextStyles.label.copyWith(fontSize: 13),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isPending) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.statAmber.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'Pending sync',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.statAmber,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: _statusChip(
-                            'Absent',
-                            c.id,
-                            statuses,
-                            AppColors.statRed,
+                          InkWell(
+                            onTap: isWithdrawing ? null : () => _confirmWithdraw(c),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              child: isWithdrawing
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : Text(
+                                      'Withdraw',
+                                      style: AppTextStyles.body.copyWith(
+                                        fontSize: 11,
+                                        color: AppColors.statRed,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: _statusChip(
-                            'Excused',
-                            c.id,
-                            statuses,
-                            AppColors.statAmber,
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _statusChip(
+                              'Present',
+                              c.id,
+                              statuses,
+                              AppColors.primaryGreen,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _statusChip(
+                              'Absent',
+                              c.id,
+                              statuses,
+                              AppColors.statRed,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _statusChip(
+                              'Excused',
+                              c.id,
+                              statuses,
+                              AppColors.statAmber,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           const SizedBox(height: AppSpacing.md),
           if (enrolled.isNotEmpty) ...[
             AppButton(
               label: 'Save Attendance',
               onPressed: () async {
+                // Ensure only enrolled children statuses are saved
+                final enrolledStatuses = <String, String>{};
+                for (final c in enrolled) {
+                  enrolledStatuses[c.id] = statuses[c.id] ?? 'Present';
+                }
                 await FeedingAttendanceRepository().saveForDate(
                   _currentBarangay,
                   _selectedDate,
-                  statuses,
+                  enrolledStatuses,
                 );
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -314,9 +490,39 @@ class _AttendanceTabState extends State<AttendanceTab> {
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }
 
-class _SuggestedCard extends StatelessWidget {
+class _SuggestedCard extends StatefulWidget {
   final List<Child> children;
   const _SuggestedCard({required this.children});
+
+  @override
+  State<_SuggestedCard> createState() => _SuggestedCardState();
+}
+
+class _SuggestedCardState extends State<_SuggestedCard> {
+  final Set<String> _enrollingIds = {};
+
+  Future<void> _enrollChild(Child c) async {
+    setState(() => _enrollingIds.add(c.id));
+    try {
+      await FeedingEnrollmentRepository().enroll(c.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${c.fullName} enrolled')),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not complete enrollment for ${c.fullName}'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _enrollingIds.remove(c.id));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -358,37 +564,48 @@ class _SuggestedCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          ...children.map(
-            (c) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${c.fullName} · ${c.nutritionStatus == 'Normal' ? c.wastingStatus : c.nutritionStatus}',
-                      style: AppTextStyles.body.copyWith(fontSize: 12),
+          ...widget.children.map(
+            (c) {
+              final isEnrolling = _enrollingIds.contains(c.id);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${c.fullName} · ${c.nutritionStatus == 'Normal' ? c.wastingStatus : c.nutritionStatus}',
+                        style: AppTextStyles.body.copyWith(fontSize: 12),
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    height: 30,
-                    child: FilledButton(
-                      onPressed: () =>
-                          FeedingEnrollmentRepository().enroll(c.id),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.statRed,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    SizedBox(
+                      height: 30,
+                      child: FilledButton(
+                        onPressed: isEnrolling ? null : () => _enrollChild(c),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.statRed,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
-                      ),
-                      child: const Text(
-                        'Enroll',
-                        style: TextStyle(fontSize: 11),
+                        child: isEnrolling
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Enroll',
+                                style: TextStyle(fontSize: 11),
+                              ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -441,6 +658,7 @@ class _EnrollSearchSheet extends StatefulWidget {
 class _EnrollSearchSheetState extends State<_EnrollSearchSheet> {
   final _settings = SettingsRepository();
   final _controller = TextEditingController();
+  final Set<String> _enrollingIds = {};
   String get _currentBarangay =>
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
   late List<Child> _results;
@@ -453,6 +671,30 @@ class _EnrollSearchSheetState extends State<_EnrollSearchSheet> {
       barangay: _currentBarangay,
       limit: 20,
     );
+  }
+
+  Future<void> _enroll(Child c) async {
+    setState(() => _enrollingIds.add(c.id));
+    try {
+      await FeedingEnrollmentRepository().enroll(c.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${c.fullName} enrolled')),
+      );
+      Navigator.pop(context);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not complete enrollment for ${c.fullName}'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _enrollingIds.remove(c.id));
+      }
+    }
   }
 
   @override
@@ -504,18 +746,26 @@ class _EnrollSearchSheetState extends State<_EnrollSearchSheet> {
             )
           else
             ...notEnrolled.map(
-              (c) => ListTile(
-                title: Text(c.fullName),
-                subtitle: Text('${c.ageInMonths} mos · ${c.address}'),
-                trailing: FilledButton(
-                  onPressed: () async {
-                    await FeedingEnrollmentRepository().enroll(c.id);
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Enroll'),
-                ),
-              ),
+              (c) {
+                final isEnrolling = _enrollingIds.contains(c.id);
+                return ListTile(
+                  title: Text(c.fullName),
+                  subtitle: Text('${c.ageInMonths} mos · ${c.address}'),
+                  trailing: FilledButton(
+                    onPressed: isEnrolling ? null : () => _enroll(c),
+                    child: isEnrolling
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Enroll'),
+                  ),
+                );
+              },
             ),
         ],
       ),

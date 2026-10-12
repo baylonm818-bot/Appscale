@@ -8,6 +8,7 @@ import '../../../data/local/measurement_repository.dart';
 import '../../../data/models/child.dart';
 import '../../../data/models/report_signatory.dart';
 import '../../../data/growth_standards/growth_classifier.dart';
+import '../../../features/masterlist/utils/child_status_meta.dart';
 import '../../../shared/utils/barangay_assets.dart';
 import 'consolidation_computation_service.dart';
 
@@ -86,12 +87,6 @@ class ReportPdfService {
   }) async {
     final doc = pw.Document();
 
-    final bagongPilipinas = await _loadAssetImage('assets/images/logos/bagong_pilipinas.png');
-    final nnc = await _loadAssetImage('assets/images/logos/nnc.png');
-    final gasanSeal = await _loadAssetImage('assets/images/logos/gasan_seal.png');
-    final barangaySeal = await _loadBarangayImage(matrix.barangay, signatory);
-    final nutritionLogo = await _loadAssetImage('assets/images/logos/nutrition_logo.png');
-
     doc.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4.landscape,
@@ -99,15 +94,6 @@ class ReportPdfService {
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            _buildHeaderLogos(
-              barangay: matrix.barangay,
-              bagongPilipinas: bagongPilipinas,
-              nnc: nnc,
-              gasanSeal: gasanSeal,
-              barangaySeal: barangaySeal,
-              nutritionLogo: nutritionLogo,
-            ),
-            pw.SizedBox(height: 6),
             pw.Center(
               child: pw.Text(
                 'CONSOLIDATION',
@@ -222,12 +208,6 @@ class ReportPdfService {
         ? signatory!.bnsPosition
         : 'Barangay Nutrition Scholar';
 
-    final bagongPilipinas = await _loadAssetImage('assets/images/logos/bagong_pilipinas.png');
-    final nnc = await _loadAssetImage('assets/images/logos/nnc.png');
-    final gasanSeal = await _loadAssetImage('assets/images/logos/gasan_seal.png');
-    final barangaySeal = await _loadBarangayImage(barangay, signatory);
-    final nutritionLogo = await _loadAssetImage('assets/images/logos/nutrition_logo.png');
-
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -240,19 +220,6 @@ class ReportPdfService {
             ),
             child: pw.SizedBox(height: 4),
           ),
-          pw.SizedBox(height: 8),
-
-          // 5 official logos row: Bagong Pilipinas, NNC, Gasan, Barangay seal, Nutrition logo
-          _buildHeaderLogos(
-            barangay: barangay,
-            bagongPilipinas: bagongPilipinas,
-            nnc: nnc,
-            gasanSeal: gasanSeal,
-            barangaySeal: barangaySeal,
-            nutritionLogo: nutritionLogo,
-          ),
-          pw.SizedBox(height: 16),
-
           // Title
           pw.Center(
             child: pw.Text(
@@ -774,12 +741,6 @@ class ReportPdfService {
   }) async {
     final doc = pw.Document();
 
-    final bagongPilipinas = await _loadAssetImage('assets/images/logos/bagong_pilipinas.png');
-    final nnc = await _loadAssetImage('assets/images/logos/nnc.png');
-    final gasanSeal = await _loadAssetImage('assets/images/logos/gasan_seal.png');
-    final barangaySeal = await _loadBarangayImage(barangay, signatory);
-    final nutritionLogo = await _loadAssetImage('assets/images/logos/nutrition_logo.png');
-
     final bnsName = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
     final today = DateTime.now();
     final fmtDate = '${today.month.toString().padLeft(2, '0')}/'
@@ -799,81 +760,97 @@ class ReportPdfService {
       'SAM',
     ];
 
-    // For each quarter, count each child once with their latest measurement
-    // For the summary table we count across the full year (all 4 quarters).
     final boyCounts = <String, int>{for (final s in statusLabels) s: 0};
     final girlCounts = <String, int>{for (final s in statusLabels) s: 0};
 
-    void countChild(Child child, Map<String, int> counts) {
+    String? evaluateChild(Child child) {
       final measurements = measurementRepo.getForChild(child.id);
-      // Find latest measurement within the selected year
       final inYear = measurements.where((m) => m.date.year == year).toList();
-      if (inYear.isEmpty) return;
-      // getForChild returns most-recent-first
-      final latest = inYear.first;
-      final age = Child.monthsBetween(child.birthDate, latest.date);
+      if (inYear.isNotEmpty) {
+        final latest = inYear.first;
+        final age = Child.monthsBetween(child.birthDate, latest.date);
+        if (age < 24 || age > 59) return null;
 
-      final wfa = GrowthClassifier.classifyWeightForAge(
-        weightKg: latest.weightKg,
-        ageMonths: age,
-        gender: child.gender,
-      );
-      final hfa = GrowthClassifier.classifyHeightForAge(
-        heightCm: latest.heightCm,
-        ageMonths: age,
-        gender: child.gender,
-      );
-      final wfl = GrowthClassifier.classifyWeightForLength(
-        weightKg: latest.weightKg,
-        heightCm: latest.heightCm,
-        gender: child.gender,
-      );
+        final wfa = GrowthClassifier.classifyWeightForAge(
+          weightKg: latest.weightKg,
+          ageMonths: age,
+          gender: child.gender,
+        );
+        final hfa = GrowthClassifier.classifyHeightForAge(
+          heightCm: latest.heightCm,
+          ageMonths: age,
+          gender: child.gender,
+        );
+        final wfl = GrowthClassifier.classifyWeightForLength(
+          weightKg: latest.weightKg,
+          heightCm: latest.heightCm,
+          gender: child.gender,
+        );
 
-      // Record worst status per dimension
-      if (wfl == 'SAM') {
-        counts['SAM'] = counts['SAM']! + 1;
-      } else if (wfl == 'MAM') {
-        counts['MAM'] = counts['MAM']! + 1;
-      } else if (hfa == 'Severely Stunted') {
-        counts['Severely Stunted'] = counts['Severely Stunted']! + 1;
-      } else if (hfa == 'Stunted') {
-        counts['Stunted'] = counts['Stunted']! + 1;
-      } else if (wfa == 'Severely Underweight') {
-        counts['Severely Underweight'] = counts['Severely Underweight']! + 1;
-      } else if (wfa == 'Underweight') {
-        counts['Underweight'] = counts['Underweight']! + 1;
-      } else if (wfa == 'Overweight' || wfl == 'Overweight' || wfl == 'Obese') {
-        counts['Overweight'] = counts['Overweight']! + 1;
-      } else {
-        counts['Normal'] = counts['Normal']! + 1;
+        if (wfl == 'SAM') return 'SAM';
+        if (wfl == 'MAM') return 'MAM';
+        if (hfa == 'Severely Stunted') return 'Severely Stunted';
+        if (hfa == 'Stunted') return 'Stunted';
+        if (wfa == 'Severely Underweight') return 'Severely Underweight';
+        if (wfa == 'Underweight') return 'Underweight';
+        if (wfa == 'Overweight' || wfl == 'Overweight' || wfl == 'Obese') return 'Overweight';
+        return 'Normal';
+      }
+
+      // Fallback: evaluate child record if lastWeighedAt or createdAt falls in target year
+      final effectiveDate = child.lastWeighedAt ?? child.createdAt;
+      if (effectiveDate.year == year) {
+        final age = Child.monthsBetween(child.birthDate, effectiveDate);
+        if (age >= 24 && age <= 59) {
+          final rawWfa = ChildStatusMeta.formatStatus(child.nutritionStatus);
+          final rawHfa = ChildStatusMeta.formatStatus(child.stuntingStatus);
+          final rawWfl = ChildStatusMeta.formatStatus(child.wastingStatus);
+
+          if (rawWfl == 'SAM') return 'SAM';
+          if (rawWfl == 'MAM') return 'MAM';
+          if (rawHfa == 'Severely Stunted') return 'Severely Stunted';
+          if (rawHfa == 'Stunted') return 'Stunted';
+          if (rawWfa == 'Severely Underweight') return 'Severely Underweight';
+          if (rawWfa == 'Underweight') return 'Underweight';
+          if (rawWfa == 'Overweight') return 'Overweight';
+          if (rawWfa == 'Normal') return 'Normal';
+        }
+      }
+
+      return null;
+    }
+
+    for (final child in boys) {
+      final st = evaluateChild(child);
+      if (st != null && boyCounts.containsKey(st)) {
+        boyCounts[st] = boyCounts[st]! + 1;
+      }
+    }
+    for (final child in girls) {
+      final st = evaluateChild(child);
+      if (st != null && girlCounts.containsKey(st)) {
+        girlCounts[st] = girlCounts[st]! + 1;
       }
     }
 
-    for (final child in boys) { countChild(child, boyCounts); }
-    for (final child in girls) { countChild(child, girlCounts); }
-
-    final totalBoys = boys.length;
-    final totalGirls = girls.length;
-    final grandTotal = totalBoys + totalGirls;
+    final totalBoysEvaluated = boyCounts.values.fold<int>(0, (a, b) => a + b);
+    final totalGirlsEvaluated = girlCounts.values.fold<int>(0, (a, b) => a + b);
+    final grandTotal = totalBoysEvaluated + totalGirlsEvaluated;
 
     // ── Build summary table rows ─────────────────────────────────────────
     List<List<String>> summaryRows() {
       final rows = <List<String>>[];
-      int runningTotal = 0;
       for (final label in statusLabels) {
         final b = boyCounts[label]!;
         final g = girlCounts[label]!;
         final t = b + g;
-        runningTotal += t;
         final pct = grandTotal > 0
             ? '${((t / grandTotal) * 100).toStringAsFixed(1)}%'
             : '0.0%';
         rows.add([label, '$b', '$g', '$t', pct]);
       }
-      final pct = grandTotal > 0
-          ? '${((runningTotal / grandTotal) * 100).toStringAsFixed(1)}%'
-          : '0.0%';
-      rows.add(['TOTAL', '$totalBoys', '$totalGirls', '$grandTotal', pct]);
+      final pct = grandTotal > 0 ? '100.0%' : '0.0%';
+      rows.add(['TOTAL CHILDREN', '$totalBoysEvaluated', '$totalGirlsEvaluated', '$grandTotal', pct]);
       return rows;
     }
 
@@ -983,17 +960,6 @@ class ReportPdfService {
         pageFormat: PdfPageFormat.a4.landscape,
         margin: const pw.EdgeInsets.symmetric(horizontal: 16 * PdfPageFormat.mm, vertical: 14 * PdfPageFormat.mm),
         build: (context) => [
-          // ── Logos ──
-          _buildHeaderLogos(
-            barangay: barangay,
-            bagongPilipinas: bagongPilipinas,
-            nnc: nnc,
-            gasanSeal: gasanSeal,
-            barangaySeal: barangaySeal,
-            nutritionLogo: nutritionLogo,
-          ),
-          pw.SizedBox(height: 10),
-
           // ── BNS Form 1-A Header Block ──
           pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -1036,34 +1002,49 @@ class ReportPdfService {
             style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 4),
-          pw.TableHelper.fromTextArray(
-            headers: ['Nutritional Status', 'Boys', 'Girls', 'Total', 'Percentage (%)'],
-            data: summaryRows(),
-            headerStyle: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-            headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF1B5E20)),
-            cellStyle: const pw.TextStyle(fontSize: 8),
-            cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-            columnWidths: {
-              0: const pw.FlexColumnWidth(3),
-              1: const pw.FixedColumnWidth(48),
-              2: const pw.FixedColumnWidth(48),
-              3: const pw.FixedColumnWidth(48),
-              4: const pw.FixedColumnWidth(72),
-            },
-            cellAlignments: {
-              0: pw.Alignment.centerLeft,
-              1: pw.Alignment.center,
-              2: pw.Alignment.center,
-              3: pw.Alignment.center,
-              4: pw.Alignment.center,
-            },
-            headerCount: 1,
-          ),
+          if (grandTotal == 0)
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: pw.BoxDecoration(
+                border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+                color: PdfColors.grey100,
+              ),
+              child: pw.Center(
+                child: pw.Text(
+                  'No records for this period (Year $year)',
+                  style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
+                ),
+              ),
+            )
+          else
+            pw.TableHelper.fromTextArray(
+              headers: ['Status', 'Boys', 'Girls', 'Total', '%'],
+              data: summaryRows(),
+              headerStyle: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+              headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF1B5E20)),
+              cellStyle: const pw.TextStyle(fontSize: 8),
+              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3.5),
+              border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+              columnWidths: {
+                0: const pw.FlexColumnWidth(2.5),
+                1: const pw.FixedColumnWidth(44),
+                2: const pw.FixedColumnWidth(44),
+                3: const pw.FixedColumnWidth(44),
+                4: const pw.FixedColumnWidth(48),
+              },
+              cellAlignments: {
+                0: pw.Alignment.centerLeft,
+                1: pw.Alignment.center,
+                2: pw.Alignment.center,
+                3: pw.Alignment.center,
+                4: pw.Alignment.center,
+              },
+              headerCount: 1,
+            ),
           pw.SizedBox(height: 16),
 
           // ── BOYS weighing table ──
-          pw.Text('BOYS (Total: $totalBoys)',
+          pw.Text('BOYS (Total: ${boys.length})',
               style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 4),
           if (boys.isEmpty)
@@ -1073,7 +1054,7 @@ class ReportPdfService {
           pw.SizedBox(height: 12),
 
           // ── GIRLS weighing table ──
-          pw.Text('GIRLS (Total: $totalGirls)',
+          pw.Text('GIRLS (Total: ${girls.length})',
               style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 4),
           if (girls.isEmpty)
@@ -1114,12 +1095,6 @@ class ReportPdfService {
     required ReportSignatory? signatory,
   }) async {
     final doc = pw.Document();
-
-    final bagongPilipinas = await _loadAssetImage('assets/images/logos/bagong_pilipinas.png');
-    final nnc = await _loadAssetImage('assets/images/logos/nnc.png');
-    final gasanSeal = await _loadAssetImage('assets/images/logos/gasan_seal.png');
-    final barangaySeal = await _loadBarangayImage(barangay, signatory);
-    final nutritionLogo = await _loadAssetImage('assets/images/logos/nutrition_logo.png');
 
     final bnsName = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
     final today = DateTime.now();
@@ -1275,15 +1250,6 @@ class ReportPdfService {
           pageFormat: PdfPageFormat.a4.landscape,
           margin: const pw.EdgeInsets.symmetric(horizontal: 14 * PdfPageFormat.mm, vertical: 12 * PdfPageFormat.mm),
           build: (context) => [
-            _buildHeaderLogos(
-              barangay: barangay,
-              bagongPilipinas: bagongPilipinas,
-              nnc: nnc,
-              gasanSeal: gasanSeal,
-              barangaySeal: barangaySeal,
-              nutritionLogo: nutritionLogo,
-            ),
-            pw.SizedBox(height: 8),
             pw.Center(
               child: pw.Column(
                 children: [

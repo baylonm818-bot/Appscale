@@ -11,6 +11,7 @@ import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/measurement_repository.dart';
 import '../../data/local/referral_repository.dart';
+import '../../data/local/feeding_enrollment_repository.dart';
 import '../../data/local/feeding_schedule_repository.dart';
 import '../../data/local/meal_plan_repository.dart';
 import '../../data/local/feeding_attendance_repository.dart';
@@ -40,6 +41,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   final _motherRepo = MotherRepository();
   final _measurementRepo = MeasurementRepository();
   final _referralRepo = ReferralRepository();
+  final _feedingEnrollmentRepo = FeedingEnrollmentRepository();
   final _feedingScheduleRepo = FeedingScheduleRepository();
   final _mealPlanRepo = MealPlanRepository();
   final _attendanceRepo = FeedingAttendanceRepository();
@@ -191,6 +193,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       await _childRepo.syncPending();
       await _measurementRepo.syncPending();
       await _referralRepo.syncPending();
+      await _feedingEnrollmentRepo.syncPending();
       await _feedingScheduleRepo.syncPending();
       await _mealPlanRepo.syncPending();
       await _attendanceRepo.syncPending();
@@ -254,6 +257,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         await _motherRepo.syncPending();
         await _measurementRepo.syncPending();
         await _referralRepo.syncPending();
+        await _feedingEnrollmentRepo.syncPending();
         await _feedingScheduleRepo.syncPending();
         await _mealPlanRepo.syncPending();
         await _attendanceRepo.syncPending();

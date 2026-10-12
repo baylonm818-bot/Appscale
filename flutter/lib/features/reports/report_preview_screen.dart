@@ -21,6 +21,7 @@ import 'services/report_download_service.dart';
 
 import '../../data/growth_standards/growth_classifier.dart';
 import '../../data/local/app_data_bus.dart';
+import '../../features/masterlist/utils/child_status_meta.dart';
 import '../../shared/utils/app_page_route.dart';
 import 'sync_status_screen.dart';
 import 'report_signatories_screen.dart';
@@ -1222,28 +1223,6 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Logo header (matching PDF) ──
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset('assets/images/logos/bagong_pilipinas.png', width: 32, height: 32,
-                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
-              const SizedBox(width: 6),
-              Image.asset('assets/images/logos/nnc.png', width: 32, height: 32,
-                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
-              const SizedBox(width: 6),
-              Image.asset('assets/images/logos/gasan_seal.png', width: 32, height: 32,
-                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
-              const SizedBox(width: 6),
-              Image.asset(getBarangaySealAssetPath(_currentBarangay), width: 32, height: 32,
-                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
-              const SizedBox(width: 6),
-              Image.asset('assets/images/logos/nutrition_logo.png', width: 32, height: 32,
-                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
-            ],
-          ),
-          const SizedBox(height: 10),
-
           // Center Bold Header Block
           Center(
             child: Column(
@@ -1549,37 +1528,117 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     final boyCounts = <String, int>{for (final s in statusLabelsQ) s: 0};
     final girlCounts = <String, int>{for (final s in statusLabelsQ) s: 0};
 
-    void countChildPreview(Child child, Map<String, int> counts) {
+    String? evaluateChildStatus(Child child) {
       final meas = measurementRepo.getForChild(child.id);
       final inYear = meas.where((m) => m.date.year == _period.year).toList();
-      if (inYear.isEmpty) return;
-      final latest = inYear.first;
-      final age = Child.monthsBetween(child.birthDate, latest.date);
-      final wfa = GrowthClassifier.classifyWeightForAge(
-        weightKg: latest.weightKg, ageMonths: age, gender: child.gender,
-      );
-      final hfa = GrowthClassifier.classifyHeightForAge(
-        heightCm: latest.heightCm, ageMonths: age, gender: child.gender,
-      );
-      final wfl = GrowthClassifier.classifyWeightForLength(
-        weightKg: latest.weightKg, heightCm: latest.heightCm, gender: child.gender,
-      );
-      if (wfl == 'SAM') { counts['SAM'] = counts['SAM']! + 1; }
-      else if (wfl == 'MAM') { counts['MAM'] = counts['MAM']! + 1; }
-      else if (hfa == 'Severely Stunted') { counts['Severely Stunted'] = counts['Severely Stunted']! + 1; }
-      else if (hfa == 'Stunted') { counts['Stunted'] = counts['Stunted']! + 1; }
-      else if (wfa == 'Severely Underweight') { counts['Severely Underweight'] = counts['Severely Underweight']! + 1; }
-      else if (wfa == 'Underweight') { counts['Underweight'] = counts['Underweight']! + 1; }
-      else if (wfa == 'Overweight' || wfl == 'Overweight' || wfl == 'Obese') { counts['Overweight'] = counts['Overweight']! + 1; }
-      else { counts['Normal'] = counts['Normal']! + 1; }
+
+      if (inYear.isNotEmpty) {
+        final latest = inYear.first;
+        final age = Child.monthsBetween(child.birthDate, latest.date);
+        if (age < 24 || age > 59) return null; // strictly 24-59 months
+
+        final wfa = GrowthClassifier.classifyWeightForAge(
+          weightKg: latest.weightKg, ageMonths: age, gender: child.gender,
+        );
+        final hfa = GrowthClassifier.classifyHeightForAge(
+          heightCm: latest.heightCm, ageMonths: age, gender: child.gender,
+        );
+        final wfl = GrowthClassifier.classifyWeightForLength(
+          weightKg: latest.weightKg, heightCm: latest.heightCm, gender: child.gender,
+        );
+
+        String chosen;
+        if (wfl == 'SAM') { chosen = 'SAM'; }
+        else if (wfl == 'MAM') { chosen = 'MAM'; }
+        else if (hfa == 'Severely Stunted') { chosen = 'Severely Stunted'; }
+        else if (hfa == 'Stunted') { chosen = 'Stunted'; }
+        else if (wfa == 'Severely Underweight') { chosen = 'Severely Underweight'; }
+        else if (wfa == 'Underweight') { chosen = 'Underweight'; }
+        else if (wfa == 'Overweight' || wfl == 'Overweight' || wfl == 'Obese') { chosen = 'Overweight'; }
+        else { chosen = 'Normal'; }
+
+        debugPrint('[Quarterly Report Debug] Child: ${child.fullName} (${child.gender}, ${age}mos) -> $chosen (from measurement date: ${latest.date.toIso8601String().split('T').first}, W:${latest.weightKg}kg, H:${latest.heightCm}cm)');
+        return chosen;
+      }
+
+      // Fallback: evaluate via child record if lastWeighedAt or createdAt falls in selected year
+      final effectiveDate = child.lastWeighedAt ?? child.createdAt;
+      if (effectiveDate.year == _period.year) {
+        final age = Child.monthsBetween(child.birthDate, effectiveDate);
+        if (age >= 24 && age <= 59) {
+          final rawWfa = ChildStatusMeta.formatStatus(child.nutritionStatus);
+          final rawHfa = ChildStatusMeta.formatStatus(child.stuntingStatus);
+          final rawWfl = ChildStatusMeta.formatStatus(child.wastingStatus);
+
+          String chosen;
+          if (rawWfl == 'SAM') { chosen = 'SAM'; }
+          else if (rawWfl == 'MAM') { chosen = 'MAM'; }
+          else if (rawHfa == 'Severely Stunted') { chosen = 'Severely Stunted'; }
+          else if (rawHfa == 'Stunted') { chosen = 'Stunted'; }
+          else if (rawWfa == 'Severely Underweight') { chosen = 'Severely Underweight'; }
+          else if (rawWfa == 'Underweight') { chosen = 'Underweight'; }
+          else if (rawWfa == 'Overweight') { chosen = 'Overweight'; }
+          else if (rawWfa == 'Normal') { chosen = 'Normal'; }
+          else { return null; }
+
+          debugPrint('[Quarterly Report Debug] Child: ${child.fullName} (${child.gender}, ${age}mos) -> $chosen (from child record date: ${effectiveDate.toIso8601String().split('T').first})');
+          return chosen;
+        }
+      }
+
+      return null;
     }
 
-    for (final child in boys) { countChildPreview(child, boyCounts); }
-    for (final child in girls) { countChildPreview(child, girlCounts); }
+    for (final child in boys) {
+      final st = evaluateChildStatus(child);
+      if (st != null && boyCounts.containsKey(st)) {
+        boyCounts[st] = boyCounts[st]! + 1;
+      }
+    }
+    for (final child in girls) {
+      final st = evaluateChildStatus(child);
+      if (st != null && girlCounts.containsKey(st)) {
+        girlCounts[st] = girlCounts[st]! + 1;
+      }
+    }
 
-    final grandTotal = boys.length + girls.length;
+    final totalBoysWeighed = boyCounts.values.fold<int>(0, (a, b) => a + b);
+    final totalGirlsWeighed = girlCounts.values.fold<int>(0, (a, b) => a + b);
+    final grandTotal = totalBoysWeighed + totalGirlsWeighed;
+
+    debugPrint('[Quarterly Report Debug] Total children evaluated for Year ${_period.year}: $grandTotal (Boys: $totalBoysWeighed, Girls: $totalGirlsWeighed)');
 
     Widget buildSummaryTable() {
+      if (grandTotal == 0) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.info_outline, size: 28, color: AppColors.textMuted),
+              const SizedBox(height: 8),
+              const Text(
+                'No records for this period',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textMuted),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'No weighed children aged 24-59 months found for Year ${_period.year}.',
+                style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+      }
+
       return Container(
         decoration: BoxDecoration(
           border: Border.all(color: AppColors.border),
@@ -1588,11 +1647,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         clipBehavior: Clip.hardEdge,
         child: Table(
           columnWidths: const {
-            0: FlexColumnWidth(3),
-            1: FixedColumnWidth(60),
-            2: FixedColumnWidth(60),
-            3: FixedColumnWidth(60),
-            4: FixedColumnWidth(80),
+            0: FlexColumnWidth(2.5),
+            1: FixedColumnWidth(44),
+            2: FixedColumnWidth(44),
+            3: FixedColumnWidth(44),
+            4: FixedColumnWidth(48),
           },
           border: TableBorder.all(color: AppColors.border, width: 0.5),
           children: [
@@ -1600,11 +1659,15 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             TableRow(
               decoration: const BoxDecoration(color: AppColors.darkGreen),
               children: [
-                for (final h in ['Nutritional Status', 'Boys', 'Girls', 'Total', 'Percentage (%)'])
+                for (final h in ['Status', 'Boys', 'Girls', 'Total', '%'])
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-                    child: Text(h, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                        textAlign: h == 'Nutritional Status' ? TextAlign.left : TextAlign.center),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                    child: Text(
+                      h,
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                      textAlign: h == 'Status' ? TextAlign.left : TextAlign.center,
+                      softWrap: false,
+                    ),
                   ),
               ],
             ),
@@ -1616,16 +1679,30 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               final pct = grandTotal > 0 ? ((t / grandTotal) * 100).toStringAsFixed(1) : '0.0';
               return TableRow(
                 children: [
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Text(label, style: const TextStyle(fontSize: 9))),
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Text('$b', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9))),
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Text('$g', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9))),
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Text('$t', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Text('$pct%', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                    child: Text(
+                      label,
+                      style: const TextStyle(fontSize: 9),
+                      softWrap: true,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+                    child: Text('$b', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+                    child: Text('$g', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+                    child: Text('$t', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+                    child: Text('$pct%', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9)),
+                  ),
                 ],
               );
             }),
@@ -1633,16 +1710,26 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             TableRow(
               decoration: BoxDecoration(color: AppColors.background),
               children: [
-                const Padding(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Text('TOTAL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
-                Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Text('${boys.length}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
-                Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Text('${girls.length}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
-                Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Text('$grandTotal', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
-                Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Text(grandTotal > 0 ? '100.0%' : '0.0%', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold))),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                  child: Text('TOTAL CHILDREN', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold), softWrap: false),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+                  child: Text('$totalBoysWeighed', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+                  child: Text('$totalGirlsWeighed', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+                  child: Text('$grandTotal', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+                  child: Text(grandTotal > 0 ? '100.0%' : '0.0%', textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                ),
               ],
             ),
           ],
@@ -1685,27 +1772,6 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Logo header (matching PDF) ──
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset('assets/images/logos/bagong_pilipinas.png', width: 32, height: 32,
-                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
-              const SizedBox(width: 6),
-              Image.asset('assets/images/logos/nnc.png', width: 32, height: 32,
-                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
-              const SizedBox(width: 6),
-              Image.asset('assets/images/logos/gasan_seal.png', width: 32, height: 32,
-                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
-              const SizedBox(width: 6),
-              Image.asset(getBarangaySealAssetPath(_currentBarangay), width: 32, height: 32,
-                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
-              const SizedBox(width: 6),
-              Image.asset('assets/images/logos/nutrition_logo.png', width: 32, height: 32,
-                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
-            ],
-          ),
-          const SizedBox(height: 10),
           // ── Title block (matching PDF) ──
           Center(
             child: Column(
@@ -1929,21 +1995,23 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               ),
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.asset('assets/images/logos/bagong_pilipinas.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
-                      const SizedBox(width: 8),
-                      Image.asset('assets/images/logos/nnc.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
-                      const SizedBox(width: 8),
-                      Image.asset('assets/images/logos/gasan_seal.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
-                      const SizedBox(width: 8),
-                      Image.asset(getBarangaySealAssetPath(_currentBarangay), width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
-                      const SizedBox(width: 8),
-                      Image.asset('assets/images/logos/nutrition_logo.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
+                  if (widget.reportType.id == 'children_masterlist') ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset('assets/images/logos/bagong_pilipinas.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
+                        const SizedBox(width: 8),
+                        Image.asset('assets/images/logos/nnc.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
+                        const SizedBox(width: 8),
+                        Image.asset('assets/images/logos/gasan_seal.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
+                        const SizedBox(width: 8),
+                        Image.asset(getBarangaySealAssetPath(_currentBarangay), width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
+                        const SizedBox(width: 8),
+                        Image.asset('assets/images/logos/nutrition_logo.png', width: 38, height: 38, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 38)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   Text(
                     widget.reportType.id == 'lactating_mothers_masterlist'
                         ? 'MASTERLIST OF LACTATING MOTHER ${_period.year}'

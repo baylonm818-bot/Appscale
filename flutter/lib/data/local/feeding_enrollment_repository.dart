@@ -12,6 +12,11 @@ import '../remote/beneficiary_api.dart';
 class FeedingEnrollmentRepository {
   Box get _box => Hive.box(HiveBoxes.feedingEnrollment);
 
+  bool isPendingSync(String childId) {
+    final data = getEnrollmentData(childId);
+    return data?['_syncStatus'] == 'pending';
+  }
+
   Future<void> enroll(String childId, {String? notes}) async {
     final now = DateTime.now().toIso8601String();
     final existing = getEnrollmentData(childId);
@@ -36,6 +41,7 @@ class FeedingEnrollmentRepository {
       'notes': notes ?? existing?['notes'],
       'cycle_number': ((existing?['cycle_number'] as num?)?.toInt() ?? 1) + (isReEnroll ? 1 : 0),
       'history': history,
+      '_syncStatus': 'pending',
     };
     await _box.put(childId, data);
 
@@ -48,13 +54,18 @@ class FeedingEnrollmentRepository {
     AppDataBus.notifyChanged();
 
     try {
-      await BeneficiaryApi.syncProgramEnrollment(
+      final res = await BeneficiaryApi.syncProgramEnrollment(
         childId: childId,
         isEnrolled: true,
         barangay: child.barangay,
         beneficiaryName: child.fullName,
         notes: notes,
       );
+      if (res.success) {
+        data['_syncStatus'] = 'synced';
+        await _box.put(childId, data);
+        AppDataBus.notifyChanged();
+      }
     } catch (_) {}
   }
 
@@ -82,6 +93,7 @@ class FeedingEnrollmentRepository {
       'notes': notes ?? existing?['notes'],
       'cycle_number': (existing?['cycle_number'] as num?)?.toInt() ?? 1,
       'history': history,
+      '_syncStatus': 'pending',
     };
 
     // ZERO DATA LOSS: DO NOT DELETE FROM HIVE BOX. Update status!
@@ -96,7 +108,7 @@ class FeedingEnrollmentRepository {
     AppDataBus.notifyChanged();
 
     try {
-      await BeneficiaryApi.syncProgramEnrollment(
+      final res = await BeneficiaryApi.syncProgramEnrollment(
         childId: childId,
         isEnrolled: false,
         barangay: child.barangay,
@@ -104,7 +116,39 @@ class FeedingEnrollmentRepository {
         unenrollReason: reason,
         notes: notes,
       );
+      if (res.success) {
+        data['_syncStatus'] = 'synced';
+        await _box.put(childId, data);
+        AppDataBus.notifyChanged();
+      }
     } catch (_) {}
+  }
+
+  Future<void> syncPending() async {
+    final childRepo = ChildRepository();
+    for (final key in _box.keys) {
+      final childId = key.toString();
+      final data = getEnrollmentData(childId);
+      if (data != null && data['_syncStatus'] == 'pending') {
+        try {
+          final child = childRepo.getById(childId);
+          if (child == null) continue;
+          final isEnr = data['status'] == 'enrolled';
+          final res = await BeneficiaryApi.syncProgramEnrollment(
+            childId: childId,
+            isEnrolled: isEnr,
+            barangay: child.barangay,
+            beneficiaryName: child.fullName,
+            unenrollReason: isEnr ? null : (data['unenroll_reason']?.toString() ?? 'Withdrawn'),
+            notes: data['notes']?.toString(),
+          );
+          if (res.success) {
+            data['_syncStatus'] = 'synced';
+            await _box.put(childId, data);
+          }
+        } catch (_) {}
+      }
+    }
   }
 
   Map<String, dynamic>? getEnrollmentData(String childId) {

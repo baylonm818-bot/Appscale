@@ -107,9 +107,24 @@ class SyncService {
         'inactiveReason': null,
         '_syncStatus': 'synced',
       });
-      // Seed feeding enrollment flag
+      // Seed feeding enrollment flag if not already present
       if (_isTruthy(c['is_enrolled'])) {
-        await enrollBox.put(key, DateTime.now().toIso8601String());
+        final existingEnr = enrollBox.get(key);
+        if (existingEnr == null) {
+          final now = DateTime.now().toIso8601String();
+          await enrollBox.put(key, {
+            'status': 'enrolled',
+            'enrolled_at': now,
+            'initial_enrolled_at': now,
+            'unenrolled_at': null,
+            'unenroll_reason': null,
+            'cycle_number': 1,
+            'history': [
+              {'action': 'enrolled', 'date': now, 'notes': 'Seeded from child profile'}
+            ],
+            '_syncStatus': 'synced',
+          });
+        }
       }
     }
 
@@ -260,12 +275,38 @@ class SyncService {
       if (progType == 'feeding') {
         final childKey = (e['child_external_id'] ?? e['child_id'] ?? '').toString();
         if (childKey.isNotEmpty) {
-          final status = (e['status'] ?? 'active').toString().toLowerCase();
-          if (status == 'active') {
-            await enrollBox.put(childKey, e['enrolled_at'] ?? DateTime.now().toIso8601String());
-          } else {
-            await enrollBox.delete(childKey);
+          final rawStatus = (e['status'] ?? 'enrolled').toString().toLowerCase();
+          final isEnrolled = rawStatus == 'enrolled' || rawStatus == 'active';
+          final existing = enrollBox.get(childKey);
+          Map<String, dynamic>? existingMap;
+          if (existing is Map) {
+            existingMap = Map<String, dynamic>.from(existing);
+          } else if (existing is String) {
+            existingMap = {
+              'status': 'enrolled',
+              'enrolled_at': existing,
+              'initial_enrolled_at': existing,
+              'cycle_number': 1,
+            };
           }
+
+          // If local has a pending change, keep local pending until synced
+          if (existingMap != null && existingMap['_syncStatus'] == 'pending') {
+            continue;
+          }
+
+          final mergedData = <String, dynamic>{
+            'status': isEnrolled ? 'enrolled' : 'unenrolled',
+            'enrolled_at': e['enrolled_at'] ?? existingMap?['enrolled_at'] ?? DateTime.now().toIso8601String(),
+            'initial_enrolled_at': existingMap?['initial_enrolled_at'] ?? e['enrolled_at'] ?? DateTime.now().toIso8601String(),
+            'unenrolled_at': isEnrolled ? null : (e['unenrolled_at'] ?? DateTime.now().toIso8601String()),
+            'unenroll_reason': isEnrolled ? null : (e['unenroll_reason'] ?? existingMap?['unenroll_reason']),
+            'notes': e['notes'] ?? existingMap?['notes'],
+            'cycle_number': (e['cycle_number'] as num?)?.toInt() ?? existingMap?['cycle_number'] ?? 1,
+            'history': existingMap?['history'] ?? [],
+            '_syncStatus': 'synced',
+          };
+          await enrollBox.put(childKey, mergedData);
         }
       }
     }

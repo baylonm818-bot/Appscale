@@ -1174,7 +1174,8 @@ exports.getMobileSync = async (req, res) => {
       pool.query(
         `SELECT pe.enrollment_id, pe.external_id, pe.program_type, pe.beneficiary_type,
                 pe.child_id, pe.mother_id, pe.child_external_id, pe.mother_external_id,
-                pe.beneficiary_name, pe.barangay, pe.enrolled_at, pe.status, pe.notes
+                pe.beneficiary_name, pe.barangay, pe.enrolled_at, pe.status, pe.notes,
+                pe.unenrolled_at, pe.unenrolled_by, pe.unenroll_reason, pe.cycle_number
          FROM program_enrollments pe
          WHERE ${barangay ? 'pe.barangay = ?' : '1=1'}
          ORDER BY pe.enrolled_at DESC`,
@@ -1313,6 +1314,12 @@ exports.getMobileSync = async (req, res) => {
 exports.upsertProgramEnrollment = async (req, res) => {
   const { external_id, program_type, beneficiary_type, child_external_id, child_id, mother_external_id, mother_id, beneficiary_name, barangay, enrolled_at, status, notes, unenroll_reason, unenroll_notes } = req.body;
   const scope = enforceScopedBarangay(req.user, barangay || null);
+  if (!scope.allowed) {
+    return res.status(403).json({
+      message: 'Barangay scope mismatch. You can only enroll beneficiaries in your assigned barangay.',
+      code: scope.reason,
+    });
+  }
   const resolvedBarangay = scope.barangay;
   
   // Standardize status: enrolled vs unenrolled
@@ -1328,12 +1335,22 @@ exports.upsertProgramEnrollment = async (req, res) => {
     let resolvedChildId = child_id || null;
     let resolvedMotherId = mother_id || null;
     if (!resolvedChildId && child_external_id) {
-      const [[c]] = await pool.query('SELECT child_id FROM children WHERE external_id = ? OR child_id = ? LIMIT 1', [child_external_id, child_external_id]);
-      if (c) resolvedChildId = c.child_id;
+      const [[c]] = await pool.query('SELECT child_id, barangay FROM children WHERE external_id = ? OR child_id = ? LIMIT 1', [child_external_id, child_external_id]);
+      if (c) {
+        if (c.barangay && resolvedBarangay && c.barangay.toLowerCase() !== resolvedBarangay.toLowerCase() && req.user?.role !== 'admin') {
+          return res.status(403).json({ message: 'Child belongs to a different barangay.' });
+        }
+        resolvedChildId = c.child_id;
+      }
     }
     if (!resolvedMotherId && mother_external_id) {
-      const [[m]] = await pool.query('SELECT mother_id FROM mothers WHERE external_id = ? OR mother_id = ? LIMIT 1', [mother_external_id, mother_external_id]);
-      if (m) resolvedMotherId = m.mother_id;
+      const [[m]] = await pool.query('SELECT mother_id, barangay FROM mothers WHERE external_id = ? OR mother_id = ? LIMIT 1', [mother_external_id, mother_external_id]);
+      if (m) {
+        if (m.barangay && resolvedBarangay && m.barangay.toLowerCase() !== resolvedBarangay.toLowerCase() && req.user?.role !== 'admin') {
+          return res.status(403).json({ message: 'Mother belongs to a different barangay.' });
+        }
+        resolvedMotherId = m.mother_id;
+      }
     }
 
     const [existing] = await pool.query(
