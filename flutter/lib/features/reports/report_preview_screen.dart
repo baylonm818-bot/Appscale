@@ -428,258 +428,297 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   Widget build(BuildContext context) {
     final isConsolidation =
         widget.reportType.category == ReportCategory.consolidation;
+    final hasPdf = widget.reportType.formats.contains(ExportFormat.pdf);
+    final hasExcel = widget.reportType.formats.contains(ExportFormat.excel);
+
+    // Determine which export functions to use based on report type
+    final isConsolidationReport = isConsolidation;
+    final exportPdfFn = isConsolidationReport ? _exportConsolidationPdf : _exportPdf;
+    final exportExcelFn = isConsolidationReport ? _exportConsolidationExcel : _exportExcel;
+
+    // Decide if year picker is needed
+    final needsYearPicker = isConsolidation ||
+        widget.reportType.id == 'monthly_weight_record' ||
+        widget.reportType.id == 'quarterly_weighing';
 
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, _, _) {
         return Scaffold(
           backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  color: AppColors.darkGreen,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.lg,
+          // ── Sticky bottom action bar ────────────────────────────────────
+          bottomNavigationBar: SafeArea(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: AppColors.border)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
                   ),
-                  child: Row(
-                    children: [
-                      InkWell(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(Icons.arrow_back, color: Colors.white),
+                ],
+              ),
+              child: Row(
+                children: [
+                  if (hasPdf) ...[
+                    Expanded(child: _exportButton('Export PDF', exportPdfFn, Icons.picture_as_pdf_outlined)),
+                    if (hasExcel) const SizedBox(width: 10),
+                  ],
+                  if (hasExcel)
+                    Expanded(child: _exportButton('Export Excel', exportExcelFn, Icons.grid_on_outlined)),
+                ],
+              ),
+            ),
+          ),
+          body: Stack(
+            children: [
+              SafeArea(
+                child: Column(
+                  children: [
+                    // ── App bar ──
+                    Container(
+                      width: double.infinity,
+                      color: AppColors.darkGreen,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.lg,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          widget.reportType.title,
-                          style: AppTextStyles.h2.copyWith(
-                            color: Colors.white,
-                            fontSize: 16,
+                      child: Row(
+                        children: [
+                          InkWell(
+                            onTap: () => Navigator.pop(context),
+                            child: const Icon(Icons.arrow_back, color: Colors.white),
                           ),
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            appPageRoute(const ReportSignatoriesScreen()),
-                          );
-                          setState(() {});
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.draw_outlined, color: Colors.white, size: 15),
-                              SizedBox(width: 4),
-                              Text(
-                                'Signatories',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              widget.reportType.title,
+                              style: AppTextStyles.h2.copyWith(
+                                color: Colors.white,
+                                fontSize: 16,
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_pendingRecordsCount > 0)
-                          Container(
-                            margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFF3E0),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFFFFB74D)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.cloud_upload_outlined,
-                                  color: Color(0xFFE65100),
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    '$_pendingRecordsCount ${_pendingRecordsCount == 1 ? "record" : "records"} not yet synced',
-                                    style: const TextStyle(
-                                      color: Color(0xFFBF360C),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  style: TextButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  ),
-                                  onPressed: () => Navigator.push(
-                                    context,
-                                    appPageRoute(const SyncStatusScreen()),
-                                  ),
-                                  child: const Text(
-                                    'Sync Now',
+                          InkWell(
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                appPageRoute(const ReportSignatoriesScreen()),
+                              );
+                              setState(() {});
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(Icons.draw_outlined, color: Colors.white, size: 15),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Signatories',
                                     style: TextStyle(
+                                      color: Colors.white,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFFE65100),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        if (isConsolidation) ...[
-                          InkWell(
-                            onTap: _pickPeriod,
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.calendar_today_outlined,
-                                size: 16,
-                                color: AppColors.textMuted,
+                        ],
+                      ),
+                    ),
+                    // ── Scrollable content ──
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Unsynced warning
+                            if (_pendingRecordsCount > 0)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF3E0),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFFFB74D)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.cloud_upload_outlined,
+                                      color: Color(0xFFE65100),
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        '$_pendingRecordsCount ${_pendingRecordsCount == 1 ? "record" : "records"} not yet synced — report may be incomplete',
+                                        style: const TextStyle(
+                                          color: Color(0xFFBF360C),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      style: TextButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                                      ),
+                                      onPressed: () => Navigator.push(
+                                        context,
+                                        appPageRoute(const SyncStatusScreen()),
+                                      ),
+                                      child: const Text(
+                                        'Sync Now',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFFE65100),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Year: ${_period.year}',
-                                style: AppTextStyles.label.copyWith(fontSize: 13),
+
+                            // Year / period picker
+                            if (needsYearPicker) ...[
+                              InkWell(
+                                onTap: _pickPeriod,
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.calendar_today_outlined,
+                                        size: 16,
+                                        color: AppColors.textMuted,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Year: ${_period.year}  (tap to change)',
+                                        style: AppTextStyles.label.copyWith(fontSize: 13),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
+                              const SizedBox(height: AppSpacing.md),
+                            ] else ...[
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  'Data as of today.',
+                                  style: AppTextStyles.body.copyWith(
+                                    fontSize: 12,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
                             ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _buildConsolidationPreview(),
-                      const SizedBox(height: AppSpacing.lg),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _exportButton(
-                              'Export PDF',
-                              _exportConsolidationPdf,
-                              Icons.picture_as_pdf_outlined,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _exportButton(
-                              'Export Excel',
-                              _exportConsolidationExcel,
-                              Icons.grid_on_outlined,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ] else ...[
-                      if (widget.reportType.id == 'monthly_weight_record' ||
-                          widget.reportType.id == 'quarterly_weighing') ...[
-                        InkWell(
-                          onTap: _pickPeriod,
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.calendar_today_outlined,
-                                  size: 16,
-                                  color: AppColors.textMuted,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Year: ${_period.year}  (tap to change)',
-                                  style: AppTextStyles.label.copyWith(fontSize: 13),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                      ] else ...[
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            'Data as of today. Exports as a spreadsheet.',
-                            style: AppTextStyles.body.copyWith(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
-                      _buildRecordPreview(),
-                      const SizedBox(height: AppSpacing.lg),
-                      Row(
-                        children: [
-                          if (widget.reportType.formats.contains(ExportFormat.pdf)) ...[
-                            Expanded(
-                              child: _exportButton(
-                                'Export PDF',
-                                _exportPdf,
-                                Icons.picture_as_pdf_outlined,
+
+                            // ── Preview area (with pinch-to-zoom) ──
+                            // Hint text for zoom
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.pinch, size: 13, color: AppColors.textMuted),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Pinch to zoom · Scroll sideways on wide tables',
+                                    style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 12),
-                          ],
-                          Expanded(
-                            child: _exportButton(
-                              'Export Excel',
-                              _exportExcel,
-                              Icons.grid_on_outlined,
+                            InteractiveViewer(
+                              minScale: 0.6,
+                              maxScale: 3.0,
+                              constrained: true,
+                              child: isConsolidation
+                                  ? _buildConsolidationPreview()
+                                  : _buildRecordPreview(),
                             ),
-                          ),
-                        ],
+                            // Extra bottom padding so content isn't hidden behind the action bar
+                            const SizedBox(height: AppSpacing.xl),
+                          ],
+                        ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
+
+              // ── Loading overlay ──────────────────────────────────────────
+              if (_isExporting)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 16),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(
+                              strokeWidth: 3,
+                              valueColor: AlwaysStoppedAnimation(AppColors.primaryGreen),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Generating report…',
+                              style: AppTextStyles.label.copyWith(fontSize: 14),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'This may take a few seconds.',
+                              style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
-  },
-);
-}
+  }
 
   Widget _buildConsolidationPreview() {
     final matrix = ConsolidationComputationService().computeMatrix(
@@ -1148,9 +1187,28 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Tables for Boys & Girls
+          // Tables for Boys & Girls with page-break indicator
           buildGenderTable('BOYS', boys),
-          const SizedBox(height: 16),
+          // ── Page break indicator ──
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                Expanded(child: Divider(color: AppColors.border)),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Text('— page break —', style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+                ),
+                Expanded(child: Divider(color: AppColors.border)),
+              ],
+            ),
+          ),
           buildGenderTable('GIRLS', girls),
 
           const SizedBox(height: 16),
@@ -1473,6 +1531,31 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       );
     }
 
+    final today = DateTime.now();
+    final fmtDate =
+        '${today.month.toString().padLeft(2, '0')}/${today.day.toString().padLeft(2, '0')}/${today.year}';
+
+    Widget pageBreakDivider() => Container(
+          margin: const EdgeInsets.symmetric(vertical: 14),
+          child: Row(
+            children: [
+              Expanded(child: Divider(color: AppColors.border)),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Text('— page break —',
+                    style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+              ),
+              Expanded(child: Divider(color: AppColors.border)),
+            ],
+          ),
+        );
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -1483,6 +1566,59 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Logo header (matching PDF) ──
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset('assets/images/logos/bagong_pilipinas.png', width: 32, height: 32,
+                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
+              const SizedBox(width: 6),
+              Image.asset('assets/images/logos/nnc.png', width: 32, height: 32,
+                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
+              const SizedBox(width: 6),
+              Image.asset('assets/images/logos/gasan_seal.png', width: 32, height: 32,
+                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
+              const SizedBox(width: 6),
+              Image.asset(getBarangaySealAssetPath(_currentBarangay), width: 32, height: 32,
+                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
+              const SizedBox(width: 6),
+              Image.asset('assets/images/logos/nutrition_logo.png', width: 32, height: 32,
+                  fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 32)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // ── Title block (matching PDF) ──
+          Center(
+            child: Column(
+              children: [
+                const Text(
+                  'QUARTERLY FULL WEIGHING RECORD',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                Text(
+                  'CHILDREN 24–59 MONTHS · Year: ${_period.year}',
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Province: ${_currentProvince.toUpperCase()}  ·  Municipality: ${_currentMunicipality.toUpperCase()}  ·  Barangay: ${_currentBarangay.toUpperCase()}',
+                  style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
+                  textAlign: TextAlign.center,
+                ),
+                Text(
+                  'BNS: ${bnsName.isNotEmpty ? bnsName.toUpperCase() : '—'}  ·  Date Generated: $fmtDate',
+                  style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Divider(color: AppColors.border),
+          const SizedBox(height: 10),
+
           // Summary nutritional status table
           const Text(
             'NUTRITIONAL STATUS SUMMARY',
@@ -1490,11 +1626,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           ),
           const SizedBox(height: 8),
           buildSummaryTable(),
-          const SizedBox(height: 20),
+          pageBreakDivider(),
 
           // Per-gender weighing record tables
           buildQuarterlySection('BOYS', boys),
-          const SizedBox(height: 20),
+          pageBreakDivider(),
           buildQuarterlySection('GIRLS', girls),
 
           const SizedBox(height: 16),
