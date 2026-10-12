@@ -17,7 +17,7 @@ import 'services/consolidation_computation_service.dart';
 import 'services/excel_table_data.dart';
 import 'services/report_excel_service.dart';
 import 'services/report_pdf_service.dart';
-import 'widgets/report_result_sheet.dart';
+import 'services/report_download_service.dart';
 
 import '../../data/growth_standards/growth_classifier.dart';
 import '../../data/local/app_data_bus.dart';
@@ -94,7 +94,53 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   static String _fmtDateOnly(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  void _showDownloadSuccess(String savedFileName) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Downloaded to Downloads: $savedFileName',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.primaryGreen,
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showDownloadError(String userMessage, VoidCallback onRetry) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          userMessage,
+          style: const TextStyle(fontSize: 13),
+        ),
+        backgroundColor: AppColors.statRed,
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: onRetry,
+        ),
+      ),
+    );
+  }
+
   Future<void> _exportConsolidationPdf() async {
+    if (_isExporting) return;
     setState(() => _isExporting = true);
     try {
       final matrix = ConsolidationComputationService().computeMatrix(
@@ -104,32 +150,36 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       );
       final signatory = _activeSignatory;
 
+      final fileTitle = '${widget.reportType.id}_${_period.year}_$_currentBarangay';
       final file = await ReportPdfService().exportMatrixAndShare(
-        fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
+        fileTitle: fileTitle,
         matrix: matrix,
         signatory: signatory,
       );
 
+      final savedFileName = await ReportDownloadService.downloadReport(
+        sourceFile: file,
+        targetFileName: '$fileTitle.pdf',
+        mimeType: 'application/pdf',
+      );
+
       if (mounted) {
         setState(() => _isExporting = false);
-        await ReportResultSheet.show(
-          context,
-          file: file,
-          title: widget.reportType.title,
-          mimeType: 'application/pdf',
-        );
+        _showDownloadSuccess(savedFileName);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isExporting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate PDF: $e')),
-        );
+        final msg = e.toString().contains('permission')
+            ? 'Storage permission denied. Please allow storage access to download reports.'
+            : 'Could not save file to Downloads. Please check phone storage and try again.';
+        _showDownloadError(msg, _exportConsolidationPdf);
       }
     }
   }
 
   Future<void> _exportConsolidationExcel() async {
+    if (_isExporting) return;
     setState(() => _isExporting = true);
     try {
       final matrix = ConsolidationComputationService().computeMatrix(
@@ -139,36 +189,41 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       );
       final signatory = _activeSignatory;
 
+      final fileTitle = '${widget.reportType.id}_${_period.year}_$_currentBarangay';
       final file = await ReportExcelService().exportConsolidationMatrixAndShare(
-        fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
+        fileTitle: fileTitle,
         matrix: matrix,
         signatory: signatory,
       );
 
+      final savedFileName = await ReportDownloadService.downloadReport(
+        sourceFile: file,
+        targetFileName: '$fileTitle.xlsx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+
       if (mounted) {
         setState(() => _isExporting = false);
-        await ReportResultSheet.show(
-          context,
-          file: file,
-          title: widget.reportType.title,
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        );
+        _showDownloadSuccess(savedFileName);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isExporting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate Excel: $e')),
-        );
+        final msg = e.toString().contains('permission')
+            ? 'Storage permission denied. Please allow storage access to download reports.'
+            : 'Could not save file to Downloads. Please check phone storage and try again.';
+        _showDownloadError(msg, _exportConsolidationExcel);
       }
     }
   }
 
   Future<void> _exportPdf() async {
+    if (_isExporting) return;
     setState(() => _isExporting = true);
     try {
       final signatory = _activeSignatory;
       File file;
+      String targetFileName;
 
       if (widget.reportType.id == 'lactating_mothers_masterlist') {
         final motherRepo = MotherRepository();
@@ -177,8 +232,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             .where((m) => m.barangay == _currentBarangay && m.isActive)
             .toList();
         final names = mothers.map((m) => m.fullName).toList();
+        final fileTitle = 'lactating_masterlist_${_period.year}_$_currentBarangay';
+        targetFileName = '$fileTitle.pdf';
         file = await ReportPdfService().exportLactatingMasterlistPdf(
-          fileTitle: 'lactating_masterlist_${_period.year}_$_currentBarangay',
+          fileTitle: fileTitle,
           barangay: _currentBarangay,
           year: _period.year,
           names: names,
@@ -191,9 +248,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             .where((c) => c.isActive)
             .toList();
         final names = children.map((c) => c.fullName).toList();
-
+        final fileTitle = 'children_masterlist_${_period.year}_$_currentBarangay';
+        targetFileName = '$fileTitle.pdf';
         file = await ReportPdfService().exportChildrenMasterlistPdf(
-          fileTitle: 'children_masterlist_${_period.year}_$_currentBarangay',
+          fileTitle: fileTitle,
           barangay: _currentBarangay,
           year: _period.year,
           names: names,
@@ -210,9 +268,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
         final girls = children.where((c) => c.gender == 'Female').toList()
           ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
-
+        final fileTitle = 'Monthly_0-23_${_period.year}_$_currentBarangay';
+        targetFileName = '$fileTitle.pdf';
         file = await ReportPdfService().exportMonthly0to23Pdf(
-          fileTitle: 'Monthly_0-23_${_period.year}_$_currentBarangay',
+          fileTitle: fileTitle,
           barangay: _currentBarangay,
           municipality: _currentMunicipality,
           province: _currentProvince,
@@ -233,9 +292,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
         final girls = children.where((c) => c.gender == 'Female').toList()
           ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
-
+        final fileTitle = 'Quarterly_24-59_${_period.year}_$_currentBarangay';
+        targetFileName = '$fileTitle.pdf';
         file = await ReportPdfService().exportQuarterlyPdf(
-          fileTitle: 'Quarterly_24-59_${_period.year}_$_currentBarangay',
+          fileTitle: fileTitle,
           barangay: _currentBarangay,
           municipality: _currentMunicipality,
           province: _currentProvince,
@@ -247,8 +307,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         );
       } else {
         final data = _buildExcelData(widget.reportType.id);
+        final fileTitle = '${widget.reportType.id}_$_currentBarangay';
+        targetFileName = '$fileTitle.pdf';
         file = await ReportPdfService().exportTableAndShare(
-          fileTitle: '${widget.reportType.id}_$_currentBarangay',
+          fileTitle: fileTitle,
           title: widget.reportType.title,
           barangay: _currentBarangay,
           headers: data.headers,
@@ -257,32 +319,36 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         );
       }
 
+      final savedFileName = await ReportDownloadService.downloadReport(
+        sourceFile: file,
+        targetFileName: targetFileName,
+        mimeType: 'application/pdf',
+      );
+
       if (mounted) {
         setState(() => _isExporting = false);
-        await ReportResultSheet.show(
-          context,
-          file: file,
-          title: widget.reportType.title,
-          mimeType: 'application/pdf',
-        );
+        _showDownloadSuccess(savedFileName);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isExporting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate PDF: $e')),
-        );
+        final msg = e.toString().contains('permission')
+            ? 'Storage permission denied. Please allow storage access to download reports.'
+            : 'Could not save file to Downloads. Please check phone storage and try again.';
+        _showDownloadError(msg, _exportPdf);
       }
     }
   }
 
   Future<void> _exportExcel() async {
+    if (_isExporting) return;
     setState(() => _isExporting = true);
     try {
       final signatory = _activeSignatory;
       final childRepo = ChildRepository();
       final measurementRepo = MeasurementRepository();
       File file;
+      String targetFileName;
 
       if (widget.reportType.id == 'monthly_weight_record') {
         final children = childRepo
@@ -296,8 +362,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         final girls = children.where((c) => c.gender == 'Female').toList()
           ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
 
+        final fileTitle = 'Monthly_0-23_${_period.year}_$_currentBarangay';
+        targetFileName = '$fileTitle.xlsx';
         file = await ReportExcelService().exportMonthly0to23Excel(
-          fileTitle: 'Monthly_0-23_${_period.year}',
+          fileTitle: fileTitle,
           barangay: _currentBarangay,
           municipality: _currentMunicipality,
           province: _currentProvince,
@@ -319,8 +387,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         final girls = children.where((c) => c.gender == 'Female').toList()
           ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
 
+        final fileTitle = 'Quarterly_24-59_${_period.year}_$_currentBarangay';
+        targetFileName = '$fileTitle.xlsx';
         file = await ReportExcelService().exportQuarterlyRecord24to59Excel(
-          fileTitle: 'Quarterly_24-59_${_period.year}',
+          fileTitle: fileTitle,
           barangay: _currentBarangay,
           municipality: _currentMunicipality,
           province: _currentProvince,
@@ -332,9 +402,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         );
       } else {
         final data = _buildExcelData(widget.reportType.id);
+        final fileTitle = '${widget.reportType.id}_${_period.year}_$_currentBarangay';
+        targetFileName = '$fileTitle.xlsx';
         file = await ReportExcelService().exportIndividualRecordAndShare(
           reportTypeId: widget.reportType.id,
-          fileTitle: '${widget.reportType.id}_${_period.year}_$_currentBarangay',
+          fileTitle: fileTitle,
           title: widget.reportType.title,
           barangay: _currentBarangay,
           year: _period.year,
@@ -343,21 +415,23 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         );
       }
 
+      final savedFileName = await ReportDownloadService.downloadReport(
+        sourceFile: file,
+        targetFileName: targetFileName,
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+
       if (mounted) {
         setState(() => _isExporting = false);
-        await ReportResultSheet.show(
-          context,
-          file: file,
-          title: widget.reportType.title,
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        );
+        _showDownloadSuccess(savedFileName);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isExporting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate Excel: $e')),
-        );
+        final msg = e.toString().contains('permission')
+            ? 'Storage permission denied. Please allow storage access to download reports.'
+            : 'Could not save file to Downloads. Please check phone storage and try again.';
+        _showDownloadError(msg, _exportExcel);
       }
     }
   }
