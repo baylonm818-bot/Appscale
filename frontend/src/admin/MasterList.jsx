@@ -1,133 +1,160 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
-import { Users, Search, Baby, Heart, X, MapPin, FileText, ChevronDown } from 'lucide-react';
-import ReportPreviewModal from '../components/ui/ReportPreviewModal';
+import { Search, Baby, Heart, X, MapPin, ChevronDown, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 
-/* ── Status badge config ── */
+/* ── Status badge configuration (exact names and colors aligned with dashboard and app) ── */
 const STATUS_CONFIG = {
-  normal:               { label: 'Normal',                cls: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200' },
-  underweight:          { label: 'Underweight',           cls: 'bg-amber-100  text-amber-700  ring-1 ring-amber-200'  },
-  severely_underweight: { label: 'Severely Underweight',  cls: 'bg-red-100    text-red-700    ring-1 ring-red-200'    },
-  stunted:              { label: 'Stunted',               cls: 'bg-orange-100 text-orange-700 ring-1 ring-orange-200' },
-  severely_stunted:     { label: 'Severely Stunted',      cls: 'bg-red-100    text-red-700    ring-1 ring-red-200'    },
-  wasted:               { label: 'Wasted',                cls: 'bg-rose-100   text-rose-700   ring-1 ring-rose-200'   },
-  severely_wasted:      { label: 'Severely Wasted',       cls: 'bg-red-100    text-red-700    ring-1 ring-red-200'    },
-  MAM:                  { label: 'MAM',                   cls: 'bg-amber-100  text-amber-700  ring-1 ring-amber-200'  },
-  SAM:                  { label: 'SAM',                   cls: 'bg-red-100    text-red-700    ring-1 ring-red-200'    },
-  overweight:           { label: 'Overweight',            cls: 'bg-blue-100   text-blue-700   ring-1 ring-blue-200'   },
-  obese:                { label: 'Obese',                 cls: 'bg-purple-100 text-purple-700 ring-1 ring-purple-200'  },
-  graduate:             { label: 'Graduate',              cls: 'bg-teal-100   text-teal-700   ring-1 ring-teal-200'   },
-  no_record:            { label: 'No Record',             cls: 'bg-gray-100   text-gray-500   ring-1 ring-gray-200'   },
+  normal: {
+    label: 'Normal',
+    cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  },
+  underweight: {
+    label: 'Underweight',
+    cls: 'bg-amber-50 text-amber-700 border border-amber-200',
+  },
+  severely_underweight: {
+    label: 'Severely Underweight',
+    cls: 'bg-red-50 text-red-700 border border-red-200',
+  },
+  stunted: {
+    label: 'Stunted',
+    cls: 'bg-orange-50 text-orange-700 border border-orange-200',
+  },
+  severely_stunted: {
+    label: 'Severely Stunted',
+    cls: 'bg-red-50 text-red-700 border border-red-200',
+  },
+  wasted: {
+    label: 'Wasted',
+    cls: 'bg-amber-50 text-amber-700 border border-amber-200',
+  },
+  mam: {
+    label: 'Wasted',
+    cls: 'bg-amber-50 text-amber-700 border border-amber-200',
+  },
+  MAM: {
+    label: 'Wasted',
+    cls: 'bg-amber-50 text-amber-700 border border-amber-200',
+  },
+  severely_wasted: {
+    label: 'Severely Wasted',
+    cls: 'bg-red-50 text-red-700 border border-red-200',
+  },
+  sam: {
+    label: 'Severely Wasted',
+    cls: 'bg-red-50 text-red-700 border border-red-200',
+  },
+  SAM: {
+    label: 'Severely Wasted',
+    cls: 'bg-red-50 text-red-700 border border-red-200',
+  },
+  overweight: {
+    label: 'Overweight',
+    cls: 'bg-blue-50 text-blue-700 border border-blue-200',
+  },
+  obese: {
+    label: 'Obese',
+    cls: 'bg-purple-50 text-purple-700 border border-purple-200',
+  },
+  graduate: {
+    label: 'Graduate',
+    cls: 'bg-teal-50 text-teal-700 border border-teal-200',
+  },
+  completed: {
+    label: 'Completed',
+    cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  },
+  ongoing: {
+    label: 'Ongoing',
+    cls: 'bg-amber-50 text-amber-700 border border-amber-200',
+  },
+  no_record: {
+    label: 'No Record',
+    cls: 'bg-gray-100 text-gray-600 border border-gray-200',
+  },
 };
 
+function normalizeStatusKey(rawStatus) {
+  if (!rawStatus) return 'no_record';
+  const s = String(rawStatus).trim().toLowerCase();
+  if (s === 'sam' || s === 'severely_wasted' || s === 'severely wasted') return 'severely_wasted';
+  if (s === 'mam' || s === 'wasted') return 'wasted';
+  if (s === 'suw' || s === 'severely_underweight' || s === 'severely underweight') return 'severely_underweight';
+  if (s === 'uw' || s === 'underweight') return 'underweight';
+  if (s === 'sst' || s === 'severely_stunted' || s === 'severely stunted') return 'severely_stunted';
+  if (s === 'st' || s === 'stunted') return 'stunted';
+  if (s === 'ow' || s === 'overweight') return 'overweight';
+  if (s === 'ob' || s === 'obese') return 'obese';
+  if (s === 'normal') return 'normal';
+  if (s === 'graduate') return 'graduate';
+  if (s === 'completed') return 'completed';
+  if (s === 'ongoing') return 'ongoing';
+  return 'no_record';
+}
+
 function StatusBadge({ status }) {
-  const key = status || 'no_record';
+  const key = normalizeStatusKey(status);
   const cfg = STATUS_CONFIG[key] || STATUS_CONFIG.no_record;
-  return <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.cls}`}>{cfg.label}</span>;
-}
-
-/* ── Stat card ── */
-function StatCard({ icon: Icon, label, value, sublabel, gradient, iconCls, onClick, isActive }) {
-  const colored = isActive && gradient;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full text-left rounded-2xl p-5 shadow-sm transition-all duration-200 focus:outline-none
-        ${colored ? gradient : 'bg-white'}
-        ${onClick ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:translate-y-0' : ''}
-        ${isActive && !gradient ? 'ring-2 ring-offset-2 ring-green-500 shadow-md' : ''}
-        ${isActive && gradient ? 'shadow-md' : ''}
-      `}
+    <span
+      className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap min-w-[110px] text-center ${cfg.cls}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <p className={`text-sm font-medium leading-tight ${colored ? 'text-white/80' : 'text-gray-500'}`}>{label}</p>
-        <div className={`shrink-0 rounded-xl p-2.5 ${colored ? 'bg-white/20' : (iconCls || 'bg-green-600')}`}>
-          <Icon size={18} className="text-white" />
-        </div>
-      </div>
-      <p className={`text-4xl font-black mt-3 tracking-tight ${colored ? 'text-white' : 'text-gray-800'}`}>
-        {value ?? '—'}
-      </p>
-      <p className={`text-xs mt-1 font-medium ${colored ? 'text-white/60' : 'text-gray-400'}`}>{sublabel}</p>
-    </button>
+      {cfg.label}
+    </span>
   );
 }
 
-
-/* ── Profile detail row ── */
-function DetailRow({ label, value }) {
-  if (!value && value !== 0) return null;
-  return (
-    <div className="py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
-      <p className="text-sm font-semibold text-gray-800 mt-0.5">{value}</p>
-    </div>
-  );
+/* ── Age formatter ── */
+function formatAge(months) {
+  if (months == null || months === '') return '—';
+  const m = Number(months);
+  if (isNaN(m) || m < 0) return '—';
+  if (m < 24) return `${m} mos`;
+  const years = Math.floor(m / 12);
+  const remMonths = m % 12;
+  if (remMonths === 0) return `${m} mos (${years}y)`;
+  return `${m} mos (${years}y ${remMonths}m)`;
 }
 
-/* ══════════════════════════════════════════════════════════ */
+/* ── Standard barangays list ── */
+const GASAN_BARANGAYS = [
+  'Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang',
+  'Banot', 'Banuyo', 'Bognuyan', 'Cabugao', 'Dawis', 'Dili', 'Libtangin',
+  'Mahunig', 'Mangiliol', 'Masiga', 'Mat. Gasan', 'Pangi', 'Pinggan',
+  'Tabionan', 'Tiguion', 'Brgy. Uno', 'Brgy. Dos', 'Brgy. Tres', 'Tapuyan',
+];
+
+const ITEMS_PER_PAGE = 15;
+
 function Masterlist() {
-  const [stats, setStats]         = useState(null);
-  const [userStats, setUserStats] = useState(null);
-  const [children, setChildren]   = useState([]);
-  const [mothers, setMothers]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState('');
-  const [activeTab, setActiveTab] = useState('children');
-  const [search, setSearch]       = useState('');
-  const [ageFilter, setAgeFilter] = useState('all');
+  const [stats, setStats] = useState(null);
+  const [children, setChildren] = useState([]);
+  const [mothers, setMothers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Filters
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('child'); // 'child' | 'mother' | 'all'
+  const [barangayFilter, setBarangayFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // View Modal state (view-only)
   const [selectedPerson, setSelectedPerson] = useState(null);
-
-  // Report Modal state (Item 30 & 34)
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [reportData, setReportData] = useState(null);
-
-  // Transfer state
-  const [showTransferUI, setShowTransferUI] = useState(false);
-  const [targetBarangay, setTargetBarangay] = useState('');
-  const [transferReason, setTransferReason] = useState('');
-  const [transferMsg, setTransferMsg] = useState('');
-
-  const handleTransfer = async () => {
-    if (!targetBarangay || !selectedPerson) return;
-    try {
-      const entityType = selectedPerson._type;
-      const entityId = entityType === 'child' ? selectedPerson.child_id : selectedPerson.mother_id;
-      await axiosClient.post('/masterlist/transfer', {
-        entityType,
-        entityId,
-        targetBarangay,
-        targetBnsUserId: 1,
-        reason: transferReason || 'Transfer by admin',
-      });
-      setTransferMsg('Beneficiary transferred successfully!');
-      setTimeout(() => {
-        setSelectedPerson(null);
-        setShowTransferUI(false);
-        setTransferMsg('');
-        window.location.reload();
-      }, 1000);
-    } catch (err) {
-      setTransferMsg(err.response?.data?.message || 'Failed to transfer beneficiary.');
-    }
-  };
 
   useEffect(() => {
     (async () => {
       try {
-        const [statsRes, childrenRes, mothersRes, userStatsRes] = await Promise.all([
+        const [statsRes, childrenRes, mothersRes] = await Promise.all([
           axiosClient.get('/masterlist/stats'),
           axiosClient.get('/masterlist/children'),
           axiosClient.get('/masterlist/mothers'),
-          axiosClient.get('/users/stats'),
         ]);
-        setStats(statsRes.data);
-        setChildren(childrenRes.data);
-        setMothers(mothersRes.data);
-        setUserStats(userStatsRes.data);
+        setStats(statsRes.data || {});
+        setChildren(childrenRes.data || []);
+        setMothers(mothersRes.data || []);
       } catch {
         setError('Failed to load masterlist data.');
       } finally {
@@ -136,445 +163,557 @@ function Masterlist() {
     })();
   }, []);
 
-  const handleOpenReportPreview = () => {
-    const list = activeTab === 'children' ? filteredChildren : filteredMothers;
-    const normal = filteredChildren.filter((c) => c.overall_status === 'normal').length;
-    const mam = filteredChildren.filter((c) => c.overall_status === 'MAM').length;
-    const sam = filteredChildren.filter((c) => c.overall_status === 'SAM').length;
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, typeFilter, barangayFilter, statusFilter]);
 
-    setReportData({
-      summary: {
-        totalChildren: filteredChildren.length,
-        normal,
-        mam,
-        sam,
-      },
-      items: list,
+  // Combine and format records
+  const allRecords = useMemo(() => {
+    const formattedChildren = children.map((c) => ({
+      ...c,
+      _type: 'child',
+      id: `child-${c.child_id}`,
+      fullName: `${c.first_name || ''} ${c.last_name || ''}`.trim(),
+      displaySex: c.sex ? (c.sex.toLowerCase() === 'boy' || c.sex.toLowerCase() === 'male' ? 'Male' : 'Female') : '—',
+      ageMonths: c.age_in_months,
+      barangay: c.barangay || '—',
+      displayStatus: c.status === 'graduate' ? 'graduate' : (c.overall_status || 'no_record'),
+    }));
+
+    const formattedMothers = mothers.map((m) => ({
+      ...m,
+      _type: 'mother',
+      id: `mother-${m.mother_id}`,
+      fullName: `${m.first_name || ''} ${m.last_name || ''}`.trim(),
+      displaySex: 'Mother',
+      ageMonths: null,
+      barangay: m.barangay || '—',
+      displayStatus: m.is_completed ? 'completed' : 'ongoing',
+    }));
+
+    return {
+      children: formattedChildren,
+      mothers: formattedMothers,
+      combined: [...formattedChildren, ...formattedMothers],
+    };
+  }, [children, mothers]);
+
+  // Filter records based on active controls
+  const filteredRecords = useMemo(() => {
+    let list = [];
+    if (typeFilter === 'child') {
+      list = allRecords.children;
+    } else if (typeFilter === 'mother') {
+      list = allRecords.mothers;
+    } else {
+      list = allRecords.combined;
+    }
+
+    const query = search.trim().toLowerCase();
+
+    return list.filter((item) => {
+      // Name search
+      if (query && !item.fullName.toLowerCase().includes(query)) {
+        return false;
+      }
+
+      // Barangay filter
+      if (barangayFilter !== 'all') {
+        if (item.barangay.trim().toLowerCase() !== barangayFilter.trim().toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        const itemStatus = normalizeStatusKey(item.displayStatus);
+        const filterKey = normalizeStatusKey(statusFilter);
+        if (itemStatus !== filterKey) {
+          return false;
+        }
+      }
+
+      return true;
     });
-    setIsReportModalOpen(true);
+  }, [allRecords, typeFilter, search, barangayFilter, statusFilter]);
+
+  // Pagination calculation
+  const totalRecords = filteredRecords.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / ITEMS_PER_PAGE));
+  const paginatedRecords = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredRecords.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredRecords, currentPage]);
+
+  const hasActiveFilters = search || barangayFilter !== 'all' || statusFilter !== 'all' || typeFilter !== 'child';
+
+  const resetFilters = () => {
+    setSearch('');
+    setTypeFilter('child');
+    setBarangayFilter('all');
+    setStatusFilter('all');
+    setCurrentPage(1);
   };
 
-  /* ── Loading / error states ── */
-  if (loading) return (
-    <div className="space-y-6">
-      <div className="h-36 rounded-2xl bg-gray-200 animate-pulse" />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-20 rounded-2xl bg-white p-4 shadow-sm border border-gray-100 animate-pulse" />
-        ))}
-      </div>
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
-        <div className="h-10 bg-gray-200 rounded-xl animate-pulse" />
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
+  /* ── Loading state ── */
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs animate-pulse" />
           ))}
         </div>
+        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-2xs space-y-4">
+          <div className="h-10 bg-gray-100 rounded-xl animate-pulse" />
+          <div className="h-64 bg-gray-50 rounded-xl animate-pulse" />
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  if (error) return (
-    <div className="flex flex-col items-center justify-center py-24 gap-3">
-      <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
-        <X size={28} className="text-red-400" />
+  /* ── Error state ── */
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-500 font-bold">
+          <X size={24} />
+        </div>
+        <p className="text-sm font-semibold text-red-600">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 text-xs font-semibold text-emerald-800 bg-white border border-emerald-600 rounded-lg hover:bg-emerald-50 transition"
+        >
+          Retry
+        </button>
       </div>
-      <p className="text-sm font-semibold text-red-600">{error}</p>
-    </div>
-  );
-
-  const hasBnsUsers = Number(userStats?.totalBNS || 0) > 0;
-
-  const barangayCount = new Set(children.map((c) => c.barangay).filter(Boolean)).size;
-
-  /* ── Filtered lists ── */
-  const filteredChildren = children
-    .filter((c) => {
-      if (ageFilter === 'all') return true;
-      const age = Number(c.age_in_months ?? 0);
-      if (ageFilter === '0-23')  return age >= 0  && age <= 23;
-      if (ageFilter === '24-59') return age >= 24 && age <= 59;
-      return true;
-    })
-    .filter((c) => {
-      if (statusFilter === 'all') return true;
-      if (statusFilter === 'graduate') return c.status === 'graduate';
-      if (statusFilter === 'no_record') return !c.overall_status && c.status !== 'graduate';
-      const os = String(c.overall_status || '').toLowerCase();
-      const ws = String(c.weight_status || '').toLowerCase();
-      const hs = String(c.height_status || '').toLowerCase();
-      const was = String(c.wasting_status || '').toLowerCase();
-      const sf = statusFilter.toLowerCase();
-      return os === sf || ws === sf || hs === sf || was === sf;
-    })
-    .filter((c) =>
-      !search ||
-      `${c.first_name ?? ''} ${c.last_name ?? ''}`.toLowerCase().includes(search.toLowerCase()) ||
-      (c.barangay ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.overall_status ?? '').toLowerCase().includes(search.toLowerCase())
     );
-
-  const filteredMothers = mothers
-    .filter((m) => statusFilter === 'all' || (statusFilter === 'completed' && m.is_completed))
-    .filter((m) =>
-      !search ||
-      `${m.first_name ?? ''} ${m.last_name ?? ''}`.toLowerCase().includes(search.toLowerCase()) ||
-      (m.barangay ?? '').toLowerCase().includes(search.toLowerCase())
-    );
-
-  /* ── Tab switch: reset filters ── */
-  const switchTab = (tab) => {
-    setActiveTab(tab);
-    setSearch('');
-    setStatusFilter('all');
-    setAgeFilter('all');
-  };
+  }
 
   return (
     <div className="space-y-6">
-
-      {/* Notice if no BNS users yet */}
-      {!hasBnsUsers && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 flex items-center gap-3">
-          <Users size={18} className="text-amber-600 shrink-0" />
-          <p className="text-sm text-amber-700 font-medium">No BNS account yet. Add a BNS account to start syncing data from the mobile app.</p>
-        </div>
-      )}
-
-      {/* ── Stat cards ── */}
+      {/* ── Summary Stat Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon={Baby}
-          label="Total Children"
-          value={stats.totalChildren}
-          sublabel={`${barangayCount} barangay${barangayCount !== 1 ? 's' : ''}`}
-          gradient="bg-linear-to-br from-[#1b5e20] to-[#2e7d32]"
-          onClick={() => switchTab('children')}
-          isActive={activeTab === 'children' && statusFilter === 'all'}
-        />
-        <StatCard
-          icon={Baby}
-          label="Graduate Children"
-          value={stats.graduateChildren}
-          sublabel="Completed program"
-          gradient="bg-linear-to-br from-[#1b5e20] to-[#2e7d32]"
-          onClick={() => { switchTab('children'); setStatusFilter('graduate'); }}
-          isActive={activeTab === 'children' && statusFilter === 'graduate'}
-        />
-        <StatCard
-          icon={Heart}
-          label="Total Mothers"
-          value={stats.totalMothers}
-          sublabel={`${barangayCount} barangay${barangayCount !== 1 ? 's' : ''}`}
-          gradient="bg-linear-to-br from-[#1b5e20] to-[#2e7d32]"
-          onClick={() => switchTab('mothers')}
-          isActive={activeTab === 'mothers' && statusFilter === 'all'}
-        />
-        <StatCard
-          icon={Heart}
-          label="Completed Mothers"
-          value={stats.completedMothers}
-          sublabel="Finished monitoring"
-          gradient="bg-linear-to-br from-[#1b5e20] to-[#2e7d32]"
-          onClick={() => { switchTab('mothers'); setStatusFilter('completed'); }}
-          isActive={activeTab === 'mothers' && statusFilter === 'completed'}
-        />
+        <div
+          onClick={() => { setTypeFilter('child'); setStatusFilter('all'); }}
+          className={`p-5 rounded-2xl transition cursor-pointer border shadow-2xs ${
+            typeFilter === 'child' && statusFilter === 'all'
+              ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white border-transparent'
+              : 'bg-white text-gray-800 border-gray-100 hover:border-gray-200 hover:shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold ${typeFilter === 'child' && statusFilter === 'all' ? 'text-white/80' : 'text-gray-500'}`}>
+              Total Children
+            </span>
+            <div className={`p-2 rounded-xl ${typeFilter === 'child' && statusFilter === 'all' ? 'bg-white/20' : 'bg-emerald-50 text-emerald-700'}`}>
+              <Baby size={18} />
+            </div>
+          </div>
+          <p className="text-3xl font-black mt-2 tracking-tight">{stats?.totalChildren ?? children.length}</p>
+          <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'child' && statusFilter === 'all' ? 'text-white/70' : 'text-gray-400'}`}>
+            Registered in municipality
+          </p>
+        </div>
+
+        <div
+          onClick={() => { setTypeFilter('mother'); setStatusFilter('all'); }}
+          className={`p-5 rounded-2xl transition cursor-pointer border shadow-2xs ${
+            typeFilter === 'mother' && statusFilter === 'all'
+              ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white border-transparent'
+              : 'bg-white text-gray-800 border-gray-100 hover:border-gray-200 hover:shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold ${typeFilter === 'mother' && statusFilter === 'all' ? 'text-white/80' : 'text-gray-500'}`}>
+              Total Mothers
+            </span>
+            <div className={`p-2 rounded-xl ${typeFilter === 'mother' && statusFilter === 'all' ? 'bg-white/20' : 'bg-emerald-50 text-emerald-700'}`}>
+              <Heart size={18} />
+            </div>
+          </div>
+          <p className="text-3xl font-black mt-2 tracking-tight">{stats?.totalMothers ?? mothers.length}</p>
+          <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'mother' && statusFilter === 'all' ? 'text-white/70' : 'text-gray-400'}`}>
+            Maternal health registry
+          </p>
+        </div>
+
+        <div
+          onClick={() => { setTypeFilter('child'); setStatusFilter('normal'); }}
+          className={`p-5 rounded-2xl transition cursor-pointer border shadow-2xs ${
+            typeFilter === 'child' && statusFilter === 'normal'
+              ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white border-transparent'
+              : 'bg-white text-gray-800 border-gray-100 hover:border-gray-200 hover:shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold ${typeFilter === 'child' && statusFilter === 'normal' ? 'text-white/80' : 'text-gray-500'}`}>
+              Normal Growth
+            </span>
+            <div className={`p-2 rounded-xl ${typeFilter === 'child' && statusFilter === 'normal' ? 'bg-white/20' : 'bg-emerald-50 text-emerald-700'}`}>
+              <Baby size={18} />
+            </div>
+          </div>
+          <p className="text-3xl font-black mt-2 tracking-tight">
+            {children.filter((c) => normalizeStatusKey(c.overall_status) === 'normal').length}
+          </p>
+          <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'child' && statusFilter === 'normal' ? 'text-white/70' : 'text-gray-400'}`}>
+            Healthy nutritional status
+          </p>
+        </div>
+
+        <div
+          onClick={() => { setTypeFilter('child'); setStatusFilter('underweight'); }}
+          className={`p-5 rounded-2xl transition cursor-pointer border shadow-2xs ${
+            typeFilter === 'child' && statusFilter === 'underweight'
+              ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white border-transparent'
+              : 'bg-white text-gray-800 border-gray-100 hover:border-gray-200 hover:shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold ${typeFilter === 'child' && statusFilter === 'underweight' ? 'text-white/80' : 'text-gray-500'}`}>
+              Underweight Cases
+            </span>
+            <div className={`p-2 rounded-xl ${typeFilter === 'child' && statusFilter === 'underweight' ? 'bg-white/20' : 'bg-amber-50 text-amber-700'}`}>
+              <Baby size={18} />
+            </div>
+          </div>
+          <p className="text-3xl font-black mt-2 tracking-tight">
+            {children.filter((c) => normalizeStatusKey(c.overall_status) === 'underweight').length}
+          </p>
+          <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'child' && statusFilter === 'underweight' ? 'text-white/70' : 'text-gray-400'}`}>
+            Requires supplementary feeding
+          </p>
+        </div>
       </div>
 
-      {/* ── Search + Filters panel ── */}
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-
-        {/* Search + filters bar */}
-        <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
-          <div className="flex flex-wrap gap-3 items-center flex-1 min-w-75">
-            {/* Search */}
-            <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 flex-1 min-w-50 border border-gray-100 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition">
-              <Search size={15} className="text-gray-400 shrink-0" />
+      {/* ── Main Table Card ── */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs overflow-hidden">
+        {/* Controls Toolbar */}
+        <div className="p-4 sm:p-5 border-b border-gray-100 space-y-3">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[240px]">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               <input
                 type="text"
-                placeholder={activeTab === 'children' ? 'Search name, barangay, status…' : 'Search name or barangay…'}
+                placeholder="Search beneficiary by name..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="outline-none text-sm w-full bg-transparent text-gray-700 placeholder-gray-400"
+                className="w-full pl-9 pr-9 py-2 rounded-xl text-xs font-medium text-gray-800 bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition"
               />
               {search && (
-                <button onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600">
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                >
                   <X size={14} />
                 </button>
               )}
             </div>
 
-            {/* Age group pills — Item 33 (0-23, 0-24, 24-59) */}
-            {activeTab === 'children' && (
-              <div className="flex gap-1 bg-gray-50 rounded-xl p-1 border border-gray-100">
-                {[
-                  { val: 'all',   lbl: 'All Ages'  },
-                  { val: '0-23',  lbl: '0–23 mos'  },
-                  { val: '24-59', lbl: '24–59 mos' },
-                ].map(({ val, lbl }) => (
-                  <button
-                    key={val}
-                    onClick={() => setAgeFilter(val)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer
-                      ${ageFilter === val
-                        ? 'bg-[#2e7d32] text-white shadow-sm'
-                        : 'text-gray-500 hover:bg-gray-100'
-                      }`}
-                  >
-                    {lbl}
-                  </button>
-                ))}
+            {/* Filter Dropdowns */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Type Filter */}
+              <div className="relative">
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100/70 focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition cursor-pointer"
+                >
+                  <option value="child">Children Only</option>
+                  <option value="mother">Mothers Only</option>
+                  <option value="all">All Beneficiaries</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
-            )}
 
-            {/* Status dropdown */}
-            <div className="relative inline-flex items-center">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="appearance-none bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-8 py-2.5 text-xs font-semibold text-gray-700 outline-none hover:bg-gray-100/70 focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition cursor-pointer shadow-2xs"
-              >
-                {activeTab === 'children' ? (
-                  <>
-                    <option value="all">All Status</option>
-                    <option value="normal">Normal</option>
-                    <option value="underweight">Underweight</option>
-                    <option value="severely_underweight">Severely Underweight</option>
-                    <option value="stunted">Stunted</option>
-                    <option value="severely_stunted">Severely Stunted</option>
-                    <option value="wasted">Wasted</option>
-                    <option value="severely_wasted">Severely Wasted</option>
-                    <option value="MAM">MAM</option>
-                    <option value="SAM">SAM</option>
-                    <option value="overweight">Overweight</option>
-                    <option value="obese">Obese</option>
-                    <option value="graduate">Graduate</option>
-                    <option value="no_record">No Record</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="all">All Status</option>
-                    <option value="completed">Completed</option>
-                  </>
-                )}
-              </select>
-              <ChevronDown size={14} className="absolute right-2.5 text-gray-400 pointer-events-none" />
+              {/* Barangay Filter */}
+              <div className="relative">
+                <select
+                  value={barangayFilter}
+                  onChange={(e) => setBarangayFilter(e.target.value)}
+                  className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100/70 focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition cursor-pointer"
+                >
+                  <option value="all">All Barangays</option>
+                  {GASAN_BARANGAYS.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+
+              {/* Status Filter */}
+              <div className="relative">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100/70 focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition cursor-pointer"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="normal">Normal</option>
+                  <option value="underweight">Underweight</option>
+                  <option value="severely_underweight">Severely Underweight</option>
+                  <option value="stunted">Stunted</option>
+                  <option value="severely_stunted">Severely Stunted</option>
+                  <option value="wasted">Wasted</option>
+                  <option value="severely_wasted">Severely Wasted</option>
+                  <option value="overweight">Overweight</option>
+                  <option value="obese">Obese</option>
+                  <option value="graduate">Graduate</option>
+                  <option value="no_record">No Record</option>
+                  <option value="completed">Completed (Mother)</option>
+                  <option value="ongoing">Ongoing (Mother)</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+
+              {/* Reset Button */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="px-3 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition cursor-pointer"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           </div>
 
+          {/* Records Counter */}
+          <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
+            <span className="font-semibold text-gray-700">
+              Showing {totalRecords} {totalRecords === 1 ? 'record' : 'records'}
+              {typeFilter === 'child' ? ' (Children)' : typeFilter === 'mother' ? ' (Mothers)' : ''}
+            </span>
+            {totalRecords > ITEMS_PER_PAGE && (
+              <span>
+                Page {currentPage} of {totalPages}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Result count */}
-        <div className="px-6 py-3 bg-gray-50/60 border-b border-gray-100">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            {activeTab === 'children'
-              ? `${filteredChildren.length} of ${children.length} children`
-              : `${filteredMothers.length} of ${mothers.length} mothers`}
-          </p>
-        </div>
-
-        {/* ── Table ── */}
-        <div className="overflow-x-auto">
-          {activeTab === 'children' ? (
-            <table className="w-full text-sm table-fixed">
-              <colgroup>
-                <col className="w-[32%]" />
-                <col className="w-[14%]" />
-                <col className="w-[24%]" />
-                <col className="w-[15%]" />
-                <col className="w-[15%]" />
-              </colgroup>
-              <thead>
-                <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80">
-                  <th className="px-6 py-3">Name</th>
-                  <th className="px-4 py-3">Age</th>
-                  <th className="px-4 py-3">Barangay</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-center">Action</th>
+        {/* ── Table Container (Sticky Header + Horizontal Scroll Support) ── */}
+        <div className="overflow-x-auto max-h-[580px] overflow-y-auto">
+          <table className="w-full min-w-[760px] text-sm table-fixed border-collapse">
+            <colgroup>
+              <col className="w-[30%] min-w-[200px]" />
+              <col className="w-[18%] min-w-[120px]" />
+              <col className="w-[22%] min-w-[140px]" />
+              <col className="w-[20%] min-w-[150px]" />
+              <col className="w-[10%] min-w-[80px]" />
+            </colgroup>
+            <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 shadow-2xs">
+              <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
+                <th className="px-5 py-3.5">Name</th>
+                <th className="px-4 py-3.5">Age</th>
+                <th className="px-4 py-3.5">Barangay</th>
+                <th className="px-4 py-3.5">Status</th>
+                <th className="px-4 py-3.5 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {paginatedRecords.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-16 text-center text-gray-500 text-sm">
+                    No records found matching your filters.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredChildren.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-14 text-center text-gray-400 text-sm">
-                      No children match your search.
-                    </td>
-                  </tr>
-                ) : filteredChildren.map((c) => (
-                  <tr key={c.child_id} className="hover:bg-green-50/40 transition-colors group">
-                    <td className="px-6 py-3">
+              ) : (
+                paginatedRecords.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="hover:bg-green-50/40 transition-colors h-14"
+                  >
+                    {/* Name (with Sex below) */}
+                    <td className="px-5 py-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="shrink-0 w-8 h-8 rounded-full bg-linear-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                          {(c.first_name ?? '?').charAt(0).toUpperCase()}
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0">
+                          {(item.first_name || '?').charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-gray-800 truncate">{c.first_name} {c.last_name}</p>
-                          {c.sex && <p className="text-[11px] text-gray-400 capitalize">{c.sex}</p>}
+                          <p className="font-semibold text-gray-900 text-sm truncate leading-tight">
+                            {item.fullName}
+                          </p>
+                          <p className="text-xs text-gray-600 font-medium capitalize mt-0.5">
+                            {item.displaySex}
+                          </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 font-medium whitespace-nowrap">
-                      {c.age_in_months != null ? `${c.age_in_months} mos` : '—'}
+
+                    {/* Age */}
+                    <td className="px-4 py-3 text-xs text-gray-700 font-medium whitespace-nowrap">
+                      {item._type === 'child' ? formatAge(item.ageMonths) : '—'}
                     </td>
+
+                    {/* Barangay */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <MapPin size={12} className="shrink-0 text-gray-400" />
-                        <span className="text-gray-600 truncate">{c.barangay || '—'}</span>
+                        <MapPin size={13} className="shrink-0 text-gray-400" />
+                        <span className="text-xs text-gray-700 font-medium truncate">
+                          {item.barangay}
+                        </span>
                       </div>
                     </td>
+
+                    {/* Status */}
                     <td className="px-4 py-3">
-                      <StatusBadge status={c.status === 'graduate' ? 'graduate' : c.overall_status} />
+                      <StatusBadge status={item.displayStatus} />
                     </td>
+
+                    {/* Action */}
                     <td className="px-4 py-3 text-center">
                       <button
-                        onClick={() => setSelectedPerson({ ...c, _type: 'child' })}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition group-hover:border-green-300"
+                        type="button"
+                        onClick={() => setSelectedPerson(item)}
+                        className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-800 bg-white border border-emerald-600 hover:bg-emerald-50 hover:text-emerald-900 transition shadow-2xs cursor-pointer"
                       >
                         View
                       </button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <table className="w-full text-sm table-fixed">
-              <colgroup>
-                <col className="w-[38%]" />
-                <col className="w-[27%]" />
-                <col className="w-[20%]" />
-                <col className="w-[15%]" />
-              </colgroup>
-              <thead>
-                <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80">
-                  <th className="px-6 py-3">Name</th>
-                  <th className="px-4 py-3">Barangay</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredMothers.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-14 text-center text-gray-400 text-sm">
-                      No mothers match your search.
-                    </td>
-                  </tr>
-                ) : filteredMothers.map((m) => (
-                  <tr key={m.mother_id} className="hover:bg-green-50/40 transition-colors group">
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="shrink-0 w-8 h-8 rounded-full bg-linear-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                          {(m.first_name ?? '?').charAt(0).toUpperCase()}
-                        </div>
-                        <p className="font-semibold text-gray-800 truncate">{m.first_name} {m.last_name}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <MapPin size={12} className="shrink-0 text-gray-400" />
-                        <span className="text-gray-600 truncate">{m.barangay || '—'}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ring-1
-                        ${m.is_completed
-                          ? 'bg-emerald-100 text-emerald-700 ring-emerald-200'
-                          : 'bg-amber-100 text-amber-700 ring-amber-200'
-                        }`}>
-                        {m.is_completed ? 'Completed' : 'Ongoing'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => setSelectedPerson({ ...m, _type: 'mother' })}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition group-hover:border-green-300"
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
+
+        {/* ── Pagination Footer ── */}
+        {totalRecords > 0 && (
+          <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50/50">
+            <span className="text-xs font-medium text-gray-600">
+              Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
+              {Math.min(currentPage * ITEMS_PER_PAGE, totalRecords)} of {totalRecords} records
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1"
+              >
+                <ChevronLeft size={14} /> Previous
+              </button>
+              <span className="px-3 py-1.5 text-xs font-semibold text-gray-700">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1"
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Detail Modal — Full Screen Overlay Portal */}
+      {/* ── View-Only Detail Modal ── */}
       {selectedPerson && createPortal(
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-9999 p-4 overflow-hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedPerson(null); }}
         >
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-
-            {/* Modal header */}
+          <div
+            className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
             <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-lg shrink-0">
-                  {(selectedPerson.first_name ?? '?').charAt(0).toUpperCase()}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-base shrink-0">
+                  {(selectedPerson.first_name || '?').charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <p className="font-bold text-white text-base leading-tight">
-                    {selectedPerson.first_name} {selectedPerson.last_name}
+                <div className="min-w-0">
+                  <p className="font-bold text-white text-base leading-tight truncate">
+                    {selectedPerson.fullName}
                   </p>
-                  <p className="text-white/70 text-xs mt-0.5">
-                    {selectedPerson._type === 'child' ? 'Child Record' : 'Mother Record'}
+                  <p className="text-white/80 text-xs mt-0.5">
+                    {selectedPerson._type === 'child' ? 'Child Beneficiary Record' : 'Mother Beneficiary Record'}
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedPerson(null)}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer shrink-0"
               >
                 <X size={16} />
               </button>
             </div>
 
-            {/* Modal body */}
-            <div className="px-6 py-4 overflow-y-auto flex-1 divide-y divide-gray-50">
-
+            {/* Modal Body */}
+            <div className="px-6 py-5 overflow-y-auto flex-1 divide-y divide-gray-100 space-y-3">
               {selectedPerson._type === 'child' ? (
                 <>
-                  <DetailRow label="Barangay"        value={selectedPerson.barangay} />
-                  <DetailRow label="Age"              value={selectedPerson.age_in_months != null ? `${selectedPerson.age_in_months} months old` : null} />
-                  <DetailRow label="Sex"              value={selectedPerson.sex ? selectedPerson.sex.charAt(0).toUpperCase() + selectedPerson.sex.slice(1) : null} />
-                  <DetailRow label="Guardian"         value={selectedPerson.guardian_name} />
-                  <DetailRow label="Weight"           value={selectedPerson.weight_kg ? `${selectedPerson.weight_kg} kg` : null} />
-                  <DetailRow label="Height"           value={selectedPerson.height_cm  ? `${selectedPerson.height_cm} cm`  : null} />
-                  <DetailRow label="Last Visit"       value={selectedPerson.last_visit ? new Date(selectedPerson.last_visit).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null} />
-                  <div className="py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Nutrition Status</p>
-                    <StatusBadge status={selectedPerson.status === 'graduate' ? 'graduate' : selectedPerson.overall_status} />
+                  <div className="pt-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Barangay</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedPerson.barangay}</p>
+                  </div>
+                  <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Age</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{formatAge(selectedPerson.ageMonths)}</p>
+                  </div>
+                  <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Sex</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedPerson.displaySex}</p>
+                  </div>
+                  <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Guardian</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedPerson.guardian_name || '—'}</p>
+                  </div>
+                  <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Latest Weight</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedPerson.weight_kg ? `${selectedPerson.weight_kg} kg` : '—'}</p>
+                  </div>
+                  <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Latest Height</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedPerson.height_cm ? `${selectedPerson.height_cm} cm` : '—'}</p>
+                  </div>
+                  <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Last Assessment Date</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                      {selectedPerson.last_visit ? new Date(selectedPerson.last_visit).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No records yet'}
+                    </p>
+                  </div>
+                  <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Nutritional Status</p>
+                    <StatusBadge status={selectedPerson.displayStatus} />
                   </div>
                 </>
               ) : (
                 <>
-                  <DetailRow label="Barangay"        value={selectedPerson.barangay} />
-                  <DetailRow label="Contact Number"  value={selectedPerson.contact_number} />
-                  <div className="py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Monitoring Status</p>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ring-1
-                      ${selectedPerson.is_completed
-                        ? 'bg-emerald-100 text-emerald-700 ring-emerald-200'
-                        : 'bg-amber-100 text-amber-700 ring-amber-200'
-                      }`}>
-                      {selectedPerson.is_completed ? 'Completed' : 'Ongoing'}
-                    </span>
+                  <div className="pt-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Barangay</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedPerson.barangay}</p>
                   </div>
-                  <div className="py-3">
+                  <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Contact Number</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedPerson.contact_number || '—'}</p>
+                  </div>
+                  <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Monitoring Status</p>
+                    <StatusBadge status={selectedPerson.displayStatus} />
+                  </div>
+                  <div className="pt-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Linked Children</p>
-                    {selectedPerson.linked_children?.length > 0 ? (
+                    {selectedPerson.linked_children && selectedPerson.linked_children.length > 0 ? (
                       <div className="space-y-2">
                         {selectedPerson.linked_children.map((child) => (
-                          <div key={child.child_id} className="flex items-center gap-3 rounded-xl bg-green-50 border border-green-100 px-4 py-3">
-                            <div className="w-8 h-8 rounded-full bg-linear-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                              {(child.first_name ?? '?').charAt(0).toUpperCase()}
+                          <div key={child.child_id} className="flex items-center gap-3 rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2.5">
+                            <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold shrink-0">
+                              {(child.first_name || '?').charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold text-gray-800 truncate">{child.first_name} {child.last_name}</p>
-                              <p className="text-xs text-gray-500 mt-0.5">
+                              <p className="text-xs font-semibold text-gray-800 truncate">{child.first_name} {child.last_name}</p>
+                              <p className="text-[11px] text-gray-500">
                                 {child.age_in_months != null ? `${child.age_in_months} mos` : ''}{child.barangay ? ` · ${child.barangay}` : ''}
                               </p>
                             </div>
@@ -582,73 +721,19 @@ function Masterlist() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-400 italic">No child linked to this mother.</p>
+                      <p className="text-xs text-gray-400 italic">No children linked to this mother.</p>
                     )}
                   </div>
                 </>
               )}
-
-              {showTransferUI && (
-                <div className="py-3 border-t border-gray-100 space-y-3">
-                  <p className="text-xs font-bold text-gray-700 uppercase tracking-wider">Transfer to Another Barangay</p>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Destination Barangay</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Antipolo, Bangwayin, Dili"
-                      value={targetBarangay}
-                      onChange={(e) => setTargetBarangay(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Reason for Transfer</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Moved residence"
-                      value={transferReason}
-                      onChange={(e) => setTransferReason(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-                  {transferMsg && (
-                    <p className={`text-xs font-semibold ${transferMsg.includes('successfully') ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {transferMsg}
-                    </p>
-                  )}
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={handleTransfer}
-                      className="flex-1 py-2 rounded-xl text-xs font-bold text-white bg-green-700 hover:bg-green-800 transition"
-                    >
-                      Confirm Transfer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowTransferUI(false)}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Modal footer */}
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 shrink-0 flex gap-2">
-              {!showTransferUI && (
-                <button
-                  onClick={() => setShowTransferUI(true)}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:opacity-90 transition cursor-pointer"
-                >
-                  Transfer Beneficiary
-                </button>
-              )}
+            {/* Modal Footer (View Only) */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 shrink-0 flex justify-end">
               <button
-                onClick={() => { setSelectedPerson(null); setShowTransferUI(false); setTransferMsg(''); }}
-                className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-[#2e7d32] border-2 border-green-200 hover:bg-green-50 transition cursor-pointer"
+                type="button"
+                onClick={() => setSelectedPerson(null)}
+                className="w-full py-2.5 rounded-xl text-xs font-semibold text-gray-700 border border-gray-300 bg-white hover:bg-gray-50 transition cursor-pointer"
               >
                 Close
               </button>
@@ -657,15 +742,6 @@ function Masterlist() {
         </div>,
         document.body
       )}
-
-      {/* Official Report Preview Modal (Items 30 & 34) */}
-      <ReportPreviewModal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        reportData={reportData}
-        title={`BNS ${activeTab === 'children' ? 'Child Beneficiary Masterlist' : 'Maternal Health Masterlist'}`}
-        barangay="All Barangays"
-      />
     </div>
   );
 }
