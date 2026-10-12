@@ -73,8 +73,8 @@ exports.getAdminStats = async (req, res) => {
            SELECT child_id, MAX(record_date) AS latest_date
            FROM nutrition_records
            GROUP BY child_id
-         ) latest ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
-         INNER JOIN nutrition_records nr1 ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
+         ) latest ON c.child_id = latest.child_id
+         INNER JOIN nutrition_records nr ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
          WHERE c.status = 'active'
            AND ${notTestBarangay}
            AND ${rangeFilter}

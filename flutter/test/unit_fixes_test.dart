@@ -16,7 +16,6 @@ import 'package:appscalev3/data/growth_standards/measurement_validator.dart';
 import 'package:appscalev3/features/reports/services/consolidation_computation_service.dart';
 import 'package:appscalev3/shared/utils/app_user_identity.dart';
 import 'package:appscalev3/data/models/measurement.dart';
-import 'package:appscalev3/data/models/mother.dart';
 import 'package:appscalev3/data/local/mother_repository.dart';
 import 'package:appscalev3/data/local/child_repository.dart';
 import 'package:appscalev3/data/local/beneficiary_link_service.dart';
@@ -959,7 +958,7 @@ void main() {
       await childRepo.add(child);
 
       // Without any referral, child is in needs referral list
-      var needed = await needsService.getChildrenNeedingReferral('Tiguion');
+      var needed = needsService.getChildrenNeedingReferral('Tiguion');
       expect(needed.any((c) => c.id == 'c-sam-1'), isTrue);
 
       // Now create a completed referral
@@ -979,7 +978,7 @@ void main() {
       await refRepo.add(completedRef);
 
       // After completion, child is no longer needing referral
-      needed = await needsService.getChildrenNeedingReferral('Tiguion');
+      needed = needsService.getChildrenNeedingReferral('Tiguion');
       expect(needed.any((c) => c.id == 'c-sam-1'), isFalse);
     });
   });
