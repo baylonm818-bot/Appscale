@@ -14,6 +14,7 @@ const statusColors = {
   severely_wasted: 'bg-red-900',
   overweight: 'bg-blue-500',
   obese: 'bg-purple-600',
+  no_assessment: 'bg-gray-400',
 };
 
 const statusLabels = {
@@ -26,6 +27,7 @@ const statusLabels = {
   severely_wasted: 'Severely Wasted',
   overweight: 'Overweight',
   obese: 'Obese',
+  no_assessment: 'No assessment yet',
 };
 
 function formatScheduleTime(timeStr) {
@@ -61,10 +63,11 @@ function StatCard({ icon: Icon, label, value, sublabel, to }) {
 
 function CustomBarTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
+    const val = payload[0].value;
     return (
-      <div className="bg-gray-900 text-white px-3.5 py-2 rounded-xl text-xs shadow-xl">
-        <p className="font-bold">{label}</p>
-        <p className="text-emerald-300 mt-0.5">{payload[0].value} malnutrition {payload[0].value === 1 ? 'case' : 'cases'}</p>
+      <div className="bg-gray-900/95 backdrop-blur-xs text-white px-3.5 py-2 rounded-xl text-xs shadow-xl border border-gray-800 pointer-events-none">
+        <p className="font-bold text-gray-100">{label}</p>
+        <p className="text-emerald-400 font-semibold mt-0.5">{val} malnutrition {val === 1 ? 'case' : 'cases'}</p>
       </div>
     );
   }
@@ -134,7 +137,7 @@ function Dashboard() {
   }
 
   const trends = stats.nineCategoryTrend || {};
-  const totalEvaluated = Object.values(trends).reduce((sum, n) => sum + (Number(n) || 0), 0) || 1;
+  const totalActiveChildren = stats.totalChildren || 1;
   const maxTrend = Math.max(...Object.values(trends).map(Number), 1);
   const overviewData = stats.malnutritionByBarangay || [];
 
@@ -200,12 +203,12 @@ function Dashboard() {
                 {stats.totalChildren} active children
               </span>
             </div>
-            <p className="text-xs text-gray-400 mb-5">Latest health & growth assessment per child</p>
+            <p className="text-xs text-gray-400 mb-5">Latest health & growth assessment per child (each child counted once)</p>
 
             <div className="space-y-3">
               {Object.entries(trends).map(([key, count]) => {
                 const num = Number(count) || 0;
-                const percentage = totalEvaluated > 0 ? Math.round((num / totalEvaluated) * 100) : 0;
+                const percentage = totalActiveChildren > 0 ? Math.round((num / totalActiveChildren) * 100) : 0;
                 const widthPercent = (num / maxTrend) * 100;
 
                 return (
@@ -264,9 +267,10 @@ function Dashboard() {
                       key={act.schedule_id}
                       className="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50/70 border border-gray-100 hover:bg-green-50/40 hover:border-green-200 transition-all"
                     >
-                      <div className="w-11 h-11 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0 shadow-xs text-center">
-                        <span className="text-[8px] font-bold uppercase tracking-wider opacity-80">{month} {d.getFullYear()}</span>
-                        <span className="text-sm font-black leading-none">{day}</span>
+                      <div className="w-14 h-14 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0 shadow-xs text-center p-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-100 leading-tight">{month}</span>
+                        <span className="text-base font-black leading-tight text-white">{day}</span>
+                        <span className="text-[9px] font-semibold text-emerald-200/90 leading-tight">{d.getFullYear()}</span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -343,26 +347,35 @@ function Dashboard() {
 
           <div className="mt-4">
             {overviewData.length > 0 ? (
-              <div className="h-72 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={overviewData} margin={{ top: 16, right: 16, left: -10, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                    <XAxis
-                      dataKey="barangay"
-                      tick={{ fontSize: 12, fill: '#4b5563', fontWeight: 600 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fontSize: 11, fill: '#9ca3af' }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip content={<CustomBarTooltip />} />
-                    <Bar dataKey="cases" fill="#2e7d32" radius={[6, 6, 0, 0]} barSize={40} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="overflow-x-auto pb-2">
+                <div className="h-72" style={{ minWidth: Math.max(500, overviewData.length * 75) }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={overviewData} margin={{ top: 16, right: 16, left: -10, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                      <XAxis
+                        dataKey="barangay"
+                        tick={{ fontSize: 11, fill: '#4b5563', fontWeight: 600 }}
+                        axisLine={false}
+                        tickLine={false}
+                        interval={0}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fontSize: 11, fill: '#9ca3af' }}
+                        axisLine={false}
+                        tickLine={false}
+                        domain={[0, (dataMax) => Math.max(Math.ceil(dataMax), 4)]}
+                        tickFormatter={(v) => Math.round(v)}
+                      />
+                      <Tooltip
+                        content={<CustomBarTooltip />}
+                        cursor={{ fill: 'rgba(0, 0, 0, 0.04)', radius: 6 }}
+                        offset={12}
+                      />
+                      <Bar dataKey="cases" fill="#2e7d32" radius={[6, 6, 0, 0]} barSize={36} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-2">

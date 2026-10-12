@@ -234,7 +234,10 @@ exports.upsertChild = async (req, res) => {
         return res.status(200).json({
           message: 'Child updated successfully.',
           child_id: childId,
+          server_id: childId,
           external_id,
+          mother_id: resolvedMotherId,
+          synced: true,
         });
       }
     }
@@ -304,12 +307,32 @@ exports.upsertChild = async (req, res) => {
     return res.status(201).json({
       message: 'Child registered and synced automatically.',
       child_id: result.insertId,
+      server_id: result.insertId,
       external_id,
+      mother_id: resolvedMotherId,
       synced: true,
     });
   } catch (error) {
-    console.error('Sync child error:', error);
-    return res.status(500).json({ message: 'Unable to sync child beneficiary.', error: error.message });
+    console.error('Sync child SQL error:', {
+      code: error.code,
+      errno: error.errno,
+      sqlState: error.sqlState,
+      sqlMessage: error.sqlMessage,
+      sql: error.sql,
+      payload: req.body,
+      message: error.message,
+    });
+    const sqlMsg = error.sqlMessage || error.message || 'Unknown database error';
+    if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+      return res.status(409).json({ message: `Duplicate child record: ${sqlMsg}`, code: error.code, duplicate: true });
+    }
+    if (error.code === 'ER_NO_REFERENCED_ROW_2' || error.code === 'ER_NO_REFERENCED_ROW' || error.errno === 1452) {
+      return res.status(400).json({ message: `Referenced mother_id not found: ${sqlMsg}`, code: error.code });
+    }
+    if (error.code === 'ER_BAD_NULL_ERROR' || error.errno === 1048) {
+      return res.status(400).json({ message: `Required field missing: ${sqlMsg}`, code: error.code });
+    }
+    return res.status(500).json({ message: `Unable to sync child beneficiary: ${sqlMsg}`, code: error.code || 'SERVER_ERROR' });
   }
 };
 
@@ -436,7 +459,9 @@ exports.upsertMother = async (req, res) => {
         return res.status(200).json({
           message: 'Mother updated successfully.',
           mother_id: motherId,
+          server_id: motherId,
           external_id,
+          synced: true,
         });
       }
     }
@@ -522,11 +547,28 @@ exports.upsertMother = async (req, res) => {
     return res.status(201).json({
       message: 'Mother registered successfully.',
       mother_id: result.insertId,
+      server_id: result.insertId,
       external_id,
+      synced: true,
     });
   } catch (error) {
-    console.error('Sync mother error:', error);
-    return res.status(500).json({ message: 'Unable to sync mother beneficiary.', error: error.message });
+    console.error('Sync mother SQL error:', {
+      code: error.code,
+      errno: error.errno,
+      sqlState: error.sqlState,
+      sqlMessage: error.sqlMessage,
+      sql: error.sql,
+      payload: req.body,
+      message: error.message,
+    });
+    const sqlMsg = error.sqlMessage || error.message || 'Unknown database error';
+    if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+      return res.status(409).json({ message: `Duplicate mother record: ${sqlMsg}`, code: error.code, duplicate: true });
+    }
+    if (error.code === 'ER_BAD_NULL_ERROR' || error.errno === 1048) {
+      return res.status(400).json({ message: `Required field missing: ${sqlMsg}`, code: error.code });
+    }
+    return res.status(500).json({ message: `Unable to sync mother beneficiary: ${sqlMsg}`, code: error.code || 'SERVER_ERROR' });
   }
 };
 
@@ -698,8 +740,23 @@ exports.syncNutritionRecord = async (req, res) => {
       synced: true,
     });
   } catch (error) {
-    console.error('Sync nutrition record error:', error);
-    return res.status(500).json({ message: 'Unable to sync nutrition record.' });
+    console.error('Sync nutrition record SQL error:', {
+      code: error.code,
+      errno: error.errno,
+      sqlState: error.sqlState,
+      sqlMessage: error.sqlMessage,
+      sql: error.sql,
+      payload: req.body,
+      message: error.message,
+    });
+    const sqlMsg = error.sqlMessage || error.message || 'Unknown database error';
+    if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+      return res.status(409).json({ message: `Duplicate nutrition record: ${sqlMsg}`, code: error.code, duplicate: true });
+    }
+    if (error.code === 'ER_NO_REFERENCED_ROW_2' || error.code === 'ER_NO_REFERENCED_ROW' || error.errno === 1452) {
+      return res.status(400).json({ message: `Referenced child_id not found: ${sqlMsg}`, code: error.code });
+    }
+    return res.status(500).json({ message: `Unable to sync nutrition record: ${sqlMsg}`, code: error.code || 'SERVER_ERROR' });
   }
 };
 

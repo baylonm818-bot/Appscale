@@ -6,19 +6,9 @@ const fs = require('fs');
 
 const allowedMime = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'application/octet-stream'];
 const allowedExt = ['.jpg', '.jpeg', '.png', '.webp'];
-const uploadDir = path.join(__dirname, '..', 'uploads', 'profile-pictures');
-fs.mkdirSync(uploadDir, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    let ext = path.extname(file.originalname).toLowerCase();
-    if (!ext || !allowedExt.includes(ext)) {
-      ext = file.mimetype === 'image/png' ? '.png' : file.mimetype === 'image/webp' ? '.webp' : '.jpg';
-    }
-    cb(null, `user_${req.params.id}_${Date.now()}${ext}`);
-  },
-});
+// Use memoryStorage for serverless / ephemeral hosting compatibility (e.g. Vercel / Render)
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
@@ -33,13 +23,14 @@ exports.upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 }, fileFi
 // Helper to check user permission on profile
 function canAccessProfile(req, targetId) {
   const requesterId = Number(req.user?.user_id);
-  const target = Number(targetId);
+  const target = targetId === 'me' ? requesterId : Number(targetId);
   const role = String(req.user?.role || '').toLowerCase();
   return role === 'admin' || requesterId === target;
 }
 
 exports.getProfile = async (req, res) => {
-  const { id } = req.params;
+  const rawId = req.params.id;
+  const id = (!rawId || rawId === 'me') ? req.user?.user_id : rawId;
 
   if (!canAccessProfile(req, id)) {
     return res.status(403).json({ message: 'Forbidden. You are not authorized to view this profile.' });
@@ -56,11 +47,12 @@ exports.getProfile = async (req, res) => {
       return res.status(404).json({ message: 'User not found.' });
     }
     const user = rows[0];
+    user.full_name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username;
     const pic = user.profile_picture;
-    const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
-    user.profile_picture = pic
-      ? (pic.startsWith('http') ? pic : `${base}${pic}`)
-      : null;
+    if (pic && !pic.startsWith('data:') && !pic.startsWith('http')) {
+      const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
+      user.profile_picture = `${base}${pic.startsWith('/') ? '' : '/'}${pic}`;
+    }
     return res.status(200).json(user);
   } catch (error) {
     console.error('Get profile error:', error);
@@ -69,7 +61,8 @@ exports.getProfile = async (req, res) => {
 };
 
 exports.getProfilePictureData = async (req, res) => {
-  const { id } = req.params;
+  const rawId = req.params.id;
+  const id = (!rawId || rawId === 'me') ? req.user?.user_id : rawId;
 
   if (!canAccessProfile(req, id)) {
     return res.status(403).json({ message: 'Forbidden. You are not authorized to access this profile picture.' });
@@ -80,12 +73,13 @@ exports.getProfilePictureData = async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ message: 'User not found.' });
     const picPath = rows[0].profile_picture;
     if (!picPath) return res.status(404).json({ message: 'No profile picture.' });
-    // If the stored profile path is an absolute HTTP URL, return it directly
-    if (picPath.startsWith('http')) {
+
+    // If stored profile path is base64 or absolute URL, return directly
+    if (picPath.startsWith('data:') || picPath.startsWith('http')) {
       return res.status(200).json({ profile_picture: picPath });
     }
 
-    // Normalize path to prevent path traversal
+    // Normalize path to prevent path traversal for legacy disk storage
     const safeRelPath = picPath.replace(/^[/\\]+/, '');
     const absPath = path.resolve(__dirname, '..', safeRelPath);
     if (!absPath.startsWith(path.resolve(__dirname, '..', 'uploads'))) {
@@ -98,13 +92,14 @@ exports.getProfilePictureData = async (req, res) => {
     const base64 = `data:${mime};base64,${data.toString('base64')}`;
     return res.status(200).json({ profile_picture: base64 });
   } catch (error) {
-    console.error('Get profile picture data error:', error);
+    console.error('Get profile picture data SQL error:', error.code, error.sqlMessage, error);
     return res.status(500).json({ message: 'Server error.' });
   }
 };
 
 exports.updateProfile = async (req, res) => {
-  const { id } = req.params;
+  const rawId = req.params.id;
+  const id = (!rawId || rawId === 'me') ? req.user?.user_id : rawId;
 
   if (!canAccessProfile(req, id)) {
     return res.status(403).json({ message: 'Forbidden. You are not authorized to update this profile.' });
@@ -113,11 +108,24 @@ exports.updateProfile = async (req, res) => {
   const { first_name, middle_initial, last_name, email, contact_number, purok } = req.body;
 
   try {
+    const [existingUserRows] = await pool.query('SELECT * FROM users WHERE user_id = ?', [id]);
+    if (existingUserRows.length === 0) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+    const current = existingUserRows[0];
+
+    const updatedFirstName = first_name !== undefined ? String(first_name).trim() : current.first_name;
+    const updatedMiddleInitial = middle_initial !== undefined ? (middle_initial ? String(middle_initial).trim() : null) : current.middle_initial;
+    const updatedLastName = last_name !== undefined ? String(last_name).trim() : current.last_name;
+    const updatedEmail = email !== undefined ? String(email).trim() : current.email;
+    const updatedContactNumber = contact_number !== undefined ? String(contact_number).trim() : current.contact_number;
+    const updatedPurok = purok !== undefined ? (purok ? String(purok).trim() : null) : current.purok;
+
     // Check if email is already taken by another user
-    if (email) {
+    if (updatedEmail && updatedEmail.toLowerCase() !== String(current.email || '').toLowerCase()) {
       const [existing] = await pool.query(
         'SELECT user_id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND user_id <> ? LIMIT 1',
-        [email, id]
+        [updatedEmail, id]
       );
       if (existing.length > 0) {
         return res.status(409).json({ message: 'Email is already in use by another account.' });
@@ -127,17 +135,32 @@ exports.updateProfile = async (req, res) => {
     await pool.query(
       `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?
        WHERE user_id = ?`,
-      [first_name, middle_initial || null, last_name, email, contact_number, purok || null, id]
+      [updatedFirstName, updatedMiddleInitial, updatedLastName, updatedEmail, updatedContactNumber, updatedPurok, id]
     );
-    return res.status(200).json({ message: 'Profile updated successfully.' });
+
+    const [updatedRows] = await pool.query(
+      `SELECT user_id, first_name, middle_initial, last_name, email, username,
+              role, municipality, barangay, purok, contact_number, profile_picture
+       FROM users WHERE user_id = ?`,
+      [id]
+    );
+    const updatedUser = updatedRows[0];
+    updatedUser.full_name = `${updatedUser.first_name || ''} ${updatedUser.last_name || ''}`.trim() || updatedUser.username;
+    if (updatedUser.profile_picture && !updatedUser.profile_picture.startsWith('data:') && !updatedUser.profile_picture.startsWith('http')) {
+      const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
+      updatedUser.profile_picture = `${base}${updatedUser.profile_picture.startsWith('/') ? '' : '/'}${updatedUser.profile_picture}`;
+    }
+
+    return res.status(200).json({ message: 'Profile updated successfully.', user: updatedUser });
   } catch (error) {
-    console.error('Update profile error:', error);
-    return res.status(500).json({ message: 'Server error. Please try again later.' });
+    console.error('Update profile SQL error:', error.code, error.sqlMessage, error);
+    return res.status(500).json({ message: error.sqlMessage || 'Server error. Please try again later.' });
   }
 };
 
 exports.changePassword = async (req, res) => {
-  const { id } = req.params;
+  const rawId = req.params.id;
+  const id = (!rawId || rawId === 'me') ? req.user?.user_id : rawId;
   const requesterId = Number(req.user?.user_id);
 
   // Security: only the authenticated user themselves can change their password
@@ -170,31 +193,52 @@ exports.changePassword = async (req, res) => {
     await pool.query('UPDATE users SET password_hash = ? WHERE user_id = ?', [newHash, id]);
     return res.status(200).json({ message: 'Password changed successfully.' });
   } catch (error) {
-    console.error('Change password error:', error);
-    return res.status(500).json({ message: 'Server error. Please try again later.' });
+    console.error('Change password SQL error:', error.code, error.sqlMessage, error);
+    return res.status(500).json({ message: error.sqlMessage || 'Server error. Please try again later.' });
   }
 };
 
 exports.uploadProfilePicture = async (req, res) => {
-  const { id } = req.params;
+  const rawId = req.params.id;
+  const id = (!rawId || rawId === 'me') ? req.user?.user_id : rawId;
 
   if (!canAccessProfile(req, id)) {
     return res.status(403).json({ message: 'Forbidden. You are not authorized to update this profile photo.' });
   }
 
-  if (!req.file) {
-    return res.status(400).json({ message: 'No file uploaded.' });
+  let base64Data = null;
+
+  if (req.file && req.file.buffer) {
+    const mime = req.file.mimetype || 'image/jpeg';
+    base64Data = `data:${mime};base64,${req.file.buffer.toString('base64')}`;
+  } else if (req.body && req.body.profile_picture) {
+    base64Data = req.body.profile_picture;
+  }
+
+  if (!base64Data) {
+    return res.status(400).json({ message: 'No photo uploaded or provided.' });
   }
 
   try {
-    const profilePicturePath = `/uploads/profile-pictures/${req.file.filename}`;
-    await pool.query('UPDATE users SET profile_picture = ? WHERE user_id = ?', [profilePicturePath, id]);
-    const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
-    const fullUrl = profilePicturePath.startsWith('http') ? profilePicturePath : `${base}${profilePicturePath}`;
-    return res.status(200).json({ message: 'Profile picture updated.', profile_picture: fullUrl });
+    await pool.query('UPDATE users SET profile_picture = ? WHERE user_id = ?', [base64Data, id]);
+
+    const [rows] = await pool.query(
+      `SELECT user_id, first_name, middle_initial, last_name, email, username,
+              role, municipality, barangay, purok, contact_number, profile_picture
+       FROM users WHERE user_id = ?`,
+      [id]
+    );
+    const updatedUser = rows[0] || {};
+    updatedUser.full_name = `${updatedUser.first_name || ''} ${updatedUser.last_name || ''}`.trim() || updatedUser.username;
+
+    return res.status(200).json({
+      message: 'Profile picture updated.',
+      profile_picture: base64Data,
+      user: updatedUser
+    });
   } catch (error) {
-    console.error('Upload profile picture error:', error);
-    return res.status(500).json({ message: 'Server error. Please try again later.' });
+    console.error('Upload profile picture SQL error:', error.code, error.sqlMessage, error);
+    return res.status(500).json({ message: error.sqlMessage || 'Server error. Please try again later.' });
   }
 };
 

@@ -34,11 +34,23 @@ export function AuthProvider({ children }) {
 
   const updateUser = (updates) => {
     setUser((prev) => {
-      const updated = { ...prev, ...updates};
-      if (localStorage.getItem('user'))localStorage.setItem('user', JSON.stringify(updated));
-      if (sessionStorage.getItem('user'))sessionStorage.setItem('user', JSON.stringify(updated));
-      return updated;
-    })
+      const merged = { ...(prev || {}), ...updates };
+      if (!merged.full_name && (merged.first_name || merged.last_name)) {
+        merged.full_name = `${merged.first_name || ''} ${merged.last_name || ''}`.trim() || merged.username;
+      }
+      const serialized = JSON.stringify(merged);
+      if (sessionStorage.getItem('token') || sessionStorage.getItem('user')) {
+        sessionStorage.setItem('user', serialized);
+      }
+      if (localStorage.getItem('token') || localStorage.getItem('user')) {
+        localStorage.setItem('user', serialized);
+      }
+      if (!sessionStorage.getItem('token') && !localStorage.getItem('token')) {
+        localStorage.setItem('user', serialized);
+      }
+      window.dispatchEvent(new CustomEvent('user:updated'));
+      return merged;
+    });
   };
 
   return (

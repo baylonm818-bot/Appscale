@@ -194,8 +194,15 @@ exports.transferBeneficiary = async (req, res) => {
     const fromBarangay = record.barangay || requesterBarangay;
 
     if (String(fromBarangay).trim().toLowerCase() === String(targetBarangay).trim().toLowerCase()) {
-      await conn.rollback();
-      return res.status(400).json({ message: 'Target barangay must be different from current barangay.' });
+      await conn.commit();
+      return res.status(200).json({
+        success: true,
+        message: `Beneficiary is already in Barangay ${targetBarangay}.`,
+        targetBarangay,
+        entityId,
+        entity_id: record[idColumn],
+        alreadyTransferred: true,
+      });
     }
 
     if (role !== 'admin' && !canTransferBeneficiary(req.user, fromBarangay, targetBarangay)) {
@@ -285,30 +292,23 @@ exports.transferBeneficiary = async (req, res) => {
     }
 
     // 6. Notify active BNS & BHW of the new target barangay
-    const [targetStaff] = await conn.query(
-      `SELECT user_id FROM users WHERE LOWER(TRIM(barangay)) = LOWER(TRIM(?)) AND status = 'active'`,
-      [targetBarangay]
-    );
-
+    // 6. Notify active BNS & BHW of the new target barangay
     const beneficiaryFullName = `${record.first_name || ''} ${record.last_name || ''}`.trim() || 'Beneficiary';
     const notifTitle = `Bagong lipat: ${beneficiaryFullName} mula sa ${fromBarangay}`;
     const notifMessage = `Si ${beneficiaryFullName} ay inilipat sa inyong barangay (${targetBarangay}) mula sa Barangay ${fromBarangay}.`;
 
-    if (targetStaff.length > 0) {
-      for (const staff of targetStaff) {
-        await conn.query(
-          `INSERT INTO notifications (user_id, title, message, type, is_read, related_id, created_at)
-           VALUES (?, ?, ?, 'alert', FALSE, ?, NOW())`,
-          [staff.user_id, notifTitle, notifMessage, primaryDbId]
-        );
-      }
-    } else {
-      // Global/broadcast notification if no specific user mapped yet
+    try {
       await conn.query(
-        `INSERT INTO notifications (user_id, title, message, type, is_read, related_id, created_at)
-         VALUES (NULL, ?, ?, 'alert', FALSE, ?, NOW())`,
-        [notifTitle, notifMessage, primaryDbId]
+        `INSERT INTO notifications (title, message, type, is_read, related_id, created_by, created_at)
+         VALUES (?, ?, 'alert', FALSE, ?, ?, NOW())`,
+        [notifTitle, notifMessage, primaryDbId, req.user?.user_id || null]
       );
+    } catch (notifErr) {
+      console.warn('Transfer notification warning (non-fatal):', {
+        code: notifErr.code,
+        sqlMessage: notifErr.sqlMessage,
+        message: notifErr.message,
+      });
     }
 
     await conn.commit();
@@ -318,11 +318,37 @@ exports.transferBeneficiary = async (req, res) => {
       message: `Beneficiary successfully transferred to Barangay ${targetBarangay}.`,
       targetBarangay,
       entityId,
+      entity_id: primaryDbId,
     });
   } catch (error) {
-    await conn.rollback();
-    console.error('Transfer beneficiary transaction error:', error);
-    return res.status(500).json({ message: 'Server error during transfer. Rolled back changes.' });
+    // A. Log real SQL error before rollback
+    console.error('Transfer beneficiary SQL error:', {
+      code: error.code,
+      errno: error.errno,
+      sqlState: error.sqlState,
+      sqlMessage: error.sqlMessage,
+      sql: error.sql,
+      payload: req.body,
+      message: error.message,
+    });
+
+    try {
+      await conn.rollback();
+    } catch (rbErr) {
+      console.error('Rollback error during transfer failure:', rbErr);
+    }
+
+    const sqlMsg = error.sqlMessage || error.message || 'Unknown database error';
+    if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+      return res.status(409).json({ message: `Duplicate entry during transfer: ${sqlMsg}`, code: error.code });
+    }
+    if (error.code === 'ER_NO_REFERENCED_ROW_2' || error.code === 'ER_NO_REFERENCED_ROW' || error.errno === 1452) {
+      return res.status(400).json({ message: `Missing reference during transfer: ${sqlMsg}`, code: error.code });
+    }
+    if (error.code === 'ER_BAD_NULL_ERROR' || error.code === 'ER_TRUNCATED_WRONG_VALUE' || error.errno === 1048 || error.errno === 1265) {
+      return res.status(400).json({ message: `Invalid data format during transfer: ${sqlMsg}`, code: error.code });
+    }
+    return res.status(500).json({ message: `Server error during transfer: ${sqlMsg}`, code: error.code || 'SERVER_ERROR' });
   } finally {
     conn.release();
   }

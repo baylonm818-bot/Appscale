@@ -79,9 +79,11 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       if (raw is! Map) continue;
       final map = Map<String, dynamic>.from(raw);
       final b = map['barangay']?.toString() ?? '';
-      if (current.isNotEmpty && b.isNotEmpty && b != current) continue;
-
       final status = map['_syncStatus']?.toString() ?? 'synced';
+      final isTransfer = map['isTransferPending'] == true || map['_transferPending'] == true;
+      final isUnsynced = status != 'synced' || isTransfer;
+      if (current.isNotEmpty && b.isNotEmpty && b != current && !isUnsynced) continue;
+
       final name = map['fullName']?.toString() ?? 'Child';
       final error = map['_lastSyncError']?.toString();
       final timeStr = map['_syncedAt'] ?? map['updatedAt'] ?? map['createdAt'];
@@ -93,12 +95,22 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       }
 
       String title;
-      if (status == 'synced') {
-        title = 'Child record synced';
-      } else if (status == 'failed') {
-        title = 'Child record sync failed';
+      if (isTransfer) {
+        if (status == 'synced') {
+          title = 'Child transfer synced';
+        } else if (status == 'failed') {
+          title = 'Child transfer failed';
+        } else {
+          title = 'Child transfer pending';
+        }
       } else {
-        title = 'Child record pending';
+        if (status == 'synced') {
+          title = 'Child record synced';
+        } else if (status == 'failed') {
+          title = 'Child record sync failed';
+        } else {
+          title = 'Child record pending';
+        }
       }
 
       items.add(SyncItem(
@@ -118,9 +130,11 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       if (raw is! Map) continue;
       final map = Map<String, dynamic>.from(raw);
       final b = map['barangay']?.toString() ?? '';
-      if (current.isNotEmpty && b.isNotEmpty && b != current) continue;
-
       final status = map['_syncStatus']?.toString() ?? 'synced';
+      final isTransfer = map['isTransferPending'] == true || map['_transferPending'] == true;
+      final isUnsynced = status != 'synced' || isTransfer;
+      if (current.isNotEmpty && b.isNotEmpty && b != current && !isUnsynced) continue;
+
       final name = map['fullName']?.toString() ?? 'Mother';
       final error = map['_lastSyncError']?.toString();
       final timeStr = map['_syncedAt'] ?? map['updatedAt'] ?? map['createdAt'];
@@ -132,12 +146,22 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       }
 
       String title;
-      if (status == 'synced') {
-        title = 'Mother record synced';
-      } else if (status == 'failed') {
-        title = 'Mother record sync failed';
+      if (isTransfer) {
+        if (status == 'synced') {
+          title = 'Mother transfer synced';
+        } else if (status == 'failed') {
+          title = 'Mother transfer failed';
+        } else {
+          title = 'Mother transfer pending';
+        }
       } else {
-        title = 'Mother record pending';
+        if (status == 'synced') {
+          title = 'Mother record synced';
+        } else if (status == 'failed') {
+          title = 'Mother record sync failed';
+        } else {
+          title = 'Mother record pending';
+        }
       }
 
       items.add(SyncItem(
@@ -343,32 +367,40 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
 
     final errors = <String>[];
     try {
-      // Step 1: Sync Children one by one
-      final childBox = Hive.box(HiveBoxes.children);
-      for (final raw in List.from(childBox.values)) {
+      // Step 1: Sync Mothers one by one (Mothers first so server IDs are mapped)
+      final motherBox = Hive.box(HiveBoxes.mothers);
+      for (final raw in List.from(motherBox.values)) {
         if (raw is! Map) continue;
         final map = Map<String, dynamic>.from(raw);
         if (map['_syncStatus'] != 'synced') {
-          final child = Child.fromMap(map);
-          final res = await _children.trySync(child);
-          if (res != null && !res.success) {
-            errors.add('${child.fullName}: ${res.message}');
+          try {
+            final mother = Mother.fromMap(map);
+            final res = await _mothers.trySync(mother);
+            if (res != null && !res.success) {
+              errors.add('${mother.fullName}: ${res.message}');
+            }
+          } catch (e) {
+            errors.add('${map['fullName'] ?? 'Mother'}: $e');
           }
           if (mounted) setState(() {});
           await Future.delayed(const Duration(milliseconds: 100));
         }
       }
 
-      // Step 2: Sync Mothers one by one
-      final motherBox = Hive.box(HiveBoxes.mothers);
-      for (final raw in List.from(motherBox.values)) {
+      // Step 2: Sync Children one by one (Children second, resolving linked mother IDs)
+      final childBox = Hive.box(HiveBoxes.children);
+      for (final raw in List.from(childBox.values)) {
         if (raw is! Map) continue;
         final map = Map<String, dynamic>.from(raw);
         if (map['_syncStatus'] != 'synced') {
-          final mother = Mother.fromMap(map);
-          final res = await _mothers.trySync(mother);
-          if (res != null && !res.success) {
-            errors.add('${mother.fullName}: ${res.message}');
+          try {
+            final child = Child.fromMap(map);
+            final res = await _children.trySync(child);
+            if (res != null && !res.success) {
+              errors.add('${child.fullName}: ${res.message}');
+            }
+          } catch (e) {
+            errors.add('${map['fullName'] ?? 'Child'}: $e');
           }
           if (mounted) setState(() {});
           await Future.delayed(const Duration(milliseconds: 100));
@@ -794,23 +826,26 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
               ),
             ],
           ),
-          if (item.status == 'failed') ...[
+          if (item.status == 'failed' || (item.status == 'pending' && item.error != null && item.error!.isNotEmpty)) ...[
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF1F2),
+                color: item.status == 'failed' ? const Color(0xFFFFF1F2) : const Color(0xFFFFFBEB),
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: item.status == 'failed' ? const Color(0xFFFECDD3) : const Color(0xFFFDE68A),
+                ),
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
-                      item.error ?? 'Upload failed.',
-                      style: const TextStyle(
+                      item.error ?? (item.status == 'failed' ? 'Upload failed.' : 'Pending retry.'),
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF991B1B),
+                        color: item.status == 'failed' ? const Color(0xFF991B1B) : const Color(0xFF92400E),
                       ),
                     ),
                   ),
@@ -820,8 +855,10 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                     child: OutlinedButton(
                       onPressed: _isSyncing ? null : () => _retryItem(item),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.statRed,
-                        side: const BorderSide(color: AppColors.statRed),
+                        foregroundColor: item.status == 'failed' ? AppColors.statRed : AppColors.statOrange,
+                        side: BorderSide(
+                          color: item.status == 'failed' ? AppColors.statRed : AppColors.statOrange,
+                        ),
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6),
@@ -944,15 +981,8 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, _, child) {
-        final referralPending = _referrals.pendingCount;
-        final pendingPhoto = _settings.pendingProfilePicturePath != null ? 1 : 0;
-        final pendingCount = _children.pendingCount +
-            _mothers.pendingCount +
-            _measurements.pendingCount +
-            referralPending +
-            pendingPhoto;
-
         final syncItems = _loadSyncItems();
+        final pendingCount = syncItems.where((i) => i.status == 'pending').length;
         final syncedCount = syncItems.where((i) => i.status == 'synced').length;
         final failedCount = syncItems.where((i) => i.status == 'failed').length;
 

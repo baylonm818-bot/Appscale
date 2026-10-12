@@ -8,7 +8,7 @@ exports.getAdminStats = async (req, res) => {
     else if (range === '6M') rangeFilter = 'nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)';
     else if (range === '1Y') rangeFilter = 'nr.record_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)';
 
-    // helper to verify a column exists in the current active DB
+    // Helper to verify a column exists in the current active DB
     const hasColumn = async (table, column) => {
       const [[{ cnt }]] = await pool.query(
         `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
@@ -18,9 +18,21 @@ exports.getAdminStats = async (req, res) => {
       return Number(cnt) > 0;
     };
 
-    const [[{ totalChildren }]] = await pool.query(`SELECT COUNT(*) AS totalChildren FROM children WHERE status = 'active'`);
-    const [[{ totalMothers }]] = await pool.query(`SELECT COUNT(*) AS totalMothers FROM mothers WHERE status = 'active'`);
-    const [[{ totalBarangays }]] = await pool.query(`SELECT COUNT(DISTINCT barangay) AS totalBarangays FROM children WHERE status = 'active' AND barangay IS NOT NULL`);
+    // Filters to exclude test data
+    const notTestBarangay = "c.barangay IS NOT NULL AND TRIM(c.barangay) <> '' AND LOWER(c.barangay) NOT LIKE '%test%'";
+    const notTestChild = "status = 'active' AND (barangay IS NULL OR LOWER(barangay) NOT LIKE '%test%') AND LOWER(first_name) NOT LIKE '%test%' AND LOWER(last_name) NOT LIKE '%test%'";
+    const notTestMother = "status = 'active' AND (barangay IS NULL OR LOWER(barangay) NOT LIKE '%test%') AND LOWER(first_name) NOT LIKE '%test%' AND LOWER(last_name) NOT LIKE '%test%'";
+
+    const [[{ totalChildren }]] = await pool.query(
+      `SELECT COUNT(*) AS totalChildren FROM children WHERE ${notTestChild}`
+    );
+    const [[{ totalMothers }]] = await pool.query(
+      `SELECT COUNT(*) AS totalMothers FROM mothers WHERE ${notTestMother}`
+    );
+    const [[{ totalBarangays }]] = await pool.query(
+      `SELECT COUNT(DISTINCT barangay) AS totalBarangays FROM children c WHERE status = 'active' AND ${notTestBarangay}`
+    );
+
     // Compute user aggregates using the same query definition as User Management
     const [[userStats]] = await pool.query(
       `SELECT
@@ -37,72 +49,71 @@ exports.getAdminStats = async (req, res) => {
     // Check if optional columns exist
     const hasWasting = await hasColumn('nutrition_records', 'wasting_status');
 
-    // Conditions identifying malnutrition / at-risk
+    // Conditions identifying malnutrition / at-risk (consistent with Nutrition Breakdown categories)
     const conditionParts = [
-      "nr.weight_status IN ('underweight', 'severely_underweight', 'severly_underweight')",
+      "nr.weight_status IN ('underweight', 'severely_underweight', 'severly_underweight', 'overweight', 'obese')",
       "nr.height_status IN ('stunted', 'severely_stunted', 'severly_stunted')",
-      "nr.overall_status IN ('MAM', 'SAM', 'underweight', 'severely_underweight')"
+      "nr.overall_status IN ('MAM', 'SAM', 'underweight', 'severely_underweight', 'overweight', 'obese')",
     ];
     if (hasWasting) conditionParts.push("nr.wasting_status IN ('wasted', 'severely_wasted', 'severly_wasted')");
     const malnutritionWhere = conditionParts.join(' OR ');
 
-    // Malnutrition cases grouped by barangay (filtering out null / empty barangay names)
-    let [malnutritionByBarangayRows] = await pool.query(
-      `SELECT c.barangay, COUNT(DISTINCT c.child_id) AS cases
-       FROM nutrition_records nr
-       INNER JOIN (
-         SELECT child_id, MAX(record_date) AS latest_date
-         FROM nutrition_records
-         GROUP BY child_id
-       ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
-       INNER JOIN children c ON c.child_id = nr.child_id
-       WHERE c.status = 'active' AND c.barangay IS NOT NULL AND TRIM(c.barangay) <> '' AND ${rangeFilter} AND (${malnutritionWhere})
-       GROUP BY c.barangay
-       ORDER BY cases DESC`
-    );
-
-    let malnutritionOverviewFallback = false;
-    if (malnutritionByBarangayRows.length === 0) {
-      // Fallback: search without range filter if no recent records match
-      [malnutritionByBarangayRows] = await pool.query(
-        `SELECT c.barangay, COUNT(DISTINCT c.child_id) AS cases
-         FROM nutrition_records nr
+    // Malnutrition cases by barangay: MUST show ALL monitored barangays (with 0 cases if none)
+    const [malnutritionByBarangayRows] = await pool.query(
+      `SELECT b.barangay, COALESCE(m.cases, 0) AS cases
+       FROM (
+         SELECT DISTINCT c.barangay
+         FROM children c
+         WHERE status = 'active' AND ${notTestBarangay}
+       ) b
+       LEFT JOIN (
+         SELECT c.barangay, COUNT(DISTINCT c.child_id) AS cases
+         FROM children c
          INNER JOIN (
            SELECT child_id, MAX(record_date) AS latest_date
            FROM nutrition_records
            GROUP BY child_id
-         ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
-         INNER JOIN children c ON c.child_id = nr.child_id
-         WHERE c.status = 'active' AND c.barangay IS NOT NULL AND TRIM(c.barangay) <> '' AND (${malnutritionWhere})
+         ) latest ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
+         INNER JOIN nutrition_records nr1 ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
+         WHERE c.status = 'active'
+           AND ${notTestBarangay}
+           AND ${rangeFilter}
+           AND (${malnutritionWhere})
          GROUP BY c.barangay
-         ORDER BY cases DESC`
-      );
-      malnutritionOverviewFallback = malnutritionByBarangayRows.length > 0;
-    }
+       ) m ON m.barangay = b.barangay
+       ORDER BY cases DESC, b.barangay ASC`
+    );
 
-    // Upcoming pending activities
+    // Upcoming pending activities (excluding test entries)
     const [upcomingActivities] = await pool.query(
       `SELECT schedule_id, title, schedule_type, schedule_date, schedule_time, venue, barangay, target_role, facilitator
        FROM schedules
-       WHERE status = 'pending' AND schedule_date >= CURDATE()
+       WHERE status = 'pending'
+         AND schedule_date >= CURDATE()
+         AND LOWER(TRIM(title)) NOT IN ('new', 'in action', 'test', 'h')
+         AND LOWER(title) NOT LIKE '%test%'
+         AND (barangay IS NULL OR LOWER(barangay) NOT LIKE '%test%')
        ORDER BY schedule_date ASC
        LIMIT 5`
     );
 
-    // Dynamic selection of latest nutrition records
-    const selectCols = ['nr.weight_status', 'nr.height_status', 'nr.overall_status'];
+    // Dynamic selection of latest nutrition records for ALL active children (LEFT JOIN to catch unassessed children)
+    const selectCols = ['nr.record_id', 'nr.weight_status', 'nr.height_status', 'nr.overall_status'];
     if (hasWasting) selectCols.push('nr.wasting_status');
 
     const [nineCategoryRows] = await pool.query(
-      `SELECT ${selectCols.join(', ')}
-       FROM nutrition_records nr
-       INNER JOIN (
-         SELECT child_id, MAX(record_date) AS latest_date
-         FROM nutrition_records
-         GROUP BY child_id
-       ) latest ON nr.child_id = latest.child_id AND nr.record_date = latest.latest_date
-       INNER JOIN children c ON c.child_id = nr.child_id
-       WHERE c.status = 'active'`
+      `SELECT c.child_id, ${selectCols.join(', ')}
+       FROM children c
+       LEFT JOIN (
+         SELECT nr1.*
+         FROM nutrition_records nr1
+         INNER JOIN (
+           SELECT child_id, MAX(record_date) AS latest_date
+           FROM nutrition_records
+           GROUP BY child_id
+         ) latest ON nr1.child_id = latest.child_id AND nr1.record_date = latest.latest_date
+       ) nr ON nr.child_id = c.child_id
+       WHERE ${notTestChild}`
     );
 
     const nineCategoryTrend = {
@@ -115,10 +126,15 @@ exports.getAdminStats = async (req, res) => {
       obese: 0,
       wasted: 0,
       severely_wasted: 0,
+      no_assessment: 0,
     };
 
     // Classify each child into a single primary nutrition status so the sum exactly matches total active children
     nineCategoryRows.forEach((row) => {
+      if (!row.record_id) {
+        nineCategoryTrend.no_assessment++;
+        return;
+      }
       const ws = String(row.weight_status || '').toLowerCase();
       const hs = String(row.height_status || '').toLowerCase();
       const was = String(row.wasting_status || '').toLowerCase();
@@ -154,7 +170,7 @@ exports.getAdminStats = async (req, res) => {
       totalBHW,
       nineCategoryTrend,
       malnutritionByBarangay: malnutritionByBarangayRows,
-      malnutritionOverviewFallback,
+      malnutritionOverviewFallback: false,
       upcomingActivities,
     });
   } catch (error) {

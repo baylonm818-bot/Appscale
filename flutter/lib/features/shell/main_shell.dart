@@ -181,8 +181,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
     _isAutoSyncing = true;
     try {
-      await _childRepo.syncPending();
       await _motherRepo.syncPending();
+      await _childRepo.syncPending();
       await _measurementRepo.syncPending();
       await _referralRepo.syncPending();
       await _feedingScheduleRepo.syncPending();

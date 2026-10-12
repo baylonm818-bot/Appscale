@@ -53,7 +53,11 @@ class MotherRepository {
   }
 
   int get pendingCount => _box.values
-      .where((raw) => (raw as Map)['_syncStatus'] != 'synced')
+      .where((raw) => (raw as Map?)?['_syncStatus'] == 'pending')
+      .length;
+
+  int get failedCount => _box.values
+      .where((raw) => (raw as Map?)?['_syncStatus'] == 'failed')
       .length;
 
   Future<ApiResponse?> trySync(Mother mother) => _trySync(mother);
@@ -170,12 +174,22 @@ class MotherRepository {
       map['_syncedAt'] = DateTime.now().toIso8601String();
       map.remove('_lastSyncError');
       map['_retryCount'] = 0;
+      if (res.data?['mother_id'] != null) {
+        map['serverMotherId'] = res.data!['mother_id'];
+      }
     } else {
-      map['_syncStatus'] = 'failed';
       map['_lastSyncError'] = res.message;
       map['_retryCount'] = ((map['_retryCount'] as int?) ?? 0) + 1;
+      // On 4xx error: mark Failed so user can edit and retry.
+      // On network error or 5xx: keep Pending with retry count.
+      if (res.statusCode >= 400 && res.statusCode < 500 && res.statusCode != 408) {
+        map['_syncStatus'] = 'failed';
+      } else {
+        map['_syncStatus'] = 'pending';
+      }
     }
     await _box.put(mother.id, map);
+    AppDataBus.notifyChanged();
     return res;
   }
 

@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
-const { login, forgotPassword, verifyOtp, resetPassword, devLogin } = require('../controllers/authController');
+const { login, forgotPassword, verifyOtp, resetPassword, devLogin, getMe } = require('../controllers/authController');
 const { buildLoginLimiterKey } = require('../utils/authRateLimit');
+const jwtMiddleware = require('../middleware/jwtMiddleware');
 
 // Login rate limiter — count failed attempts by email/account instead of a shared IP.
 // This prevents one user from poisoning another user's login flow behind a shared network.
@@ -30,6 +31,8 @@ router.post('/login', loginLimiter, login);
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-otp', otpLimiter, verifyOtp);
 router.post('/reset-password', resetPassword);
+// Current user route
+router.get('/me', jwtMiddleware, getMe);
 // Development helper (disabled in production)
 router.post('/dev-login', devLogin);
 

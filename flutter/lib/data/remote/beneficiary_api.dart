@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../local/feeding_enrollment_repository.dart';
 import '../local/hive_boxes.dart';
+import '../local/sync_id_mapper.dart';
 import '../models/child.dart';
 import '../models/mother.dart';
 import '../models/measurement.dart';
@@ -47,7 +48,10 @@ class BeneficiaryApi {
     final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
     final isEnrolled = FeedingEnrollmentRepository().isEnrolled(child.id);
 
-    return _post('/mobile/children', {
+    final resolvedMotherServerId =
+        SyncIdMapper.instance.getMotherServerId(child.guardian.linkedMotherId);
+
+    final res = await _post('/mobile/children', {
       'external_id': child.id,
       'first_name': firstName,
       'last_name': lastName,
@@ -58,11 +62,20 @@ class BeneficiaryApi {
       'barangay': child.barangay,
       'guardian_name': child.guardian.fullName,
       'guardian_contact': child.guardian.contactNo,
+      'mother_id': resolvedMotherServerId,
       'mother_external_id': child.guardian.linkedMotherId,
       'status': child.isActive ? 'active' : 'inactive',
       'is_enrolled': isEnrolled,
       'encoded_by': settings.authUser?['user_id'],
     }, token);
+
+    if (res.success && res.data != null) {
+      final serverId = res.data!['child_id'] ?? res.data!['server_id'];
+      if (serverId != null) {
+        SyncIdMapper.instance.saveChildId(child.id, serverId);
+      }
+    }
+    return res;
   }
 
   static Future<ApiResponse> syncMother(Mother mother) async {
@@ -79,7 +92,7 @@ class BeneficiaryApi {
     final firstName = nameParts.isNotEmpty ? nameParts.first : '';
     final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
-    return _post('/mobile/mothers', {
+    final res = await _post('/mobile/mothers', {
       'external_id': mother.id,
       'first_name': firstName,
       'last_name': lastName,
@@ -92,6 +105,14 @@ class BeneficiaryApi {
       'status': mother.isActive ? 'active' : 'inactive',
       'encoded_by': settings.authUser?['user_id'],
     }, token);
+
+    if (res.success && res.data != null) {
+      final serverId = res.data!['mother_id'] ?? res.data!['server_id'];
+      if (serverId != null) {
+        SyncIdMapper.instance.saveMotherId(mother.id, serverId);
+      }
+    }
+    return res;
   }
 
   static Future<ApiResponse> syncNutritionRecord(String childExternalId, Measurement measurement) async {
@@ -105,7 +126,11 @@ class BeneficiaryApi {
       );
     }
 
+    final resolvedChildServerId =
+        SyncIdMapper.instance.getChildServerId(childExternalId);
+
     return _post('/mobile/nutrition-records', {
+      'child_id': resolvedChildServerId,
       'child_external_id': childExternalId,
       'record_date': _date(measurement.date),
       'weight_kg': measurement.weightKg,
@@ -427,21 +452,40 @@ class BeneficiaryApi {
           )
           .timeout(const Duration(seconds: 25));
 
+      Map<String, dynamic>? data;
+      try {
+        data = jsonDecode(response.body) as Map<String, dynamic>?;
+      } catch (_) {}
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return ApiResponse(
           success: true,
           statusCode: response.statusCode,
-          message: 'OK',
+          message: data?['message']?.toString() ?? 'OK',
+          data: data,
+        );
+      }
+
+      // Idempotency: HTTP 409 Conflict or server indicating duplicate / already exists
+      final isDuplicate = response.statusCode == 409 ||
+          data?['duplicate'] == true ||
+          (data?['message']?.toString().toLowerCase().contains('already exists') ?? false);
+
+      if (isDuplicate) {
+        return ApiResponse(
+          success: true,
+          statusCode: response.statusCode,
+          message: data?['message']?.toString() ?? 'Record already exists on server (synced)',
+          data: data,
         );
       }
 
       String errMsg = 'Server error (${response.statusCode})';
-      try {
-        final body = jsonDecode(response.body) as Map<String, dynamic>?;
-        if (body?['message'] != null) {
-          errMsg = body!['message'].toString();
-        }
-      } catch (_) {}
+      if (data?['message'] != null) {
+        errMsg = data!['message'].toString();
+      } else if (data?['error'] != null) {
+        errMsg = data!['error'].toString();
+      }
 
       if (response.statusCode == 401) {
         errMsg = 'Session expired. Please log in again.';
@@ -451,6 +495,7 @@ class BeneficiaryApi {
         success: false,
         statusCode: response.statusCode,
         message: errMsg,
+        data: data,
       );
     } catch (e) {
       return ApiResponse(

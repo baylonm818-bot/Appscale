@@ -38,7 +38,19 @@ class MeasurementRepository {
     for (final raw in _box.values) {
       if (raw is List) {
         for (final item in raw) {
-          if (item is Map && item['_syncStatus'] != 'synced') count++;
+          if (item is Map && item['_syncStatus'] == 'pending') count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  int get failedCount {
+    int count = 0;
+    for (final raw in _box.values) {
+      if (raw is List) {
+        for (final item in raw) {
+          if (item is Map && item['_syncStatus'] == 'failed') count++;
         }
       }
     }
@@ -47,7 +59,6 @@ class MeasurementRepository {
 
   /// Attempts to sync all pending measurements to the server.
   /// Called automatically by [MainShell] timer and on app resume.
-  /// Attempts to sync all pending measurements to the server.
   Future<List<String>> syncPending() async {
     final errors = <String>[];
     for (final key in _box.keys) {
@@ -59,19 +70,27 @@ class MeasurementRepository {
       for (final raw in list) {
         final map = Map<String, dynamic>.from(raw as Map);
         if (map['_syncStatus'] != 'synced') {
-          final m = Measurement.fromMap(map);
-          final res = await BeneficiaryApi.syncNutritionRecord(childId, m);
-          if (res.success) {
-            map['_syncStatus'] = 'synced';
-            map.remove('_lastSyncError');
-            map['_retryCount'] = 0;
-            anyUpdated = true;
-          } else {
-            map['_syncStatus'] = 'failed';
-            map['_lastSyncError'] = res.message;
-            map['_retryCount'] = ((map['_retryCount'] as int?) ?? 0) + 1;
-            anyUpdated = true;
-            errors.add('Measurement ($childId): ${res.message}');
+          try {
+            final m = Measurement.fromMap(map);
+            final res = await BeneficiaryApi.syncNutritionRecord(childId, m);
+            if (res.success) {
+              map['_syncStatus'] = 'synced';
+              map.remove('_lastSyncError');
+              map['_retryCount'] = 0;
+              anyUpdated = true;
+            } else {
+              map['_lastSyncError'] = res.message;
+              map['_retryCount'] = ((map['_retryCount'] as int?) ?? 0) + 1;
+              if (res.statusCode >= 400 && res.statusCode < 500 && res.statusCode != 408) {
+                map['_syncStatus'] = 'failed';
+              } else {
+                map['_syncStatus'] = 'pending';
+              }
+              anyUpdated = true;
+              errors.add('Measurement ($childId): ${res.message}');
+            }
+          } catch (e) {
+            errors.add('Measurement ($childId): $e');
           }
         }
         updated.add(map);
@@ -81,6 +100,7 @@ class MeasurementRepository {
         await _box.put(childId, updated);
       }
     }
+    if (errors.isEmpty) AppDataBus.notifyChanged();
     return errors;
   }
 

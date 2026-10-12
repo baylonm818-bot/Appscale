@@ -59,7 +59,11 @@ class ReferralRepository {
   }
 
   int get pendingCount => _box.values
-      .where((raw) => (raw as Map?)?['_syncStatus'] != 'synced')
+      .where((raw) => (raw as Map?)?['_syncStatus'] == 'pending')
+      .length;
+
+  int get failedCount => _box.values
+      .where((raw) => (raw as Map?)?['_syncStatus'] == 'failed')
       .length;
 
   Future<List<String>> syncPending() async {
@@ -117,11 +121,16 @@ class ReferralRepository {
         }
       } catch (_) {}
     } else {
-      map['_syncStatus'] = 'failed';
       map['_lastSyncError'] = res.message;
       map['_retryCount'] = ((map['_retryCount'] as int?) ?? 0) + 1;
+      if (res.statusCode >= 400 && res.statusCode < 500 && res.statusCode != 408) {
+        map['_syncStatus'] = 'failed';
+      } else {
+        map['_syncStatus'] = 'pending';
+      }
     }
     await _box.put(referral.id, map);
+    AppDataBus.notifyChanged();
     return res;
   }
 

@@ -263,15 +263,19 @@ exports.login = async (req, res) => {
         token,
         user: {
           user_id: user.user_id,
+          first_name: user.first_name,
+          last_name: user.last_name,
           username: user.username,
-          full_name: `${user.first_name} ${user.last_name}`,
+          email: user.email,
+          contact_number: user.contact_number,
+          full_name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
           role: 'admin',
           barangay: user.barangay,
           municipality: user.municipality,
           profile_picture: user.profile_picture
-            ? (user.profile_picture.startsWith('http')
+            ? (user.profile_picture.startsWith('http') || user.profile_picture.startsWith('data:')
                 ? user.profile_picture
-                : `${process.env.APP_BASE_URL || 'https://appscale-1.onrender.com'}${user.profile_picture}`)
+                : `${process.env.APP_BASE_URL || 'https://appscale-1.onrender.com'}${user.profile_picture.startsWith('/') ? '' : '/'}${user.profile_picture}`)
             : null,
         },
       });
@@ -345,15 +349,19 @@ exports.login = async (req, res) => {
       token,
       user: {
         user_id: user.user_id,
+        first_name: user.first_name,
+        last_name: user.last_name,
         username: user.username,
-        full_name: `${user.first_name} ${user.last_name}`,
+        email: user.email,
+        contact_number: user.contact_number,
+        full_name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
         role: user.role,
         barangay: user.barangay,
         municipality: user.municipality,
         profile_picture: user.profile_picture
-          ? (user.profile_picture.startsWith('http')
+          ? (user.profile_picture.startsWith('http') || user.profile_picture.startsWith('data:')
               ? user.profile_picture
-              : `${process.env.APP_BASE_URL || 'https://appscale-1.onrender.com'}${user.profile_picture}`)
+              : `${process.env.APP_BASE_URL || 'https://appscale-1.onrender.com'}${user.profile_picture.startsWith('/') ? '' : '/'}${user.profile_picture}`)
           : null,
       },
     });
@@ -366,6 +374,31 @@ exports.login = async (req, res) => {
       return res.status(500).json({ message: 'Server error. See error for details.', error: error && (error.stack || error.message) });
     }
     return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+// Returns the profile of the currently logged-in user
+exports.getMe = async (req, res) => {
+  try {
+    const userId = req.user?.user_id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized.' });
+    const [rows] = await pool.query(
+      `SELECT user_id, first_name, middle_initial, last_name, email, username,
+              role, municipality, barangay, purok, contact_number, profile_picture
+       FROM users WHERE user_id = ? AND deleted_at IS NULL LIMIT 1`,
+      [userId]
+    );
+    if (!rows || rows.length === 0) return res.status(404).json({ message: 'User not found.' });
+    const user = rows[0];
+    user.full_name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username;
+    if (user.profile_picture && !user.profile_picture.startsWith('data:') && !user.profile_picture.startsWith('http')) {
+      const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
+      user.profile_picture = `${base}${user.profile_picture.startsWith('/') ? '' : '/'}${user.profile_picture}`;
+    }
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error('getMe error:', error);
+    return res.status(500).json({ message: 'Server error.' });
   }
 };
 

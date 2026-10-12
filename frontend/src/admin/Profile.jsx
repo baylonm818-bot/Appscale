@@ -8,10 +8,18 @@ import { Camera, Lock, Bell, ShieldCheck, User, ChevronRight } from 'lucide-reac
 function ProfileInfoRow({ label, value, name, onSave }) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value || '');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { setTempValue(value || ''); }, [value]);
 
-  const handleSave = () => { onSave(name, tempValue); setIsEditing(false); };
+  const handleSave = async () => {
+    setSaving(true);
+    const success = await onSave(name, tempValue);
+    setSaving(false);
+    if (success !== false) {
+      setIsEditing(false);
+    }
+  };
 
   return (
     <div className="flex items-center justify-between py-4 border-b border-gray-50 last:border-0">
@@ -20,9 +28,14 @@ function ProfileInfoRow({ label, value, name, onSave }) {
         {isEditing ? (
           <input
             autoFocus
+            disabled={saving}
             value={tempValue}
             onChange={(e) => setTempValue(e.target.value)}
-            className="border border-[#2e7d32] rounded-xl px-3 py-1.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-green-100 transition"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSave();
+              if (e.key === 'Escape') { setIsEditing(false); setTempValue(value || ''); }
+            }}
+            className="border border-[#2e7d32] rounded-xl px-3 py-1.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-green-100 transition disabled:bg-gray-50"
           />
         ) : (
           <p className="text-sm font-semibold text-gray-800 truncate">{value || <span className="text-gray-400 font-normal">—</span>}</p>
@@ -31,12 +44,18 @@ function ProfileInfoRow({ label, value, name, onSave }) {
       <div className="ml-4 shrink-0">
         {isEditing ? (
           <div className="flex gap-2">
-            <button onClick={handleSave}
-              className="text-xs font-bold text-white bg-[#2e7d32] hover:bg-[#256427] px-3 py-1.5 rounded-lg transition">
-              Save
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="text-xs font-bold text-white bg-[#2e7d32] hover:bg-[#256427] px-3 py-1.5 rounded-lg transition disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save'}
             </button>
-            <button onClick={() => { setIsEditing(false); setTempValue(value || ''); }}
-              className="text-xs font-semibold text-gray-400 hover:text-gray-600 px-2 py-1.5 rounded-lg transition">
+            <button
+              onClick={() => { setIsEditing(false); setTempValue(value || ''); }}
+              disabled={saving}
+              className="text-xs font-semibold text-gray-400 hover:text-gray-600 px-2 py-1.5 rounded-lg transition"
+            >
               Cancel
             </button>
           </div>
@@ -102,10 +121,21 @@ function Profile() {
 
   const fetchProfile = async () => {
     try {
-      const res = await axiosClient.get(`/profile/${storedUser.user_id}`);
-      setProfile(res.data); updateUser(res.data);
-    } catch { setError('Failed to load profile.'); }
-    finally { setLoading(false); }
+      const res = await axiosClient.get('/profile/me');
+      setProfile(res.data);
+      if (updateUser) updateUser(res.data);
+    } catch {
+      try {
+        const fallbackId = storedUser?.user_id || 'me';
+        const res2 = await axiosClient.get(`/profile/${fallbackId}`);
+        setProfile(res2.data);
+        if (updateUser) updateUser(res2.data);
+      } catch {
+        setError('Failed to load profile.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchProfile(); }, []);
@@ -122,13 +152,10 @@ function Profile() {
       return;
     }
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token || !profile?.user_id) {
-      setProfileImageSrc(getProfileImageUrl(pic));
-      return;
-    }
+    const targetId = profile?.user_id || 'me';
     (async () => {
       try {
-        const res = await fetch(`${API_ORIGIN}/api/profile/${profile.user_id}/picture/data`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch(`${API_ORIGIN}/api/profile/${targetId}/picture/data`, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) {
           if (!cancelled) setProfileImageSrc(getProfileImageUrl(pic));
           return;
@@ -148,62 +175,106 @@ function Profile() {
 
   const handleFieldSave = async (fieldName, value) => {
     const updated = { ...profile, [fieldName]: value };
-    setProfileMsg(''); setProfileErr('');
+    setProfileMsg('');
+    setProfileErr('');
     try {
-      await axiosClient.put(`/profile/${storedUser.user_id}`, {
-        first_name: updated.first_name, middle_initial: updated.middle_initial,
-        last_name: updated.last_name, email: updated.email,
-        contact_number: updated.contact_number, purok: updated.purok,
+      const targetId = profile?.user_id || 'me';
+      const res = await axiosClient.put(`/profile/${targetId}`, {
+        first_name: updated.first_name,
+        middle_initial: updated.middle_initial,
+        last_name: updated.last_name,
+        email: updated.email,
+        contact_number: updated.contact_number,
+        purok: updated.purok,
       });
-      setProfile(updated); updateUser(updated);
-      setProfileMsg('Updated successfully.');
-      setTimeout(() => setProfileMsg(''), 2500);
-    } catch (err) { setProfileErr(err.response?.data?.message || 'Update failed.'); }
+      const returnedUser = res.data?.user || updated;
+      setProfile(returnedUser);
+      if (updateUser) updateUser(returnedUser);
+      setProfileMsg('Profile updated successfully.');
+      setTimeout(() => setProfileMsg(''), 4000);
+      return true;
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to update profile. Please try again.';
+      setProfileErr(msg);
+      return false;
+    }
   };
 
   const handlePictureChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setPicError('');
+    setProfileMsg('');
     setUploadingPic(true);
-    const localPreview = URL.createObjectURL(file);
-    setProfileImageSrc(localPreview);
 
-    const fd = new FormData();
-    fd.append('profile_picture', file);
-    try {
-      const res = await axiosClient.post(`/profile/${storedUser.user_id}/picture`, fd, { headers: { 'Content-Type': undefined } });
-      const serverPath = res.data.profile_picture;
-      const resolved = serverPath ? getProfileImageUrl(serverPath) : serverPath;
-      const cacheBusted = resolved ? `${resolved}?t=${Date.now()}` : serverPath;
-      setProfile((prev) => ({ ...prev, profile_picture: cacheBusted }));
-      setProfileImageSrc(cacheBusted);
-      if (typeof updateAvatar === 'function') {
-        updateAvatar(cacheBusted);
-      } else if (typeof updateUser === 'function') {
-        updateUser({ profile_picture: cacheBusted });
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = reader.result;
+      setProfileImageSrc(base64Data);
+
+      try {
+        const targetId = profile?.user_id || 'me';
+        const res = await axiosClient.post(`/profile/${targetId}/picture`, {
+          profile_picture: base64Data,
+        });
+        const savedPic = res.data.profile_picture || base64Data;
+        const updatedUser = res.data.user || { ...profile, profile_picture: savedPic };
+        setProfile(updatedUser);
+        setProfileImageSrc(savedPic);
+        if (typeof updateAvatar === 'function') {
+          updateAvatar(savedPic);
+        }
+        if (typeof updateUser === 'function') {
+          updateUser(updatedUser);
+        }
+        setProfileMsg('Profile picture updated successfully.');
+        setTimeout(() => setProfileMsg(''), 4000);
+      } catch (err) {
+        setPicError(err.response?.data?.message || 'Failed to upload profile picture.');
+      } finally {
+        setUploadingPic(false);
       }
-    } catch {
-      setPicError('Failed to upload picture.');
-    } finally {
+    };
+    reader.onerror = () => {
+      setPicError('Failed to read image file.');
       setUploadingPic(false);
-    }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handlePasswordChange = (e) => setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
 
   const submitPassword = async (e) => {
-    e.preventDefault(); setPasswordMsg(''); setPasswordErr('');
-    if (passwordForm.new_password !== passwordForm.confirm_password) { setPasswordErr('New passwords do not match.'); return; }
+    e.preventDefault();
+    setPasswordMsg('');
+    setPasswordErr('');
+    if (!passwordForm.current_password || !passwordForm.new_password) {
+      setPasswordErr('Please fill in all password fields.');
+      return;
+    }
+    if (passwordForm.new_password.length < 8) {
+      setPasswordErr('New password must be at least 8 characters long.');
+      return;
+    }
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordErr('New passwords do not match.');
+      return;
+    }
     setSavingPassword(true);
     try {
-      await axiosClient.patch(`/profile/${storedUser.user_id}/password`, {
-        current_password: passwordForm.current_password, new_password: passwordForm.new_password,
+      const targetId = profile?.user_id || 'me';
+      const res = await axiosClient.patch(`/profile/${targetId}/password`, {
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password,
       });
-      setPasswordMsg('Password changed successfully.');
+      setPasswordMsg(res.data?.message || 'Password changed successfully.');
       setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
-    } catch (err) { setPasswordErr(err.response?.data?.message || 'Something went wrong.'); }
-    finally { setSavingPassword(false); }
+      setTimeout(() => setPasswordMsg(''), 4000);
+    } catch (err) {
+      setPasswordErr(err.response?.data?.message || 'Current password is incorrect or change failed.');
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   const updateNotificationPreference = (name) => {

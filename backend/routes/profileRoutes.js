@@ -5,10 +5,11 @@ const { upload, uploadProfilePicture, getProfile, updateProfile, changePassword,
 
 router.use(roleCheck(['admin', 'bhw', 'bns']));
 
-router.get('/:id', getProfile);
-router.get('/:id/picture/data', getProfilePictureData);
-router.put('/:id', updateProfile);
-router.patch('/:id/password', changePassword);
+// Explicit /me endpoints for the logged-in user
+router.get('/me', getProfile);
+router.put('/me', updateProfile);
+router.patch('/me/password', changePassword);
+
 const handleUpload = (req, res, next) => {
   upload.single('profile_picture')(req, res, (err) => {
     if (err) {
@@ -18,8 +19,14 @@ const handleUpload = (req, res, next) => {
   });
 };
 
+router.post('/me/picture', handleUpload, uploadProfilePicture);
+
+// Parameterized /:id endpoints
+router.get('/:id', getProfile);
+router.get('/:id/picture/data', getProfilePictureData);
+router.put('/:id', updateProfile);
+router.patch('/:id/password', changePassword);
 router.post('/:id/picture', handleUpload, uploadProfilePicture);
 router.post('/:id/deactivate', roleCheck(['admin']), deactivateAccount);
-
 
 module.exports = router;

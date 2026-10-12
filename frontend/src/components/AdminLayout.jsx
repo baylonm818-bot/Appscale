@@ -15,6 +15,7 @@ import {
   LogOut,
   Menu,
   X,
+  ChevronDown,
 } from 'lucide-react';
 
 const menuItems = [
@@ -36,7 +37,7 @@ function AdminLayout() {
   
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const notificationRootRef = useRef(null);
   const profileRootRef = useRef(null);
 
@@ -64,6 +65,29 @@ function AdminLayout() {
       // ignore, user can retry if needed
     }
   }, [fetchUnreadCount]);
+
+  // Synchronize user profile from API and storage
+  useEffect(() => {
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    if (token) {
+      axiosClient.get('/profile/me')
+        .then((res) => {
+          if (res.data && updateUser) updateUser(res.data);
+        })
+        .catch(() => {});
+    }
+
+    const handleUserUpdate = () => {
+      const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
+      if (stored && updateUser) {
+        try {
+          updateUser(JSON.parse(stored));
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('user:updated', handleUserUpdate);
+    return () => window.removeEventListener('user:updated', handleUserUpdate);
+  }, []);
 
   // Close dropdowns on route change and listen for external updates
   useEffect(() => {
@@ -333,32 +357,41 @@ function AdminLayout() {
 
             <div ref={profileRootRef} className="relative">
               <button
-              type="button"
-              aria-label="Open profile menu"
-              aria-expanded={isProfileMenuOpen}
-              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-              className="flex items-center gap-2 rounded-full p-1 pr-2 transition hover:bg-green-50"
-            >
-              <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-sm font-bold text-gray-900 shadow-sm ring-2 ring-green-100">
-                {user?.profile_picture ? (
-                  <img
-                    src={getProfileImageUrl(user.profile_picture)}
-                    alt="Profile"
-                    className="h-full w-full object-cover rounded-full"
-                    onError={(event) => {
-                      const container = event.currentTarget.parentElement;
-                      if (!container) return;
-                      event.currentTarget.style.display = 'none';
-                      const initials = document.createElement('div');
-                      initials.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black';
-                      initials.textContent = getUserInitials(user);
-                      container.replaceChildren(initials);
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white text-2xl font-black">{getUserInitials(user)}</div>
-                )}
-              </span>
+                type="button"
+                aria-label="Open profile menu"
+                aria-expanded={isProfileMenuOpen}
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="flex items-center gap-2.5 rounded-full py-1 px-1.5 sm:pr-3 transition hover:bg-green-50 focus:outline-none border border-transparent hover:border-green-100"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-sm font-bold text-white shadow-sm ring-2 ring-green-100">
+                  {user?.profile_picture ? (
+                    <img
+                      src={getProfileImageUrl(user.profile_picture)}
+                      alt="Profile"
+                      className="h-full w-full object-cover rounded-full"
+                      onError={(event) => {
+                        const container = event.currentTarget.parentElement;
+                        if (!container) return;
+                        event.currentTarget.style.display = 'none';
+                        const initials = document.createElement('div');
+                        initials.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-xs font-bold';
+                        initials.textContent = getUserInitials(user);
+                        container.replaceChildren(initials);
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">{getUserInitials(user)}</div>
+                  )}
+                </span>
+                <div className="hidden sm:flex flex-col text-left">
+                  <span className="text-xs font-bold text-gray-800 leading-tight truncate max-w-[140px]">
+                    {user?.full_name || user?.username || "Admin"}
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">
+                    {user?.role || "Administrator"}
+                  </span>
+                </div>
+                <ChevronDown size={14} className="text-gray-400 hidden sm:block ml-0.5" />
               </button>
 
               {isProfileMenuOpen && (
