@@ -100,6 +100,9 @@ exports.getUserStats = async (req, res) => {
             return res.status(201).json({ message: 'User created successfully.' });
         } catch (error) {
             console.error('Create user error:', error);
+            if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+                return res.status(409).json({ message: `Barangay ${barangay} already has an active ${String(role).toUpperCase()}` });
+            }
             return res.status(500).json({ message: 'Server Error. Please try again later.' });
         }
     };
@@ -148,43 +151,72 @@ exports.updateUser = async (req, res) => {
     return res.status(200).json({ message: 'User updated successfully.' });
   } catch (error) {
     console.error('Update user error:', error);
+    if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+      return res.status(409).json({ message: `Barangay ${barangay} already has an active ${String(role).toUpperCase()}` });
+    }
     return res.status(500).json({ message: 'Server Error. Please try again later.' });
   }
 };
 
     exports.updateUserStatus = async (req, res) => {
         const { user_id } = req.params;
-        const { status, deactivation_reason} = req.body;
+        const { status, deactivation_reason } = req.body;
 
         if (!['active', 'locked', 'inactive'].includes(status)) {
             return res.status(400).json({ message: 'Invalid status value.' });
         }
 
         try {
+            const [[targetUser]] = await pool.query(
+                'SELECT user_id, first_name, last_name, role, barangay FROM users WHERE user_id = ?',
+                [user_id]
+            );
+
+            if (!targetUser) {
+                return res.status(404).json({ message: 'User not found.' });
+            }
+
+            if (status === 'active' && ['bns', 'bhw'].includes(String(targetUser.role || '').toLowerCase())) {
+                const [existingUsers] = await pool.query(
+                    `SELECT user_id, role, barangay, status, deleted_at
+                     FROM users
+                     WHERE deleted_at IS NULL AND status = 'active' AND user_id <> ?`,
+                    [user_id]
+                );
+                const activeRoleGuard = ensureSingleActiveRolePerBarangay({
+                    users: existingUsers,
+                    role: targetUser.role,
+                    barangay: targetUser.barangay,
+                });
+                if (!activeRoleGuard.allowed) {
+                    return res.status(409).json({ message: activeRoleGuard.message });
+                }
+            }
+
             await pool.query(
                 'UPDATE users SET status = ?, deactivation_reason = ?, failed_attempts = 0 WHERE user_id = ?',
                 [status, deactivation_reason || null, user_id]
             );
 
             try {
-                const [[targetUser]] = await pool.query('SELECT first_name, last_name, role FROM users WHERE user_id = ?', [user_id]);
-                if (targetUser) {
-                    const actionLabel = status === 'locked' ? 'Locked' : status === 'active' ? 'Unlocked' : 'Deactivated';
-                    await pool.query(
-                        `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
-                         VALUES (?, ?, 'account', FALSE, ?, NOW())`,
-                        [
-                            `Account ${actionLabel}: ${targetUser.first_name} ${targetUser.last_name}`,
-                            `${targetUser.first_name} ${targetUser.last_name} (${(targetUser.role || '').toUpperCase()}) was ${status} by administrator.`,
-                            user_id
-                        ]
-                    );
-                }
+                const actionLabel = status === 'locked' ? 'Locked' : status === 'active' ? 'Unlocked' : 'Deactivated';
+                await pool.query(
+                    `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
+                     VALUES (?, ?, 'account', FALSE, ?, NOW())`,
+                    [
+                        `Account ${actionLabel}: ${targetUser.first_name} ${targetUser.last_name}`,
+                        `${targetUser.first_name} ${targetUser.last_name} (${(targetUser.role || '').toUpperCase()}) was ${status} by administrator.`,
+                        user_id
+                    ]
+                );
             } catch (_) {}
 
             return res.status(200).json({ message: 'User status updated successfully.' });
         } catch (error) {
             console.error('Update user status error:', error);
+            if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+                return res.status(409).json({ message: 'This barangay already has an active user with this role.' });
+            }
             return res.status(500).json({ message: 'Server Error. Please try again later.' });
         }
     };
@@ -224,29 +256,55 @@ exports.updateUser = async (req, res) => {
         const { user_id } = req.params;
 
         try {
+            const [[targetUser]] = await pool.query(
+                'SELECT user_id, first_name, last_name, role, barangay FROM users WHERE user_id = ?',
+                [user_id]
+            );
+
+            if (!targetUser) {
+                return res.status(404).json({ message: 'User not found.' });
+            }
+
+            if (['bns', 'bhw'].includes(String(targetUser.role || '').toLowerCase())) {
+                const [existingUsers] = await pool.query(
+                    `SELECT user_id, role, barangay, status, deleted_at
+                     FROM users
+                     WHERE deleted_at IS NULL AND status = 'active' AND user_id <> ?`,
+                    [user_id]
+                );
+                const activeRoleGuard = ensureSingleActiveRolePerBarangay({
+                    users: existingUsers,
+                    role: targetUser.role,
+                    barangay: targetUser.barangay,
+                });
+                if (!activeRoleGuard.allowed) {
+                    return res.status(409).json({ message: activeRoleGuard.message });
+                }
+            }
+
             await pool.query(
                 'UPDATE users SET status = ?, deleted_at = NULL, failed_attempts = 0 WHERE user_id = ?',
                 ['active', user_id]
             );
 
             try {
-                const [[targetUser]] = await pool.query('SELECT first_name, last_name, role FROM users WHERE user_id = ?', [user_id]);
-                if (targetUser) {
-                    await pool.query(
-                        `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
-                         VALUES (?, ?, 'account', FALSE, ?, NOW())`,
-                        [
-                            `Account Restored: ${targetUser.first_name} ${targetUser.last_name}`,
-                            `${targetUser.first_name} ${targetUser.last_name} (${(targetUser.role || '').toUpperCase()}) was restored to active.`,
-                            user_id
-                        ]
-                    );
-                }
+                await pool.query(
+                    `INSERT INTO notifications (title, message, type, is_read, related_id, created_at)
+                     VALUES (?, ?, 'account', FALSE, ?, NOW())`,
+                    [
+                        `Account Restored: ${targetUser.first_name} ${targetUser.last_name}`,
+                        `${targetUser.first_name} ${targetUser.last_name} (${(targetUser.role || '').toUpperCase()}) was restored to active.`,
+                        user_id
+                    ]
+                );
             } catch (_) {}
 
             return res.status(200).json({ message: 'User restored successfully.' });
         } catch (error) {
             console.error('Restore user error:', error);
+            if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+                return res.status(409).json({ message: 'This barangay already has an active user with this role.' });
+            }
             return res.status(500).json({ message: 'Server Error. Please try again later.' });
         }
     };
@@ -264,7 +322,7 @@ exports.updateUser = async (req, res) => {
         try {
             const id = String(identifier).trim();
             const [rows] = await pool.query(
-                'SELECT user_id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) OR LOWER(TRIM(username)) = LOWER(TRIM(?)) LIMIT 1',
+                'SELECT user_id, role, barangay FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) OR LOWER(TRIM(username)) = LOWER(TRIM(?)) LIMIT 1',
                 [id, id]
             );
 
@@ -273,6 +331,24 @@ exports.updateUser = async (req, res) => {
             }
 
             const user = rows[0];
+
+            if (['bns', 'bhw'].includes(String(user.role || '').toLowerCase())) {
+                const [existingUsers] = await pool.query(
+                    `SELECT user_id, role, barangay, status, deleted_at
+                     FROM users
+                     WHERE deleted_at IS NULL AND status = 'active' AND user_id <> ?`,
+                    [user.user_id]
+                );
+                const activeRoleGuard = ensureSingleActiveRolePerBarangay({
+                    users: existingUsers,
+                    role: user.role,
+                    barangay: user.barangay,
+                });
+                if (!activeRoleGuard.allowed) {
+                    return res.status(409).json({ message: activeRoleGuard.message });
+                }
+            }
+
             await pool.query(
                 'UPDATE users SET failed_attempts = 0, status = ?, deleted_at = NULL WHERE user_id = ?',
                 ['active', user.user_id]
@@ -281,6 +357,9 @@ exports.updateUser = async (req, res) => {
             return res.status(200).json({ message: 'User unlocked and reset successfully.' });
         } catch (error) {
             console.error('Unlock user error:', error);
+            if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+                return res.status(409).json({ message: 'This barangay already has an active user with this role.' });
+            }
             return res.status(500).json({ message: 'Server Error. Please try again later.' });
         }
     };

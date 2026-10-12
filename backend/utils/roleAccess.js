@@ -189,7 +189,7 @@ function ensureSingleActiveRolePerBarangay({ users = [], role, barangay }) {
     const label = targetRole.toUpperCase();
     return {
       allowed: false,
-      message: `This barangay already has an active ${label}. Deactivate or lock the existing ${label} before adding a replacement.`,
+      message: `Barangay ${normalizedBarangay} already has an active ${label}`,
     };
   }
 

@@ -161,23 +161,34 @@ function UserManagement() {
     setShowModal(true);
   };
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const normalizedSelectedBarangay = (form.barangay || '').trim().toLowerCase();
+  const isBnsTaken = !!form.barangay && users.some((u) =>
+    u.role === 'bns' &&
+    u.status === 'active' &&
+    !u.deleted_at &&
+    u.user_id !== editingUser?.user_id &&
+    (u.barangay || '').trim().toLowerCase() === normalizedSelectedBarangay
+  );
+  const isBhwTaken = !!form.barangay && users.some((u) =>
+    u.role === 'bhw' &&
+    u.status === 'active' &&
+    !u.deleted_at &&
+    u.user_id !== editingUser?.user_id &&
+    (u.barangay || '').trim().toLowerCase() === normalizedSelectedBarangay
+  );
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setFormError('');
-    setSaving(true);
-    try {
-      const normalizedBarangay = (form.barangay || '').trim().toLowerCase();
-      const hasActiveBnsInBarangay = users.some((u) =>
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'barangay') {
+      const normalizedBarangay = (value || '').trim().toLowerCase();
+      const bnsTaken = !!value && users.some((u) =>
         u.role === 'bns' &&
         u.status === 'active' &&
         !u.deleted_at &&
         u.user_id !== editingUser?.user_id &&
         (u.barangay || '').trim().toLowerCase() === normalizedBarangay
       );
-
-      const hasActiveBhwInBarangay = users.some((u) =>
+      const bhwTaken = !!value && users.some((u) =>
         u.role === 'bhw' &&
         u.status === 'active' &&
         !u.deleted_at &&
@@ -185,14 +196,32 @@ function UserManagement() {
         (u.barangay || '').trim().toLowerCase() === normalizedBarangay
       );
 
-      if (form.role === 'bns' && hasActiveBnsInBarangay) {
-        setFormError('This barangay already has an active BNS. Deactivate or lock the existing BNS before assigning a replacement.');
+      let nextRole = form.role;
+      if (form.role === 'bhw' && bhwTaken && !bnsTaken) {
+        nextRole = 'bns';
+      } else if (form.role === 'bns' && bnsTaken && !bhwTaken) {
+        nextRole = 'bhw';
+      }
+
+      setForm((prev) => ({ ...prev, barangay: value, role: nextRole }));
+      return;
+    }
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormError('');
+    setSaving(true);
+    try {
+      if (form.role === 'bns' && isBnsTaken) {
+        setFormError(`Barangay ${form.barangay} already has an active BNS.`);
         setSaving(false);
         return;
       }
 
-      if (form.role === 'bhw' && hasActiveBhwInBarangay) {
-        setFormError('This barangay already has an active BHW. Deactivate or lock the existing BHW before assigning a replacement.');
+      if (form.role === 'bhw' && isBhwTaken) {
+        setFormError(`Barangay ${form.barangay} already has an active BHW.`);
         setSaving(false);
         return;
       }
@@ -224,8 +253,8 @@ function UserManagement() {
         deactivation_reason: newStatus === 'locked' ? 'Locked by Administrator' : null,
       });
       fetchData();
-    } catch {
-      alert('Failed to update user status.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update user status.');
     }
   };
 
@@ -238,8 +267,8 @@ function UserManagement() {
     try {
       await axiosClient.patch(`/users/${archiveConfirm.user_id}/archive`);
       fetchData();
-    } catch {
-      alert('Failed to archive user.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to archive user.');
     } finally {
       setArchiveConfirm(null);
     }
@@ -249,8 +278,8 @@ function UserManagement() {
     try {
       await axiosClient.patch(`/users/${u.user_id}/restore`);
       fetchData();
-    } catch {
-      alert('Failed to restore user.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to restore user.');
     }
   };
 
@@ -532,15 +561,43 @@ function UserManagement() {
 
               <form id="userForm" onSubmit={handleSubmit} className="space-y-3.5">
 
-                {!editingUser && (
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Role</label>
-                    <select name="role" value={form.role} onChange={handleChange} className={inputCls}>
-                      <option value="bhw">Barangay Health Worker (BHW)</option>
-                      <option value="bns">Barangay Nutrition Scholar (BNS)</option>
-                    </select>
-                  </div>
-                )}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Role *</label>
+                  <select
+                    name="role"
+                    value={form.role}
+                    onChange={handleChange}
+                    disabled={viewOnly}
+                    className={inputCls}
+                  >
+                    <option value="bhw" disabled={isBhwTaken}>
+                      Barangay Health Worker (BHW){isBhwTaken ? ' (Already assigned)' : ''}
+                    </option>
+                    <option value="bns" disabled={isBnsTaken}>
+                      Barangay Nutrition Scholar (BNS){isBnsTaken ? ' (Already assigned)' : ''}
+                    </option>
+                  </select>
+
+                  {form.barangay && (
+                    <div className="mt-1.5 space-y-1">
+                      {isBhwTaken && !isBnsTaken && (
+                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                          BHW is already assigned to {form.barangay}.
+                        </p>
+                      )}
+                      {isBnsTaken && !isBhwTaken && (
+                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                          BNS is already assigned to {form.barangay}.
+                        </p>
+                      )}
+                      {isBhwTaken && isBnsTaken && (
+                        <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
+                          Both BNS and BHW are already assigned to {form.barangay}.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -632,7 +689,7 @@ function UserManagement() {
                 <button
                   type="submit"
                   form="userForm"
-                  disabled={saving}
+                  disabled={saving || (!viewOnly && Boolean((form.role === 'bns' && isBnsTaken) || (form.role === 'bhw' && isBhwTaken)))}
                   className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-sm disabled:opacity-60"
                 >
                   {saving ? 'Saving…' : (editingUser ? 'Save Changes' : 'Create Account')}
