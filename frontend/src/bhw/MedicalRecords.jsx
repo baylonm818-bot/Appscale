@@ -19,11 +19,9 @@ import {
   History,
   ShieldCheck,
   Clock,
-  Printer,
   Plus,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import ReportPreviewModal from '../components/ui/ReportPreviewModal';
 import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
 const statusColors = {
@@ -44,10 +42,6 @@ const severityColors = {
 function MedicalRecords() {
   const [recordType, setRecordType] = useState('children'); // 'children' | 'mothers' | 'audit'
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
-
-  // Report Modal state (Item 30 & 34)
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [reportData, setReportData] = useState(null);
 
   // ── Add Beneficiary Modal State (Item 25 & 36) ──
   const [showAddBeneficiaryModal, setShowAddBeneficiaryModal] = useState(false);
@@ -338,29 +332,6 @@ function MedicalRecords() {
             <History size={15} /> Audit Trail
           </button>
         </div>
-
-        {recordType !== 'audit' && (
-          <button
-            type="button"
-            onClick={() => {
-              const list = recordType === 'mothers' ? mothers : filteredChildren;
-              setReportData({
-                summary: recordType === 'children' ? {
-                  totalChildren: filteredChildren.length,
-                  normal: filteredChildren.filter((c) => (c.overall_status || c.nutrition_status) === 'normal').length,
-                  mam: filteredChildren.filter((c) => (c.overall_status || c.nutrition_status) === 'MAM' || (c.weight_status || '').toLowerCase().includes('underweight')).length,
-                  sam: filteredChildren.filter((c) => (c.overall_status || c.nutrition_status) === 'SAM' || (c.weight_status || '').toLowerCase().includes('severely')).length,
-                } : null,
-                items: list,
-                isMothers: recordType === 'mothers',
-              });
-              setIsReportModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:opacity-95 shadow-sm cursor-pointer transition"
-          >
-            <Printer size={15} /> Generate {recordType === 'mothers' ? 'Lactating Mothers' : 'Children'} Report
-          </button>
-        )}
       </div>
 
       {/* ── CHILDREN VIEW ── */}
@@ -1550,15 +1521,6 @@ function MedicalRecords() {
         </div>,
         document.body
       )}
-
-      {/* Official Report Preview Modal (Item 30 & 34) */}
-      <ReportPreviewModal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        reportData={reportData}
-        title={`BHW ${recordType === 'mothers' ? 'Lactating Mothers' : 'Child Nutrition & Health'} Report`}
-        barangay={user.barangay || 'Community'}
-      />
 
     </main>
   );
