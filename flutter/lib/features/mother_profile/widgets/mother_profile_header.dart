@@ -154,13 +154,19 @@ class MotherProfileHeader extends StatelessWidget {
             spacing: 8,
             runSpacing: 6,
             children: [
-              if (mother.isActive)
+              if (mother.isActive) ...[
                 StatusBadge(
                   label: mother.riskStatus,
                   color: MotherStatusMeta.colorFor(mother.riskStatus),
                   onDark: true,
-                )
-              else
+                ),
+                if (mother.isAdolescent)
+                  const StatusBadge(
+                    label: 'Adolescent mother',
+                    color: AppColors.statOrange,
+                    onDark: true,
+                  ),
+              ] else
                 StatusBadge(
                   label: 'Inactive · ${mother.inactiveReason ?? "Unspecified"}',
                   color: AppColors.textMuted,

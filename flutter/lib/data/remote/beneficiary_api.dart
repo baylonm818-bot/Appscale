@@ -97,7 +97,7 @@ class BeneficiaryApi {
       'first_name': firstName,
       'last_name': lastName,
       'full_name': mother.fullName,
-      'birth_date': _date(mother.birthDate),
+      'birth_date': mother.birthDate != null ? _date(mother.birthDate!) : null,
       'contact_number': mother.contactNo,
       'address': mother.address,
       'barangay': mother.barangay,

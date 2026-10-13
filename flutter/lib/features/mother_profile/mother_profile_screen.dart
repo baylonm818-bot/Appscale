@@ -131,9 +131,9 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
                 targetBarangay.trim().toLowerCase() &&
             m.fullName.trim().toLowerCase() ==
                 current.fullName.trim().toLowerCase() &&
-            m.birthDate.year == current.birthDate.year &&
-            m.birthDate.month == current.birthDate.month &&
-            m.birthDate.day == current.birthDate.day);
+            m.birthDate?.year == current.birthDate?.year &&
+            m.birthDate?.month == current.birthDate?.month &&
+            m.birthDate?.day == current.birthDate?.day);
 
         if (localDuplicate) {
           hasDuplicate = true;
@@ -142,7 +142,7 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
             entityType: 'mother',
             targetBarangay: targetBarangay,
             fullName: current.fullName,
-            birthDate: current.birthDate,
+            birthDate: current.birthDate ?? DateTime(2000, 1, 1),
           );
         }
 

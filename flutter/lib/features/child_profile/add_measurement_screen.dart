@@ -198,6 +198,28 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     final h = MeasurementValidator.parseDecimal(_heightController.text);
     if (w == null || h == null || h <= 0) return null;
 
+    // Do not compute BMI or nutritional status from invalid values
+    final wRes = MeasurementValidator.checkWeight(w, _assessmentAgeMonths);
+    if (wRes.isError) return null;
+
+    final hRes = MeasurementValidator.checkHeight(
+      h,
+      _assessmentAgeMonths,
+      previousHeightCm: _previousEntry?.heightCm,
+    );
+    if (hRes.isError) return null;
+
+    if (_isMuacEligible) {
+      final rawMuac = _muacController.text.trim();
+      if (rawMuac.isNotEmpty) {
+        final m = MeasurementValidator.parseDecimal(rawMuac);
+        if (m != null) {
+          final mRes = MeasurementValidator.checkMuac(m, _assessmentAgeMonths);
+          if (mRes.isError) return null;
+        }
+      }
+    }
+
     final weightStatus = GrowthClassifier.classifyWeightForAge(
       weightKg: w,
       ageMonths: _assessmentAgeMonths,

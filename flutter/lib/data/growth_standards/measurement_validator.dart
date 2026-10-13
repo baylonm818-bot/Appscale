@@ -82,6 +82,34 @@ class MeasurementValidator {
     return (suggestion: null, value: null);
   }
 
+  static const double minPlausibleWeightKg = 2.0;
+  static const double maxPlausibleWeightKg = 30.0;
+  static const double minPlausibleHeightCm = 45.0;
+  static const double maxPlausibleHeightCm = 125.0;
+  static const double minPlausibleMuacCm = 8.0;
+  static const double maxPlausibleMuacCm = 20.0;
+
+  static bool isPlausibleRecord({
+    required double heightCm,
+    required double weightKg,
+    double? muacCm,
+    int? ageMonths,
+  }) {
+    // For children 0-59 months: height 45-125 cm, weight 2-30 kg, MUAC 8-20 cm (if entered)
+    if (ageMonths == null || (ageMonths >= 0 && ageMonths <= 59)) {
+      if (heightCm < minPlausibleHeightCm || heightCm > maxPlausibleHeightCm) {
+        return false;
+      }
+      if (weightKg < minPlausibleWeightKg || weightKg > maxPlausibleWeightKg) {
+        return false;
+      }
+      if (muacCm != null && (muacCm < minPlausibleMuacCm || muacCm > maxPlausibleMuacCm)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   static ValidationResult checkWeight(double weight, int ageMonths) {
     final range = GrowthRangeConfig.getForAge(ageMonths);
     final ageLabel = ageMonths == 1 ? '1 mo' : '$ageMonths mos';
@@ -89,7 +117,31 @@ class MeasurementValidator {
         ? weight.toInt().toString()
         : weight.toStringAsFixed(1);
 
-    // Hard error: physically impossible or extreme typo
+    // Hard absolute limits for 0-59 months: 2-30 kg
+    if (ageMonths <= 59) {
+      if (weight < minPlausibleWeightKg) {
+        return ValidationResult(
+          severity: ValidationSeverity.error,
+          message: 'Weight $valStr kg is invalid. Must be between 2 and 30 kg for children 0–59 months (Expected ${range.expectedWeightLabel} for $ageLabel).',
+        );
+      }
+      if (weight > maxPlausibleWeightKg) {
+        final suggestion = suggestDecimalCorrection(
+          value: weight,
+          softMin: range.softMinWeight,
+          softMax: range.softMaxWeight,
+          unit: 'kg',
+        );
+        return ValidationResult(
+          severity: ValidationSeverity.error,
+          message: 'Weight $valStr kg is too high for $ageLabel. Expected ${range.expectedWeightLabel}. (Must be between 2 and 30 kg for children 0–59 months)',
+          suggestion: suggestion.suggestion,
+          suggestionValue: suggestion.value,
+        );
+      }
+    }
+
+    // Hard error: physically impossible or extreme typo per age bracket
     if (weight < range.hardMinWeight) {
       return ValidationResult(
         severity: ValidationSeverity.error,
@@ -161,6 +213,30 @@ class MeasurementValidator {
       );
     }
 
+    // Hard absolute limits for 0-59 months: 45-125 cm
+    if (ageMonths <= 59) {
+      if (height < minPlausibleHeightCm) {
+        return ValidationResult(
+          severity: ValidationSeverity.error,
+          message: 'Height $valStr cm is too low for $ageLabel. Expected ${range.expectedHeightLabel}. (Must be between 45 and 125 cm for children 0–59 months)',
+        );
+      }
+      if (height > maxPlausibleHeightCm) {
+        final suggestion = suggestDecimalCorrection(
+          value: height,
+          softMin: range.softMinHeight,
+          softMax: range.softMaxHeight,
+          unit: 'cm',
+        );
+        return ValidationResult(
+          severity: ValidationSeverity.error,
+          message: 'Height $valStr cm is too high for $ageLabel. Expected ${range.expectedHeightLabel}. (Must be between 45 and 125 cm for children 0–59 months)',
+          suggestion: suggestion.suggestion,
+          suggestionValue: suggestion.value,
+        );
+      }
+    }
+
     // Hard error
     if (height < range.hardMinHeight) {
       return ValidationResult(
@@ -216,7 +292,14 @@ class MeasurementValidator {
         ? muac.toInt().toString()
         : muac.toStringAsFixed(1);
 
-    if (muac < 7.0 || muac > 30.0) {
+    if (ageMonths <= 59) {
+      if (muac < minPlausibleMuacCm || muac > maxPlausibleMuacCm) {
+        return ValidationResult(
+          severity: ValidationSeverity.error,
+          message: 'MUAC $valStr cm is outside plausible range (8–20 cm for children 0–59 months).',
+        );
+      }
+    } else if (muac < 7.0 || muac > 30.0) {
       return ValidationResult(
         severity: ValidationSeverity.error,
         message: 'MUAC $valStr cm is outside plausible range (7.0–30.0 cm).',

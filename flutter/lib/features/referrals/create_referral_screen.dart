@@ -15,6 +15,7 @@ import '../../shared/widgets/form_action_buttons.dart';
 import '../../shared/widgets/form_section_card.dart';
 import 'referral_constants.dart';
 import '../../shared/utils/app_notifications.dart';
+import '../../shared/utils/app_user_identity.dart';
 import 'widgets/referral_beneficiary_field.dart';
 
 class CreateReferralScreen extends StatefulWidget {
@@ -53,12 +54,28 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
   late ReferralBeneficiaryResult? _selected = widget.isPrefilled
       ? ReferralBeneficiaryResult(
           id: widget.prefillBeneficiaryId!,
-          name: widget.prefillBeneficiaryName!,
+          name: AppUserIdentity.normalizeDisplayName(widget.prefillBeneficiaryName!),
           subtitle: widget.prefillBeneficiarySubtitle ?? '',
         )
       : null;
   String _facility = ReferralConstants.facilities.first;
+  late String _selectedReason = _initialReason();
   bool _isSaving = false;
+
+  List<String> get _reasonOptions => _type == 'mother'
+      ? ReferralConstants.motherReasons
+      : ReferralConstants.childReasons;
+
+  String _initialReason() {
+    final opts = _reasonOptions;
+    if (widget.prefillReason != null && widget.prefillReason!.isNotEmpty) {
+      if (opts.contains(widget.prefillReason)) {
+        return widget.prefillReason!;
+      }
+      return opts.last; // 'Other clinical concern'
+    }
+    return opts.first;
+  }
 
   @override
   void initState() {
@@ -68,8 +85,13 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
     }
   }
 
-  bool get _isFormValid =>
-      _selected != null && _reasonController.text.trim().isNotEmpty;
+  bool get _isFormValid {
+    if (_selected == null) return false;
+    final reason = _selectedReason == _reasonOptions.last
+        ? _reasonController.text.trim()
+        : _selectedReason;
+    return reason.isNotEmpty;
+  }
 
   Future<void> _handleSubmit() async {
     if (_isSaving) return; // Prevent double submission
@@ -114,13 +136,35 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
       resolvedName = isMother ? 'a mother' : 'a child';
     }
 
+    final finalReason = _selectedReason == _reasonOptions.last
+        ? _reasonController.text.trim()
+        : _selectedReason;
+
+    // Issue 8: Prevent duplicate referral when an open/pending one exists
+    // for the same beneficiary and reason.
+    final existingReferrals = _referralRepo.getAll();
+    final hasDuplicate = existingReferrals.any((r) =>
+        r.beneficiaryId == _selected!.id &&
+        (r.isPending || r.isOngoing) &&
+        r.reason.trim().toLowerCase() == finalReason.trim().toLowerCase());
+
+    if (hasDuplicate) {
+      setState(() => _isSaving = false);
+      AppNotificationUI.showWarning(
+        context,
+        'An open referral already exists for $resolvedName with reason "$finalReason".',
+        title: 'Duplicate Referral',
+      );
+      return;
+    }
+
     final referral = Referral(
       id: ReferralRepository.generateId(),
       beneficiaryType: _type,
       beneficiaryId: _selected!.id,
       beneficiaryName: resolvedName,
       barangay: _currentBarangay,
-      reason: _reasonController.text.trim(),
+      reason: finalReason,
       facility: _facility,
       notes: _notesController.text.trim(),
       status: 'Pending',
@@ -255,13 +299,29 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
                             selected: _selected,
                             onSelected: (r) => setState(() => _selected = r),
                           ),
-                        AppTextField(
+                        AppDropdownField(
                           label: 'Referral Reason *',
-                          hint: 'Describe the reason for referral...',
-                          icon: Icons.notes_outlined,
-                          controller: _reasonController,
-                          maxLines: 3,
+                          value: _selectedReason,
+                          options: _reasonOptions,
+                          onChanged: (v) {
+                            if (v != null) {
+                              setState(() {
+                                _selectedReason = v;
+                                if (v != _reasonOptions.last) {
+                                  _reasonController.clear();
+                                }
+                              });
+                            }
+                          },
                         ),
+                        if (_selectedReason == _reasonOptions.last)
+                          AppTextField(
+                            label: 'Specify Reason Details *',
+                            hint: 'Describe the specific medical concern...',
+                            icon: Icons.notes_outlined,
+                            controller: _reasonController,
+                            maxLines: 2,
+                          ),
                         AppDropdownField(
                           label: 'Assigned Facility *',
                           value: _facility,

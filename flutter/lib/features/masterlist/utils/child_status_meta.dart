@@ -97,7 +97,8 @@ enum ChildOverallCategory {
   all,
   severe,
   atRisk,
-  overweightObese,
+  overweight,
+  obese,
   normal,
   notWeighed,
 }
@@ -106,7 +107,7 @@ class ChildOverallStatus {
   final String label;
   final Color color;
   final ChildOverallCategory category;
-  final int severityRank; // 0 = Severe, 1 = At risk, 2 = Overweight/Obese, 3 = Normal, 4 = Not weighed
+  final int severityRank; // 0 = Severe, 1 = At risk, 2 = Obese, 3 = Overweight, 4 = Normal, 5 = Not weighed
 
   const ChildOverallStatus({
     required this.label,
@@ -115,6 +116,15 @@ class ChildOverallStatus {
     required this.severityRank,
   });
 
+  /// Single WHO z-score classification function across the app.
+  /// Rules:
+  /// - Under-5s use weight-for-height (WFH) instead of BMI.
+  /// - "Severe": ONLY Severely Underweight (WFA < -3SD), Severely Stunted (HFA < -3SD), or Severely Wasted / SAM (WFH < -3SD or bilateral edema).
+  /// - "At risk": Underweight (WFA < -2SD), Stunted (HFA < -2SD), or MAM (WFH < -2SD).
+  /// - "Obese": Obese (WFH > +3SD).
+  /// - "Overweight": Overweight (WFH or WFA > +2SD). Never show Overweight and Obese together.
+  /// - "Normal": Normal / Tall.
+  /// - "Not weighed": All statuses unrecorded.
   static ChildOverallStatus fromChild(Child child) {
     final wfa = ChildStatusMeta.formatStatus(child.nutritionStatus);
     final hfa = ChildStatusMeta.formatStatus(child.stuntingStatus);
@@ -127,11 +137,11 @@ class ChildOverallStatus {
         label: 'Not weighed',
         color: AppColors.notWeighed,
         category: ChildOverallCategory.notWeighed,
-        severityRank: 4,
+        severityRank: 5,
       );
     }
 
-    // 1. Severe (Pula): Severely Underweight, Severely Stunted, SAM
+    // 1. Severe: ONLY severely underweight, severely stunted, or wasted (SAM)
     final isSevere = statuses.any((s) =>
         s == 'Severely Underweight' ||
         s == 'Severely Stunted' ||
@@ -145,7 +155,7 @@ class ChildOverallStatus {
       );
     }
 
-    // 2. Moderate / At risk (Orange): Underweight, Stunted, MAM
+    // 2. Moderate / At risk: Underweight, Stunted, MAM
     final isAtRisk = statuses.any((s) =>
         s == 'Underweight' ||
         s == 'Stunted' ||
@@ -159,25 +169,34 @@ class ChildOverallStatus {
       );
     }
 
-    // 3. Overweight / Obese (Violet / Asul): Obese, Overweight
-    final isOverweightOrObese = statuses.any((s) =>
-        s == 'Obese' || s == 'Overweight');
-    if (isOverweightOrObese) {
-      final isObese = statuses.any((s) => s == 'Obese');
-      return ChildOverallStatus(
-        label: isObese ? 'Obese' : 'Overweight',
-        color: isObese ? AppColors.statPurple : AppColors.statBlue,
-        category: ChildOverallCategory.overweightObese,
+    // 3. Obese: Prioritized if obese per WFH (never show Overweight and Obese together)
+    final isObese = statuses.any((s) => s == 'Obese');
+    if (isObese) {
+      return const ChildOverallStatus(
+        label: 'Obese',
+        color: AppColors.statPurple,
+        category: ChildOverallCategory.obese,
         severityRank: 2,
       );
     }
 
-    // 4. Normal (Berde): Lahat Normal o Tall
+    // 4. Overweight: if overweight (and not obese)
+    final isOverweight = statuses.any((s) => s == 'Overweight');
+    if (isOverweight) {
+      return const ChildOverallStatus(
+        label: 'Overweight',
+        color: AppColors.statBlue,
+        category: ChildOverallCategory.overweight,
+        severityRank: 3,
+      );
+    }
+
+    // 5. Normal: Lahat Normal o Tall
     return const ChildOverallStatus(
       label: 'Normal',
       color: AppColors.primaryGreen,
       category: ChildOverallCategory.normal,
-      severityRank: 3,
+      severityRank: 4,
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/models/mother_visit.dart';
+import '../../../shared/utils/app_date_format.dart';
 import '../../masterlist/widgets/status_badge.dart';
 
 class VisitTile extends StatelessWidget {
@@ -108,6 +109,5 @@ class VisitTile extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  String _formatDate(DateTime d) => AppDateFormat.format(d);
 }

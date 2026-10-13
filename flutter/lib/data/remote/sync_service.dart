@@ -96,7 +96,9 @@ class SyncService {
           'contactNo': c['guardian_contact'] as String? ?? '',
           'linkedMotherId': null,
         },
-        'createdAt': existing?['createdAt'] ?? DateTime.now().toIso8601String(),
+        'createdAt': (c['created_at'] != null && c['created_at'].toString().isNotEmpty)
+            ? c['created_at'].toString()
+            : (existing?['createdAt'] ?? DateTime.now().toIso8601String()),
         'nutritionStatus': _statusOrFallback(c['weight_status'], existing?['nutritionStatus']),
         'stuntingStatus': _statusOrFallback(c['height_status'], existing?['stuntingStatus']),
         'wastingStatus': _statusOrFallback(c['overall_status'], existing?['wastingStatus']),
@@ -194,7 +196,9 @@ class SyncService {
         'linkedChildIds': existing?['linkedChildIds'] ?? <String>[],
         'isActive': (m['status'] as String? ?? 'active') == 'active',
         'inactiveReason': null,
-        'createdAt': existing?['createdAt'] ?? DateTime.now().toIso8601String(),
+        'createdAt': (m['created_at'] != null && m['created_at'].toString().isNotEmpty)
+            ? m['created_at'].toString()
+            : (existing?['createdAt'] ?? DateTime.now().toIso8601String()),
         '_syncStatus': 'synced',
       });
     }

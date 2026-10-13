@@ -87,7 +87,8 @@ class DashboardRepository {
   }
 
   /// Primary Weight-for-Age (WFA) distribution across weighed children.
-  /// Each weighed child belongs to exactly one category, so percentages sum to 100%.
+  /// Uses the single WHO classification source (ChildOverallStatus)
+  /// so Home chart, list badges, filter chips, and profile chips match 100%.
   List<NutritionStatusItem> getNutritionBreakdown() {
     final allChildren = _childRepo
         .getByBarangay(_currentBarangay)
@@ -96,16 +97,18 @@ class DashboardRepository {
 
     const order = [
       'Normal',
-      'Underweight',
-      'Severely Underweight',
+      'At risk',
+      'Severe',
       'Overweight',
+      'Obese',
       'Not weighed',
     ];
     final counts = {for (final s in order) s: 0};
     for (final c in allChildren) {
-      final sW = ChildStatusMeta.formatStatus(c.nutritionStatus);
-      if (counts.containsKey(sW)) {
-        counts[sW] = counts[sW]! + 1;
+      final overall = ChildOverallStatus.fromChild(c);
+      final label = overall.label;
+      if (counts.containsKey(label)) {
+        counts[label] = counts[label]! + 1;
       } else {
         counts['Normal'] = counts['Normal']! + 1;
       }
@@ -113,6 +116,7 @@ class DashboardRepository {
 
     final total = allChildren.length;
     return order
+        .where((s) => (counts[s] ?? 0) > 0 || s == 'Normal' || s == 'At risk' || s == 'Severe')
         .map(
           (s) => NutritionStatusItem(
             label: s,

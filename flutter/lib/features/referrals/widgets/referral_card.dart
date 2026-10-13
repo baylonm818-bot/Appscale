@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/models/referral.dart';
+import '../../../shared/utils/app_date_format.dart';
 import 'referral_detail_sheet.dart';
 
 class ReferralCard extends StatelessWidget {
@@ -129,7 +130,7 @@ class ReferralCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${referral.createdAt.year}-${referral.createdAt.month.toString().padLeft(2, '0')}-${referral.createdAt.day.toString().padLeft(2, '0')}',
+                            AppDateFormat.format(referral.createdAt),
                             style: AppTextStyles.body.copyWith(
                               fontSize: 11,
                               color: AppColors.textMuted,
@@ -215,7 +216,7 @@ class ReferralCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (referral.notes.isNotEmpty) ...[
+                if (referral.hasClinicalNotes) ...[
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
@@ -244,8 +245,8 @@ class ReferralCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             isCompleted
-                                ? 'RHU Resolution: ${referral.notes}'
-                                : 'RHU Note: ${referral.notes}',
+                                ? 'RHU Resolution: ${referral.clinicalNotes}'
+                                : 'RHU Note: ${referral.clinicalNotes}',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.body.copyWith(

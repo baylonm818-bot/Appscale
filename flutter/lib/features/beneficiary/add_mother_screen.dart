@@ -178,16 +178,13 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
     if (_isSaving) return;
 
     String? fullNameErr;
-    String? birthDateErr;
     String? addressErr;
     String? contactErr;
 
     if (_fullNameController.text.trim().isEmpty) {
       fullNameErr = 'This field is required';
     }
-    if (_birthDate == null) {
-      birthDateErr = 'This field is required';
-    }
+    // Mother DOB is optional: If empty, show "Not recorded" and don't compute an age.
     if (_addressController.text.trim().isEmpty) {
       addressErr = 'This field is required';
     }
@@ -198,10 +195,10 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
       contactErr = 'Contact number must be 11 digits (e.g. 09123456789)';
     }
 
-    if (fullNameErr != null || birthDateErr != null || addressErr != null || contactErr != null) {
+    if (fullNameErr != null || addressErr != null || contactErr != null) {
       setState(() {
         _fullNameError = fullNameErr;
-        _birthDateError = birthDateErr;
+        _birthDateError = null;
         _addressError = addressErr;
         _contactError = contactErr;
       });
@@ -209,8 +206,6 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
       GlobalKey? firstInvalidKey;
       if (fullNameErr != null) {
         firstInvalidKey = _fullNameKey;
-      } else if (birthDateErr != null) {
-        firstInvalidKey = _birthDateKey;
       } else if (addressErr != null) {
         firstInvalidKey = _addressKey;
       } else if (contactErr != null) {
@@ -242,38 +237,46 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
       _contactError = null;
     });
 
-    final motherAge = DateTime.now().year - _birthDate!.year;
-    if (motherAge < 18) {
-      final confirmYoungMother = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Young Mother Registered'),
-          content: Text(
-            'Mother\'s recorded age is $motherAge years old. Please confirm registration details for young lactating mother.',
+    if (_birthDate != null) {
+      final motherAge = (DateTime.now().difference(_birthDate!).inDays / 365).floor();
+      if (motherAge < 18) {
+        final confirmYoungMother = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: AppColors.statOrange),
+                SizedBox(width: 8),
+                Text('Adolescent mother'),
+              ],
+            ),
+            content: Text(
+              'Mother\'s recorded age is $motherAge years old (Adolescent mother under 18). Do you want to proceed?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Edit Date'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Proceed'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Edit Birth Date'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Confirm'),
-            ),
-          ],
-        ),
-      );
-      if (confirmYoungMother != true) {
-        setState(() => _isSaving = false);
-        return;
+        );
+        if (confirmYoungMother != true) {
+          setState(() => _isSaving = false);
+          return;
+        }
       }
     }
 
     final mother = Mother(
       id: widget.existingMother?.id ?? MotherRepository.generateId(),
       fullName: _fullNameController.text.trim(),
-      birthDate: _birthDate!,
+      birthDate: _birthDate,
       contactNo: sanitizedContact,
       address: _addressController.text.trim(),
       barangay: _currentBarangay,
@@ -525,18 +528,40 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
                               ),
                             ],
                           ),
-                          AppTextField(
+                          AppDropdownField(
                             key: _addressKey,
-                            label: 'Address',
+                            label: 'Purok Address',
                             isRequired: true,
-                            hint: 'Purok, Tiguion',
-                            icon: Icons.location_on_outlined,
-                            controller: _addressController,
+                            value: [
+                              'Purok 1',
+                              'Purok 2',
+                              'Purok 3',
+                              'Purok 4',
+                              'Purok 5',
+                              'Purok 6',
+                              'Purok 7',
+                            ].contains(_addressController.text.trim())
+                                ? _addressController.text.trim()
+                                : (_addressController.text.trim().isNotEmpty
+                                    ? _addressController.text.trim()
+                                    : 'Purok 1'),
+                            options: const [
+                              'Purok 1',
+                              'Purok 2',
+                              'Purok 3',
+                              'Purok 4',
+                              'Purok 5',
+                              'Purok 6',
+                              'Purok 7',
+                            ],
                             hasError: _addressError != null,
                             errorText: _addressError,
-                            onChanged: (_) {
-                              if (_addressError != null) {
-                                setState(() => _addressError = null);
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() {
+                                  _addressController.text = v;
+                                  _addressError = null;
+                                });
                               }
                             },
                           ),

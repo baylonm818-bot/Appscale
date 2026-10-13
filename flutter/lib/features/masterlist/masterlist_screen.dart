@@ -339,7 +339,12 @@ class MasterlistScreenState extends State<MasterlistScreen> {
       final overweightCount = baseChildren
           .where((c) =>
               ChildOverallStatus.fromChild(c).category ==
-              ChildOverallCategory.overweightObese)
+              ChildOverallCategory.overweight)
+          .length;
+      final obeseCount = baseChildren
+          .where((c) =>
+              ChildOverallStatus.fromChild(c).category ==
+              ChildOverallCategory.obese)
           .length;
       final normalCount = baseChildren
           .where((c) =>
@@ -347,46 +352,75 @@ class MasterlistScreenState extends State<MasterlistScreen> {
               ChildOverallCategory.normal)
           .length;
 
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        child: Row(
-          children: [
-            _buildChipItem(
-              label: 'All',
-              count: baseChildren.length,
-              isSelected: _childFilterChip == 'All',
-              onTap: () => setState(() => _childFilterChip = 'All'),
-            ),
-            _buildChipItem(
-              label: 'Severe',
-              count: severeCount,
-              isSelected: _childFilterChip == 'Severe',
-              dotColor: AppColors.statRed,
-              onTap: () => setState(() => _childFilterChip = 'Severe'),
-            ),
-            _buildChipItem(
-              label: 'At risk',
-              count: atRiskCount,
-              isSelected: _childFilterChip == 'At risk',
-              dotColor: AppColors.statOrange,
-              onTap: () => setState(() => _childFilterChip = 'At risk'),
-            ),
-            _buildChipItem(
-              label: 'Overweight/Obese',
-              count: overweightCount,
-              isSelected: _childFilterChip == 'Overweight/Obese',
-              dotColor: AppColors.statPurple,
-              onTap: () => setState(() => _childFilterChip = 'Overweight/Obese'),
-            ),
-            _buildChipItem(
-              label: 'Normal',
-              count: normalCount,
-              isSelected: _childFilterChip == 'Normal',
-              dotColor: AppColors.primaryGreen,
-              onTap: () => setState(() => _childFilterChip = 'Normal'),
-            ),
-          ],
+      Widget wrapWithFade(Widget child) {
+        return ShaderMask(
+          shaderCallback: (Rect bounds) {
+            return const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Colors.purple,
+                Colors.purple,
+                Colors.purple,
+                Colors.transparent,
+              ],
+              stops: [0.0, 0.05, 0.94, 1.0],
+            ).createShader(bounds);
+          },
+          blendMode: BlendMode.dstIn,
+          child: child,
+        );
+      }
+
+      return wrapWithFade(
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: [
+              _buildChipItem(
+                label: 'All',
+                count: baseChildren.length,
+                isSelected: _childFilterChip == 'All',
+                onTap: () => setState(() => _childFilterChip = 'All'),
+              ),
+              _buildChipItem(
+                label: 'Severe',
+                count: severeCount,
+                isSelected: _childFilterChip == 'Severe',
+                dotColor: AppColors.statRed,
+                onTap: () => setState(() => _childFilterChip = 'Severe'),
+              ),
+              _buildChipItem(
+                label: 'At risk',
+                count: atRiskCount,
+                isSelected: _childFilterChip == 'At risk',
+                dotColor: AppColors.statOrange,
+                onTap: () => setState(() => _childFilterChip = 'At risk'),
+              ),
+              _buildChipItem(
+                label: 'Overweight',
+                count: overweightCount,
+                isSelected: _childFilterChip == 'Overweight',
+                dotColor: AppColors.statBlue,
+                onTap: () => setState(() => _childFilterChip = 'Overweight'),
+              ),
+              _buildChipItem(
+                label: 'Obese',
+                count: obeseCount,
+                isSelected: _childFilterChip == 'Obese',
+                dotColor: AppColors.statPurple,
+                onTap: () => setState(() => _childFilterChip = 'Obese'),
+              ),
+              _buildChipItem(
+                label: 'Normal',
+                count: normalCount,
+                isSelected: _childFilterChip == 'Normal',
+                dotColor: AppColors.primaryGreen,
+                onTap: () => setState(() => _childFilterChip = 'Normal'),
+              ),
+            ],
+          ),
         ),
       );
     } else {
@@ -409,39 +443,61 @@ class MasterlistScreenState extends State<MasterlistScreen> {
               MotherStatusMeta.formatStatus(m.riskStatus) == 'Not visited')
           .length;
 
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        child: Row(
-          children: [
-            _buildChipItem(
-              label: 'All',
-              count: baseMothers.length,
-              isSelected: _motherFilterChip == 'All',
-              onTap: () => setState(() => _motherFilterChip = 'All'),
-            ),
-            _buildChipItem(
-              label: 'At-risk',
-              count: atRiskCount,
-              isSelected: _motherFilterChip == 'At-risk',
-              dotColor: AppColors.statRed,
-              onTap: () => setState(() => _motherFilterChip = 'At-risk'),
-            ),
-            _buildChipItem(
-              label: 'Normal',
-              count: normalCount,
-              isSelected: _motherFilterChip == 'Normal',
-              dotColor: AppColors.primaryGreen,
-              onTap: () => setState(() => _motherFilterChip = 'Normal'),
-            ),
-            _buildChipItem(
-              label: 'Not visited',
-              count: notVisitedCount,
-              isSelected: _motherFilterChip == 'Not visited',
-              dotColor: AppColors.notWeighed,
-              onTap: () => setState(() => _motherFilterChip = 'Not visited'),
-            ),
-          ],
+      Widget wrapWithFade(Widget child) {
+        return ShaderMask(
+          shaderCallback: (Rect bounds) {
+            return const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Colors.purple,
+                Colors.purple,
+                Colors.purple,
+                Colors.transparent,
+              ],
+              stops: [0.0, 0.05, 0.94, 1.0],
+            ).createShader(bounds);
+          },
+          blendMode: BlendMode.dstIn,
+          child: child,
+        );
+      }
+
+      return wrapWithFade(
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: [
+              _buildChipItem(
+                label: 'All',
+                count: baseMothers.length,
+                isSelected: _motherFilterChip == 'All',
+                onTap: () => setState(() => _motherFilterChip = 'All'),
+              ),
+              _buildChipItem(
+                label: 'At-risk',
+                count: atRiskCount,
+                isSelected: _motherFilterChip == 'At-risk',
+                dotColor: AppColors.statRed,
+                onTap: () => setState(() => _motherFilterChip = 'At-risk'),
+              ),
+              _buildChipItem(
+                label: 'Normal',
+                count: normalCount,
+                isSelected: _motherFilterChip == 'Normal',
+                dotColor: AppColors.primaryGreen,
+                onTap: () => setState(() => _motherFilterChip = 'Normal'),
+              ),
+              _buildChipItem(
+                label: 'Not visited',
+                count: notVisitedCount,
+                isSelected: _motherFilterChip == 'Not visited',
+                dotColor: AppColors.notWeighed,
+                onTap: () => setState(() => _motherFilterChip = 'Not visited'),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -548,7 +604,12 @@ class MasterlistScreenState extends State<MasterlistScreen> {
             a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
         break;
       case MasterlistSortOption.age:
-        list.sort((a, b) => b.birthDate.compareTo(a.birthDate));
+        list.sort((a, b) {
+          if (a.birthDate == null && b.birthDate == null) return 0;
+          if (a.birthDate == null) return 1;
+          if (b.birthDate == null) return -1;
+          return b.birthDate!.compareTo(a.birthDate!);
+        });
         break;
       case MasterlistSortOption.purok:
         list.sort((a, b) {
@@ -577,8 +638,13 @@ class MasterlistScreenState extends State<MasterlistScreen> {
             return overall.category == ChildOverallCategory.severe;
           case 'At risk':
             return overall.category == ChildOverallCategory.atRisk;
+          case 'Overweight':
+            return overall.category == ChildOverallCategory.overweight;
+          case 'Obese':
+            return overall.category == ChildOverallCategory.obese;
           case 'Overweight/Obese':
-            return overall.category == ChildOverallCategory.overweightObese;
+            return overall.category == ChildOverallCategory.overweight ||
+                overall.category == ChildOverallCategory.obese;
           case 'Normal':
             return overall.category == ChildOverallCategory.normal;
           default:

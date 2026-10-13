@@ -30,7 +30,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   DateTime _selectedDate = DateTime.now();
-  Map<String, String> _draftStatuses = {};
+  Map<String, String?> _draftStatuses = {};
   final Set<String> _withdrawingIds = {};
 
   @override
@@ -177,13 +177,14 @@ class _AttendanceTabState extends State<AttendanceTab> {
     );
 
     // Only keep statuses for enrolled children.
-    final Map<String, String> statuses = {};
+    // Issue 6: Default every child to unmarked (null), not Present.
+    final Map<String, String?> statuses = {};
     for (final c in enrolled) {
       final existingStatus = _draftStatuses[c.id] ?? saved[c.id];
-      statuses[c.id] = existingStatus ?? 'Present';
+      statuses[c.id] = existingStatus; // null if unmarked
     }
 
-    // Counts must reflect ONLY currently enrolled children
+    // Counts must reflect ONLY marked enrolled children
     final presentCount = enrolled.where((c) => statuses[c.id] == 'Present').length;
     final absentCount = enrolled.where((c) => statuses[c.id] == 'Absent').length;
     final excusedCount = enrolled.where((c) => statuses[c.id] == 'Excused').length;
@@ -368,25 +369,49 @@ class _AttendanceTabState extends State<AttendanceTab> {
                               ],
                             ),
                           ),
-                          InkWell(
-                            onTap: isWithdrawing ? null : () => _confirmWithdraw(c),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                              child: isWithdrawing
-                                  ? const SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
-                                  : Text(
+                          PopupMenuButton<String>(
+                            icon: isWithdrawing
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(
+                                    Icons.more_vert,
+                                    size: 18,
+                                    color: AppColors.textMuted,
+                                  ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            onSelected: (val) {
+                              if (val == 'withdraw') {
+                                _confirmWithdraw(c);
+                              }
+                            },
+                            itemBuilder: (ctx) => [
+                              const PopupMenuItem(
+                                value: 'withdraw',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.person_remove_outlined,
+                                      size: 16,
+                                      color: AppColors.statRed,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
                                       'Withdraw',
-                                      style: AppTextStyles.body.copyWith(
-                                        fontSize: 11,
-                                        color: AppColors.statRed,
+                                      style: TextStyle(
+                                        fontSize: 12,
                                         fontWeight: FontWeight.w600,
+                                        color: AppColors.statRed,
                                       ),
                                     ),
-                            ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -431,10 +456,37 @@ class _AttendanceTabState extends State<AttendanceTab> {
             AppButton(
               label: 'Save Attendance',
               onPressed: () async {
-                // Ensure only enrolled children statuses are saved
+                final unmarkedCount = enrolled.where((c) => statuses[c.id] == null).length;
+                if (unmarkedCount > 0) {
+                  final proceed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Unmarked Children'),
+                      content: Text(
+                        'There ${unmarkedCount == 1 ? "is 1 child" : "are $unmarkedCount children"} without attendance marked. Do you want to proceed and save marked attendance?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Review List'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Save Anyway'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (proceed != true) return;
+                }
+
+                // Ensure only marked enrolled children statuses are saved
                 final enrolledStatuses = <String, String>{};
                 for (final c in enrolled) {
-                  enrolledStatuses[c.id] = statuses[c.id] ?? 'Present';
+                  final st = statuses[c.id];
+                  if (st != null) {
+                    enrolledStatuses[c.id] = st;
+                  }
                 }
                 await FeedingAttendanceRepository().saveForDate(
                   _currentBarangay,
@@ -443,7 +495,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
                 );
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Attendance saved')),
+                  const SnackBar(content: Text('Attendance saved successfully')),
                 );
               },
             ),
@@ -456,7 +508,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
   Widget _statusChip(
     String label,
     String childId,
-    Map<String, String> statuses,
+    Map<String, String?> statuses,
     Color color,
   ) {
     final selected = statuses[childId] == label;

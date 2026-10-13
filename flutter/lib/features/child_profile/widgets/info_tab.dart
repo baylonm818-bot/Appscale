@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/utils/app_date_format.dart';
 import '../../../data/local/beneficiary_link_service.dart';
 import '../../../data/local/mother_repository.dart';
 import '../../../data/models/child.dart';
@@ -104,8 +105,36 @@ class InfoTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${child.guardian.relationship} · ${child.guardian.contactNo}',
+                  '${child.guardian.relationship}${child.guardian.contactNo.isNotEmpty ? ' · ${child.guardian.contactNo}' : ''}',
                   style: AppTextStyles.body.copyWith(fontSize: 12),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      'Age: ${child.guardian.ageLabel}',
+                      style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                    if (child.guardian.isAdolescent) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFFF59E0B)),
+                        ),
+                        child: Text(
+                          'Adolescent mother',
+                          style: AppTextStyles.caption.copyWith(
+                            color: const Color(0xFFB45309),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -248,8 +277,7 @@ class InfoTab extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) =>
-      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  String _formatDate(DateTime date) => AppDateFormat.format(date);
 }
 
 class _LinkMotherSheet extends StatefulWidget {

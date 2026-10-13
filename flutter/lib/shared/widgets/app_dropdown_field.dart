@@ -4,10 +4,13 @@ import '../../core/theme/app_text_styles.dart';
 
 class AppDropdownField extends StatelessWidget {
   final String label;
-  final String value;
+  final String? value;
   final List<String> options;
   final ValueChanged<String?> onChanged;
   final bool isRequired;
+  final String? hint;
+  final bool hasError;
+  final String? errorText;
 
   const AppDropdownField({
     super.key,
@@ -16,6 +19,9 @@ class AppDropdownField extends StatelessWidget {
     required this.options,
     required this.onChanged,
     this.isRequired = false,
+    this.hint,
+    this.hasError = false,
+    this.errorText,
   });
 
   @override
@@ -29,6 +35,8 @@ class AppDropdownField extends StatelessWidget {
       cleanLabel = cleanLabel.substring(0, cleanLabel.length - 1).trimRight();
       showAsterisk = true;
     }
+
+    final isInvalid = hasError || errorText != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,11 +63,23 @@ class AppDropdownField extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(
+              color: isInvalid ? AppColors.requiredAsterisk : AppColors.border,
+              width: isInvalid ? 1.4 : 1.0,
+            ),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: value,
+              value: options.contains(value) ? value : null,
+              hint: hint != null
+                  ? Text(
+                      hint!,
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                      ),
+                    )
+                  : null,
               isExpanded: true,
               icon: const Icon(
                 Icons.keyboard_arrow_down,
@@ -85,6 +105,17 @@ class AppDropdownField extends StatelessWidget {
             ),
           ),
         ),
+        if (errorText != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            errorText!,
+            style: const TextStyle(
+              color: AppColors.requiredAsterisk,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ],
     );
   }

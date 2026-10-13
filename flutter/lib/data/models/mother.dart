@@ -3,7 +3,7 @@ import '../../shared/utils/app_user_identity.dart';
 class Mother {
   final String id;
   final String fullName;
-  final DateTime birthDate;
+  final DateTime? birthDate;
   final String contactNo;
   final String address;
   final String barangay;
@@ -23,7 +23,7 @@ class Mother {
   const Mother({
     required this.id,
     required this.fullName,
-    required this.birthDate,
+    this.birthDate,
     required this.contactNo,
     required this.address,
     required this.barangay,
@@ -40,7 +40,20 @@ class Mother {
     this.linkedChildIds = const [],
   });
 
-  int get age => (DateTime.now().difference(birthDate).inDays / 365).floor();
+  int? get age {
+    if (birthDate == null) return null;
+    return (DateTime.now().difference(birthDate!).inDays / 365).floor();
+  }
+
+  String get ageLabel {
+    if (age == null) return 'Not recorded';
+    return '$age yrs. old';
+  }
+
+  bool get isAdolescent {
+    final a = age;
+    return a != null && a < 18;
+  }
 
   int? get contactNoAsInt {
     final digits = contactNo.replaceAll(RegExp(r'\D'), '');
@@ -51,7 +64,7 @@ class Mother {
   Map<String, dynamic> toMap() => {
     'id': id,
     'fullName': fullName,
-    'birthDate': birthDate.toIso8601String(),
+    'birthDate': birthDate?.toIso8601String(),
     'contactNo': contactNo,
     'address': address,
     'barangay': barangay,
@@ -93,8 +106,7 @@ class Mother {
     return Mother(
       id: rawId,
       fullName: normalizedFullName,
-      birthDate: DateTime.parse(
-          rawBirth.isNotEmpty ? rawBirth.split('T').first : DateTime.now().toIso8601String()),
+      birthDate: rawBirth.isNotEmpty ? DateTime.tryParse(rawBirth.split('T').first) : null,
       contactNo: strVal('contactNo', 'contact_number'),
       address: strVal('address', 'purok'),
       barangay: strVal('barangay', 'barangay'),
@@ -160,8 +172,6 @@ class Mother {
     pendingTargetBarangay: pendingTargetBarangay ?? this.pendingTargetBarangay,
     linkedChildIds: linkedChildIds ?? this.linkedChildIds,
   );
-
-  String get ageLabel => '$age yrs. old';
 
   String get formattedAddress {
     final trimmed = address.trim();

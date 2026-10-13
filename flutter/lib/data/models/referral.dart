@@ -1,5 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../local/hive_boxes.dart';
+import '../../shared/utils/app_date_format.dart';
 
 class Referral {
   final String id;
@@ -51,7 +52,7 @@ class Referral {
         s == 'ongoing' ||
         s == 'received' ||
         s == 'responded') {
-      return 'Ongoing';
+      return 'In Progress';
     }
     if (s == 'pending' || s == 'open') {
       return 'Pending';
@@ -111,8 +112,18 @@ class Referral {
   String? get formattedCompletedDate {
     final d = updatedAt ?? (isCompleted ? createdAt : null);
     if (d == null) return null;
-    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    return AppDateFormat.format(d);
   }
+
+  /// Extracts the genuine clinical/status note written by RHU or BHW,
+  /// stripping out any synthetic internal tags like 'Facility: ...'.
+  String get clinicalNotes {
+    final raw = notes.replaceAll(RegExp(r'Facility:\s*[^|\n]+(\||$)?'), '').trim();
+    return raw;
+  }
+
+  /// Whether a genuine clinical observation / resolution was recorded
+  bool get hasClinicalNotes => clinicalNotes.isNotEmpty;
 
   String get itemsGivenFormatted {
     if (itemsGiven.isEmpty) return 'None recorded';

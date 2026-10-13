@@ -53,7 +53,7 @@ class AppUserIdentity {
   static String sanitizeMobileNumber(String? raw) {
     if (raw == null) return '';
     final digits = raw.replaceAll(RegExp(r'\D+'), '');
-    return digits.length > 11 ? digits.substring(0, 11) : digits;
+    return digits.length > 12 ? digits.substring(0, 12) : digits;
   }
 
   static bool isValidPhilippineContactNumber(String? raw) {
@@ -61,6 +61,6 @@ class AppUserIdentity {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return true;
     final sanitized = sanitizeMobileNumber(trimmed);
-    return RegExp(r'^09\d{9}$').hasMatch(sanitized);
+    return RegExp(r'^(09\d{9}|639\d{9})$').hasMatch(sanitized);
   }
 }

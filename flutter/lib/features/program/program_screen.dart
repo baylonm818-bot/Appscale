@@ -51,10 +51,6 @@ class _ProgramScreenState extends State<ProgramScreen> {
               padding: const EdgeInsets.all(AppSpacing.lg),
               decoration: const BoxDecoration(
                 color: AppColors.darkGreen,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
-                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,8 +287,8 @@ class _ProgramScreenState extends State<ProgramScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      await Navigator.push(
                         context,
                         appPageRoute(
                           AddProgramScheduleScreen(
@@ -302,6 +298,11 @@ class _ProgramScreenState extends State<ProgramScreen> {
                           ),
                         ),
                       );
+                      if (mounted) {
+                        setState(() {
+                          _selectedFilter = 'All';
+                        });
+                      }
                     },
                   ),
                 ],

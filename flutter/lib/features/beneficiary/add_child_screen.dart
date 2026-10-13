@@ -1,5 +1,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import '../../shared/utils/app_page_route.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -20,6 +21,7 @@ import '../../shared/widgets/form_section_card.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../shared/utils/app_user_identity.dart';
 import '../../shared/utils/app_notifications.dart';
+import '../child_profile/child_profile_screen.dart';
 import 'widgets/mother_picker_field.dart';
 
 class AddChildScreen extends StatefulWidget {
@@ -65,7 +67,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
     text: widget.existingChild?.fullName ?? '',
   );
   late final _addressController = TextEditingController(
-    text: widget.existingChild?.address ?? widget.prefillAddress,
+    text: widget.existingChild?.address ??
+        (widget.prefillAddress.isNotEmpty ? widget.prefillAddress : 'Purok 1'),
   );
   late final _guardianNameController = TextEditingController(
     text: widget.existingChild?.guardian.fullName ?? widget.prefillGuardianName,
@@ -86,20 +89,25 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
   final _fullNameKey = GlobalKey();
   final _birthDateKey = GlobalKey();
+  final _genderKey = GlobalKey();
   final _addressKey = GlobalKey();
   final _guardianNameKey = GlobalKey();
+  final _relationshipKey = GlobalKey();
   final _guardianContactKey = GlobalKey();
 
   String? _fullNameError;
   String? _birthDateError;
+  String? _genderError;
   String? _addressError;
   String? _guardianNameError;
+  String? _relationshipError;
   String? _guardianContactError;
 
   DateTime? _birthDate;
-  String _gender = 'Female';
+  String? _gender;
   bool _belongsToIpGroup = false;
-  String _relationship = 'Mother';
+  String? _relationship;
+  DateTime? _guardianBirthDate;
   bool _guardianIsMonitoredMother = false;
   Mother? _linkedMother;
   bool _isSaving = false;
@@ -118,10 +126,16 @@ class _AddChildScreenState extends State<AddChildScreen> {
       _gender = existing.gender;
       _belongsToIpGroup = existing.belongsToIpGroup;
       _relationship = existing.guardian.relationship;
+      _guardianBirthDate = existing.guardian.birthDate;
       if (existing.guardian.linkedMotherId != null) {
         _linkedMother = _motherRepo.getById(existing.guardian.linkedMotherId!);
         _guardianIsMonitoredMother = _linkedMother != null;
+        if (_guardianBirthDate == null && _linkedMother?.birthDate != null) {
+          _guardianBirthDate = _linkedMother!.birthDate;
+        }
       }
+    } else if (widget.prefillGuardianName.isNotEmpty) {
+      _relationship = 'Mother';
     }
   }
 
@@ -135,15 +149,17 @@ class _AddChildScreenState extends State<AddChildScreen> {
           _belongsToIpGroup != existing.belongsToIpGroup ||
           _guardianNameController.text.trim() != existing.guardian.fullName ||
           _guardianContactController.text.trim() != existing.guardian.contactNo ||
-          _relationship != existing.guardian.relationship;
+          _relationship != existing.guardian.relationship ||
+          _guardianBirthDate != existing.guardian.birthDate;
     }
 
     if (_fullNameController.text.trim().isNotEmpty) return true;
     if (_birthDate != null) return true;
+    if (_gender != null) return true;
     if (_disabilityController.text.trim().isNotEmpty) return true;
     if (!_keepMotherDetails) {
       if (_addressController.text.trim().isNotEmpty &&
-          _addressController.text.trim() != widget.prefillAddress) {
+          _addressController.text.trim() != (widget.prefillAddress.isNotEmpty ? widget.prefillAddress : 'Purok 1')) {
         return true;
       }
       if (_guardianNameController.text.trim().isNotEmpty &&
@@ -154,6 +170,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
           _guardianContactController.text.trim() != widget.prefillGuardianContact) {
         return true;
       }
+      if (_guardianBirthDate != null) return true;
+      if (_relationship != null && _relationship != (widget.prefillGuardianName.isNotEmpty ? 'Mother' : null)) return true;
     }
     return false;
   }
@@ -196,11 +214,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
   Future<void> _handleSave() async {
     if (_isSaving) return;
+    FocusScope.of(context).unfocus();
 
     String? fullNameErr;
     String? birthDateErr;
+    String? genderErr;
     String? addressErr;
     String? guardianNameErr;
+    String? relationshipErr;
     String? guardianContactErr;
 
     if (_fullNameController.text.trim().isEmpty) {
@@ -209,11 +230,17 @@ class _AddChildScreenState extends State<AddChildScreen> {
     if (_birthDate == null) {
       birthDateErr = 'This field is required';
     }
+    if (_gender == null || _gender!.trim().isEmpty) {
+      genderErr = 'Please select a gender';
+    }
     if (_addressController.text.trim().isEmpty) {
       addressErr = 'This field is required';
     }
     if (_guardianNameController.text.trim().isEmpty) {
       guardianNameErr = 'This field is required';
+    }
+    if (_relationship == null || _relationship!.trim().isEmpty) {
+      relationshipErr = 'Please select a relationship';
     }
 
     final rawContact = _guardianContactController.text.trim();
@@ -224,14 +251,18 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
     if (fullNameErr != null ||
         birthDateErr != null ||
+        genderErr != null ||
         addressErr != null ||
         guardianNameErr != null ||
+        relationshipErr != null ||
         guardianContactErr != null) {
       setState(() {
         _fullNameError = fullNameErr;
         _birthDateError = birthDateErr;
+        _genderError = genderErr;
         _addressError = addressErr;
         _guardianNameError = guardianNameErr;
+        _relationshipError = relationshipErr;
         _guardianContactError = guardianContactErr;
       });
 
@@ -240,10 +271,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
         firstInvalidKey = _fullNameKey;
       } else if (birthDateErr != null) {
         firstInvalidKey = _birthDateKey;
+      } else if (genderErr != null) {
+        firstInvalidKey = _genderKey;
       } else if (addressErr != null) {
         firstInvalidKey = _addressKey;
       } else if (guardianNameErr != null) {
         firstInvalidKey = _guardianNameKey;
+      } else if (relationshipErr != null) {
+        firstInvalidKey = _relationshipKey;
       } else if (guardianContactErr != null) {
         firstInvalidKey = _guardianContactKey;
       }
@@ -265,17 +300,56 @@ class _AddChildScreenState extends State<AddChildScreen> {
       return;
     }
 
+    // Adolescent mother warning check
+    if (_guardianBirthDate != null &&
+        (_relationship?.trim().toLowerCase() == 'mother')) {
+      final motherAge = (DateTime.now().difference(_guardianBirthDate!).inDays / 365).floor();
+      if (motherAge < 18) {
+        final confirmYoungMother = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: AppColors.statOrange),
+                SizedBox(width: 8),
+                Text('Adolescent mother'),
+              ],
+            ),
+            content: Text(
+              'Mother\'s recorded age is $motherAge years old (Adolescent mother under 18). Do you want to proceed?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Edit Date'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Proceed'),
+              ),
+            ],
+          ),
+        );
+        if (confirmYoungMother != true) {
+          return;
+        }
+      }
+    }
+
     setState(() {
       _isSaving = true;
       _fullNameError = null;
       _birthDateError = null;
+      _genderError = null;
       _addressError = null;
       _guardianNameError = null;
+      _relationshipError = null;
       _guardianContactError = null;
     });
 
     Mother? targetMother = _linkedMother;
-    final isMotherGuardian = _relationship.trim().toLowerCase() == 'mother';
+    final isMotherGuardian = _relationship?.trim().toLowerCase() == 'mother';
 
     if (isMotherGuardian) {
       if (_keepMotherDetails && _linkedMother != null) {
@@ -286,6 +360,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
           guardianName: _guardianNameController.text.trim(),
           guardianContact: sanitizedGuardianContact,
           address: _addressController.text.trim(),
+          guardianBirthDate: _guardianBirthDate,
           belongsToIpGroup: _belongsToIpGroup,
           excludeChildId: widget.existingChild?.id,
         );
@@ -299,7 +374,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       sequenceNo: _sequenceNo,
       fullName: _fullNameController.text.trim(),
       birthDate: _birthDate!,
-      gender: _gender,
+      gender: _gender!,
       address: _addressController.text.trim(),
       barangay: _currentBarangay,
       belongsToIpGroup: _belongsToIpGroup,
@@ -308,9 +383,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
           : _disabilityController.text.trim(),
       guardian: Guardian(
         fullName: _guardianNameController.text.trim(),
-        relationship: _relationship,
+        relationship: _relationship!,
         contactNo: sanitizedGuardianContact,
         linkedMotherId: targetMother?.id,
+        birthDate: _guardianBirthDate,
       ),
       createdAt: widget.existingChild?.createdAt ?? DateTime.now(),
       nutritionStatus: widget.existingChild?.nutritionStatus ?? 'Not weighed',
@@ -402,28 +478,90 @@ class _AddChildScreenState extends State<AddChildScreen> {
       return;
     }
 
-    // Clean reset for next child
+    // Refresh sequence number for subsequent saves
+    _sequenceNo = _childRepo.generateSequenceNo(barangayCode: _currentBarangayCode);
+
+    // Prompt user: View profile or add sibling
+    final savedMother = targetMother;
+    final savedAddress = _addressController.text.trim();
+    final savedGuardianName = _guardianNameController.text.trim();
+    final savedGuardianContact = sanitizedGuardianContact;
+    final savedGuardianBirthDate = _guardianBirthDate;
+    final savedIp = _belongsToIpGroup;
+
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Registered ${child.fullName}')),
+          ],
+        ),
+        content: const Text(
+          'Child profile has been saved. Would you like to view the profile, or add another sibling?',
+        ),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(ctx, 'sibling'),
+            child: const Text('Add Another Sibling'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () => Navigator.pop(ctx, 'profile'),
+            child: const Text('View Profile'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (action == 'profile') {
+      Navigator.pop(context, child);
+      Navigator.push(
+        context,
+        appPageRoute(ChildProfileScreen(child: child)),
+      );
+      return;
+    }
+
+    // Add sibling / reset form
     _fullNameController.clear();
     _birthDate = null;
-    _gender = 'Female';
+    _gender = null;
     _disabilityController.clear();
-    _sequenceNo = _childRepo.generateSequenceNo(barangayCode: _currentBarangayCode);
     _fullNameError = null;
     _birthDateError = null;
+    _genderError = null;
     _addressError = null;
     _guardianNameError = null;
+    _relationshipError = null;
     _guardianContactError = null;
 
-    if (!_keepMotherDetails) {
-      _addressController.clear();
+    if (action == 'sibling' || _keepMotherDetails) {
+      _keepMotherDetails = true;
+      _addressController.text = savedAddress;
+      _guardianNameController.text = savedGuardianName;
+      _guardianContactController.text = savedGuardianContact;
+      _relationship = 'Mother';
+      _guardianBirthDate = savedGuardianBirthDate;
+      _belongsToIpGroup = savedIp;
+      _linkedMother = savedMother;
+      _guardianIsMonitoredMother = savedMother != null;
+    } else {
+      _addressController.text = 'Purok 1';
       _guardianNameController.clear();
       _guardianContactController.clear();
-      _relationship = 'Mother';
+      _relationship = null;
+      _guardianBirthDate = null;
       _belongsToIpGroup = false;
       _guardianIsMonitoredMother = false;
       _linkedMother = null;
-    } else {
-      _linkedMother = targetMother;
+      _keepMotherDetails = false;
     }
 
     setState(() => _isSaving = false);
@@ -545,27 +683,57 @@ class _AddChildScreenState extends State<AddChildScreen> {
                               const SizedBox(width: AppSpacing.md),
                               Expanded(
                                 child: AppDropdownField(
+                                  key: _genderKey,
                                   label: 'Gender',
                                   isRequired: true,
+                                  hint: 'Select gender',
                                   value: _gender,
                                   options: const ['Female', 'Male'],
-                                  onChanged: (v) => setState(() => _gender = v!),
+                                  hasError: _genderError != null,
+                                  errorText: _genderError,
+                                  onChanged: (v) => setState(() {
+                                    _gender = v;
+                                    _genderError = null;
+                                  }),
                                 ),
                               ),
                             ],
                           ),
-                          AppTextField(
+                          AppDropdownField(
                             key: _addressKey,
-                            label: 'Address',
+                            label: 'Purok Address',
                             isRequired: true,
-                            hint: 'Purok, Tiguion',
-                            icon: Icons.location_on_outlined,
-                            controller: _addressController,
+                            hint: 'Select Purok',
+                            value: const [
+                              'Purok 1',
+                              'Purok 2',
+                              'Purok 3',
+                              'Purok 4',
+                              'Purok 5',
+                              'Purok 6',
+                              'Purok 7',
+                            ].contains(_addressController.text.trim())
+                                ? _addressController.text.trim()
+                                : (_addressController.text.trim().isNotEmpty
+                                    ? _addressController.text.trim()
+                                    : 'Purok 1'),
+                            options: const [
+                              'Purok 1',
+                              'Purok 2',
+                              'Purok 3',
+                              'Purok 4',
+                              'Purok 5',
+                              'Purok 6',
+                              'Purok 7',
+                            ],
                             hasError: _addressError != null,
                             errorText: _addressError,
-                            onChanged: (_) {
-                              if (_addressError != null) {
-                                setState(() => _addressError = null);
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() {
+                                  _addressController.text = v;
+                                  _addressError = null;
+                                });
                               }
                             },
                           ),
@@ -601,6 +769,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             onChanged: (_) {
                               if (_guardianNameError != null) {
                                 setState(() => _guardianNameError = null);
+                              } else {
+                                setState(() {});
                               }
                             },
                           ),
@@ -608,7 +778,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             children: [
                               Expanded(
                                 child: AppDropdownField(
+                                  key: _relationshipKey,
                                   label: 'Relationship',
+                                  isRequired: true,
+                                  hint: 'Select relationship',
                                   value: _relationship,
                                   options: const [
                                     'Mother',
@@ -616,8 +789,12 @@ class _AddChildScreenState extends State<AddChildScreen> {
                                     'Grandparent',
                                     'Other',
                                   ],
-                                  onChanged: (v) =>
-                                      setState(() => _relationship = v!),
+                                  hasError: _relationshipError != null,
+                                  errorText: _relationshipError,
+                                  onChanged: (v) => setState(() {
+                                    _relationship = v;
+                                    _relationshipError = null;
+                                  }),
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.md),
@@ -642,7 +819,58 @@ class _AddChildScreenState extends State<AddChildScreen> {
                               ),
                             ],
                           ),
-                          if (_relationship.trim().toLowerCase() == 'mother')
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: AppDateField(
+                                  label: 'Guardian Birth Date (Optional)',
+                                  value: _guardianBirthDate,
+                                  firstDate: DateTime(1940),
+                                  lastDate: DateTime.now(),
+                                  onChanged: (d) => setState(() {
+                                    _guardianBirthDate = d;
+                                  }),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_guardianBirthDate != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2, bottom: 4),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'Age: ${Guardian(fullName: '', relationship: '', contactNo: '', birthDate: _guardianBirthDate).ageLabel}',
+                                    style: AppTextStyles.body.copyWith(
+                                      fontSize: 12,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                  if (Guardian(fullName: '', relationship: '', contactNo: '', birthDate: _guardianBirthDate).isAdolescent) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFEF3C7),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: const Color(0xFFF59E0B)),
+                                      ),
+                                      child: Text(
+                                        'Adolescent mother',
+                                        style: AppTextStyles.caption.copyWith(
+                                          color: const Color(0xFFB45309),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          if (_relationship?.trim().toLowerCase() == 'mother' &&
+                              _guardianNameController.text.trim().isNotEmpty)
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -676,7 +904,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                                 ],
                               ),
                             )
-                          else ...[
+                          else if (_relationship?.trim().toLowerCase() != 'mother') ...[
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,

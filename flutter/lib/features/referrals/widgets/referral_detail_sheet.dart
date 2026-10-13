@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/models/referral.dart';
+import '../../../shared/utils/app_date_format.dart';
 import '../../../data/local/referral_repository.dart';
 
 /// Read-only referral detail sheet for BNS mobile users.
@@ -66,8 +67,7 @@ class ReferralDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr =
-        '${referral.createdAt.year}-${referral.createdAt.month.toString().padLeft(2, '0')}-${referral.createdAt.day.toString().padLeft(2, '0')}';
+    final dateStr = AppDateFormat.format(referral.createdAt);
     final statusColor = _statusColor;
     final isCompleted = referral.isCompleted;
 
@@ -265,7 +265,7 @@ class ReferralDetailSheet extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (referral.notes.isNotEmpty) ...[
+                if (referral.hasClinicalNotes) ...[
                   const SizedBox(height: 8),
                   Text(
                     'RHU / BHW Notes:',
@@ -277,7 +277,7 @@ class ReferralDetailSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    referral.notes,
+                    referral.clinicalNotes,
                     style: AppTextStyles.body.copyWith(
                       fontSize: 12,
                       color: AppColors.textPrimary,

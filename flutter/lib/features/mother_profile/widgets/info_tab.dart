@@ -7,6 +7,7 @@ import '../../../data/models/mother.dart';
 import '../../../data/models/mother_visit.dart';
 import '../../../shared/widgets/detail_row.dart';
 import '../../../shared/widgets/section_card.dart';
+import '../../../shared/utils/app_date_format.dart';
 
 class InfoTab extends StatelessWidget {
   final Mother mother;
@@ -41,13 +42,15 @@ class InfoTab extends StatelessWidget {
                 DetailRow(
                   icon: Icons.cake_outlined,
                   label: 'Age',
-                  value: mother.ageLabel,
+                  value: mother.ageLabel + (mother.isAdolescent ? ' (Adolescent mother)' : ''),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 DetailRow(
                   icon: Icons.event_outlined,
                   label: 'Birth Date',
-                  value: _formatDate(mother.birthDate),
+                  value: mother.birthDate != null
+                      ? _formatDate(mother.birthDate!)
+                      : 'Not recorded',
                 ),
                 const SizedBox(height: AppSpacing.md),
                 DetailRow(
@@ -153,8 +156,7 @@ class InfoTab extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  String _formatDate(DateTime d) => AppDateFormat.format(d);
 }
 
 class _StatBlock extends StatelessWidget {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../utils/app_pickers.dart';
+import '../utils/app_date_format.dart';
 
 class AppDateField extends StatelessWidget {
   final String label;
@@ -95,8 +96,8 @@ class AppDateField extends StatelessWidget {
                 Expanded(
                   child: Text(
                     value == null
-                        ? 'dd/mm/yyyy'
-                        : '${value!.day.toString().padLeft(2, '0')}/${value!.month.toString().padLeft(2, '0')}/${value!.year}',
+                        ? 'Select date'
+                        : AppDateFormat.format(value),
                     style: AppTextStyles.body.copyWith(
                       color: value == null
                           ? AppColors.textMuted

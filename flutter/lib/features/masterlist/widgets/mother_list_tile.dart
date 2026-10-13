@@ -114,16 +114,13 @@ class MotherListTile extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
-                                  // Line 3: Breastfeeding practice
+                                  // Line 3: Breastfeeding practice and labeled status chip
                                   Row(
                                     children: [
-                                      Container(
-                                        width: 5,
-                                        height: 5,
-                                        decoration: BoxDecoration(
-                                          color: color,
-                                          shape: BoxShape.circle,
-                                        ),
+                                      const Icon(
+                                        Icons.child_care,
+                                        size: 13,
+                                        color: AppColors.textMuted,
                                       ),
                                       const SizedBox(width: 4),
                                       Expanded(
@@ -137,6 +134,11 @@ class MotherListTile extends StatelessWidget {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      StatusBadge(
+                                        label: formattedStatus,
+                                        color: color,
                                       ),
                                     ],
                                   ),

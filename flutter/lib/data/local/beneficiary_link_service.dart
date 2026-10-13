@@ -124,6 +124,7 @@ class BeneficiaryLinkService {
     required String guardianName,
     required String guardianContact,
     required String address,
+    DateTime? guardianBirthDate,
     bool belongsToIpGroup = false,
     String? excludeChildId,
   }) async {
@@ -144,6 +145,10 @@ class BeneficiaryLinkService {
         updated = updated.copyWith(contactNo: cleanContact);
         needsUpdate = true;
       }
+      if (existing.birthDate == null && guardianBirthDate != null) {
+        updated = updated.copyWith(birthDate: guardianBirthDate);
+        needsUpdate = true;
+      }
       if (existing.address.isEmpty && address.trim().isNotEmpty) {
         updated = updated.copyWith(address: address.trim());
         needsUpdate = true;
@@ -159,7 +164,7 @@ class BeneficiaryLinkService {
     final newMother = Mother(
       id: motherId,
       fullName: cleanName.isNotEmpty ? cleanName : 'Mother',
-      birthDate: DateTime(DateTime.now().year - 25, 1, 1),
+      birthDate: guardianBirthDate,
       contactNo: cleanContact,
       address: address.trim().isNotEmpty ? address.trim() : 'Purok 1',
       barangay: barangay,

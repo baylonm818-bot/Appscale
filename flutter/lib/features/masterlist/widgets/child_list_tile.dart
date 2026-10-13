@@ -172,20 +172,14 @@ class ChildListTile extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 5),
-                                  // Line 3: 3 small indicators side-by-side in one row
-                                  Row(
+                                  // Line 3: 3 small indicators with wrap to prevent truncation
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 4,
                                     children: [
-                                      Expanded(
-                                        child: _buildIndicator('WFA', child.nutritionStatus),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: _buildIndicator('HFA', child.stuntingStatus),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: _buildIndicator('WFH', child.wastingStatus),
-                                      ),
+                                      _buildIndicator('WFA', child.nutritionStatus),
+                                      _buildIndicator('HFA', child.stuntingStatus),
+                                      _buildIndicator('WFH', child.wastingStatus),
                                     ],
                                   ),
                                 ],

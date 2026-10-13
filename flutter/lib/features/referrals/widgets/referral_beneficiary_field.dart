@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/local/child_repository.dart';
 import '../../../data/local/mother_repository.dart';
+import '../../../shared/utils/app_user_identity.dart';
 
 class ReferralBeneficiaryResult {
   final String id;
@@ -51,7 +52,7 @@ class _ReferralBeneficiaryFieldState extends State<ReferralBeneficiaryField> {
               .map(
                 (c) => ReferralBeneficiaryResult(
                   id: c.id,
-                  name: c.fullName,
+                  name: AppUserIdentity.normalizeDisplayName(c.fullName),
                   subtitle: '${c.ageLabel} · ${c.formattedAddress}',
                 ),
               )
@@ -60,7 +61,7 @@ class _ReferralBeneficiaryFieldState extends State<ReferralBeneficiaryField> {
               .map(
                 (m) => ReferralBeneficiaryResult(
                   id: m.id,
-                  name: m.fullName,
+                  name: AppUserIdentity.normalizeDisplayName(m.fullName),
                   subtitle: m.formattedAddress,
                 ),
               );

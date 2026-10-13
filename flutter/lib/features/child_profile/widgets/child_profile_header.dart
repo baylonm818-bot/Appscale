@@ -7,6 +7,7 @@ import '../../../data/local/referral_repository.dart';
 import '../../../data/models/child.dart';
 import '../../masterlist/utils/child_status_meta.dart';
 import '../../masterlist/widgets/status_badge.dart';
+import '../../../shared/utils/app_date_format.dart';
 
 class ChildProfileHeader extends StatelessWidget {
   final Child child;
@@ -159,6 +160,7 @@ class ChildProfileHeader extends StatelessWidget {
             runSpacing: 6,
             children: [
               if (isActive) ...[
+                // Weight-for-Age badge (WFA)
                 StatusBadge(
                   label: child.nutritionStatus,
                   color: ChildStatusMeta.colorFor(child.nutritionStatus),
@@ -170,7 +172,11 @@ class ChildProfileHeader extends StatelessWidget {
                     color: ChildStatusMeta.colorFor(child.stuntingStatus),
                     onDark: true,
                   ),
-                if (showWastingBadge)
+                // Weight-for-Length/Height (WFH) - for under-5s, WFH replaces BMI.
+                // Never show Overweight and Obese together.
+                if (showWastingBadge ||
+                    ((child.wastingStatus == 'Obese' || child.wastingStatus == 'Overweight') &&
+                     child.nutritionStatus != child.wastingStatus))
                   StatusBadge(
                     label: child.wastingStatus,
                     color: ChildStatusMeta.colorFor(child.wastingStatus),
@@ -195,8 +201,7 @@ class ChildProfileHeader extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) =>
-      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  String _formatDate(DateTime date) => AppDateFormat.format(date);
 }
 
 class _OverflowMenu extends StatelessWidget {

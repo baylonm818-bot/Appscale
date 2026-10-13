@@ -7,6 +7,7 @@ import '../../../data/local/hive_boxes.dart';
 import '../../../data/local/mother_repository.dart';
 import '../../../data/local/mother_visit_repository.dart';
 import '../../../shared/utils/app_page_route.dart';
+import '../../../shared/utils/app_date_format.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../mother_profile/add_counseling_visit_screen.dart';
 import '../../mother_profile/mother_profile_screen.dart';
@@ -257,7 +258,7 @@ class _LactatingMothersCounselingScreenState
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              'Age: ${mother.age} · ${mother.address}',
+                                              '${mother.ageLabel} · ${mother.address}',
                                               style: AppTextStyles.caption
                                                   .copyWith(
                                                 fontSize: 12,
@@ -267,7 +268,13 @@ class _LactatingMothersCounselingScreenState
                                           ],
                                         ),
                                       ),
-                                      _RiskBadge(riskStatus: mother.riskStatus),
+                                      _RiskBadge(
+                                        riskStatus: latestVisit == null
+                                            ? 'Not visited'
+                                            : (mother.riskStatus.toLowerCase() == 'not visited'
+                                                ? 'Normal'
+                                                : mother.riskStatus),
+                                      ),
                                     ],
                                   ),
                                   const Divider(
@@ -285,7 +292,7 @@ class _LactatingMothersCounselingScreenState
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
-                                          'Last visit: ${_fmtDate(latestVisit.date)}',
+                                          'Last visit: ${AppDateFormat.format(latestVisit.date)}',
                                           style: AppTextStyles.caption.copyWith(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
@@ -419,9 +426,6 @@ class _LactatingMothersCounselingScreenState
       },
     );
   }
-
-  static String _fmtDate(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }
 
 class _StatCard extends StatelessWidget {
@@ -489,6 +493,10 @@ class _RiskBadge extends StatelessWidget {
       case 'medium risk':
         bg = AppColors.statAmber.withValues(alpha: 0.15);
         fg = AppColors.statAmber;
+        break;
+      case 'not visited':
+        bg = AppColors.notWeighed.withValues(alpha: 0.2);
+        fg = AppColors.notWeighed;
         break;
       default:
         bg = AppColors.lightGreenBg;

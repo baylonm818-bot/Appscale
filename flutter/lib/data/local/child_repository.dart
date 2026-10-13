@@ -218,14 +218,28 @@ class ChildRepository {
   List<Child> getByIds(List<String> ids) =>
       getAll().where((c) => ids.contains(c.id)).toList();
 
-  /// Matches the OPT Plus sequence format seen in your wireframe:
+  /// Matches the OPT Plus sequence format:
   /// {barangay code}-{year}-{running count, zero-padded}
+  /// Generates the next number from the highest existing one for this barangay
+  /// and year, including pending Hive records.
   String generateSequenceNo({required String barangayCode}) {
     final year = DateTime.now().year;
-    final countThisYear = getAll()
-        .where((c) => c.sequenceNo.contains('$barangayCode-$year'))
-        .length;
-    final nextNumber = (countThisYear + 1).toString().padLeft(3, '0');
+    final prefix = '${barangayCode.toUpperCase()}-$year-';
+    int highestNum = 0;
+
+    for (final raw in _box.values) {
+      if (raw is! Map) continue;
+      final seq = (raw['sequenceNo'] ?? '').toString().trim();
+      if (seq.toUpperCase().startsWith(prefix)) {
+        final suffix = seq.substring(prefix.length).trim();
+        final numPart = int.tryParse(suffix);
+        if (numPart != null && numPart > highestNum) {
+          highestNum = numPart;
+        }
+      }
+    }
+
+    final nextNumber = (highestNum + 1).toString().padLeft(3, '0');
     return '$barangayCode-$year-$nextNumber';
   }
 
