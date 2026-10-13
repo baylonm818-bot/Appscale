@@ -23,6 +23,15 @@ class Measurement {
     this.customBmiStatus,
   });
 
+  /// Plausibility check for 0-59 months: height 45-125 cm, weight 2-30 kg, MUAC 8-20 cm (if provided).
+  /// Excludes MUAC 0.0 or outside 8-20 cm.
+  bool get isPlausible {
+    if (heightCm < 45.0 || heightCm > 125.0) return false;
+    if (weightKg < 2.0 || weightKg > 30.0) return false;
+    if (muacCm != null && (muacCm! < 8.0 || muacCm! > 20.0)) return false;
+    return true;
+  }
+
   /// Module 3 Requirement: "The system will automatically identify the nutritional status (obese, normal, underweight, etc.) based on the result of beneficiaries computed BMI."
   double get bmi {
     if (customBmi != null) return customBmi!;
@@ -32,6 +41,7 @@ class Measurement {
   }
 
   String get bmiStatus {
+    if (!isPlausible) return 'Needs re-measurement';
     if (customBmiStatus != null && customBmiStatus!.isNotEmpty) {
       return customBmiStatus!;
     }
@@ -46,12 +56,15 @@ class Measurement {
   /// Edema present overrides the wasting classification to SAM regardless
   /// of the weight-for-length number — this is a real WHO/NNC rule, not
   /// a cosmetic warning, since edema itself signals severe acute malnutrition.
-  String get effectiveWastingStatus =>
-      bilateralPittingEdema ? 'SAM' : weightForLengthStatus;
+  String get effectiveWastingStatus {
+    if (!isPlausible) return 'Needs re-measurement';
+    return bilateralPittingEdema ? 'SAM' : weightForLengthStatus;
+  }
 
   /// WHO/NNC classification is age-aware: children under 24 months are
   /// classified using weight-for-length while older children use BMI.
   String statusForAgeMonths(int ageMonths) {
+    if (!isPlausible) return 'Needs re-measurement';
     if (ageMonths <= 23) return effectiveWastingStatus;
 
     if (customBmiStatus != null && customBmiStatus!.isNotEmpty) {
@@ -66,11 +79,13 @@ class Measurement {
     return 'Obese';
   }
 
-  bool get isSevere =>
-      weightForAgeStatus == 'Severely Underweight' ||
-      heightForAgeStatus == 'Severely Stunted' ||
-      effectiveWastingStatus == 'SAM' ||
-      bmiStatus == 'Obese';
+  bool get isSevere {
+    if (!isPlausible) return false;
+    return weightForAgeStatus == 'Severely Underweight' ||
+        heightForAgeStatus == 'Severely Stunted' ||
+        effectiveWastingStatus == 'SAM' ||
+        bmiStatus == 'Obese';
+  }
 
   Map<String, dynamic> toMap() => {
     'date': date.toIso8601String(),

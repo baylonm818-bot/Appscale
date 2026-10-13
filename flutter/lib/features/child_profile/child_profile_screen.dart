@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/local/app_data_bus.dart';
 import '../../data/local/child_repository.dart';
@@ -270,12 +271,18 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           orElse: () => widget.child,
         );
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: Column(
-              children: [
-                ChildProfileHeader(
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+          ),
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  ChildProfileHeader(
                   child: child,
                   isActive: child.isActive,
                   onEditPressed: () => _handleEdit(child),
@@ -321,7 +328,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
                     index: _tabIndex,
                     children: [
                       InfoTab(child: child),
-                      HistoryTab(childId: child.id),
+                      HistoryTab(childId: child.id, child: child),
                       ChartsTab(childId: child.id),
                       ChildProgramsTab(child: child),
                     ],
@@ -330,9 +337,10 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               ],
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 }
 

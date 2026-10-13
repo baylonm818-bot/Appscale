@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/child.dart';
 import '../models/mother.dart';
+import '../models/measurement.dart';
 import 'hive_boxes.dart';
 import 'app_data_bus.dart';
 import 'mother_repository.dart';
@@ -285,4 +286,44 @@ class ChildRepository {
       getByBarangay(barangay).where((c) => c.isActive).length;
   int countInactive(String barangay) =>
       getByBarangay(barangay).where((c) => !c.isActive).length;
+
+  /// Recomputes child's overall nutrition status from their measurements.
+  /// Rule: Child status must use only the latest VALID measurement.
+  /// If there are no measurements or none are valid, status is 'Not yet classified'.
+  Future<void> recomputeChildStatusFromMeasurements(String childId) async {
+    final child = getById(childId);
+    if (child == null) return;
+
+    final measurementsBox = Hive.box(HiveBoxes.measurements);
+    final raw = measurementsBox.get(childId) as List?;
+    final measurements = <Measurement>[];
+    if (raw != null) {
+      for (final e in raw) {
+        if (e is Map) {
+          measurements.add(Measurement.fromMap(Map<String, dynamic>.from(e)));
+        }
+      }
+    }
+    measurements.sort((a, b) => b.date.compareTo(a.date));
+
+    // Find the latest plausible measurement
+    final validMeasurements = measurements.where((m) => m.isPlausible).toList();
+    if (validMeasurements.isNotEmpty) {
+      final latest = validMeasurements.first;
+      final updated = child.copyWith(
+        nutritionStatus: latest.weightForAgeStatus,
+        stuntingStatus: latest.heightForAgeStatus,
+        wastingStatus: latest.effectiveWastingStatus,
+        lastWeighedAt: latest.date,
+      );
+      await update(updated);
+    } else {
+      final updated = child.copyWith(
+        nutritionStatus: 'Not yet classified',
+        stuntingStatus: 'Not yet classified',
+        wastingStatus: 'Not yet classified',
+      );
+      await update(updated);
+    }
+  }
 }

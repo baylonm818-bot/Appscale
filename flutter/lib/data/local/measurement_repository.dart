@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/measurement.dart';
 import '../remote/beneficiary_api.dart';
 import 'app_data_bus.dart';
+import 'child_repository.dart';
 import 'hive_boxes.dart';
 
 /// Module 7: Offline Data Recording and Synchronization
@@ -119,6 +120,65 @@ class MeasurementRepository {
     _trySyncSingle(childId, recordDate, measurement);
   }
 
+  /// Updates a measurement in Hive and syncs the update to the server.
+  /// Also triggers recompute of the child's status from latest valid measurement.
+  Future<void> updateMeasurement({
+    required String childId,
+    required DateTime originalDate,
+    required Measurement updatedMeasurement,
+    String? auditNote,
+  }) async {
+    final list = (_box.get(childId) as List?) ?? [];
+    final origDateStr = originalDate.toIso8601String().substring(0, 10);
+    final newDateStr = updatedMeasurement.date.toIso8601String();
+
+    final updated = list.map((raw) {
+      final m = Map<String, dynamic>.from(raw as Map);
+      final rawDate = (m['date'] ?? '').toString();
+      final isMatch = rawDate.startsWith(origDateStr) ||
+          m['_localId'] == originalDate.toIso8601String();
+      if (isMatch) {
+        final newMap = updatedMeasurement.toMap()
+          ..['_syncStatus'] = 'pending'
+          ..['_action'] = 'update'
+          ..['_localId'] = newDateStr
+          ..['_auditNote'] = auditNote;
+        return newMap;
+      }
+      return m;
+    }).toList();
+
+    await _box.put(childId, updated);
+    await ChildRepository().recomputeChildStatusFromMeasurements(childId);
+    AppDataBus.notifyChanged();
+
+    _trySyncUpdate(childId, updatedMeasurement, auditNote);
+  }
+
+  /// Deletes a measurement from Hive and syncs the deletion to the server.
+  /// Also triggers recompute of the child's status from remaining valid measurements.
+  Future<void> deleteMeasurement({
+    required String childId,
+    required DateTime recordDate,
+  }) async {
+    final list = (_box.get(childId) as List?) ?? [];
+    final targetDateStr = recordDate.toIso8601String().substring(0, 10);
+
+    final filtered = list.where((raw) {
+      if (raw is! Map) return true;
+      final rawDate = (raw['date'] ?? '').toString();
+      final isMatch = rawDate.startsWith(targetDateStr) ||
+          raw['_localId'] == recordDate.toIso8601String();
+      return !isMatch;
+    }).toList();
+
+    await _box.put(childId, filtered);
+    await ChildRepository().recomputeChildStatusFromMeasurements(childId);
+    AppDataBus.notifyChanged();
+
+    _trySyncDelete(childId, recordDate);
+  }
+
   /// Background sync attempt for a single record.
   void _trySyncSingle(String childId, String recordDate, Measurement measurement) {
     Future(() async {
@@ -151,6 +211,43 @@ class MeasurementRepository {
           debugPrint('[Sync] Measurement sync failed: ${res.message}');
         }
       }
+    });
+  }
+
+  void _trySyncUpdate(String childId, Measurement measurement, String? auditNote) {
+    Future(() async {
+      final res = await BeneficiaryApi.updateNutritionRecord(
+        childExternalId: childId,
+        measurement: measurement,
+        auditNote: auditNote,
+      );
+      final list = (_box.get(childId) as List?) ?? [];
+      final dateStr = measurement.date.toIso8601String();
+      final updated = list.map((raw) {
+        final m = Map<String, dynamic>.from(raw as Map);
+        if (m['_localId'] == dateStr || m['date'] == dateStr) {
+          if (res.success) {
+            m['_syncStatus'] = 'synced';
+            m.remove('_action');
+            m.remove('_lastSyncError');
+          } else {
+            m['_syncStatus'] = 'failed';
+            m['_lastSyncError'] = res.message;
+          }
+        }
+        return m;
+      }).toList();
+      await _box.put(childId, updated);
+      AppDataBus.notifyChanged();
+    });
+  }
+
+  void _trySyncDelete(String childId, DateTime recordDate) {
+    Future(() async {
+      await BeneficiaryApi.deleteNutritionRecord(
+        childExternalId: childId,
+        recordDate: recordDate,
+      );
     });
   }
 }

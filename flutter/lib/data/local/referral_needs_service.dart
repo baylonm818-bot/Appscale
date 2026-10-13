@@ -17,11 +17,21 @@ class ReferralNeedsService {
   final _measurementRepo = MeasurementRepository();
   final _motherVisitRepo = MotherVisitRepository();
 
-  bool _isChildSevere(Child c) =>
-      c.isActive &&
-      (c.nutritionStatus == 'Severely Underweight' ||
-          c.stuntingStatus == 'Severely Stunted' ||
-          c.wastingStatus == 'SAM');
+  bool _isChildSevere(Child c) {
+    if (!c.isActive) return false;
+    if (c.nutritionStatus == 'Needs re-measurement' ||
+        c.stuntingStatus == 'Needs re-measurement' ||
+        c.wastingStatus == 'Needs re-measurement') {
+      return false;
+    }
+    final measurements = _measurementRepo.getForChild(c.id);
+    if (measurements.isNotEmpty && !measurements.first.isPlausible) {
+      return false;
+    }
+    return c.nutritionStatus == 'Severely Underweight' ||
+        c.stuntingStatus == 'Severely Stunted' ||
+        c.wastingStatus == 'SAM';
+  }
 
   bool _isChildReferralActiveOrResolved(Child c) {
     final referrals = _referralRepo.getForBeneficiary(c.id);
@@ -38,6 +48,7 @@ class ReferralNeedsService {
       if (measurements.isNotEmpty) {
         final newest = measurements.first;
         if (newest.date.isAfter(latest.createdAt)) {
+          if (!newest.isPlausible) return true; // Invalid record doesn't re-trigger severe referral
           final isSevere = newest.weightForAgeStatus == 'Severely Underweight' ||
               newest.heightForAgeStatus == 'Severely Stunted' ||
               newest.effectiveWastingStatus == 'SAM';

@@ -74,11 +74,12 @@ class DashboardHeader extends StatelessWidget {
     }
 
     final trimmed = rawUrl.trim();
-    final isLocalPath = trimmed.startsWith('/data/') ||
+    final isLocalPath = trimmed.contains('profile_photos') ||
+        trimmed.startsWith('/data/') ||
         trimmed.startsWith('/storage/') ||
         trimmed.startsWith('/var/') ||
         trimmed.startsWith('file://') ||
-        trimmed.contains('profile_photos') ||
+        (Platform.isWindows && (trimmed.contains(r':\') || trimmed.contains(':/'))) ||
         (trimmed.startsWith('/') &&
             !trimmed.startsWith('/uploads/') &&
             !trimmed.startsWith('/profile-pictures/'));

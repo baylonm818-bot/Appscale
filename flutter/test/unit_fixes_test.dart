@@ -21,6 +21,7 @@ import 'package:appscalev3/data/local/child_repository.dart';
 import 'package:appscalev3/data/local/beneficiary_link_service.dart';
 import 'package:appscalev3/data/local/referral_repository.dart';
 import 'package:appscalev3/data/local/referral_needs_service.dart';
+import 'package:appscalev3/data/local/measurement_repository.dart';
 
 void main() {
   group('Item 4: GrowthClassifier Tests', () {
@@ -848,12 +849,14 @@ void main() {
       await Hive.openBox(HiveBoxes.mothers);
       await Hive.openBox(HiveBoxes.measurements);
       await Hive.openBox(HiveBoxes.motherVisits);
+      await Hive.openBox(HiveBoxes.settings);
       await Hive.box(HiveBoxes.referrals).clear();
       await Hive.box(HiveBoxes.notifications).clear();
       await Hive.box(HiveBoxes.children).clear();
       await Hive.box(HiveBoxes.mothers).clear();
       await Hive.box(HiveBoxes.measurements).clear();
       await Hive.box(HiveBoxes.motherVisits).clear();
+      await Hive.box(HiveBoxes.settings).clear();
     });
 
     test('Referral.normalizeStatus handles various case variants and aliases', () {
@@ -980,6 +983,91 @@ void main() {
       // After completion, child is no longer needing referral
       needed = needsService.getChildrenNeedingReferral('Tiguion');
       expect(needed.any((c) => c.id == 'c-sam-1'), isFalse);
+    });
+
+    test('Measurement plausibility flags implausible values and guards status', () {
+      final implausibleMeasurement = Measurement(
+        date: DateTime(2026, 10, 1),
+        weightKg: 300.0, // Implausible (> 30 kg for 0-59m)
+        heightCm: 70.0,
+        muacCm: 0.0,    // Implausible
+        bilateralPittingEdema: false,
+        weightForAgeStatus: 'Overweight',
+        heightForAgeStatus: 'Normal',
+        weightForLengthStatus: 'SAM',
+      );
+
+      expect(implausibleMeasurement.isPlausible, isFalse);
+      expect(implausibleMeasurement.bmiStatus, equals('Needs re-measurement'));
+      expect(implausibleMeasurement.effectiveWastingStatus, equals('Needs re-measurement'));
+      expect(implausibleMeasurement.isSevere, isFalse);
+      expect(implausibleMeasurement.statusForAgeMonths(12), equals('Needs re-measurement'));
+      expect(implausibleMeasurement.statusForAgeMonths(36), equals('Needs re-measurement'));
+    });
+
+    test('recomputeChildStatusFromMeasurements selects latest valid measurement or Not yet classified', () async {
+      final childRepo = ChildRepository();
+      final measureRepo = MeasurementRepository();
+
+      final child = Child(
+        id: 'c-recompute-test',
+        sequenceNo: '10',
+        fullName: 'Recompute Test Child',
+        birthDate: DateTime(2025, 1, 1),
+        gender: 'Boy',
+        address: 'Purok 1',
+        barangay: 'Tiguion',
+        belongsToIpGroup: false,
+        disability: 'None',
+        guardian: const Guardian(fullName: 'Nanay', relationship: 'Mother', contactNo: ''),
+        createdAt: DateTime(2025, 1, 1),
+      );
+      await childRepo.add(child);
+
+      // 1. Initial valid measurement
+      final validMeasurement = Measurement(
+        date: DateTime(2026, 1, 1),
+        weightKg: 10.0,
+        heightCm: 75.0,
+        muacCm: null, // optional MUAC is null and plausible
+        bilateralPittingEdema: false,
+        weightForAgeStatus: 'Normal',
+        heightForAgeStatus: 'Normal',
+        weightForLengthStatus: 'Normal',
+      );
+      await measureRepo.addMeasurement('c-recompute-test', validMeasurement);
+      await childRepo.recomputeChildStatusFromMeasurements('c-recompute-test');
+
+      var updated = childRepo.getById('c-recompute-test')!;
+      expect(updated.nutritionStatus, equals('Normal'));
+
+      // 2. Add an invalid measurement later in time (e.g. weight 300 kg)
+      final invalidMeasurement = Measurement(
+        date: DateTime(2026, 2, 1),
+        weightKg: 300.0,
+        heightCm: 75.0,
+        muacCm: null,
+        bilateralPittingEdema: false,
+        weightForAgeStatus: 'Needs re-measurement',
+        heightForAgeStatus: 'Needs re-measurement',
+        weightForLengthStatus: 'Needs re-measurement',
+      );
+      await measureRepo.addMeasurement('c-recompute-test', invalidMeasurement);
+      await childRepo.recomputeChildStatusFromMeasurements('c-recompute-test');
+
+      // Child overall status must fallback to the latest VALID measurement ('Normal'), NOT the invalid one
+      updated = childRepo.getById('c-recompute-test')!;
+      expect(updated.nutritionStatus, equals('Normal'));
+
+      // 3. Delete the valid measurement, leaving only invalid measurement
+      await measureRepo.deleteMeasurement(
+        childId: 'c-recompute-test',
+        recordDate: DateTime(2026, 1, 1),
+      );
+
+      // Now child has no valid measurements -> 'Not yet classified'
+      updated = childRepo.getById('c-recompute-test')!;
+      expect(updated.nutritionStatus, equals('Not yet classified'));
     });
   });
 }

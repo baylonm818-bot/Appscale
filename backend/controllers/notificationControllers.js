@@ -120,7 +120,25 @@ exports.getNotifications = async (req, res) => {
     const userBarangay = req.user?.barangay;
     const { clause: whereClause, params } = buildRoleNotificationWhere(role, userBarangay, 'n');
 
-    const [notifications] = await pool.query(
+function normalizeNotificationToEnglish(notif) {
+  if (!notif) return notif;
+  let title = notif.title || '';
+  let message = notif.message || '';
+
+  if (message.includes(' ay Completed') || message.includes('Referral ni ')) {
+    message = message.replace(/Referral ni (.*?) ay Completed\./gi, 'Referral completed for $1.');
+    message = message.replace(/Referral ni (.*?) ay (.*?)\./gi, 'Referral for $1 is now $2.');
+  }
+
+  title = title
+    .replace(/^Bagong Referral/i, 'New Referral')
+    .replace(/^Bagong Iskedyul/i, 'New Schedule')
+    .replace(/^Paalala/i, 'Reminder');
+
+  return { ...notif, title, message };
+}
+
+    const [rawNotifications] = await pool.query(
       `SELECT n.notification_id, n.title, n.message, n.type, n.is_read, n.created_at
        FROM notifications n
        ${whereClause}
@@ -128,6 +146,8 @@ exports.getNotifications = async (req, res) => {
        LIMIT 50`,
       params
     );
+
+    const notifications = (rawNotifications || []).map(normalizeNotificationToEnglish);
 
     const [[{ unreadCount }]] = await pool.query(
       `SELECT COUNT(*) AS unreadCount

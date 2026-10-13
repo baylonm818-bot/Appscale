@@ -231,8 +231,18 @@ class _NotificationTile extends StatelessWidget {
 
   String get _displayMessage {
     var msg = notification.message;
-    if (msg.contains(' ay Completed.')) {
+    if (msg.contains(' ay Completed') || msg.contains('Referral ni ')) {
       msg = msg.replaceFirst(RegExp(r'Referral ni (.*?) ay Completed\.'), 'Referral completed for \$1.');
+      msg = msg.replaceFirst(RegExp(r'Referral ni (.*?) ay (.*?)\.'), 'Referral for \$1 is now \$2.');
+    }
+    if (msg.contains(' ay Ongoing') || msg.contains(' ay In Progress')) {
+      msg = msg.replaceFirst(RegExp(r'Referral ni (.*?) ay (Ongoing|In Progress)\.'), 'Referral in progress for \$1.');
+    }
+    if (msg.contains(' ay Pending')) {
+      msg = msg.replaceFirst(RegExp(r'Referral ni (.*?) ay Pending\.'), 'Referral pending for \$1.');
+    }
+    if (msg.contains(' ay Cancelled')) {
+      msg = msg.replaceFirst(RegExp(r'Referral ni (.*?) ay Cancelled\.'), 'Referral cancelled for \$1.');
     }
     return msg;
   }

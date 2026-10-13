@@ -49,6 +49,15 @@ function Referrals() {
   // archive state
   const [rowLoadingId, setRowLoadingId] = useState(null);
   const [batchArchiving, setBatchArchiving] = useState(false);
+  const [archiveConfirm, setArchiveConfirm] = useState(null); // { type: 'single'|'batch', id, name, isUnarchive }
+  const [toastMessage, setToastMessage] = useState(null); // { text, type: 'success'|'error' }
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => setToastMessage(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
 
   // update status modal
   const [actionTarget, setActionTarget] = useState(null);
@@ -155,44 +164,67 @@ function Referrals() {
     return list;
   }, [typeFilteredReferrals, activeTypeFiltered, statusFilter, severityFilter, sortBy]);
 
-  const handleArchiveRow = async (referralId, benName) => {
-    if (!window.confirm(`Archive referral for ${benName || 'beneficiary'}?`)) return;
-    setRowLoadingId(referralId);
+  const confirmArchiveExecution = async () => {
+    if (!archiveConfirm) return;
+    const { type, id, isUnarchive } = archiveConfirm;
+    setArchiveConfirm(null);
+
+    if (type === 'batch') {
+      setBatchArchiving(true);
+      try {
+        const res = await axiosClient.patch('/bhw/referrals/archive-completed', { barangay: user.barangay });
+        setToastMessage({ text: res.data?.message || 'Completed referrals archived successfully.', type: 'success' });
+        await refetch();
+        window.dispatchEvent(new CustomEvent('notifications:updated'));
+      } catch (err) {
+        setToastMessage({ text: err.response?.data?.message || 'Failed to archive completed referrals.', type: 'error' });
+      } finally {
+        setBatchArchiving(false);
+      }
+      return;
+    }
+
+    setRowLoadingId(id);
     try {
-      await axiosClient.patch(`/bhw/referrals/${referralId}/archive`);
+      if (isUnarchive) {
+        await axiosClient.patch(`/bhw/referrals/${id}/unarchive`);
+        setToastMessage({ text: 'Referral unarchived successfully.', type: 'success' });
+      } else {
+        await axiosClient.patch(`/bhw/referrals/${id}/archive`);
+        setToastMessage({ text: 'Referral archived successfully.', type: 'success' });
+      }
       await refetch();
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to archive referral.');
+      setToastMessage({ text: err.response?.data?.message || `Failed to ${isUnarchive ? 'unarchive' : 'archive'} referral.`, type: 'error' });
     } finally {
       setRowLoadingId(null);
     }
   };
 
-  const handleUnarchiveRow = async (referralId, benName) => {
-    if (!window.confirm(`Unarchive referral for ${benName || 'beneficiary'}?`)) return;
-    setRowLoadingId(referralId);
-    try {
-      await axiosClient.patch(`/bhw/referrals/${referralId}/unarchive`);
-      await refetch();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to unarchive referral.');
-    } finally {
-      setRowLoadingId(null);
-    }
+  const handleArchiveRow = (referralId, benName) => {
+    setArchiveConfirm({
+      type: 'single',
+      id: referralId,
+      name: benName || 'beneficiary',
+      isUnarchive: false,
+    });
   };
 
-  const handleBatchArchiveCompleted = async () => {
-    if (!window.confirm(`Archive all completed referrals in ${user.barangay || 'your barangay'}?`)) return;
-    setBatchArchiving(true);
-    try {
-      const res = await axiosClient.patch('/bhw/referrals/archive-completed', { barangay: user.barangay });
-      alert(res.data?.message || 'Completed referrals archived successfully.');
-      await refetch();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to archive completed referrals.');
-    } finally {
-      setBatchArchiving(false);
-    }
+  const handleUnarchiveRow = (referralId, benName) => {
+    setArchiveConfirm({
+      type: 'single',
+      id: referralId,
+      name: benName || 'beneficiary',
+      isUnarchive: true,
+    });
+  };
+
+  const handleBatchArchiveCompleted = () => {
+    setArchiveConfirm({
+      type: 'batch',
+      name: `all completed referrals in ${user.barangay || 'your barangay'}`,
+    });
   };
 
   const openActionModal = (r) => {
@@ -503,6 +535,59 @@ function Referrals() {
               <button type="button" disabled={actionSubmitting} onClick={submitStatusUpdate} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-60">{actionSubmitting ? 'Saving…' : 'Save'}</button>
             </div>
           </div>
+        </div>, document.body
+      )}
+
+      {/* Confirmation Modal for Archiving / Unarchiving */}
+      {archiveConfirm && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4" onClick={() => setArchiveConfirm(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-base text-gray-900">
+                {archiveConfirm.isUnarchive ? 'Unarchive Referral' : 'Archive Referral'}
+              </h3>
+              <button onClick={() => setArchiveConfirm(null)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-5 text-sm text-gray-600">
+              <p>
+                Are you sure you want to {archiveConfirm.isUnarchive ? 'unarchive' : 'archive'} {archiveConfirm.type === 'batch' ? archiveConfirm.name : `referral for ${archiveConfirm.name}`}?
+              </p>
+              {!archiveConfirm.isUnarchive && (
+                <p className="text-xs text-gray-400 mt-2">
+                  Archived referrals can be reviewed anytime under the Archived tab.
+                </p>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex gap-2.5 justify-end">
+              <button
+                type="button"
+                onClick={() => setArchiveConfirm(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmArchiveExecution}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-xs"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>, document.body
+      )}
+
+      {/* Styled feedback toast notification */}
+      {toastMessage && createPortal(
+        <div className="fixed bottom-5 right-5 z-9999 flex items-center gap-2.5 bg-gray-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-gray-800 text-xs font-medium animate-in slide-in-from-bottom-2 duration-200">
+          <span className={`w-2 h-2 rounded-full ${toastMessage.type === 'error' ? 'bg-red-400' : 'bg-green-400'}`} />
+          <span>{toastMessage.text}</span>
+          <button onClick={() => setToastMessage(null)} className="ml-2 text-gray-400 hover:text-white">
+            <X size={14} />
+          </button>
         </div>, document.body
       )}
     </main>

@@ -377,9 +377,19 @@ function BHWLayout() {
                         <button
                           key={item.notification_id || item.id}
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
                             setIsNotificationMenuOpen(false);
-                            navigate('/bhw/notifications');
+                            if (!item.is_read && (item.notification_id || item.id)) {
+                              try {
+                                await axiosClient.patch(`/bhw/notifications/${item.notification_id || item.id}/read`);
+                                fetchUnreadCount();
+                              } catch (_) {}
+                            }
+                            if ((item.type || '').toLowerCase() === 'referral') {
+                              navigate('/bhw/referrals');
+                            } else {
+                              navigate('/bhw/notifications');
+                            }
                           }}
                           className="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-green-50"
                         >

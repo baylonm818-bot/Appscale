@@ -10,11 +10,15 @@ import '../../../shared/utils/app_date_format.dart';
 class MeasurementTile extends StatelessWidget {
   final Measurement measurement;
   final bool isLatest;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const MeasurementTile({
     super.key,
     required this.measurement,
     required this.isLatest,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -108,10 +112,65 @@ class MeasurementTile extends StatelessWidget {
                             ),
                           ),
                         ],
+                        const Spacer(),
+                        if (onEdit != null || onDelete != null)
+                          PopupMenuButton<String>(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: const Icon(
+                              Icons.more_vert,
+                              size: 18,
+                              color: AppColors.textMuted,
+                            ),
+                            onSelected: (action) {
+                              if (action == 'edit') {
+                                onEdit?.call();
+                              } else if (action == 'delete') {
+                                onDelete?.call();
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              if (onEdit != null)
+                                const PopupMenuItem(
+                                  value: 'edit',
+                                  height: 36,
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit_outlined, size: 16, color: AppColors.primaryGreen),
+                                      SizedBox(width: 8),
+                                      Text('Edit', style: TextStyle(fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                              if (onDelete != null)
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  height: 36,
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.delete_outline, size: 16, color: AppColors.statRed),
+                                      SizedBox(width: 8),
+                                      Text('Delete', style: TextStyle(fontSize: 13, color: AppColors.statRed)),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     if (!isPlausible) ...[
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: const [
+                          StatusBadge(
+                            label: 'Needs re-measurement',
+                            color: AppColors.statRed,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
@@ -119,7 +178,7 @@ class MeasurementTile extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
-                          'Entry outside plausible ranges for 0-59 months (H: 45-125 cm, W: 2-30 kg, MUAC: 8-20 cm). BMI and nutritional status cannot be reliably determined.',
+                          'Entry outside plausible ranges for 0-59 months (H: 45-125 cm, W: 2-30 kg, MUAC: 8-20 cm). Nutritional status and BMI are not computed. Please re-measure.',
                           style: TextStyle(
                             color: AppColors.statRed,
                             fontSize: 11,
@@ -187,7 +246,7 @@ class MeasurementTile extends StatelessWidget {
                           icon: Icons.calculate_outlined,
                           iconColor: AppColors.primaryGreen,
                           label: 'BMI',
-                          value: '${measurement.bmi}',
+                          value: isPlausible ? '${measurement.bmi}' : '—',
                         ),
                         _MetricItem(
                           icon: Icons.favorite_outline,

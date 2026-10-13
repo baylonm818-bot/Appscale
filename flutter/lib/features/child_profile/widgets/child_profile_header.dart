@@ -38,7 +38,9 @@ class ChildProfileHeader extends StatelessWidget {
     final measurements = MeasurementRepository().getForChild(child.id);
     final hasMeasurements = measurements.isNotEmpty;
     final latestMeasurement = hasMeasurements ? measurements.first : null;
+    final isLatestPlausible = latestMeasurement?.isPlausible ?? false;
     final needsReferral = latestMeasurement != null &&
+        isLatestPlausible &&
         (latestMeasurement.isSevere ||
          child.wastingStatus == 'SAM' ||
          child.wastingStatus == 'MAM' ||
@@ -64,7 +66,7 @@ class ChildProfileHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Single row: arrow -> title -> Measure -> Refer (if needed) -> overflow menu.
+          // Top navigation bar: back arrow -> title -> overflow menu.
           Row(
             children: [
               InkWell(
@@ -79,20 +81,11 @@ class ChildProfileHeader extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Child Profile',
-                  style: AppTextStyles.h2.copyWith(color: Colors.white),
+                  style: AppTextStyles.h2.copyWith(color: Colors.white, fontSize: 18),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              if (isActive && !child.isTransferPending) ...[
-                _MeasureButton(onPressed: onMeasurePressed),
-                if (referralStatus.showReferButton && onReferralPressed != null) ...[
-                  const SizedBox(width: 6),
-                  _ReferralButton(onPressed: onReferralPressed!),
-                ],
-                const SizedBox(width: 8),
-              ],
               _OverflowMenu(
                 isActive: isActive,
                 isTransferPending: child.isTransferPending,
@@ -196,6 +189,18 @@ class ChildProfileHeader extends StatelessWidget {
                 ),
             ],
           ),
+          if (isActive && !child.isTransferPending) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                _MeasureButton(onPressed: onMeasurePressed),
+                if (referralStatus.showReferButton && onReferralPressed != null) ...[
+                  const SizedBox(width: 8),
+                  _ReferralButton(onPressed: onReferralPressed!),
+                ],
+              ],
+            ),
+          ],
         ],
       ),
     );

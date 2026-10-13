@@ -143,6 +143,63 @@ class BeneficiaryApi {
     }, token);
   }
 
+  static Future<ApiResponse> updateNutritionRecord({
+    required String childExternalId,
+    required Measurement measurement,
+    String? auditNote,
+  }) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+
+    final resolvedChildServerId =
+        SyncIdMapper.instance.getChildServerId(childExternalId);
+
+    return _put('/mobile/nutrition-records', {
+      'child_id': resolvedChildServerId,
+      'child_external_id': childExternalId,
+      'record_date': _date(measurement.date),
+      'weight_kg': measurement.weightKg,
+      'height_cm': measurement.heightCm,
+      'muac_cm': measurement.muacCm,
+      'weight_status': measurement.weightForAgeStatus,
+      'height_status': measurement.heightForAgeStatus,
+      'overall_status': measurement.effectiveWastingStatus,
+      'recorded_by': settings.authUser?['user_id'],
+      'audit_note': auditNote,
+    }, token);
+  }
+
+  static Future<ApiResponse> deleteNutritionRecord({
+    required String childExternalId,
+    required DateTime recordDate,
+  }) async {
+    final settings = SettingsRepository();
+    final token = settings.authToken;
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+
+    final resolvedChildServerId =
+        SyncIdMapper.instance.getChildServerId(childExternalId);
+
+    return _delete('/mobile/nutrition-records', {
+      'child_id': resolvedChildServerId,
+      'child_external_id': childExternalId,
+      'record_date': _date(recordDate),
+    }, token);
+  }
+
   static Future<ApiResponse> syncSchedule(ProgramSchedule schedule) async {
     final settings = SettingsRepository();
     final token = settings.authToken;
@@ -498,6 +555,116 @@ class BeneficiaryApi {
         errMsg = 'Session expired. Please log in again.';
       }
 
+      return ApiResponse(
+        success: false,
+        statusCode: response.statusCode,
+        message: errMsg,
+        data: data,
+      );
+    } catch (e) {
+      return ApiResponse(
+        success: false,
+        statusCode: 0,
+        message: 'Network error: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
+    }
+  }
+
+  static Future<ApiResponse> _put(
+    String path,
+    Map<String, dynamic> payload,
+    String? token,
+  ) async {
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+    try {
+      final response = await http
+          .put(
+            Uri.parse('$_baseUrl$path'),
+            headers: headers,
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 25));
+
+      Map<String, dynamic>? data;
+      try {
+        data = jsonDecode(response.body) as Map<String, dynamic>?;
+      } catch (_) {}
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return ApiResponse(
+          success: true,
+          statusCode: response.statusCode,
+          message: data?['message']?.toString() ?? 'OK',
+          data: data,
+        );
+      }
+
+      String errMsg = data?['message']?.toString() ?? 'Server error (${response.statusCode})';
+      return ApiResponse(
+        success: false,
+        statusCode: response.statusCode,
+        message: errMsg,
+        data: data,
+      );
+    } catch (e) {
+      return ApiResponse(
+        success: false,
+        statusCode: 0,
+        message: 'Network error: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
+    }
+  }
+
+  static Future<ApiResponse> _delete(
+    String path,
+    Map<String, dynamic> payload,
+    String? token,
+  ) async {
+    if (token == null || token.isEmpty) {
+      return const ApiResponse(
+        success: false,
+        statusCode: 401,
+        message: 'Session expired. Please log in again.',
+      );
+    }
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('$_baseUrl$path'),
+            headers: headers,
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 25));
+
+      Map<String, dynamic>? data;
+      try {
+        data = jsonDecode(response.body) as Map<String, dynamic>?;
+      } catch (_) {}
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return ApiResponse(
+          success: true,
+          statusCode: response.statusCode,
+          message: data?['message']?.toString() ?? 'OK',
+          data: data,
+        );
+      }
+
+      String errMsg = data?['message']?.toString() ?? 'Server error (${response.statusCode})';
       return ApiResponse(
         success: false,
         statusCode: response.statusCode,

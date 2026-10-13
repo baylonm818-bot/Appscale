@@ -13,60 +13,223 @@ import '../../program/deworming/record_deworming_screen.dart';
 import '../../program/feeding/feeding_program_screen.dart';
 import '../../program/vitamin_a/record_vitamin_a_screen.dart';
 
-class ChildProgramsTab extends StatelessWidget {
+import '../../../data/local/program_schedule_repository.dart';
+import '../../../data/models/program_schedule.dart';
+
+class ChildProgramsTab extends StatefulWidget {
   final Child child;
 
   const ChildProgramsTab({super.key, required this.child});
 
   @override
+  State<ChildProgramsTab> createState() => _ChildProgramsTabState();
+}
+
+class _ChildProgramsTabState extends State<ChildProgramsTab> {
+  final bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
-      builder: (context, version, childWidget) {
-        final isEnrolledInFeeding = FeedingEnrollmentRepository().isEnrolled(
-          child.id,
-        );
-        final enrolledDate = FeedingEnrollmentRepository().enrolledAt(child.id);
-        final vitARecords = VitaminARepository().getByChildId(child.id);
-        final dewormingRecords = DewormingRepository().getByChildId(child.id);
-
-        // Calculate attendance
-        final attRepo = FeedingAttendanceRepository();
-        final loggedDates = attRepo.getLoggedDates(child.barangay);
-        var daysPresent = 0;
-        for (final d in loggedDates) {
-          final statuses = attRepo.getForDate(child.barangay, d);
-          if (statuses[child.id] == 'Present') {
-            daysPresent++;
-          }
+      builder: (context, version, _) {
+        if (_isLoading) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primaryGreen),
+          );
         }
 
-        return ListView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          children: [
-            _buildFeedingSection(
-              context,
-              isEnrolledInFeeding,
-              enrolledDate,
-              daysPresent,
+        if (_errorMessage != null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: AppColors.statRed),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Failed to load program records',
+                    style: AppTextStyles.h2.copyWith(fontSize: 16),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => setState(() => _errorMessage = null),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            _buildVitaminASection(context, vitARecords),
-            const SizedBox(height: AppSpacing.lg),
-            _buildDewormingSection(context, dewormingRecords),
-            const SizedBox(height: 48),
-          ],
+          );
+        }
+
+        try {
+          final isEnrolledInFeeding = FeedingEnrollmentRepository().isEnrolled(
+            widget.child.id,
+          );
+          final enrolledDate = FeedingEnrollmentRepository().enrolledAt(widget.child.id);
+          final wasEverEnrolled = FeedingEnrollmentRepository().wasEverEnrolled(widget.child.id);
+          final vitARecords = VitaminARepository().getByChildId(widget.child.id);
+          final dewormingRecords = DewormingRepository().getByChildId(widget.child.id);
+
+          // Calculate attendance
+          final attRepo = FeedingAttendanceRepository();
+          final loggedDates = attRepo.getLoggedDates(widget.child.barangay);
+          var daysPresent = 0;
+          for (final d in loggedDates) {
+            final statuses = attRepo.getForDate(widget.child.barangay, d);
+            if (statuses[widget.child.id] == 'Present') {
+              daysPresent++;
+            }
+          }
+
+          // Upcoming schedules for each program
+          final upcomingSchedules = ProgramScheduleRepository().getUpcoming(widget.child.barangay);
+          final nextFeeding = _findNextSchedule(upcomingSchedules, 'Feeding');
+          final nextVitA = _findNextSchedule(upcomingSchedules, 'Vitamin A');
+          final nextDeworming = _findNextSchedule(upcomingSchedules, 'Deworming');
+
+          final hasAnyProgramActivity = isEnrolledInFeeding ||
+              wasEverEnrolled ||
+              vitARecords.isNotEmpty ||
+              dewormingRecords.isNotEmpty;
+
+          return ColoredBox(
+            color: AppColors.background,
+            child: ListView(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              children: [
+                if (!hasAnyProgramActivity) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.info_outline, color: AppColors.primaryGreen, size: 28),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'No program records yet',
+                                    style: AppTextStyles.h2.copyWith(fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'This child has not received Vitamin A, Deworming, or Feeding enrollments yet.',
+                                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryGreen,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(double.infinity, 36),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Enroll in program', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          onPressed: () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            await FeedingEnrollmentRepository().enroll(widget.child.id);
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('${widget.child.fullName} enrolled in Feeding Program'),
+                                backgroundColor: AppColors.primaryGreen,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              _buildFeedingSection(
+                context,
+                isEnrolledInFeeding,
+                enrolledDate,
+                daysPresent,
+                nextSchedule: nextFeeding,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _buildVitaminASection(context, vitARecords, nextSchedule: nextVitA),
+              const SizedBox(height: AppSpacing.lg),
+              _buildDewormingSection(context, dewormingRecords, nextSchedule: nextDeworming),
+              const SizedBox(height: 48),
+            ],
+          ),
         );
+        } catch (e) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: AppColors.statRed),
+                  const SizedBox(height: 12),
+                  Text('Failed to load program records', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                  const SizedBox(height: 6),
+                  Text('$e', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen, foregroundColor: Colors.white),
+                    onPressed: () => setState(() {}),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
       },
     );
+  }
+
+  Child get child => widget.child;
+
+  ProgramSchedule? _findNextSchedule(List<ProgramSchedule> list, String type) {
+    try {
+      return list.firstWhere(
+        (s) => s.programType.toLowerCase() == type.toLowerCase(),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   Widget _buildFeedingSection(
     BuildContext context,
     bool isEnrolled,
     DateTime? enrolledDate,
-    int daysPresent,
-  ) {
+    int daysPresent, {
+    ProgramSchedule? nextSchedule,
+  }) {
     final repo = FeedingEnrollmentRepository();
     final wasEverEnrolled = repo.wasEverEnrolled(child.id);
     final unenrolledAt = repo.unenrolledAt(child.id);
@@ -569,10 +732,20 @@ class ChildProgramsTab extends StatelessWidget {
 
   Widget _buildVitaminASection(
     BuildContext context,
-    List<dynamic> vitARecords,
-  ) {
+    List<dynamic> vitARecords, {
+    ProgramSchedule? nextSchedule,
+  }) {
     final age = child.ageInMonths;
     final recommendedDose = VitaminARepository.determineRecommendedDosage(age);
+    final lastRecord = vitARecords.isNotEmpty ? vitARecords.first : null;
+    final lastDateStr = lastRecord != null
+        ? '${lastRecord.dateGiven.month}/${lastRecord.dateGiven.day}/${lastRecord.dateGiven.year}'
+        : null;
+    final nextScheduleStr = nextSchedule != null
+        ? '${nextSchedule.date.month}/${nextSchedule.date.day}/${nextSchedule.date.year}'
+        : (lastRecord?.nextDueDate != null
+            ? '${lastRecord!.nextDueDate!.month}/${lastRecord.nextDueDate!.day}/${lastRecord.nextDueDate!.year}'
+            : null);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -629,6 +802,38 @@ class ChildProgramsTab extends StatelessWidget {
           const SizedBox(height: 8),
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Last Dose Given', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                  const SizedBox(height: 2),
+                  Text(
+                    lastDateStr ?? 'None',
+                    style: AppTextStyles.body.copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Next Schedule / Due', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                  const SizedBox(height: 2),
+                  Text(
+                    nextScheduleStr ?? '—',
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           if (vitARecords.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
@@ -677,9 +882,19 @@ class ChildProgramsTab extends StatelessWidget {
 
   Widget _buildDewormingSection(
     BuildContext context,
-    List<dynamic> dewormingRecords,
-  ) {
+    List<dynamic> dewormingRecords, {
+    ProgramSchedule? nextSchedule,
+  }) {
     final isEligible = DewormingRepository.isEligible(child.ageInMonths);
+    final lastRecord = dewormingRecords.isNotEmpty ? dewormingRecords.first : null;
+    final lastDateStr = lastRecord != null
+        ? '${lastRecord.dateGiven.month}/${lastRecord.dateGiven.day}/${lastRecord.dateGiven.year}'
+        : null;
+    final nextScheduleStr = nextSchedule != null
+        ? '${nextSchedule.date.month}/${nextSchedule.date.day}/${nextSchedule.date.year}'
+        : (lastRecord?.nextDueDate != null
+            ? '${lastRecord!.nextDueDate!.month}/${lastRecord.nextDueDate!.day}/${lastRecord.nextDueDate!.year}'
+            : null);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -746,6 +961,38 @@ class ChildProgramsTab extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Last Dose Given', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                  const SizedBox(height: 2),
+                  Text(
+                    lastDateStr ?? 'None',
+                    style: AppTextStyles.body.copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Next Schedule / Round', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                  const SizedBox(height: 2),
+                  Text(
+                    nextScheduleStr ?? '—',
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           if (dewormingRecords.isEmpty)
             Padding(

@@ -259,9 +259,40 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
   }
 
   Future<void> _handleSave() async {
+    // 1. Date Validation: Check measurement date is not before birth date or in future
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final measurementDay = DateTime(_monthYear.year, _monthYear.month, _monthYear.day);
+    final childBirthDay = DateTime(
+      widget.child.birthDate.year,
+      widget.child.birthDate.month,
+      widget.child.birthDate.day,
+    );
+
+    if (measurementDay.isAfter(today)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Measurement date cannot be in the future.'),
+          backgroundColor: AppColors.statRed,
+        ),
+      );
+      return;
+    }
+
+    if (measurementDay.isBefore(childBirthDay)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Measurement date cannot be before the child\'s birth date.'),
+          backgroundColor: AppColors.statRed,
+        ),
+      );
+      return;
+    }
+
     final rawW = MeasurementValidator.parseDecimal(_weightController.text);
     final rawH = MeasurementValidator.parseDecimal(_heightController.text);
-    final rawM = _isMuacEligible
+    // MUAC is completely optional: null if empty, never required
+    final rawM = _isMuacEligible && _muacController.text.trim().isNotEmpty
         ? MeasurementValidator.parseDecimal(_muacController.text)
         : null;
 
@@ -283,13 +314,9 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             previousHeightCm: _previousEntry?.heightCm,
           );
 
-    final muacRes = _isMuacEligible
-        ? (rawM == null
-            ? const ValidationResult(
-                severity: ValidationSeverity.error,
-                message: 'MUAC is required for children 6 months and older.',
-              )
-            : MeasurementValidator.checkMuac(rawM, _assessmentAgeMonths))
+    // Apply MUAC check only if entered and child is 6-59 months
+    final muacRes = (_isMuacEligible && rawM != null)
+        ? MeasurementValidator.checkMuac(rawM, _assessmentAgeMonths)
         : const ValidationResult();
 
     setState(() {
@@ -299,7 +326,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       _plausibilityError = null;
     });
 
-    if (weightRes.isError || heightRes.isError || muacRes.isError) {
+    if (rawW == null || rawH == null) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           0,
@@ -307,17 +334,83 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
           curve: Curves.easeOut,
         );
       }
-      if (weightRes.isError) {
+      if (rawW == null) {
         _weightFocusNode.requestFocus();
-      } else if (heightRes.isError) {
+      } else {
         _heightFocusNode.requestFocus();
-      } else if (muacRes.isError) {
-        _muacFocusNode.requestFocus();
       }
       return;
     }
 
-    if (rawW != null && rawH != null) {
+    // Check if any field has hard error
+    final hasHardErrors = weightRes.isError || heightRes.isError || muacRes.isError;
+    bool forceFlagImplausible = false;
+
+    if (hasHardErrors) {
+      // Suggestion text or error explanation
+      final errorLines = <String>[];
+      if (weightRes.isError) errorLines.add('• ${weightRes.fullMessage}');
+      if (heightRes.isError) errorLines.add('• ${heightRes.fullMessage}');
+      if (muacRes.isError) errorLines.add('• ${muacRes.fullMessage}');
+
+      final proceedAnyway = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline_rounded, color: AppColors.statRed),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Out-of-range Value Detected',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...errorLines.map((e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(e, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                  )),
+              const SizedBox(height: 8),
+              const Text(
+                'This value is outside expected physiological ranges. If you save anyway, it will be flagged as "Needs re-measurement" and will not produce a nutritional classification.',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Edit'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.statRed),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save anyway'),
+            ),
+          ],
+        ),
+      );
+
+      if (proceedAnyway != true) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+        return;
+      }
+      forceFlagImplausible = true;
+    }
+
+    if (!forceFlagImplausible) {
       final plausibilityErr = MeasurementValidator.validatePlausibility(
         weight: rawW,
         height: rawH,
@@ -341,7 +434,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     final hasSoftWarnings =
         weightRes.isWarning || heightRes.isWarning || muacRes.isWarning;
 
-    if (hasSoftWarnings) {
+    if (hasSoftWarnings && !forceFlagImplausible) {
+      if (!mounted) return;
       final confirmedWarning = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -406,7 +500,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       );
 
       if (confirmedWarning != true) return;
-    } else {
+    } else if (!forceFlagImplausible) {
+      if (!mounted) return;
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -415,8 +510,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Weight: ${rawW!.toStringAsFixed(1)} kg'),
-              Text('Height: ${rawH!.toStringAsFixed(1)} cm'),
+              Text('Weight: ${rawW.toStringAsFixed(1)} kg'),
+              Text('Height: ${rawH.toStringAsFixed(1)} cm'),
               if (rawM != null) Text('MUAC: ${rawM.toStringAsFixed(1)} cm'),
               const SizedBox(height: 8),
               const Text('Auto-computed nutritional status:'),
@@ -448,8 +543,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
     setState(() => _isSaving = true);
 
-    final w = rawW!;
-    final h = rawH!;
+    final w = rawW;
+    final h = rawH;
     final muac = rawM;
 
     final weightStatus = GrowthClassifier.classifyWeightForAge(
@@ -468,43 +563,47 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       gender: widget.child.gender,
     );
 
+    final isPlausible = !forceFlagImplausible && MeasurementValidator.isPlausibleRecord(
+      heightCm: h,
+      weightKg: w,
+      muacCm: muac,
+      ageMonths: _assessmentAgeMonths,
+    );
+
     final measurement = Measurement(
       date: _monthYear,
       weightKg: w,
       heightCm: h,
       muacCm: muac,
       bilateralPittingEdema: _edema,
-      weightForAgeStatus: weightStatus,
-      heightForAgeStatus: heightStatus,
-      weightForLengthStatus: wastingStatus,
-      customBmi: _liveResult?.bmi,
-      customBmiStatus: _liveResult?.bmiStatus,
+      weightForAgeStatus: isPlausible ? weightStatus : 'Needs re-measurement',
+      heightForAgeStatus: isPlausible ? heightStatus : 'Needs re-measurement',
+      weightForLengthStatus: isPlausible ? wastingStatus : 'Needs re-measurement',
+      customBmi: isPlausible ? _liveResult?.bmi : null,
+      customBmiStatus: isPlausible ? _liveResult?.bmiStatus : 'Needs re-measurement',
     );
 
     await _measurementRepo.addMeasurement(widget.child.id, measurement);
 
-    final updatedChild = widget.child.copyWith(
-      nutritionStatus: weightStatus,
-      stuntingStatus: heightStatus,
-      wastingStatus: measurement.effectiveWastingStatus,
-      lastWeighedAt: measurement.date,
-    );
-
-    await _childRepo.update(updatedChild);
+    // Recompute child status based on latest VALID measurement
+    await _childRepo.recomputeChildStatusFromMeasurements(widget.child.id);
+    final updatedChild = _childRepo.getById(widget.child.id) ?? widget.child;
 
     await _activityRepo.logActivity(
       type: 'measurement_recorded',
-      title: 'Recorded measurement for ${widget.child.fullName} (BMI: ${measurement.bmi} - ${measurement.bmiStatus})',
+      title: 'Recorded measurement for ${widget.child.fullName} (BMI: ${isPlausible ? measurement.bmi : "—"} - ${measurement.bmiStatus})',
     );
 
     // Module 3: Notify BNS if there are beneficiaries at high risk of nutritional concerns
+    // NEVER create high-risk alerts or auto-referrals from invalid measurements
     final hasExistingReferral = ReferralRepository()
         .getForBeneficiary(widget.child.id)
         .any((r) =>
             r.status.toLowerCase() != 'rejected' &&
             r.status.toLowerCase() != 'cancelled');
 
-    if ((measurement.isSevere || measurement.bmiStatus == 'Obese') &&
+    if (isPlausible &&
+        (measurement.isSevere || measurement.bmiStatus == 'Obese') &&
         !hasExistingReferral) {
       final severeReason = _buildSevereReason(measurement);
       await NotificationRepository().add(
@@ -524,7 +623,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     if (!mounted) return;
     setState(() => _isSaving = false);
 
-    if (measurement.isSevere &&
+    if (isPlausible &&
+        measurement.isSevere &&
         widget.showReferralPrompt &&
         !hasExistingReferral) {
       await _showReferralPrompt(measurement, updatedChild);
@@ -748,8 +848,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                           ),
                         if (_isMuacEligible) ...[
                           AppTextField(
-                            label: 'MUAC (cm) *',
-                            hint: 'Mid-upper arm circumference',
+                            label: 'MUAC (cm) (Optional)',
+                            hint: 'Mid-upper arm circumference (optional)',
                             icon: Icons.favorite_outline,
                             controller: _muacController,
                             focusNode: _muacFocusNode,

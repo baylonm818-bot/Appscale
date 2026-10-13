@@ -816,6 +816,129 @@ exports.syncNutritionRecord = async (req, res) => {
   }
 };
 
+// ── UPDATE NUTRITION RECORD ──
+exports.updateNutritionRecord = async (req, res) => {
+  const {
+    child_id,
+    child_external_id,
+    record_date,
+    weight_kg,
+    height_cm,
+    muac_cm,
+    weight_status,
+    height_status,
+    overall_status,
+    audit_note,
+  } = req.body;
+
+  try {
+    let resolvedChildId = null;
+    if (child_id && /^\d+$/.test(String(child_id))) {
+      resolvedChildId = Number(child_id);
+    } else {
+      const lookupId = child_external_id || child_id;
+      if (lookupId) {
+        const [[childRow]] = await pool.query(
+          'SELECT child_id FROM children WHERE external_id = ? OR child_id = ? LIMIT 1',
+          [lookupId, lookupId]
+        );
+        if (childRow) resolvedChildId = childRow.child_id;
+      }
+    }
+
+    if (!resolvedChildId || !record_date) {
+      return res.status(400).json({ message: 'Child ID and record date are required.' });
+    }
+
+    const safeWeight = Number(weight_kg) || 0;
+    const safeHeight = Number(height_cm) || 0;
+    const safeMuac = muac_cm != null ? Number(muac_cm) : null;
+
+    let computedBmi = null;
+    let bmiStatus = null;
+    if (safeHeight > 0 && safeWeight > 0) {
+      const heightInMeters = safeHeight / 100;
+      computedBmi = Number((safeWeight / (heightInMeters * heightInMeters)).toFixed(2));
+      if (computedBmi < 18.5) bmiStatus = 'Underweight';
+      else if (computedBmi < 25.0) bmiStatus = 'Normal';
+      else if (computedBmi < 30.0) bmiStatus = 'Overweight';
+      else bmiStatus = 'Obese';
+    }
+
+    const updatedBy = req.user?.user_id || req.body.recorded_by || null;
+    const note = audit_note || `Updated by user #${updatedBy || 'BNS'} on ${new Date().toISOString()}`;
+
+    const [updateResult] = await pool.query(
+      `UPDATE nutrition_records
+       SET weight_kg = ?, height_cm = ?, muac_cm = ?,
+           weight_status = ?, height_status = ?, overall_status = ?,
+           bmi = ?, bmi_status = ?, remarks = CONCAT(COALESCE(remarks, ''), ' [', ?, ']')
+       WHERE child_id = ? AND record_date = ?`,
+      [
+        safeWeight,
+        safeHeight,
+        safeMuac,
+        weight_status || null,
+        height_status || null,
+        overall_status || null,
+        computedBmi,
+        bmiStatus,
+        note,
+        resolvedChildId,
+        record_date,
+      ]
+    );
+
+    return res.status(200).json({
+      message: 'Nutrition record updated successfully.',
+      affectedRows: updateResult.affectedRows,
+      synced: true,
+    });
+  } catch (error) {
+    console.error('Update nutrition record error:', error);
+    return res.status(500).json({ message: 'Server error updating nutrition record.' });
+  }
+};
+
+// ── DELETE NUTRITION RECORD ──
+exports.deleteNutritionRecord = async (req, res) => {
+  const { child_id, child_external_id, record_date } = req.body;
+
+  try {
+    let resolvedChildId = null;
+    if (child_id && /^\d+$/.test(String(child_id))) {
+      resolvedChildId = Number(child_id);
+    } else {
+      const lookupId = child_external_id || child_id;
+      if (lookupId) {
+        const [[childRow]] = await pool.query(
+          'SELECT child_id FROM children WHERE external_id = ? OR child_id = ? LIMIT 1',
+          [lookupId, lookupId]
+        );
+        if (childRow) resolvedChildId = childRow.child_id;
+      }
+    }
+
+    if (!resolvedChildId || !record_date) {
+      return res.status(400).json({ message: 'Child ID and record date are required.' });
+    }
+
+    const [deleteResult] = await pool.query(
+      'DELETE FROM nutrition_records WHERE child_id = ? AND record_date = ?',
+      [resolvedChildId, record_date]
+    );
+
+    return res.status(200).json({
+      message: 'Nutrition record deleted successfully.',
+      affectedRows: deleteResult.affectedRows,
+      synced: true,
+    });
+  } catch (error) {
+    console.error('Delete nutrition record error:', error);
+    return res.status(500).json({ message: 'Server error deleting nutrition record.' });
+  }
+};
+
 // ── GET BENEFICIARIES FOR FLUTTER APP ──
 exports.getMobileChildren = async (req, res) => {
   const scope = enforceScopedBarangay(req.user, req.query.barangay || null);

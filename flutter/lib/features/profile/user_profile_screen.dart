@@ -208,6 +208,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   'contact_number': contact,
                 };
 
+                String? syncError;
                 final isOnline = await _checkOnline();
                 if (isOnline && token.isNotEmpty && userId.isNotEmpty) {
                   try {
@@ -217,13 +218,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     nav.pop();
                     messenger.showSnackBar(
                       const SnackBar(
-                        content: Text('Profile updated successfully.'),
+                        content: Text('Profile updated and synced successfully.'),
                         backgroundColor: AppColors.primaryGreen,
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
                     return;
                   } catch (e) {
+                    syncError = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
                     debugPrint('API update profile failed, queueing offline: $e');
                   }
                 }
@@ -233,8 +235,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 AppDataBus.notifyChanged();
                 nav.pop();
                 messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Profile saved to device. Will sync to server when connected.'),
+                  SnackBar(
+                    content: Text(
+                      syncError != null
+                          ? 'Server sync failed: $syncError. Saved locally and will sync later.'
+                          : 'Profile saved to device. Will sync to server when connected.',
+                    ),
                     backgroundColor: AppColors.statAmber,
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -734,9 +740,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = SettingsRepository();
-    final resolvedName = widget.bnsName.isNotEmpty
-        ? widget.bnsName
-        : AppUserIdentity.resolveDisplayName(settings.authUser);
+    final liveDisplayName = AppUserIdentity.resolveDisplayName(settings.authUser);
+    final resolvedName = liveDisplayName.isNotEmpty && liveDisplayName != 'Worker'
+        ? liveDisplayName
+        : (widget.bnsName.isNotEmpty ? widget.bnsName : liveDisplayName);
     final resolvedBarangay = widget.barangay.isNotEmpty
         ? widget.barangay
         : AppUserIdentity.resolveBarangay(settings.authUser);

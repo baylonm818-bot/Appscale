@@ -5,6 +5,8 @@ const {
   upsertChild,
   upsertMother,
   syncNutritionRecord,
+  updateNutritionRecord,
+  deleteNutritionRecord,
   getMobileChildren,
   getMobileMothers,
   getMobileSchedules,
@@ -35,6 +37,8 @@ router.use(roleCheck(['bhw', 'bns', 'admin']));
 router.post('/children', upsertChild);
 router.post('/mothers', upsertMother);
 router.post('/nutrition-records', syncNutritionRecord);
+router.put('/nutrition-records', updateNutritionRecord);
+router.delete('/nutrition-records', deleteNutritionRecord);
 router.post('/schedules', createMobileSchedule);
 router.post('/transfer', transferBeneficiary);
 

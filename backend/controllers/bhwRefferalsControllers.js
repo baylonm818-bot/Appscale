@@ -696,6 +696,15 @@ exports.archiveReferral = async (req, res) => {
       [user.user_id || null, id]
     );
 
+    try {
+      await pool.query(
+        `UPDATE notifications SET is_read = TRUE WHERE type = 'referral' AND related_id = ?`,
+        [id]
+      );
+    } catch (notifErr) {
+      console.warn('Could not mark notification read on archive (non-fatal):', notifErr.message);
+    }
+
     return res.status(200).json({
       message: 'Referral archived successfully.',
       referral_id: Number(id),
@@ -775,6 +784,17 @@ exports.archiveCompletedReferrals = async (req, res) => {
        WHERE ${whereClause}`,
       params
     );
+
+    try {
+      await pool.query(
+        `UPDATE notifications n
+         INNER JOIN referrals r ON n.related_id = r.referral_id AND n.type = 'referral'
+         SET n.is_read = TRUE
+         WHERE r.archived_at IS NOT NULL AND n.is_read = FALSE`
+      );
+    } catch (batchNotifErr) {
+      console.warn('Could not mark batch referral notifications read (non-fatal):', batchNotifErr.message);
+    }
 
     return res.status(200).json({
       message: `${result.affectedRows || 0} completed referral(s) archived successfully.`,

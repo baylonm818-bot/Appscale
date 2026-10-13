@@ -43,6 +43,10 @@ class ChildStatusMeta {
         return 'Normal';
       case 'not weighed':
         return 'Not weighed';
+      case 'needs re-measurement':
+      case 'needs remeasurement':
+      case 're-measurement':
+        return 'Needs re-measurement';
       default:
         return s
             .split(' ')
@@ -70,6 +74,8 @@ class ChildStatusMeta {
         return AppColors.statRed;
       case 'Not weighed':
         return AppColors.notWeighed;
+      case 'Needs re-measurement':
+        return AppColors.statRed;
       case 'SAM':
         return AppColors.statRed;
       case 'MAM':
@@ -136,6 +142,16 @@ class ChildOverallStatus {
       return const ChildOverallStatus(
         label: 'Not weighed',
         color: AppColors.notWeighed,
+        category: ChildOverallCategory.notWeighed,
+        severityRank: 5,
+      );
+    }
+
+    if (statuses.any((s) => s == 'Needs re-measurement') &&
+        !statuses.any((s) => s == 'Severely Underweight' || s == 'Severely Stunted' || s == 'SAM' || s == 'Underweight' || s == 'Stunted' || s == 'MAM' || s == 'Obese' || s == 'Overweight')) {
+      return const ChildOverallStatus(
+        label: 'Needs re-measurement',
+        color: AppColors.statRed,
         category: ChildOverallCategory.notWeighed,
         severityRank: 5,
       );

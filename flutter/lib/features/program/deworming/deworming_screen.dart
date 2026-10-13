@@ -10,6 +10,9 @@ import '../../../data/local/hive_boxes.dart';
 import '../../../data/models/child.dart';
 import '../../../data/models/deworming_record.dart';
 import '../../../shared/utils/app_page_route.dart';
+import '../../../data/local/program_schedule_repository.dart';
+import '../../../data/models/program_schedule.dart';
+import '../../../shared/utils/app_date_format.dart';
 import '../schedule/add_program_schedule_screen.dart';
 import 'record_deworming_screen.dart';
 
@@ -27,13 +30,24 @@ class _DewormingScreenState extends State<DewormingScreen>
   late TabController _tabController;
   final _dewormingRepo = DewormingRepository();
   final _childRepo = ChildRepository();
+  final _scheduleRepo = ProgramScheduleRepository();
   String _searchQuery = '';
+  final bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
-    _dewormingRepo.seedInitialIfEmpty(widget.barangay);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: 0);
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    try {
+      _dewormingRepo.seedInitialIfEmpty(widget.barangay);
+    } catch (e) {
+      debugPrint('Deworming seed error: $e');
+    }
   }
 
   @override
@@ -48,29 +62,116 @@ class _DewormingScreenState extends State<DewormingScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text('Deworming Program', style: TextStyle(color: Colors.white)),
+          backgroundColor: AppColors.darkGreen,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.primaryGreen),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text('Deworming Program', style: TextStyle(color: Colors.white)),
+          backgroundColor: AppColors.darkGreen,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: AppColors.statRed),
+                const SizedBox(height: 12),
+                Text('Failed to load Deworming data', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                const SizedBox(height: 6),
+                Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen, foregroundColor: Colors.white),
+                  onPressed: () => setState(() => _errorMessage = null),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, version, childWidget) {
-        final records = _dewormingRepo.getAllForBarangay(_currentBarangay);
-        final allChildren = _childRepo
-            .getByBarangay(_currentBarangay)
-            .where((c) => c.isActive)
-            .toList();
-        final eligibleChildren = allChildren
-            .where((c) => c.ageInMonths >= 12 && c.ageInMonths <= 59)
-            .toList();
+        List<DewormingRecord> records = [];
+        List<Child> eligibleChildren = [];
+        List<ProgramSchedule> schedules = [];
+        Set<String> recentRecipients = {};
+        int coveragePct = 0;
 
-        // Children who were dewormed in the current 6-month round
-        final sixMonthsAgo = DateTime.now().subtract(const Duration(days: 180));
-        final recentRecipients = records
-            .where((r) => r.dateGiven.isAfter(sixMonthsAgo))
-            .map((r) => r.childId)
-            .toSet();
+        try {
+          records = _dewormingRepo.getAllForBarangay(_currentBarangay);
+          final allChildren = _childRepo
+              .getByBarangay(_currentBarangay)
+              .where((c) => c.isActive)
+              .toList();
+          eligibleChildren = allChildren
+              .where((c) => c.ageInMonths >= 12 && c.ageInMonths <= 59)
+              .toList();
 
-        final coveragePct = eligibleChildren.isEmpty
-            ? 0
-            : ((recentRecipients.length / eligibleChildren.length) * 100)
-                  .round();
+          final sixMonthsAgo = DateTime.now().subtract(const Duration(days: 180));
+          recentRecipients = records
+              .where((r) => r.dateGiven.isAfter(sixMonthsAgo))
+              .map((r) => r.childId)
+              .toSet();
+
+          coveragePct = eligibleChildren.isEmpty
+              ? 0
+              : ((recentRecipients.length / eligibleChildren.length) * 100).round();
+
+          schedules = _scheduleRepo
+              .getAllForBarangay(_currentBarangay)
+              .where((s) => s.programType.toLowerCase() == 'deworming')
+              .toList();
+        } catch (e) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: AppBar(
+              title: const Text('Deworming Program', style: TextStyle(color: Colors.white)),
+              backgroundColor: AppColors.darkGreen,
+              iconTheme: const IconThemeData(color: Colors.white),
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: AppColors.statRed),
+                    const SizedBox(height: 12),
+                    Text('Failed to load Deworming data', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                    const SizedBox(height: 6),
+                    Text('$e', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen, foregroundColor: Colors.white),
+                      onPressed: () => setState(() {}),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -109,8 +210,9 @@ class _DewormingScreenState extends State<DewormingScreen>
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white70,
               tabs: [
-                Tab(text: 'Target Children (${eligibleChildren.length})'),
+                Tab(text: 'Target (${eligibleChildren.length})'),
                 Tab(text: 'Records (${records.length})'),
+                Tab(text: 'Schedule (${schedules.length})'),
               ],
             ),
           ),
@@ -171,7 +273,7 @@ class _DewormingScreenState extends State<DewormingScreen>
                 ),
                 child: TextField(
                   decoration: InputDecoration(
-                    hintText: 'Search child name...',
+                    hintText: 'Search child name or schedule...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     isDense: true,
                     filled: true,
@@ -192,6 +294,7 @@ class _DewormingScreenState extends State<DewormingScreen>
                   children: [
                     _buildEligibleList(eligibleChildren, recentRecipients),
                     _buildRecordsList(records),
+                    _buildScheduleList(schedules),
                   ],
                 ),
               ),
@@ -561,6 +664,151 @@ class _DewormingScreenState extends State<DewormingScreen>
                   },
                   child: const Text('Deworm'),
                 ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildScheduleList(List<ProgramSchedule> schedules) {
+    final filtered = _searchQuery.isEmpty
+        ? schedules
+        : schedules.where((s) =>
+            s.title.toLowerCase().contains(_searchQuery) ||
+            s.location.toLowerCase().contains(_searchQuery) ||
+            s.targetGroup.toLowerCase().contains(_searchQuery)).toList();
+
+    if (filtered.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.event_available_outlined,
+                size: 48,
+                color: AppColors.textMuted,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No Deworming schedules found',
+                style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.add, color: AppColors.darkGreen),
+                label: const Text('Schedule Deworming Day', style: TextStyle(color: AppColors.darkGreen)),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    appPageRoute(
+                      AddProgramScheduleScreen(
+                        prefillProgramType: 'Deworming',
+                        initialTitle: 'Barangay Deworming Day',
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, 80),
+      itemCount: filtered.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final s = filtered[index];
+        final monthStr = [
+          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        ][s.date.month - 1];
+
+        return Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 52,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.statOrange.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      monthStr.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.statOrange,
+                      ),
+                    ),
+                    Text(
+                      '${s.date.day}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.statOrange,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(s.title, style: AppTextStyles.h3.copyWith(fontSize: 14)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 12, color: AppColors.textMuted),
+                        const SizedBox(width: 4),
+                        Text(
+                          AppDateFormat.formatTimeRange(s.startTime, s.endTime),
+                          style: AppTextStyles.caption.copyWith(fontSize: 11),
+                        ),
+                        const SizedBox(width: 12),
+                        const Icon(Icons.location_on_outlined, size: 12, color: AppColors.textMuted),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            s.location,
+                            style: AppTextStyles.caption.copyWith(fontSize: 11),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (s.targetGroup.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Target: ${s.targetGroup}',
+                        style: AppTextStyles.caption.copyWith(
+                          fontSize: 11,
+                          color: AppColors.darkGreen,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ],
           ),
         );

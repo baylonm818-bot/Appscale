@@ -35,8 +35,11 @@ class DashboardRepository {
         .where((m) => _isThisMonth(m.createdAt))
         .length;
     // SAM = wasting SAM (weight-for-length/height < -3SD), strictly per clinical definition.
+    // Exclude records flagged as Needs re-measurement / implausible values.
     final samCases = activeChildren
-        .where((c) => ChildStatusMeta.formatStatus(c.wastingStatus) == 'SAM')
+        .where((c) =>
+            ChildStatusMeta.formatStatus(c.wastingStatus) == 'SAM' &&
+            c.wastingStatus != 'Needs re-measurement')
         .length;
 
     final enrolledCount = FeedingEnrollmentRepository()
@@ -103,6 +106,7 @@ class DashboardRepository {
       'Severe',
       'Overweight',
       'Obese',
+      'Needs re-measurement',
       'Not weighed',
     ];
     final counts = {for (final s in order) s: 0};
@@ -112,7 +116,7 @@ class DashboardRepository {
       if (counts.containsKey(label)) {
         counts[label] = counts[label]! + 1;
       } else {
-        counts['Normal'] = counts['Normal']! + 1;
+        counts['Not weighed'] = counts['Not weighed']! + 1;
       }
     }
 

@@ -10,6 +10,9 @@ import '../../../data/local/vitamin_a_repository.dart';
 import '../../../data/models/child.dart';
 import '../../../data/models/vitamin_a_record.dart';
 import '../../../shared/utils/app_page_route.dart';
+import '../../../data/local/program_schedule_repository.dart';
+import '../../../data/models/program_schedule.dart';
+import '../../../shared/utils/app_date_format.dart';
 import '../schedule/add_program_schedule_screen.dart';
 import 'record_vitamin_a_screen.dart';
 
@@ -27,13 +30,24 @@ class _VitaminAScreenState extends State<VitaminAScreen>
   late TabController _tabController;
   final _vitARepo = VitaminARepository();
   final _childRepo = ChildRepository();
+  final _scheduleRepo = ProgramScheduleRepository();
   String _searchQuery = '';
+  final bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
-    _vitARepo.seedInitialIfEmpty(widget.barangay);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: 0);
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    try {
+      _vitARepo.seedInitialIfEmpty(widget.barangay);
+    } catch (e) {
+      debugPrint('Vitamin A seed error: $e');
+    }
   }
 
   @override
@@ -48,29 +62,116 @@ class _VitaminAScreenState extends State<VitaminAScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text('Vitamin A Program', style: TextStyle(color: Colors.white)),
+          backgroundColor: AppColors.darkGreen,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.primaryGreen),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text('Vitamin A Program', style: TextStyle(color: Colors.white)),
+          backgroundColor: AppColors.darkGreen,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: AppColors.statRed),
+                const SizedBox(height: 12),
+                Text('Failed to load Vitamin A data', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                const SizedBox(height: 6),
+                Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen, foregroundColor: Colors.white),
+                  onPressed: () => setState(() => _errorMessage = null),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, version, childWidget) {
-        final records = _vitARepo.getAllForBarangay(_currentBarangay);
-        final allChildren = _childRepo
-            .getByBarangay(_currentBarangay)
-            .where((c) => c.isActive)
-            .toList();
-        final eligibleChildren = allChildren
-            .where((c) => c.ageInMonths >= 6 && c.ageInMonths <= 59)
-            .toList();
+        List<VitaminARecord> records = [];
+        List<Child> eligibleChildren = [];
+        List<ProgramSchedule> schedules = [];
+        Set<String> recentRecipients = {};
+        int coveragePct = 0;
 
-        // Children who received Vit A in last 6 months
-        final sixMonthsAgo = DateTime.now().subtract(const Duration(days: 180));
-        final recentRecipients = records
-            .where((r) => r.dateGiven.isAfter(sixMonthsAgo))
-            .map((r) => r.childId)
-            .toSet();
+        try {
+          records = _vitARepo.getAllForBarangay(_currentBarangay);
+          final allChildren = _childRepo
+              .getByBarangay(_currentBarangay)
+              .where((c) => c.isActive)
+              .toList();
+          eligibleChildren = allChildren
+              .where((c) => c.ageInMonths >= 6 && c.ageInMonths <= 59)
+              .toList();
 
-        final coveragePct = eligibleChildren.isEmpty
-            ? 0
-            : ((recentRecipients.length / eligibleChildren.length) * 100)
-                  .round();
+          final sixMonthsAgo = DateTime.now().subtract(const Duration(days: 180));
+          recentRecipients = records
+              .where((r) => r.dateGiven.isAfter(sixMonthsAgo))
+              .map((r) => r.childId)
+              .toSet();
+
+          coveragePct = eligibleChildren.isEmpty
+              ? 0
+              : ((recentRecipients.length / eligibleChildren.length) * 100).round();
+
+          schedules = _scheduleRepo
+              .getAllForBarangay(_currentBarangay)
+              .where((s) => s.programType.toLowerCase() == 'vitamin a')
+              .toList();
+        } catch (e) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: AppBar(
+              title: const Text('Vitamin A Program', style: TextStyle(color: Colors.white)),
+              backgroundColor: AppColors.darkGreen,
+              iconTheme: const IconThemeData(color: Colors.white),
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: AppColors.statRed),
+                    const SizedBox(height: 12),
+                    Text('Failed to load Vitamin A data', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                    const SizedBox(height: 6),
+                    Text('$e', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen, foregroundColor: Colors.white),
+                      onPressed: () => setState(() {}),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -109,8 +210,9 @@ class _VitaminAScreenState extends State<VitaminAScreen>
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white70,
               tabs: [
-                Tab(text: 'Eligible Children (${eligibleChildren.length})'),
+                Tab(text: 'Eligible (${eligibleChildren.length})'),
                 Tab(text: 'Records (${records.length})'),
+                Tab(text: 'Schedule (${schedules.length})'),
               ],
             ),
           ),
@@ -168,7 +270,7 @@ class _VitaminAScreenState extends State<VitaminAScreen>
                 ),
                 child: TextField(
                   decoration: InputDecoration(
-                    hintText: 'Search child name...',
+                    hintText: 'Search child name or schedule...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     isDense: true,
                     filled: true,
@@ -189,6 +291,7 @@ class _VitaminAScreenState extends State<VitaminAScreen>
                   children: [
                     _buildEligibleList(eligibleChildren, recentRecipients),
                     _buildRecordsList(records),
+                    _buildScheduleList(schedules),
                   ],
                 ),
               ),
@@ -541,6 +644,151 @@ class _VitaminAScreenState extends State<VitaminAScreen>
                   },
                   child: const Text('Give Dose'),
                 ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildScheduleList(List<ProgramSchedule> schedules) {
+    final filtered = _searchQuery.isEmpty
+        ? schedules
+        : schedules.where((s) =>
+            s.title.toLowerCase().contains(_searchQuery) ||
+            s.location.toLowerCase().contains(_searchQuery) ||
+            s.targetGroup.toLowerCase().contains(_searchQuery)).toList();
+
+    if (filtered.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.event_available_outlined,
+                size: 48,
+                color: AppColors.textMuted,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No Vitamin A schedules found',
+                style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.add, color: AppColors.darkGreen),
+                label: const Text('Schedule Vitamin A Day', style: TextStyle(color: AppColors.darkGreen)),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    appPageRoute(
+                      AddProgramScheduleScreen(
+                        prefillProgramType: 'Vitamin A',
+                        initialTitle: 'Barangay Vitamin A Supplementation',
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, 80),
+      itemCount: filtered.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final s = filtered[index];
+        final monthStr = [
+          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        ][s.date.month - 1];
+
+        return Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 52,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.statAmber.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      monthStr.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.statAmber,
+                      ),
+                    ),
+                    Text(
+                      '${s.date.day}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.statAmber,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(s.title, style: AppTextStyles.h3.copyWith(fontSize: 14)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 12, color: AppColors.textMuted),
+                        const SizedBox(width: 4),
+                        Text(
+                          AppDateFormat.formatTimeRange(s.startTime, s.endTime),
+                          style: AppTextStyles.caption.copyWith(fontSize: 11),
+                        ),
+                        const SizedBox(width: 12),
+                        const Icon(Icons.location_on_outlined, size: 12, color: AppColors.textMuted),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            s.location,
+                            style: AppTextStyles.caption.copyWith(fontSize: 11),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (s.targetGroup.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Target: ${s.targetGroup}',
+                        style: AppTextStyles.caption.copyWith(
+                          fontSize: 11,
+                          color: AppColors.darkGreen,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ],
           ),
         );

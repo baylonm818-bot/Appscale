@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'app_colors.dart';
 import 'app_text_styles.dart';
 
@@ -18,6 +19,11 @@ class AppTheme {
         appBarTheme: AppBarTheme(
           backgroundColor: AppColors.surface,
           elevation: 0,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+          ),
           iconTheme: const IconThemeData(color: AppColors.darkGreen),
           titleTextStyle: AppTextStyles.h2,
           centerTitle: false,
