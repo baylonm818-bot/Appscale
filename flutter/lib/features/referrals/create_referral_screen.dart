@@ -149,13 +149,37 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
         r.reason.trim().toLowerCase() == finalReason.trim().toLowerCase());
 
     if (hasDuplicate) {
-      setState(() => _isSaving = false);
-      AppNotificationUI.showWarning(
-        context,
-        'An open referral already exists for $resolvedName with reason "$finalReason".',
-        title: 'Duplicate Referral',
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: AppColors.statOrange),
+              SizedBox(width: 8),
+              Expanded(child: Text('Duplicate Referral Warning')),
+            ],
+          ),
+          content: Text(
+            'An open or pending referral already exists for $resolvedName with reason "$finalReason". Are you sure you want to create another referral?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Create Anyway'),
+            ),
+          ],
+        ),
       );
-      return;
+      if (proceed != true) {
+        setState(() => _isSaving = false);
+        return;
+      }
     }
 
     final referral = Referral(

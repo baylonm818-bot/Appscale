@@ -168,7 +168,7 @@ class BeneficiaryLinkService {
       contactNo: cleanContact,
       address: address.trim().isNotEmpty ? address.trim() : 'Purok 1',
       barangay: barangay,
-      breastfeedingPractice: 'Exclusive',
+      breastfeedingPractice: '',
       belongsToIpGroup: belongsToIpGroup,
       disability: 'None',
       createdAt: DateTime.now(),

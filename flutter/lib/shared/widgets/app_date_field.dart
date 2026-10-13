@@ -27,6 +27,7 @@ class AppDateField extends StatelessWidget {
   });
 
   Future<void> _pickDate(BuildContext context) async {
+    FocusScope.of(context).unfocus();
     final effectiveFirst = firstDate ?? DateTime(1950);
     final effectiveLast =
         lastDate ?? DateTime.now().add(const Duration(days: 365 * 5));

@@ -178,6 +178,7 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
     if (_isSaving) return;
 
     String? fullNameErr;
+    String? birthDateErr;
     String? addressErr;
     String? contactErr;
 
@@ -185,6 +186,12 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
       fullNameErr = 'This field is required';
     }
     // Mother DOB is optional: If empty, show "Not recorded" and don't compute an age.
+    if (_birthDate != null) {
+      final motherAge = (DateTime.now().difference(_birthDate!).inDays / 365).floor();
+      if (motherAge < 12) {
+        birthDateErr = 'Mother must be at least 12 years old ($motherAge yrs)';
+      }
+    }
     if (_addressController.text.trim().isEmpty) {
       addressErr = 'This field is required';
     }
@@ -195,10 +202,10 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
       contactErr = 'Contact number must be 11 digits (e.g. 09123456789)';
     }
 
-    if (fullNameErr != null || addressErr != null || contactErr != null) {
+    if (fullNameErr != null || birthDateErr != null || addressErr != null || contactErr != null) {
       setState(() {
         _fullNameError = fullNameErr;
-        _birthDateError = null;
+        _birthDateError = birthDateErr;
         _addressError = addressErr;
         _contactError = contactErr;
       });
@@ -206,6 +213,8 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
       GlobalKey? firstInvalidKey;
       if (fullNameErr != null) {
         firstInvalidKey = _fullNameKey;
+      } else if (birthDateErr != null) {
+        firstInvalidKey = _birthDateKey;
       } else if (addressErr != null) {
         firstInvalidKey = _addressKey;
       } else if (contactErr != null) {
@@ -392,9 +401,6 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
         curve: Curves.easeOut,
       );
     }
-
-    // Focus first field
-    _fullNameFocusNode.requestFocus();
   }
 
   @override

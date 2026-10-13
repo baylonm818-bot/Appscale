@@ -229,6 +229,17 @@ class _AddChildScreenState extends State<AddChildScreen> {
     }
     if (_birthDate == null) {
       birthDateErr = 'This field is required';
+    } else {
+      final now = DateTime.now();
+      if (_birthDate!.isAfter(now)) {
+        birthDateErr = 'Birth date cannot be in the future';
+      } else {
+        final ageInMonths = ((now.year - _birthDate!.year) * 12) + (now.month - _birthDate!.month) -
+            (now.day < _birthDate!.day ? 1 : 0);
+        if (ageInMonths > 59) {
+          birthDateErr = 'Child must be 0–59 months old ($ageInMonths mos)';
+        }
+      }
     }
     if (_gender == null || _gender!.trim().isEmpty) {
       genderErr = 'Please select a gender';
@@ -304,6 +315,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
     if (_guardianBirthDate != null &&
         (_relationship?.trim().toLowerCase() == 'mother')) {
       final motherAge = (DateTime.now().difference(_guardianBirthDate!).inDays / 365).floor();
+      if (motherAge < 12) {
+        AppNotificationUI.showWarning(
+          context,
+          'Mother must be at least 12 years old (recorded age: $motherAge yrs). Please correct the birth date.',
+          title: 'Invalid Mother Age',
+        );
+        return;
+      }
       if (motherAge < 18) {
         final confirmYoungMother = await showDialog<bool>(
           context: context,
@@ -574,9 +593,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
         curve: Curves.easeOut,
       );
     }
-
-    // Focus first field
-    _fullNameFocusNode.requestFocus();
   }
 
   @override
@@ -672,7 +688,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                                   value: _birthDate,
                                   hasError: _birthDateError != null,
                                   errorText: _birthDateError,
-                                  firstDate: DateTime.now().subtract(const Duration(days: 365 * 6)),
+                                  firstDate: DateTime(DateTime.now().year - 5, DateTime.now().month, DateTime.now().day),
                                   lastDate: DateTime.now(),
                                   onChanged: (d) => setState(() {
                                     _birthDate = d;

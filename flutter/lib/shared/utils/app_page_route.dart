@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 
 /// Standard forward-navigation transition for the whole app — slide in
 /// from the right with a light fade, replacing Flutter's default
@@ -9,7 +10,11 @@ Route<T> appPageRoute<T>(Widget page) {
   return PageRouteBuilder<T>(
     transitionDuration: const Duration(milliseconds: 240),
     reverseTransitionDuration: const Duration(milliseconds: 200),
-    pageBuilder: (context, animation, secondaryAnimation) => page,
+    opaque: true,
+    pageBuilder: (context, animation, secondaryAnimation) => ColoredBox(
+      color: AppColors.background,
+      child: page,
+    ),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       final slide = Tween<Offset>(
         begin: const Offset(1.0, 0),

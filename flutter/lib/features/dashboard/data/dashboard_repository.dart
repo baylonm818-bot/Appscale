@@ -8,6 +8,8 @@ import '../../masterlist/utils/child_status_meta.dart';
 import '../models/dashboard_models.dart';
 import '../../../data/local/program_schedule_repository.dart';
 
+import '../../../shared/utils/app_date_format.dart';
+
 class DashboardRepository {
   final _settings = SettingsRepository();
   final _childRepo = ChildRepository();
@@ -168,11 +170,15 @@ class DashboardRepository {
           ? monthNames[s.date.month - 1]
           : '—';
       final dayStr = s.date.day.toString().padLeft(2, '0');
+      final cleanTime = AppDateFormat.formatTime(s.startTime);
+      final subtitle = cleanTime.isNotEmpty
+          ? '$cleanTime · ${s.location}'
+          : s.location;
       return UpcomingActivityData(
         month: mName,
         day: dayStr,
         title: s.title,
-        subtitle: '${s.startTime} · ${s.location}',
+        subtitle: subtitle,
         statusLabel: s.programType,
         statusColor: colorForType(s.programType),
       );

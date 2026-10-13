@@ -109,6 +109,33 @@ class Referral {
     return isMother ? 'a mother' : 'a child';
   }
 
+  /// Checks if the linked beneficiary exists in local storage and is marked active.
+  /// If the record is deactivated or transferred, returns false.
+  bool get isBeneficiaryActive {
+    final isMother = beneficiaryType.toLowerCase() == 'mother' ||
+        beneficiaryType.toLowerCase() == 'lactating_mother' ||
+        beneficiaryType.toLowerCase() == 'pregnant';
+
+    try {
+      if (isMother) {
+        if (Hive.isBoxOpen(HiveBoxes.mothers)) {
+          final m = Hive.box(HiveBoxes.mothers).get(beneficiaryId);
+          if (m is Map) {
+            return m['isActive'] != false;
+          }
+        }
+      } else {
+        if (Hive.isBoxOpen(HiveBoxes.children)) {
+          final c = Hive.box(HiveBoxes.children).get(beneficiaryId);
+          if (c is Map) {
+            return c['isActive'] != false;
+          }
+        }
+      }
+    } catch (_) {}
+    return true;
+  }
+
   String? get formattedCompletedDate {
     final d = updatedAt ?? (isCompleted ? createdAt : null);
     if (d == null) return null;

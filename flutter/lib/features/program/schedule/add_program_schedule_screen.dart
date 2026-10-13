@@ -123,7 +123,7 @@ class _AddProgramScheduleScreenState extends State<AddProgramScheduleScreen> {
     await ProgramScheduleRepository().save(schedule);
 
     if (!mounted) return;
-    Navigator.pop(context);
+    Navigator.pop(context, schedule.programType);
   }
 
   @override
@@ -216,7 +216,7 @@ class _AddProgramScheduleScreenState extends State<AddProgramScheduleScreen> {
                               child: AppTextField(
                                 label: 'End Time',
                                 hint: '11:30 AM',
-                                icon: Icons.access_time_filled,
+                                icon: Icons.access_time,
                                 controller: _endTimeController,
                               ),
                             ),

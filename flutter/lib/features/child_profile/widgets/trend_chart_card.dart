@@ -78,6 +78,102 @@ class TrendChartCard extends StatelessWidget {
       );
     }
 
+    if (spots.length == 1) {
+      final singleSpot = spots.first;
+      final singleDate = measurementsAscending.first.date;
+      final dateLabel = '${_monthLabels[singleDate.month - 1]} ${singleDate.day}, ${singleDate.year}';
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.h2.copyWith(fontSize: 15, color: color),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '1 measurement',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.show_chart, color: color, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${singleSpot.y.toStringAsFixed(1)} ${title.toLowerCase().contains("weight") ? "kg" : "cm"}',
+                          style: AppTextStyles.h2.copyWith(fontSize: 18, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Recorded on $dateLabel',
+                          style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.info_outline, size: 14, color: AppColors.textMuted),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Add another measurement to see trend lines and progress.',
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
     final minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
     final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
     final yPadding = (maxY - minY == 0)
@@ -104,10 +200,8 @@ class TrendChartCard extends StatelessWidget {
             height: 180,
             child: LineChart(
               LineChartData(
-                minX: spots.length == 1 ? -0.5 : 0,
-                maxX: spots.length == 1
-                    ? 0.5
-                    : (measurementsAscending.length - 1).toDouble(),
+                minX: 0,
+                maxX: (measurementsAscending.length - 1).toDouble(),
                 minY: (minY - yPadding).clamp(0.0, double.infinity),
                 maxY: maxY + yPadding,
                 gridData: FlGridData(
@@ -138,17 +232,20 @@ class TrendChartCard extends StatelessWidget {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      interval: 1.0,
                       reservedSize: 24,
                       getTitlesWidget: (value, _) {
+                        if (value % 1 != 0) return const SizedBox.shrink();
                         final index = value.toInt();
                         if (index < 0 || index >= measurementsAscending.length) {
                           return const SizedBox.shrink();
                         }
-                        final month = measurementsAscending[index].date.month;
+                        final m = measurementsAscending[index];
+                        final dateStr = '${m.date.day} ${_monthLabels[m.date.month - 1]}';
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
-                            _monthLabels[month - 1],
+                            dateStr,
                             style: const TextStyle(
                               fontSize: 10,
                               color: AppColors.textMuted,

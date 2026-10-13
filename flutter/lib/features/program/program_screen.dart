@@ -7,6 +7,7 @@ import '../../data/local/hive_boxes.dart';
 import '../../data/local/program_schedule_repository.dart';
 import '../../data/local/referral_repository.dart';
 import '../../data/models/program_schedule.dart';
+import '../../shared/utils/app_date_format.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../referrals/referrals_overview_screen.dart';
 import 'counseling/lactating_mothers_counseling_screen.dart';
@@ -113,9 +114,9 @@ class _ProgramScreenState extends State<ProgramScreen> {
   Widget _segment(String label, bool value) {
     final isSelected = _showingPrograms == value;
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _showingPrograms = value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+      child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
@@ -126,7 +127,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
           label,
           style: TextStyle(
             color: isSelected ? AppColors.darkGreen : Colors.white,
-            fontWeight: FontWeight.w600,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
             fontSize: 13,
           ),
         ),
@@ -288,7 +289,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
                       ),
                     ),
                     onPressed: () async {
-                      await Navigator.push(
+                      final createdType = await Navigator.push<String>(
                         context,
                         appPageRoute(
                           AddProgramScheduleScreen(
@@ -298,9 +299,9 @@ class _ProgramScreenState extends State<ProgramScreen> {
                           ),
                         ),
                       );
-                      if (mounted) {
+                      if (mounted && createdType != null) {
                         setState(() {
-                          _selectedFilter = 'All';
+                          _selectedFilter = createdType;
                         });
                       }
                     },
@@ -554,7 +555,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '${s.startTime} - ${s.endTime}',
+                      AppDateFormat.formatTimeRange(s.startTime, s.endTime),
                       style: AppTextStyles.caption.copyWith(fontSize: 11),
                     ),
                     const SizedBox(width: 12),

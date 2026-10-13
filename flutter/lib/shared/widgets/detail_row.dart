@@ -42,7 +42,15 @@ class DetailRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              Text(value, style: AppTextStyles.label.copyWith(fontSize: 14)),
+              Text(
+                value.trim().isNotEmpty ? value.trim() : 'None specified',
+                style: AppTextStyles.label.copyWith(
+                  fontSize: 14,
+                  color: value.trim().isNotEmpty
+                      ? AppColors.textPrimary
+                      : AppColors.textMuted,
+                ),
+              ),
             ],
           ),
         ),

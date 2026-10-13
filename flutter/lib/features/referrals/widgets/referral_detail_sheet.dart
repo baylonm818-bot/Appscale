@@ -106,10 +106,11 @@ class ReferralDetailSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${referral.beneficiaryType == 'mother' ? 'Mother Beneficiary' : 'Child Beneficiary'} · Barangay ${referral.barangay}',
+                      '${referral.beneficiaryType == 'mother' ? 'Mother Beneficiary' : 'Child Beneficiary'} · Barangay ${referral.barangay}${referral.isBeneficiaryActive ? '' : ' (Inactive)'}',
                       style: AppTextStyles.body.copyWith(
                         fontSize: 12,
-                        color: AppColors.textMuted,
+                        color: referral.isBeneficiaryActive ? AppColors.textMuted : AppColors.statRed,
+                        fontWeight: referral.isBeneficiaryActive ? FontWeight.normal : FontWeight.w600,
                       ),
                     ),
                   ],

@@ -5,6 +5,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../data/local/feeding_attendance_repository.dart';
 import '../../../../data/local/feeding_enrollment_repository.dart';
 import '../../../../data/local/feeding_schedule_repository.dart';
+import '../../../../data/local/program_schedule_repository.dart';
 import '../../../../data/local/hive_boxes.dart';
 import '../../../../data/local/measurement_repository.dart';
 import '../../../../shared/utils/app_page_route.dart';
@@ -29,7 +30,14 @@ class OverviewTab extends StatelessWidget {
     final rate = FeedingAttendanceRepository().getAttendanceRate(
       _currentBarangay,
     );
-    final schedule = FeedingScheduleRepository().get(_currentBarangay);
+    final feedingSchedule = FeedingScheduleRepository().get(_currentBarangay);
+    final programFeedingSchedules = ProgramScheduleRepository()
+        .getAllForBarangay(_currentBarangay)
+        .where((s) => s.programType == 'Feeding')
+        .toList();
+    final fallbackProgramSchedule = programFeedingSchedules.isNotEmpty
+        ? programFeedingSchedules.first
+        : null;
 
     final samCount = enrolled.where((c) => c.wastingStatus == 'SAM').length;
     final mamCount = enrolled.where((c) => c.wastingStatus == 'MAM').length;
@@ -54,7 +62,7 @@ class OverviewTab extends StatelessWidget {
                 child: Row(
                   children: [
                     Icon(
-                      schedule == null
+                      feedingSchedule == null && fallbackProgramSchedule == null
                           ? Icons.add_circle_outline
                           : Icons.edit_outlined,
                       size: 14,
@@ -62,7 +70,9 @@ class OverviewTab extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      schedule == null ? 'Set schedule' : 'Edit',
+                      feedingSchedule == null && fallbackProgramSchedule == null
+                          ? 'Set schedule'
+                          : 'Edit',
                       style: AppTextStyles.body.copyWith(
                         color: AppColors.primaryGreen,
                         fontWeight: FontWeight.w600,
@@ -83,37 +93,59 @@ class OverviewTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.border),
             ),
-            child: schedule == null
-                ? Text(
-                    'No feeding schedule set yet.',
-                    style: AppTextStyles.body.copyWith(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
-                  )
-                : Column(
+            child: feedingSchedule != null
+                ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${schedule.daysSummary} · ${schedule.startTime} – ${schedule.endTime}',
+                        '${feedingSchedule.daysSummary} · ${feedingSchedule.startTime} – ${feedingSchedule.endTime}',
                         style: AppTextStyles.label.copyWith(fontSize: 13),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        schedule.location,
+                        feedingSchedule.location,
                         style: AppTextStyles.body.copyWith(fontSize: 12),
                       ),
                       Text(
-                        schedule.endDate == null
+                        feedingSchedule.endDate == null
                             ? 'Ongoing'
-                            : 'Until ${schedule.endDate!.year}-${schedule.endDate!.month.toString().padLeft(2, '0')}-${schedule.endDate!.day.toString().padLeft(2, '0')}',
+                            : 'Until ${feedingSchedule.endDate!.year}-${feedingSchedule.endDate!.month.toString().padLeft(2, '0')}-${feedingSchedule.endDate!.day.toString().padLeft(2, '0')}',
                         style: AppTextStyles.body.copyWith(
                           fontSize: 11,
                           color: AppColors.textMuted,
                         ),
                       ),
                     ],
-                  ),
+                  )
+                : fallbackProgramSchedule != null
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${fallbackProgramSchedule.title} · ${fallbackProgramSchedule.startTime} – ${fallbackProgramSchedule.endTime}',
+                            style: AppTextStyles.label.copyWith(fontSize: 13),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            fallbackProgramSchedule.location,
+                            style: AppTextStyles.body.copyWith(fontSize: 12),
+                          ),
+                          Text(
+                            'Scheduled for ${fallbackProgramSchedule.date.year}-${fallbackProgramSchedule.date.month.toString().padLeft(2, '0')}-${fallbackProgramSchedule.date.day.toString().padLeft(2, '0')}',
+                            style: AppTextStyles.body.copyWith(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        'No feeding schedule set yet.',
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
           ),
           const SizedBox(height: AppSpacing.lg),
           Text(

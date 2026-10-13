@@ -556,10 +556,16 @@ class ReferralRepository {
   /// completed cases at the bottom. By default, hides archived referrals.
   List<Referral> getForBarangay(String barangay, {bool includeArchived = false}) {
     final list = getAll()
-        .where((r) =>
-            r.barangay == barangay &&
-            !r.isCancelled &&
-            (includeArchived || !r.isArchived))
+        .where((r) {
+          if (r.barangay != barangay || r.isCancelled) return false;
+          if (!includeArchived && r.isArchived) return false;
+          // Filter out obvious QA/test synthetic records
+          final nameLower = r.resolvedBeneficiaryName.trim().toLowerCase();
+          if (nameLower.contains('qa child') || nameLower.contains('test user') || nameLower == 'test') {
+            return false;
+          }
+          return true;
+        })
         .toList();
     list.sort((a, b) {
       const order = {
@@ -578,7 +584,14 @@ class ReferralRepository {
 
   List<Referral> getArchivedForBarangay(String barangay) {
     final list = getAll()
-        .where((r) => r.barangay == barangay && r.isArchived)
+        .where((r) {
+          if (r.barangay != barangay || !r.isArchived) return false;
+          final nameLower = r.resolvedBeneficiaryName.trim().toLowerCase();
+          if (nameLower.contains('qa child') || nameLower.contains('test user') || nameLower == 'test') {
+            return false;
+          }
+          return true;
+        })
         .toList();
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list;

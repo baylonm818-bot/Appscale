@@ -212,7 +212,9 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                                 style: AppTextStyles.h2.copyWith(fontSize: 15),
                               ),
                               Text(
-                                '${filteredReferrals.length} of ${activeFilter == 'Archived' ? archivedCount : referrals.length}',
+                                activeFilter == 'All'
+                                    ? '${filteredReferrals.length} total'
+                                    : '${filteredReferrals.length} $activeFilter (${activeFilter == 'Archived' ? archivedCount : referrals.length} total)',
                                 style: AppTextStyles.body.copyWith(
                                   fontSize: 11,
                                   color: AppColors.textMuted,

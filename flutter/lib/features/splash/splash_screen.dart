@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/beneficiary_link_service.dart';
 import '../../data/local/child_repository.dart';
@@ -76,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen>
 
       navigator.pushReplacement(
         PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 500),
+          transitionDuration: const Duration(milliseconds: 150),
           pageBuilder: (_, animation, _) => nextScreen,
           transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
@@ -95,7 +96,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: Center(
         child: FadeTransition(
           opacity: _fade,

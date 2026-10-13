@@ -1230,21 +1230,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         vertical: 12,
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(icon, size: 18, color: AppColors.darkGreen),
           const SizedBox(width: 12),
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(
-              fontSize: 12,
-              color: AppColors.textMuted,
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: AppTextStyles.caption.copyWith(
+                fontSize: 12,
+                color: AppColors.textMuted,
+              ),
             ),
           ),
-          const Spacer(),
-          Flexible(
+          const SizedBox(width: 8),
+          Expanded(
             child: Text(
               value,
               textAlign: TextAlign.right,
+              softWrap: true,
               style: AppTextStyles.body.copyWith(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,

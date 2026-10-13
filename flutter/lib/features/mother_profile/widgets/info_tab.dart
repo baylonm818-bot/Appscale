@@ -88,8 +88,15 @@ class InfoTab extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    mother.breastfeedingPractice,
-                    style: AppTextStyles.label.copyWith(fontSize: 15),
+                    mother.breastfeedingPractice.trim().isNotEmpty
+                        ? mother.breastfeedingPractice
+                        : 'Not recorded',
+                    style: AppTextStyles.label.copyWith(
+                      fontSize: 15,
+                      color: mother.breastfeedingPractice.trim().isNotEmpty
+                          ? AppColors.textPrimary
+                          : AppColors.textMuted,
+                    ),
                   ),
                 ),
                 Icon(Icons.lock_outline, size: 14, color: AppColors.textMuted),

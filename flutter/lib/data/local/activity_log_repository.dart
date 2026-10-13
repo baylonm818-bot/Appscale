@@ -27,9 +27,98 @@ class ActivityLogRepository {
   }
 
   List<ActivityLogEntry> getRecent({int limit = 5}) {
-    final entries =
-        _box.values.map((e) => ActivityLogEntry.fromMap(e as Map)).toList()
-          ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    return entries.take(limit).toList();
+    if (_box.isNotEmpty) {
+      final entries =
+          _box.values.map((e) => ActivityLogEntry.fromMap(e as Map)).toList()
+            ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return entries.take(limit).toList();
+    }
+
+    // Fallback: If no explicit activities have been logged yet in this session,
+    // construct recent activities dynamically from latest records.
+    final derived = <ActivityLogEntry>[];
+    try {
+      if (Hive.isBoxOpen(HiveBoxes.measurements)) {
+        for (final raw in Hive.box(HiveBoxes.measurements).values) {
+          if (raw is Map) {
+            final date = DateTime.tryParse((raw['date'] ?? raw['createdAt'] ?? '').toString());
+            final childId = raw['childId']?.toString() ?? '';
+            String childName = '';
+            if (Hive.isBoxOpen(HiveBoxes.children)) {
+              final c = Hive.box(HiveBoxes.children).get(childId);
+              if (c is Map) childName = (c['fullName'] ?? '').toString();
+            }
+            if (date != null) {
+              derived.add(
+                ActivityLogEntry(
+                  type: 'measurement_recorded',
+                  title: childName.isNotEmpty
+                      ? 'Recorded measurement for $childName'
+                      : 'Recorded child measurement',
+                  timestamp: date,
+                ),
+              );
+            }
+          }
+        }
+      }
+
+      if (Hive.isBoxOpen(HiveBoxes.referrals)) {
+        for (final raw in Hive.box(HiveBoxes.referrals).values) {
+          if (raw is Map) {
+            final date = DateTime.tryParse((raw['createdAt'] ?? '').toString());
+            final name = (raw['beneficiaryName'] ?? 'beneficiary').toString();
+            if (date != null) {
+              derived.add(
+                ActivityLogEntry(
+                  type: 'referral_created',
+                  title: 'Referral opened for $name',
+                  timestamp: date,
+                ),
+              );
+            }
+          }
+        }
+      }
+
+      if (Hive.isBoxOpen(HiveBoxes.children)) {
+        for (final raw in Hive.box(HiveBoxes.children).values) {
+          if (raw is Map) {
+            final date = DateTime.tryParse((raw['createdAt'] ?? '').toString());
+            final name = (raw['fullName'] ?? '').toString();
+            if (date != null && name.isNotEmpty) {
+              derived.add(
+                ActivityLogEntry(
+                  type: 'child_added',
+                  title: 'Registered $name',
+                  timestamp: date,
+                ),
+              );
+            }
+          }
+        }
+      }
+
+      if (Hive.isBoxOpen(HiveBoxes.mothers)) {
+        for (final raw in Hive.box(HiveBoxes.mothers).values) {
+          if (raw is Map) {
+            final date = DateTime.tryParse((raw['createdAt'] ?? '').toString());
+            final name = (raw['fullName'] ?? '').toString();
+            if (date != null && name.isNotEmpty) {
+              derived.add(
+                ActivityLogEntry(
+                  type: 'mother_added',
+                  title: 'Registered $name',
+                  timestamp: date,
+                ),
+              );
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    derived.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return derived.take(limit).toList();
   }
 }

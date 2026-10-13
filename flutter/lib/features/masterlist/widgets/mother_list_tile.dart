@@ -125,7 +125,9 @@ class MotherListTile extends StatelessWidget {
                                       const SizedBox(width: 4),
                                       Expanded(
                                         child: Text(
-                                          mother.breastfeedingPractice,
+                                          mother.breastfeedingPractice.trim().isNotEmpty
+                                              ? mother.breastfeedingPractice
+                                              : 'Not recorded',
                                           style: const TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
