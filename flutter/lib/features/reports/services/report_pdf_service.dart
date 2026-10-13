@@ -1094,16 +1094,35 @@ class ReportPdfService {
     required MeasurementRepository measurementRepo,
     required ReportSignatory? signatory,
   }) async {
-    final doc = pw.Document();
+    // Load Unicode TTF font from assets so glyphs like '-' or 'to' never break
+    pw.Font? robotoRegular;
+    pw.Font? robotoBold;
+    try {
+      final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+      robotoRegular = pw.Font.ttf(fontData);
+      final fontBoldData = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
+      robotoBold = pw.Font.ttf(fontBoldData);
+    } catch (_) {
+      // Fallback to default if asset load fails in mock environment
+    }
+
+    final docTheme = (robotoRegular != null && robotoBold != null)
+        ? pw.ThemeData.withFont(
+            base: robotoRegular,
+            bold: robotoBold,
+          )
+        : pw.ThemeData.base();
+
+    final doc = pw.Document(theme: docTheme);
 
     final bnsName = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
     final today = DateTime.now();
     final fmtDate = '${today.month.toString().padLeft(2, '0')}/'
         '${today.day.toString().padLeft(2, '0')}/${today.year}';
 
-    final monthNames = [
-      'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
-      'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+    final shortMonthNames = [
+      'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+      'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
     ];
 
     String mapWtStatus(String raw) {
@@ -1119,14 +1138,14 @@ class ReportPdfService {
       int suwCount = 0;
       int uwCount = 0;
 
-      // Group Headers
+      // Group Headers: Short month names so words never wrap mid-word
       final groupHeaders = [
         'NAME OF CHILD\n$genderLabel',
         'YEAR',
         'MO.',
         'DAY',
         for (int m = startMonth; m <= endMonth; m++) ...[
-          '${monthNames[m - 1]},\n$year',
+          '${shortMonthNames[m - 1]} $year',
           '',
           '',
         ],
@@ -1196,15 +1215,20 @@ class ReportPdfService {
       }).toList();
 
       final colWidths = <int, pw.TableColumnWidth>{
-        0: const pw.FlexColumnWidth(2.6),
-        1: const pw.FixedColumnWidth(26),
-        2: const pw.FixedColumnWidth(20),
-        3: const pw.FixedColumnWidth(20),
+        0: const pw.FlexColumnWidth(3.0),
+        1: const pw.FixedColumnWidth(30),
+        2: const pw.FixedColumnWidth(22),
+        3: const pw.FixedColumnWidth(22),
         for (int i = 4; i < 22; i += 3) ...{
-          i: const pw.FixedColumnWidth(24),
-          i + 1: const pw.FixedColumnWidth(30),
-          i + 2: const pw.FixedColumnWidth(30),
+          i: const pw.FixedColumnWidth(26),
+          i + 1: const pw.FixedColumnWidth(32),
+          i + 2: const pw.FixedColumnWidth(36),
         },
+      };
+
+      final cellAlignments = <int, pw.Alignment>{
+        0: pw.Alignment.centerLeft,
+        for (int i = 1; i < 22; i++) i: pw.Alignment.center,
       };
 
       return pw.Column(
@@ -1213,19 +1237,19 @@ class ReportPdfService {
           pw.TableHelper.fromTextArray(
             headers: groupHeaders,
             data: [subHeaders, ...dataRows],
-            headerStyle: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerStyle: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
             headerDecoration: const pw.BoxDecoration(color: PdfColor.fromInt(0xFF1B5E20)),
-            cellStyle: const pw.TextStyle(fontSize: 6.5),
-            cellPadding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 2.5),
+            cellStyle: const pw.TextStyle(fontSize: 7.5),
+            cellPadding: const pw.EdgeInsets.symmetric(horizontal: 2.5, vertical: 3.5),
             border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.4),
             columnWidths: colWidths,
-            cellAlignment: pw.Alignment.center,
+            cellAlignments: cellAlignments,
             headerCount: 1,
           ),
           pw.SizedBox(height: 6),
           // Sub-footer matching template
           pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: pw.BoxDecoration(
               border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
               color: PdfColors.grey100,
@@ -1233,10 +1257,10 @@ class ReportPdfService {
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('NO. OF SEVERELY UNDERWEIGHT: $suwCount', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: PdfColors.red800)),
-                pw.Text('NO. OF UNDERWEIGHT: $uwCount', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: PdfColors.orange800)),
-                pw.Text('DATE ACCOMPLISHED: $fmtDate', style: const pw.TextStyle(fontSize: 7)),
-                pw.Text('ACCOMPLISHED BY: $bnsName', style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
+                pw.Text('NO. OF SEVERELY UNDERWEIGHT: $suwCount', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.red800)),
+                pw.Text('NO. OF UNDERWEIGHT: $uwCount', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.orange800)),
+                pw.Text('DATE ACCOMPLISHED: $fmtDate', style: const pw.TextStyle(fontSize: 8)),
+                pw.Text('ACCOMPLISHED BY: $bnsName', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
               ],
             ),
           ),
@@ -1244,41 +1268,52 @@ class ReportPdfService {
       );
     }
 
-    void addPartPages(int startMonth, int endMonth, String partTitle) {
+    void addPartPages(int startMonth, int endMonth, String rangeLabel) {
       doc.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4.landscape,
-          margin: const pw.EdgeInsets.symmetric(horizontal: 14 * PdfPageFormat.mm, vertical: 12 * PdfPageFormat.mm),
+          margin: const pw.EdgeInsets.symmetric(horizontal: 10 * PdfPageFormat.mm, vertical: 10 * PdfPageFormat.mm),
           build: (context) => [
+            // Text-only header: No logos/images
             pw.Center(
               child: pw.Column(
                 children: [
-                  pw.Text('MONTHLY RECORD OF WEIGHT AND WEIGHT STATUS', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('INFANTS 0-23 MONTHS · $partTitle · Year: $year', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF1B5E20))),
+                  pw.Text(
+                    'MONTHLY RECORD OF WEIGHT AND WEIGHT STATUS',
+                    style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                  ),
                   pw.SizedBox(height: 2),
-                  pw.Text('PROVINCE: ${province.toUpperCase()}  |  CITY/MUNICIPALITY: ${municipality.toUpperCase()}  |  BARANGAY: ${barangay.toUpperCase()}', style: const pw.TextStyle(fontSize: 8)),
+                  pw.Text(
+                    'INFANTS 0-23 MONTHS - $rangeLabel - Year: $year',
+                    style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF1B5E20)),
+                  ),
+                  pw.SizedBox(height: 3),
+                  pw.Text(
+                    'PROVINCE: ${province.toUpperCase()} | CITY/MUNICIPALITY: ${municipality.toUpperCase()} | BARANGAY: ${barangay.toUpperCase()}',
+                    style: const pw.TextStyle(fontSize: 8.5),
+                  ),
                 ],
               ),
             ),
             pw.SizedBox(height: 10),
 
             // BOYS Section
-            pw.Text('BOYS (Total: ${boys.length})', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 3),
+            pw.Text('BOYS (Total: ${boys.length})', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 4),
             if (boys.isEmpty)
-              pw.Text('No boys recorded.', style: const pw.TextStyle(fontSize: 7))
+              pw.Text('No boys recorded.', style: const pw.TextStyle(fontSize: 8))
             else
               buildMonthlyTable('BOYS', boys, startMonth, endMonth),
             pw.SizedBox(height: 12),
 
             // GIRLS Section
-            pw.Text('GIRLS (Total: ${girls.length})', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 3),
+            pw.Text('GIRLS (Total: ${girls.length})', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 4),
             if (girls.isEmpty)
-              pw.Text('No girls recorded.', style: const pw.TextStyle(fontSize: 7))
+              pw.Text('No girls recorded.', style: const pw.TextStyle(fontSize: 8))
             else
               buildMonthlyTable('GIRLS', girls, startMonth, endMonth),
-            pw.SizedBox(height: 18),
+            pw.SizedBox(height: 16),
 
             pw.Divider(color: PdfColors.grey400),
             pw.SizedBox(height: 6),
@@ -1288,10 +1323,10 @@ class ReportPdfService {
       );
     }
 
-    // Part 1: Jan–Jun
-    addPartPages(1, 6, 'JANUARY – JUNE');
-    // Part 2: Jul–Dec
-    addPartPages(7, 12, 'JULY – DECEMBER');
+    // Part 1: JANUARY to JUNE
+    addPartPages(1, 6, 'JANUARY to JUNE');
+    // Part 2: JULY to DECEMBER
+    addPartPages(7, 12, 'JULY to DECEMBER');
 
     final bytes = await doc.save();
     return _savePdfToDocuments(fileTitle: fileTitle, bytes: bytes);
