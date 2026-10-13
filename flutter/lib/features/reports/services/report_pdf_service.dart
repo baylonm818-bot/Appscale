@@ -31,6 +31,21 @@ class ReportPdfService {
     return file;
   }
 
+  Future<pw.ThemeData> _loadDocTheme() async {
+    try {
+      final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+      final robotoRegular = pw.Font.ttf(fontData);
+      final fontBoldData = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
+      final robotoBold = pw.Font.ttf(fontBoldData);
+      return pw.ThemeData.withFont(
+        base: robotoRegular,
+        bold: robotoBold,
+      );
+    } catch (_) {
+      return pw.ThemeData.base();
+    }
+  }
+
   Future<File> exportAndShare({
     required String fileTitle,
     required String title,
@@ -40,7 +55,8 @@ class ReportPdfService {
     required Map<String, int>? oldCounts,
     required ReportSignatory? signatory,
   }) async {
-    final doc = pw.Document();
+    final theme = await _loadDocTheme();
+    final doc = pw.Document(theme: theme);
 
     doc.addPage(
       pw.Page(
@@ -85,7 +101,8 @@ class ReportPdfService {
     required ConsolidationMatrixData matrix,
     required ReportSignatory? signatory,
   }) async {
-    final doc = pw.Document();
+    final theme = await _loadDocTheme();
+    final doc = pw.Document(theme: theme);
 
     doc.addPage(
       pw.Page(
@@ -135,7 +152,8 @@ class ReportPdfService {
     required List<List<String>> rows,
     required ReportSignatory? signatory,
   }) async {
-    final doc = pw.Document();
+    final theme = await _loadDocTheme();
+    final doc = pw.Document(theme: theme);
     final bns = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
     final pb = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : '';
     final bnsPos = (signatory?.bnsPosition.isNotEmpty ?? false) ? signatory!.bnsPosition : 'BARANGAY NUTRITION SCHOLAR';
@@ -194,7 +212,8 @@ class ReportPdfService {
     required List<String> names,
     required ReportSignatory? signatory,
   }) async {
-    final doc = pw.Document();
+    final theme = await _loadDocTheme();
+    final doc = pw.Document(theme: theme);
     final bns = (signatory?.bnsName.isNotEmpty ?? false)
         ? signatory!.bnsName
         : '';
@@ -256,16 +275,17 @@ class ReportPdfService {
                     pw.SizedBox(height: 24),
                     pw.Container(
                       width: 175,
-                      decoration: const pw.BoxDecoration(
-                        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
-                      ),
-                      padding: const pw.EdgeInsets.only(bottom: 2),
+                      height: 0.8,
+                      color: PdfColors.black,
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.Container(
+                      width: 175,
                       child: pw.Text(
                         bns.isNotEmpty ? bns.toUpperCase() : '',
                         style: pw.TextStyle(
                           fontSize: 10,
                           fontWeight: pw.FontWeight.bold,
-                          decoration: pw.TextDecoration.underline,
                           lineSpacing: 1.35,
                         ),
                         textAlign: pw.TextAlign.center,
@@ -273,9 +293,23 @@ class ReportPdfService {
                       ),
                     ),
                     pw.SizedBox(height: 3),
-                    pw.Text(bnsPosition, style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3)),
+                    pw.Container(
+                      width: 175,
+                      child: pw.Text(
+                        bnsPosition,
+                        style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
                     pw.SizedBox(height: 2),
-                    pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                    pw.Container(
+                      width: 175,
+                      child: pw.Text(
+                        'Date: ____________________',
+                        style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -289,16 +323,17 @@ class ReportPdfService {
                     pw.SizedBox(height: 24),
                     pw.Container(
                       width: 175,
-                      decoration: const pw.BoxDecoration(
-                        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
-                      ),
-                      padding: const pw.EdgeInsets.only(bottom: 2),
+                      height: 0.8,
+                      color: PdfColors.black,
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.Container(
+                      width: 175,
                       child: pw.Text(
                         pb.isNotEmpty ? pb.toUpperCase() : '',
                         style: pw.TextStyle(
                           fontSize: 10,
                           fontWeight: pw.FontWeight.bold,
-                          decoration: pw.TextDecoration.underline,
                           lineSpacing: 1.35,
                         ),
                         textAlign: pw.TextAlign.center,
@@ -306,9 +341,23 @@ class ReportPdfService {
                       ),
                     ),
                     pw.SizedBox(height: 3),
-                    pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3)),
+                    pw.Container(
+                      width: 175,
+                      child: pw.Text(
+                        pbPosition,
+                        style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
                     pw.SizedBox(height: 2),
-                    pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                    pw.Container(
+                      width: 175,
+                      child: pw.Text(
+                        'Date: ____________________',
+                        style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -331,7 +380,8 @@ class ReportPdfService {
     required List<String> names,
     required ReportSignatory? signatory,
   }) async {
-    final doc = pw.Document();
+    final theme = await _loadDocTheme();
+    final doc = pw.Document(theme: theme);
     final bns = (signatory?.bnsName.isNotEmpty ?? false)
         ? signatory!.bnsName
         : '';
@@ -412,16 +462,17 @@ class ReportPdfService {
                     pw.SizedBox(height: 24),
                     pw.Container(
                       width: 175,
-                      decoration: const pw.BoxDecoration(
-                        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
-                      ),
-                      padding: const pw.EdgeInsets.only(bottom: 2),
+                      height: 0.8,
+                      color: PdfColors.black,
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.Container(
+                      width: 175,
                       child: pw.Text(
                         bns.isNotEmpty ? bns.toUpperCase() : '',
                         style: pw.TextStyle(
                           fontSize: 10,
                           fontWeight: pw.FontWeight.bold,
-                          decoration: pw.TextDecoration.underline,
                           lineSpacing: 1.35,
                         ),
                         textAlign: pw.TextAlign.center,
@@ -429,9 +480,23 @@ class ReportPdfService {
                       ),
                     ),
                     pw.SizedBox(height: 3),
-                    pw.Text(bnsPosition, style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3)),
+                    pw.Container(
+                      width: 175,
+                      child: pw.Text(
+                        bnsPosition,
+                        style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
                     pw.SizedBox(height: 2),
-                    pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                    pw.Container(
+                      width: 175,
+                      child: pw.Text(
+                        'Date: ____________________',
+                        style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -445,16 +510,17 @@ class ReportPdfService {
                     pw.SizedBox(height: 24),
                     pw.Container(
                       width: 175,
-                      decoration: const pw.BoxDecoration(
-                        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
-                      ),
-                      padding: const pw.EdgeInsets.only(bottom: 2),
+                      height: 0.8,
+                      color: PdfColors.black,
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.Container(
+                      width: 175,
                       child: pw.Text(
                         pb.isNotEmpty ? pb.toUpperCase() : '',
                         style: pw.TextStyle(
                           fontSize: 10,
                           fontWeight: pw.FontWeight.bold,
-                          decoration: pw.TextDecoration.underline,
                           lineSpacing: 1.35,
                         ),
                         textAlign: pw.TextAlign.center,
@@ -462,9 +528,23 @@ class ReportPdfService {
                       ),
                     ),
                     pw.SizedBox(height: 3),
-                    pw.Text(pbPosition, style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3)),
+                    pw.Container(
+                      width: 175,
+                      child: pw.Text(
+                        pbPosition,
+                        style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.3),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
                     pw.SizedBox(height: 2),
-                    pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                    pw.Container(
+                      width: 175,
+                      child: pw.Text(
+                        'Date: ____________________',
+                        style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -689,29 +769,47 @@ class ReportPdfService {
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Text(title, style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 20),
+          // Fixed blank height for handwritten signature
+          pw.SizedBox(height: 24),
+          // Signature line
           pw.Container(
             width: 135,
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
-            ),
-            padding: const pw.EdgeInsets.only(bottom: 2),
+            height: 0.8,
+            color: PdfColors.black,
+          ),
+          pw.SizedBox(height: 3),
+          // Signatory Name centered BELOW the line
+          pw.Container(
+            width: 135,
             child: pw.Text(
               name.isNotEmpty ? name.toUpperCase() : '',
               style: pw.TextStyle(
                 fontSize: 8,
                 fontWeight: pw.FontWeight.bold,
-                decoration: pw.TextDecoration.underline,
                 lineSpacing: 1.3,
               ),
               textAlign: pw.TextAlign.center,
               maxLines: 1,
             ),
           ),
-          pw.SizedBox(height: 3),
-          pw.Text(role, style: const pw.TextStyle(fontSize: 6.5, lineSpacing: 1.3)),
           pw.SizedBox(height: 2),
-          pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey700)),
+          pw.Container(
+            width: 135,
+            child: pw.Text(
+              role,
+              style: const pw.TextStyle(fontSize: 6.5, lineSpacing: 1.3),
+              textAlign: pw.TextAlign.center,
+            ),
+          ),
+          pw.SizedBox(height: 2),
+          pw.Container(
+            width: 135,
+            child: pw.Text(
+              'Date: ____________________',
+              style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey700),
+              textAlign: pw.TextAlign.center,
+            ),
+          ),
         ],
       ),
     );
@@ -739,7 +837,8 @@ class ReportPdfService {
     required MeasurementRepository measurementRepo,
     required ReportSignatory? signatory,
   }) async {
-    final doc = pw.Document();
+    final theme = await _loadDocTheme();
+    final doc = pw.Document(theme: theme);
 
     final bnsName = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
     final today = DateTime.now();
@@ -1094,25 +1193,7 @@ class ReportPdfService {
     required MeasurementRepository measurementRepo,
     required ReportSignatory? signatory,
   }) async {
-    // Load Unicode TTF font from assets so glyphs like '-' or 'to' never break
-    pw.Font? robotoRegular;
-    pw.Font? robotoBold;
-    try {
-      final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
-      robotoRegular = pw.Font.ttf(fontData);
-      final fontBoldData = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
-      robotoBold = pw.Font.ttf(fontBoldData);
-    } catch (_) {
-      // Fallback to default if asset load fails in mock environment
-    }
-
-    final docTheme = (robotoRegular != null && robotoBold != null)
-        ? pw.ThemeData.withFont(
-            base: robotoRegular,
-            bold: robotoBold,
-          )
-        : pw.ThemeData.base();
-
+    final docTheme = await _loadDocTheme();
     final doc = pw.Document(theme: docTheme);
 
     final bnsName = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
@@ -1386,19 +1467,20 @@ class ReportPdfService {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.SizedBox(height: 20),
+          pw.SizedBox(height: 24),
           pw.Container(
             width: 210,
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 0.8)),
-            ),
-            padding: const pw.EdgeInsets.only(bottom: 2),
+            height: 0.8,
+            color: PdfColors.black,
+          ),
+          pw.SizedBox(height: 3),
+          pw.Container(
+            width: 210,
             child: pw.Text(
               name.isNotEmpty ? name.toUpperCase() : '',
               style: pw.TextStyle(
                 fontSize: 10,
                 fontWeight: pw.FontWeight.bold,
-                decoration: pw.TextDecoration.underline,
                 lineSpacing: 1.35,
               ),
               textAlign: pw.TextAlign.center,
@@ -1406,9 +1488,23 @@ class ReportPdfService {
             ),
           ),
           pw.SizedBox(height: 3),
-          pw.Text(label, style: const pw.TextStyle(fontSize: 8, lineSpacing: 1.3)),
+          pw.Container(
+            width: 210,
+            child: pw.Text(
+              label,
+              style: const pw.TextStyle(fontSize: 8, lineSpacing: 1.3),
+              textAlign: pw.TextAlign.center,
+            ),
+          ),
           pw.SizedBox(height: 2),
-          pw.Text('Date: ____________________', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
+          pw.Container(
+            width: 210,
+            child: pw.Text(
+              'Date: ____________________',
+              style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700),
+              textAlign: pw.TextAlign.center,
+            ),
+          ),
         ],
       ),
     );

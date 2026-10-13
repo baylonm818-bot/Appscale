@@ -113,4 +113,58 @@ void main() {
     sampleOut.writeAsBytesSync(pdfBytes);
     debugPrint('Generated sample PDF size: ${pdfBytes.length} bytes at ${sampleOut.path}');
   });
+
+  test('exportChildrenMasterlistPdf generates valid PDF with logos and correct signature block', () async {
+    final service = ReportPdfService();
+    final signatory = const ReportSignatory(
+      barangay: 'Bahi',
+      bnsName: 'JANA ROLLE',
+      punongBarangayName: 'HON. JUAN DELA CRUZ',
+    );
+
+    final file = await service.exportChildrenMasterlistPdf(
+      fileTitle: 'Sample_Children_Masterlist',
+      barangay: 'Bahi',
+      year: 2026,
+      names: ['Child One', 'Child Two'],
+      signatory: signatory,
+    );
+
+    expect(file.existsSync(), isTrue);
+    final pdfBytes = await file.readAsBytes();
+    expect(pdfBytes.length, greaterThan(1000));
+    final sampleOut = File('test/sample_children_masterlist.pdf');
+    sampleOut.writeAsBytesSync(pdfBytes);
+    debugPrint('Generated Masterlist PDF size: ${pdfBytes.length} bytes');
+  });
+
+  test('exportQuarterlyPdf generates valid PDF with text-only header and correct signature block', () async {
+    final service = ReportPdfService();
+    final signatory = const ReportSignatory(
+      barangay: 'Bahi',
+      bnsName: 'JANA ROLLE',
+      punongBarangayName: 'HON. JUAN DELA CRUZ',
+      mnaoAdminAideName: 'MARIA SANTOS',
+      dnpcName: 'PEDRO REYES',
+    );
+
+    final file = await service.exportQuarterlyPdf(
+      fileTitle: 'Sample_Quarterly_24_59',
+      barangay: 'Bahi',
+      municipality: 'Gasan',
+      province: 'Marinduque',
+      year: 2026,
+      boys: [],
+      girls: [],
+      measurementRepo: MeasurementRepository(),
+      signatory: signatory,
+    );
+
+    expect(file.existsSync(), isTrue);
+    final pdfBytes = await file.readAsBytes();
+    expect(pdfBytes.length, greaterThan(1000));
+    final sampleOut = File('test/sample_quarterly_24_59.pdf');
+    sampleOut.writeAsBytesSync(pdfBytes);
+    debugPrint('Generated Quarterly PDF size: ${pdfBytes.length} bytes');
+  });
 }
