@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
@@ -110,6 +111,6 @@ void main() {
     expect(pdfBytes.length, greaterThan(1000));
     final sampleOut = File('test/sample_monthly_0_23.pdf');
     sampleOut.writeAsBytesSync(pdfBytes);
-    print('Generated sample PDF size: ${pdfBytes.length} bytes at ${sampleOut.path}');
+    debugPrint('Generated sample PDF size: ${pdfBytes.length} bytes at ${sampleOut.path}');
   });
 }
