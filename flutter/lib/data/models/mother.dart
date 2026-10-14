@@ -1,3 +1,4 @@
+import '../../core/utils/safe_parser.dart';
 import '../../shared/utils/app_user_identity.dart';
 
 class Mother {
@@ -64,7 +65,7 @@ class Mother {
   Map<String, dynamic> toMap() => {
     'id': id,
     'fullName': fullName,
-    'birthDate': birthDate?.toIso8601String(),
+    'birthDate': birthDate != null ? SafeParser.toDateString(birthDate!) : null,
     'contactNo': contactNo,
     'address': address,
     'barangay': barangay,
@@ -75,61 +76,57 @@ class Mother {
     'riskStatus': riskStatus,
     'isActive': isActive,
     'inactiveReason': inactiveReason,
-    'inactiveDate': inactiveDate?.toIso8601String(),
+    'inactiveDate': inactiveDate != null ? SafeParser.toDateString(inactiveDate!) : null,
     'isTransferPending': isTransferPending,
     'pendingTargetBarangay': pendingTargetBarangay,
     'linkedChildIds': linkedChildIds,
   };
 
   factory Mother.fromMap(Map map) {
-    // Support both camelCase (local) and snake_case (API/legacy) keys.
+    // Support both camelCase (local) and snake_case (API/legacy) keys safely.
     String strVal(String camel, String snake) =>
-        ((map[camel] ?? map[snake]) as String?) ?? '';
+        SafeParser.asString(map[camel] ?? map[snake]) ?? '';
 
-    final firstName = map['first_name'] as String? ?? '';
-    final middleInitial = map['middle_initial'] as String? ?? '';
-    final lastName = map['last_name'] as String? ?? '';
+    final firstName = SafeParser.asNonNullString(map['first_name']);
+    final middleInitial = SafeParser.asNonNullString(map['middle_initial']);
+    final lastName = SafeParser.asNonNullString(map['last_name']);
     final apiFullName = [firstName, if (middleInitial.isNotEmpty) middleInitial, lastName]
         .where((s) => s.isNotEmpty)
         .join(' ');
 
-    final rawId = (map['id'] ?? map['external_id'] ?? map['mother_id'] ?? '').toString();
-    final rawBirth = strVal('birthDate', 'birth_date');
+    final rawId = SafeParser.asNonNullString(map['id'] ?? map['external_id'] ?? map['mother_id']);
+    final rawBirth = map['birthDate'] ?? map['birth_date'];
     final normalizedFullName = AppUserIdentity.normalizeDisplayName(
       strVal('fullName', 'full_name').isNotEmpty
           ? strVal('fullName', 'full_name')
           : apiFullName,
     );
 
-    final rawInactiveDate = (map['inactiveDate'] ?? map['inactive_date']) as String?;
+    final rawInactiveDate = map['inactiveDate'] ?? map['inactive_date'];
 
     return Mother(
       id: rawId,
       fullName: normalizedFullName,
-      birthDate: rawBirth.isNotEmpty ? DateTime.tryParse(rawBirth.split('T').first) : null,
+      birthDate: SafeParser.asDate(rawBirth),
       contactNo: strVal('contactNo', 'contact_number'),
       address: strVal('address', 'purok'),
       barangay: strVal('barangay', 'barangay'),
       breastfeedingPractice: strVal('breastfeedingPractice', 'breastfeeding_practice'),
-      belongsToIpGroup: (map['belongsToIpGroup'] ?? map['belongs_to_ip_group'] ?? false) as bool,
+      belongsToIpGroup: SafeParser.asNonNullBool(map['belongsToIpGroup'] ?? map['belongs_to_ip_group'], false),
       disability: strVal('disability', 'disability'),
-      createdAt: map['createdAt'] != null
-          ? DateTime.parse(map['createdAt'] as String)
-          : DateTime.now(),
+      createdAt: SafeParser.asDateTime(map['createdAt'] ?? map['created_at']) ?? DateTime.now(),
       riskStatus: strVal('riskStatus', 'risk_status').isNotEmpty
           ? strVal('riskStatus', 'risk_status')
           : 'Not visited',
       isActive: map['isActive'] != null
-          ? map['isActive'] as bool
-          : (map['status'] as String? ?? 'active') == 'active',
-      inactiveReason: map['inactiveReason'] as String?,
-      inactiveDate: rawInactiveDate != null
-          ? DateTime.tryParse(rawInactiveDate.split('T').first)
-          : null,
+          ? SafeParser.asNonNullBool(map['isActive'], true)
+          : (SafeParser.asString(map['status']) ?? 'active').toLowerCase() == 'active',
+      inactiveReason: SafeParser.asString(map['inactiveReason'] ?? map['inactive_reason']),
+      inactiveDate: SafeParser.asDate(rawInactiveDate),
       isTransferPending:
-          (map['isTransferPending'] ?? map['_transferPending'] ?? false) as bool,
+          SafeParser.asNonNullBool(map['isTransferPending'] ?? map['_transferPending'], false),
       pendingTargetBarangay:
-          (map['pendingTargetBarangay'] ?? map['_pendingTargetBarangay']) as String?,
+          SafeParser.asString(map['pendingTargetBarangay'] ?? map['_pendingTargetBarangay']),
       linkedChildIds:
           (map['linkedChildIds'] as List?)?.map((e) => e.toString()).toList() ??
           [],

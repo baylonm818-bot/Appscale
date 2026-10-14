@@ -1,3 +1,4 @@
+import '../../core/utils/safe_parser.dart';
 import '../../shared/utils/app_user_identity.dart';
 import 'guardian.dart';
 
@@ -151,7 +152,7 @@ class Child {
     'id': id,
     'sequenceNo': sequenceNo,
     'fullName': fullName,
-    'birthDate': birthDate.toIso8601String(),
+    'birthDate': SafeParser.toDateString(birthDate),
     'gender': gender,
     'address': address,
     'barangay': barangay,
@@ -161,60 +162,60 @@ class Child {
     'createdAt': createdAt.toIso8601String(),
     'nutritionStatus': nutritionStatus,
     'stuntingStatus': stuntingStatus,
-    'lastWeighedAt': lastWeighedAt?.toIso8601String(),
+    'lastWeighedAt': lastWeighedAt != null ? SafeParser.toDateString(lastWeighedAt!) : null,
     'isActive': isActive,
     'inactiveReason': inactiveReason,
-    'inactiveDate': inactiveDate?.toIso8601String(),
+    'inactiveDate': inactiveDate != null ? SafeParser.toDateString(inactiveDate!) : null,
     'isTransferPending': isTransferPending,
     'pendingTargetBarangay': pendingTargetBarangay,
     'wastingStatus': wastingStatus,
   };
 
   factory Child.fromMap(Map map) {
-    // Support both camelCase (local) and snake_case (API/legacy) keys.
+    // Support both camelCase (local) and snake_case (API/legacy) keys safely.
     String strVal(String camel, String snake) =>
-        ((map[camel] ?? map[snake]) as String?) ?? '';
+        SafeParser.asString(map[camel] ?? map[snake]) ?? '';
     bool boolVal(String camel, String snake, bool def) =>
-        (map[camel] ?? map[snake] ?? def) as bool;
+        SafeParser.asBool(map[camel] ?? map[snake], def) ?? def;
 
-    final firstName = map['first_name'] as String? ?? '';
-    final middleInitial = map['middle_initial'] as String? ?? '';
-    final lastName = map['last_name'] as String? ?? '';
+    final firstName = SafeParser.asNonNullString(map['first_name']);
+    final middleInitial = SafeParser.asNonNullString(map['middle_initial']);
+    final lastName = SafeParser.asNonNullString(map['last_name']);
     final apiFullName = [firstName, if (middleInitial.isNotEmpty) middleInitial, lastName]
         .where((s) => s.isNotEmpty)
         .join(' ');
 
     final rawGuardian = map['guardian'];
     final motherIdFromMap =
-        (map['mother_external_id'] ?? map['mother_id'])?.toString();
+        SafeParser.asString(map['mother_external_id'] ?? map['mother_id']);
     Guardian guardian;
     if (rawGuardian is Map) {
-      final gMotherId = rawGuardian['linkedMotherId'] as String? ??
+      final gMotherId = SafeParser.asString(rawGuardian['linkedMotherId']) ??
           (motherIdFromMap != null && motherIdFromMap.isNotEmpty ? motherIdFromMap : null);
       guardian = Guardian(
-        fullName: (rawGuardian['fullName'] ?? rawGuardian['full_name'] ?? '') as String,
-        relationship: (rawGuardian['relationship'] ?? 'Guardian') as String,
-        contactNo: (rawGuardian['contactNo'] ?? rawGuardian['contact_no'] ?? '') as String,
+        fullName: SafeParser.asNonNullString(rawGuardian['fullName'] ?? rawGuardian['full_name']),
+        relationship: SafeParser.asNonNullString(rawGuardian['relationship'], 'Guardian'),
+        contactNo: SafeParser.asNonNullString(rawGuardian['contactNo'] ?? rawGuardian['contact_no']),
         linkedMotherId: gMotherId,
       );
     } else {
       guardian = Guardian(
-        fullName: map['guardian_name'] as String? ?? '',
+        fullName: SafeParser.asNonNullString(map['guardian_name']),
         relationship: 'Guardian',
-        contactNo: map['guardian_contact'] as String? ?? '',
+        contactNo: SafeParser.asNonNullString(map['guardian_contact']),
         linkedMotherId: motherIdFromMap != null && motherIdFromMap.isNotEmpty ? motherIdFromMap : null,
       );
     }
 
-    final rawId = (map['id'] ?? map['external_id'] ?? map['child_id'] ?? '').toString();
-    final rawBirth = strVal('birthDate', 'birth_date');
+    final rawId = SafeParser.asNonNullString(map['id'] ?? map['external_id'] ?? map['child_id']);
+    final rawBirth = map['birthDate'] ?? map['birth_date'];
     final normalizedFullName = AppUserIdentity.normalizeDisplayName(
       strVal('fullName', 'full_name').isNotEmpty
           ? strVal('fullName', 'full_name')
           : apiFullName,
     );
 
-    final rawInactiveDate = (map['inactiveDate'] ?? map['inactive_date']) as String?;
+    final rawInactiveDate = map['inactiveDate'] ?? map['inactive_date'];
 
     return Child(
       id: rawId,
@@ -222,38 +223,30 @@ class Child {
           ? strVal('sequenceNo', 'sequence_no')
           : rawId,
       fullName: normalizedFullName,
-      birthDate: DateTime.parse(
-          rawBirth.isNotEmpty ? rawBirth.split('T').first : DateTime.now().toIso8601String()),
+      birthDate: SafeParser.asDate(rawBirth) ?? DateTime.now(),
       gender: strVal('gender', 'sex').isNotEmpty ? strVal('gender', 'sex') : 'Male',
       address: strVal('address', 'purok'),
       barangay: strVal('barangay', 'barangay'),
       belongsToIpGroup: boolVal('belongsToIpGroup', 'belongs_to_ip_group', false),
       disability: strVal('disability', 'disability'),
       guardian: guardian,
-      createdAt: map['createdAt'] != null
-          ? DateTime.parse(map['createdAt'] as String)
-          : DateTime.now(),
+      createdAt: SafeParser.asDateTime(map['createdAt'] ?? map['created_at']) ?? DateTime.now(),
       nutritionStatus: strVal('nutritionStatus', 'weight_status').isNotEmpty
           ? strVal('nutritionStatus', 'weight_status')
           : 'Not weighed',
       stuntingStatus: strVal('stuntingStatus', 'height_status').isNotEmpty
           ? strVal('stuntingStatus', 'height_status')
           : 'Not weighed',
-      lastWeighedAt: (map['lastWeighedAt'] ?? map['last_visit']) != null
-          ? DateTime.tryParse(
-              ((map['lastWeighedAt'] ?? map['last_visit']) as String).split('T').first)
-          : null,
+      lastWeighedAt: SafeParser.asDate(map['lastWeighedAt'] ?? map['last_visit']),
       isActive: map['isActive'] != null
-          ? map['isActive'] as bool
-          : (map['status'] as String? ?? 'active') == 'active',
-      inactiveReason: map['inactiveReason'] as String?,
-      inactiveDate: rawInactiveDate != null
-          ? DateTime.tryParse(rawInactiveDate.split('T').first)
-          : null,
+          ? SafeParser.asNonNullBool(map['isActive'], true)
+          : (SafeParser.asString(map['status']) ?? 'active').toLowerCase() == 'active',
+      inactiveReason: SafeParser.asString(map['inactiveReason'] ?? map['inactive_reason']),
+      inactiveDate: SafeParser.asDate(rawInactiveDate),
       isTransferPending:
-          (map['isTransferPending'] ?? map['_transferPending'] ?? false) as bool,
+          SafeParser.asNonNullBool(map['isTransferPending'] ?? map['_transferPending'], false),
       pendingTargetBarangay:
-          (map['pendingTargetBarangay'] ?? map['_pendingTargetBarangay']) as String?,
+          SafeParser.asString(map['pendingTargetBarangay'] ?? map['_pendingTargetBarangay']),
       wastingStatus: strVal('wastingStatus', 'overall_status').isNotEmpty
           ? strVal('wastingStatus', 'overall_status')
           : 'Not weighed',

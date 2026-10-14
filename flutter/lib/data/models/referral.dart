@@ -1,4 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../core/utils/safe_parser.dart';
 import '../local/hive_boxes.dart';
 import '../../shared/utils/app_date_format.dart';
 
@@ -214,7 +215,7 @@ class Referral {
     'itemsGiven': itemsGiven,
   };
 
-  factory Referral.fromMap(Map<String, dynamic> map) {
+  factory Referral.fromMap(Map map) {
     final itemsRaw = map['itemsGiven'] ?? map['items_given'];
     List<Map<String, dynamic>> parsedItems = const [];
     if (itemsRaw is List) {
@@ -225,39 +226,30 @@ class Referral {
     }
 
     final updatedRaw = map['updatedAt'] ?? map['updated_at'];
-    DateTime? updatedDt;
-    if (updatedRaw != null) {
-      updatedDt = DateTime.tryParse(updatedRaw.toString());
-    }
+    DateTime? updatedDt = SafeParser.asDateTime(updatedRaw);
 
     final archivedRaw = map['archived_at'] ?? map['archivedAt'];
-    DateTime? archivedDt;
-    if (archivedRaw != null) {
-      archivedDt = DateTime.tryParse(archivedRaw.toString());
-    }
+    DateTime? archivedDt = SafeParser.asDateTime(archivedRaw);
 
     final createdRaw = map['createdAt'] ?? map['created_at'];
-    final createdDt = createdRaw != null
-        ? DateTime.tryParse(createdRaw.toString()) ?? DateTime.now()
-        : DateTime.now();
+    final createdDt = SafeParser.asDateTime(createdRaw) ?? DateTime.now();
 
     return Referral(
-      id: map['id']?.toString() ?? '',
-      serverId: map['server_id']?.toString() ?? map['serverId']?.toString(),
-      beneficiaryType: map['beneficiaryType']?.toString() ??
-          map['beneficiary_type']?.toString() ??
-          'child',
-      beneficiaryId: map['beneficiaryId']?.toString() ??
-          map['child_external_id']?.toString() ??
-          map['child_id']?.toString() ??
-          map['mother_id']?.toString() ??
-          '',
-      beneficiaryName: (map['beneficiaryName'] ?? map['beneficiary_name'])?.toString() ?? '',
-      barangay: map['barangay']?.toString() ?? '',
-      reason: map['reason']?.toString() ?? '',
-      facility: map['facility']?.toString() ?? map['referred_to']?.toString() ?? '',
-      notes: (map['notes'] ?? map['response_notes'])?.toString() ?? '',
-      status: normalizeStatus(map['status']?.toString()),
+      id: SafeParser.asNonNullString(map['id']),
+      serverId: SafeParser.asString(map['server_id'] ?? map['serverId']),
+      beneficiaryType: SafeParser.asNonNullString(
+        map['beneficiaryType'] ?? map['beneficiary_type'],
+        'child',
+      ),
+      beneficiaryId: SafeParser.asNonNullString(
+        map['beneficiaryId'] ?? map['child_external_id'] ?? map['child_id'] ?? map['mother_id'],
+      ),
+      beneficiaryName: SafeParser.asNonNullString(map['beneficiaryName'] ?? map['beneficiary_name']),
+      barangay: SafeParser.asNonNullString(map['barangay']),
+      reason: SafeParser.asNonNullString(map['reason']),
+      facility: SafeParser.asNonNullString(map['facility'] ?? map['referred_to']),
+      notes: SafeParser.asNonNullString(map['notes'] ?? map['response_notes']),
+      status: normalizeStatus(SafeParser.asString(map['status'])),
       createdAt: createdDt,
       updatedAt: updatedDt,
       archivedAt: archivedDt,

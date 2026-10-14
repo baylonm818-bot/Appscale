@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/safe_parser.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/measurement_repository.dart';
@@ -67,6 +68,16 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       _currentBarangay = user['barangay'].toString();
     }
     _lastSyncedAt = Hive.box(HiveBoxes.settings).get('last_synced_at') as String?;
+    if (_lastSyncedAt == null) {
+      final items = _loadSyncItems();
+      final syncedItems = items.where((it) => it.status == 'synced').toList();
+      if (syncedItems.isNotEmpty) {
+        syncedItems.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        final latestIso = syncedItems.first.timestamp.toIso8601String();
+        _lastSyncedAt = latestIso;
+        Hive.box(HiveBoxes.settings).put('last_synced_at', latestIso);
+      }
+    }
   }
 
   List<SyncItem> _loadSyncItems() {
@@ -761,6 +772,9 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           }
         }
       }
+      final nowIso = DateTime.now().toIso8601String();
+      await Hive.box(HiveBoxes.settings).put('last_synced_at', nowIso);
+      setState(() => _lastSyncedAt = nowIso);
       AppDataBus.notifyChanged();
     } catch (e) {
       if (mounted) {
@@ -933,7 +947,9 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      item.error ?? (item.status == 'failed' ? 'Upload failed.' : 'Pending retry.'),
+                      item.error != null
+                          ? SafeParser.friendlyNetworkError(item.error!)
+                          : (item.status == 'failed' ? 'Upload failed.' : 'Pending retry.'),
                       style: TextStyle(
                         fontSize: 11,
                         color: item.status == 'failed' ? const Color(0xFF991B1B) : const Color(0xFF92400E),
@@ -1154,7 +1170,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                                   Text(
                                     pendingCount == 0
                                         ? 'All local device records are in sync'
-                                        : '$pendingCount records pending',
+                                        : (pendingCount == 1 ? '1 record pending' : '$pendingCount records pending'),
                                     style: AppTextStyles.body.copyWith(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,

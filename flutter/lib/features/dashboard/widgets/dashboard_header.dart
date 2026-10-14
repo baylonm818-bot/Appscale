@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_gradient_header.dart';
@@ -29,33 +30,8 @@ class DashboardHeader extends StatelessWidget {
 
   static String? normalizeProfileImageUrl(String? value) {
     if (value == null || value.trim().isEmpty) return null;
-    final raw = value.trim();
-
-    if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) {
-      return raw;
-    }
-
-    if (raw.startsWith('/')) {
-      final relative = raw.replaceFirst(RegExp(r'^/+'), '');
-      if (relative.startsWith('uploads/')) {
-        return 'https://appscale-1.onrender.com/$relative';
-      }
-      if (relative.startsWith('profile-pictures/')) {
-        return 'https://appscale-1.onrender.com/uploads/$relative';
-      }
-      // Return raw local path if it doesn't match server uploads prefix
-      return raw;
-    }
-
-    if (raw.startsWith('uploads/')) {
-      return 'https://appscale-1.onrender.com/$raw';
-    }
-
-    if (raw.startsWith('profile-pictures/')) {
-      return 'https://appscale-1.onrender.com/uploads/$raw';
-    }
-
-    return raw;
+    final resolved = ApiConstants.resolveMediaUrl(value);
+    return resolved.isNotEmpty ? resolved : null;
   }
 
   Widget _buildAvatarWidget(String? rawUrl, String initials) {

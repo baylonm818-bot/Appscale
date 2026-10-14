@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/deworming_record.dart';
 import 'activity_log_repository.dart';
@@ -9,23 +10,37 @@ class DewormingRepository {
   Box get _box => Hive.box(HiveBoxes.deworming);
 
   List<DewormingRecord> getAllForBarangay(String barangay) {
-    final list = _box.values
-        .map(
-          (e) => DewormingRecord.fromMap(Map<String, dynamic>.from(e as Map)),
-        )
-        .where((r) => r.barangay == barangay)
-        .toList();
+    final list = <DewormingRecord>[];
+    for (final e in _box.values) {
+      try {
+        if (e is Map) {
+          final record = DewormingRecord.fromMap(Map<String, dynamic>.from(e));
+          if (record.barangay == barangay) {
+            list.add(record);
+          }
+        }
+      } catch (err, stack) {
+        debugPrint('Skipping corrupt DewormingRecord in getAllForBarangay: $err\n$stack');
+      }
+    }
     list.sort((a, b) => b.dateGiven.compareTo(a.dateGiven));
     return list;
   }
 
   List<DewormingRecord> getByChildId(String childId) {
-    final list = _box.values
-        .map(
-          (e) => DewormingRecord.fromMap(Map<String, dynamic>.from(e as Map)),
-        )
-        .where((r) => r.childId == childId)
-        .toList();
+    final list = <DewormingRecord>[];
+    for (final e in _box.values) {
+      try {
+        if (e is Map) {
+          final record = DewormingRecord.fromMap(Map<String, dynamic>.from(e));
+          if (record.childId == childId) {
+            list.add(record);
+          }
+        }
+      } catch (err, stack) {
+        debugPrint('Skipping corrupt DewormingRecord in getByChildId: $err\n$stack');
+      }
+    }
     list.sort((a, b) => b.dateGiven.compareTo(a.dateGiven));
     return list;
   }

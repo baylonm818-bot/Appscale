@@ -1,3 +1,5 @@
+import '../../core/utils/safe_parser.dart';
+
 class VitaminARecord {
   final String id;
   final String childId;
@@ -34,29 +36,27 @@ class VitaminARecord {
     'childName': childName,
     'barangay': barangay,
     'ageInMonths': ageInMonths,
-    'dateGiven': dateGiven.toIso8601String(),
+    'dateGiven': SafeParser.toDateString(dateGiven),
     'dosage': dosage,
     'doseType': doseType,
     'administeredBy': administeredBy,
     'remarks': remarks,
-    'nextDueDate': nextDueDate?.toIso8601String(),
+    'nextDueDate': nextDueDate != null ? SafeParser.toDateString(nextDueDate!) : null,
     'createdAt': createdAt.toIso8601String(),
   };
 
   factory VitaminARecord.fromMap(Map<dynamic, dynamic> map) => VitaminARecord(
-    id: map['id'] as String,
-    childId: map['childId'] as String,
-    childName: map['childName'] as String,
-    barangay: map['barangay'] as String,
-    ageInMonths: (map['ageInMonths'] as num?)?.toInt() ?? 0,
-    dateGiven: DateTime.parse(map['dateGiven'] as String),
-    dosage: map['dosage'] as String,
-    doseType: map['doseType'] as String? ?? 'Routine',
-    administeredBy: map['administeredBy'] as String? ?? 'BNS',
-    remarks: map['remarks'] as String? ?? '',
-    nextDueDate: map['nextDueDate'] != null
-        ? DateTime.parse(map['nextDueDate'] as String)
-        : null,
-    createdAt: DateTime.parse(map['createdAt'] as String),
+    id: SafeParser.asNonNullString(map['id'] ?? map['service_id'] ?? map['external_id']),
+    childId: SafeParser.asNonNullString(map['childId'] ?? map['child_id'] ?? map['child_external_id']),
+    childName: SafeParser.asNonNullString(map['childName'] ?? map['child_name'], 'Child'),
+    barangay: SafeParser.asNonNullString(map['barangay']),
+    ageInMonths: SafeParser.asNonNullInt(map['ageInMonths'] ?? map['age_in_months'], 0),
+    dateGiven: SafeParser.asDate(map['dateGiven'] ?? map['service_date']) ?? DateTime.now(),
+    dosage: SafeParser.asNonNullString(map['dosage'], '100,000 IU (Blue)'),
+    doseType: SafeParser.asNonNullString(map['doseType'] ?? map['service_name'], 'Routine'),
+    administeredBy: SafeParser.asNonNullString(map['administeredBy'] ?? map['provided_by'], 'BNS'),
+    remarks: SafeParser.asNonNullString(map['remarks'] ?? map['notes']),
+    nextDueDate: SafeParser.asDate(map['nextDueDate'] ?? map['next_schedule']),
+    createdAt: SafeParser.asDateTime(map['createdAt'] ?? map['created_at']) ?? DateTime.now(),
   );
 }

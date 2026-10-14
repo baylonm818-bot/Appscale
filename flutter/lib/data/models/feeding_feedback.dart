@@ -1,3 +1,5 @@
+import '../../core/utils/safe_parser.dart';
+
 class FeedingFeedback {
   final String id;
   final DateTime date;
@@ -16,17 +18,17 @@ class FeedingFeedback {
 
   Map<String, dynamic> toMap() => {
     'id': id,
-    'date': date.toIso8601String(),
+    'date': SafeParser.toDateString(date),
     'note': note,
     'tag': tag,
     'barangay': barangay,
   };
 
-  factory FeedingFeedback.fromMap(Map<String, dynamic> map) => FeedingFeedback(
-    id: map['id'] as String,
-    date: DateTime.parse(map['date'] as String),
-    note: map['note'] as String,
-    tag: map['tag'] as String?,
-    barangay: map['barangay'] as String,
+  factory FeedingFeedback.fromMap(Map map) => FeedingFeedback(
+    id: SafeParser.asNonNullString(map['id']),
+    date: SafeParser.asDate(map['date']) ?? DateTime.now(),
+    note: SafeParser.asNonNullString(map['note']),
+    tag: SafeParser.asString(map['tag']),
+    barangay: SafeParser.asNonNullString(map['barangay']),
   );
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../shared/widgets/main_scaffold.dart';
 import '../beneficiary/add_profile_sheet.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -217,12 +218,16 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           (_settings.pendingProfileUpdate != null ? 1 : 0) +
           (_settings.pendingPasswordChange != null ? 1 : 0);
       final synced = totalPending - remaining;
-      if (synced > 0 && mounted) {
-        AppNotificationUI.showSuccess(
-          context,
-          'Synced $synced record${synced > 1 ? 's' : ''} to server.',
-          title: 'Auto-Sync Completed',
-        );
+      if (synced > 0) {
+        final nowIso = DateTime.now().toIso8601String();
+        await Hive.box(HiveBoxes.settings).put('last_synced_at', nowIso);
+        if (mounted) {
+          AppNotificationUI.showSuccess(
+            context,
+            'Synced $synced record${synced > 1 ? 's' : ''} to server.',
+            title: 'Auto-Sync Completed',
+          );
+        }
       }
     } catch (e) {
       debugPrint('Auto sync periodic attempt: $e');

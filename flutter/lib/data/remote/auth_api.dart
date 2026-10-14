@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import '../../core/constants/api_constants.dart';
 
 class AuthUser {
   final int userId;
@@ -83,11 +83,7 @@ class AuthSession {
 class AuthApi {
   AuthApi._();
 
-  static String get _baseUrl {
-    const configured = String.fromEnvironment('API_BASE_URL');
-    if (configured.isNotEmpty) return configured;
-    return kIsWeb ? 'https://appscale-1.onrender.com/api' : 'https://appscale-1.onrender.com/api';
-  }
+  static String get _baseUrl => ApiConstants.apiBaseUrl;
 
   static Map<String, dynamic> _decodeJson(http.Response response) {
     if (response.body.isEmpty) return <String, dynamic>{};
@@ -128,8 +124,8 @@ class AuthApi {
     // Normalize profile_picture to absolute URL if server returned relative path
     if (body['user'] is Map && body['user']['profile_picture'] is String) {
       final pic = (body['user']['profile_picture'] as String).trim();
-      if (pic.isNotEmpty && !RegExp(r'^https?://', caseSensitive: false).hasMatch(pic) && pic.startsWith('/')) {
-        body['user']['profile_picture'] = 'https://appscale-1.onrender.com$pic';
+      if (pic.isNotEmpty) {
+        body['user']['profile_picture'] = ApiConstants.resolveMediaUrl(pic);
       }
     }
 
@@ -254,8 +250,8 @@ class AuthApi {
 
     if (body['profile_picture'] is String) {
       final pic = (body['profile_picture'] as String).trim();
-      if (pic.isNotEmpty && !RegExp(r'^https?://', caseSensitive: false).hasMatch(pic) && !pic.startsWith('data:') && pic.startsWith('/')) {
-        body['profile_picture'] = 'https://appscale-1.onrender.com$pic';
+      if (pic.isNotEmpty) {
+        body['profile_picture'] = ApiConstants.resolveMediaUrl(pic);
       }
     }
 

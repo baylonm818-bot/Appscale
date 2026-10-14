@@ -22,11 +22,28 @@ class MotherRepository {
 
   Mother? getById(String id) {
     final map = _box.get(id);
-    return map == null ? null : Mother.fromMap(map as Map);
+    if (map == null || map is! Map) return null;
+    try {
+      return Mother.fromMap(map);
+    } catch (e, stack) {
+      debugPrint('Skipping corrupt Mother record $id: $e\n$stack');
+      return null;
+    }
   }
 
-  List<Mother> getAll() =>
-      _box.values.map((m) => Mother.fromMap(m as Map)).toList();
+  List<Mother> getAll() {
+    final list = <Mother>[];
+    for (final m in _box.values) {
+      try {
+        if (m is Map) {
+          list.add(Mother.fromMap(m));
+        }
+      } catch (e, stack) {
+        debugPrint('Skipping corrupt Mother in getAll: $e\n$stack');
+      }
+    }
+    return list;
+  }
 
   Future<void> update(Mother mother) async {
     final map = mother.toMap()..['_syncStatus'] = 'pending';

@@ -1,3 +1,5 @@
+import '../../core/utils/safe_parser.dart';
+
 class Measurement {
   final DateTime date;
   final double weightKg;
@@ -88,7 +90,7 @@ class Measurement {
   }
 
   Map<String, dynamic> toMap() => {
-    'date': date.toIso8601String(),
+    'date': SafeParser.toDateString(date),
     'weightKg': weightKg,
     'heightCm': heightCm,
     'muacCm': muacCm,
@@ -100,16 +102,16 @@ class Measurement {
     'bmiStatus': bmiStatus,
   };
 
-  factory Measurement.fromMap(Map<String, dynamic> map) => Measurement(
-    date: DateTime.parse(map['date'] as String),
-    weightKg: (map['weightKg'] as num).toDouble(),
-    heightCm: (map['heightCm'] as num).toDouble(),
-    muacCm: (map['muacCm'] as num?)?.toDouble(),
-    bilateralPittingEdema: map['bilateralPittingEdema'] as bool? ?? false,
-    weightForAgeStatus: map['weightForAgeStatus'] as String? ?? 'Normal',
-    heightForAgeStatus: map['heightForAgeStatus'] as String? ?? 'Normal',
-    weightForLengthStatus: map['weightForLengthStatus'] as String? ?? 'Normal',
-    customBmi: (map['bmi'] as num?)?.toDouble(),
-    customBmiStatus: map['bmiStatus'] as String?,
+  factory Measurement.fromMap(Map map) => Measurement(
+    date: SafeParser.asDate(map['date'] ?? map['record_date']) ?? DateTime.now(),
+    weightKg: SafeParser.asNonNullDouble(map['weightKg'] ?? map['weight_kg']),
+    heightCm: SafeParser.asNonNullDouble(map['heightCm'] ?? map['height_cm']),
+    muacCm: SafeParser.asDouble(map['muacCm'] ?? map['muac_cm']),
+    bilateralPittingEdema: SafeParser.asNonNullBool(map['bilateralPittingEdema'] ?? map['edema'] ?? map['bilateral_edema']),
+    weightForAgeStatus: SafeParser.asNonNullString(map['weightForAgeStatus'] ?? map['weight_status'], 'Normal'),
+    heightForAgeStatus: SafeParser.asNonNullString(map['heightForAgeStatus'] ?? map['height_status'], 'Normal'),
+    weightForLengthStatus: SafeParser.asNonNullString(map['weightForLengthStatus'] ?? map['overall_status'], 'Normal'),
+    customBmi: SafeParser.asDouble(map['bmi']),
+    customBmiStatus: SafeParser.asString(map['bmiStatus'] ?? map['bmi_status']),
   );
 }

@@ -1,3 +1,5 @@
+import '../../core/utils/safe_parser.dart';
+
 class MealPlan {
   final String id;
   final List<String> foodItems;
@@ -29,21 +31,19 @@ class MealPlan {
   Map<String, dynamic> toMap() => {
     'id': id,
     'foodItems': foodItems,
-    'effectiveFrom': effectiveFrom.toIso8601String(),
-    'effectiveTo': effectiveTo?.toIso8601String(),
+    'effectiveFrom': SafeParser.toDateString(effectiveFrom),
+    'effectiveTo': effectiveTo != null ? SafeParser.toDateString(effectiveTo!) : null,
     'barangay': barangay,
     'createdAt': createdAt.toIso8601String(),
   };
 
-  factory MealPlan.fromMap(Map<String, dynamic> map) => MealPlan(
-    id: map['id'] as String,
-    foodItems:
-        (map['foodItems'] as List?)?.map((e) => e.toString()).toList() ?? [],
-    effectiveFrom: DateTime.parse(map['effectiveFrom'] as String),
-    effectiveTo: map['effectiveTo'] != null
-        ? DateTime.parse(map['effectiveTo'] as String)
-        : null,
-    barangay: map['barangay'] as String,
-    createdAt: DateTime.parse(map['createdAt'] as String),
+  factory MealPlan.fromMap(Map map) => MealPlan(
+    id: SafeParser.asNonNullString(map['id'] ?? map['plan_id'] ?? map['external_id']),
+    foodItems: (map['foodItems'] as List?)?.map((e) => e.toString()).toList() ??
+        (map['meal_name'] != null ? [map['meal_name'].toString()] : []),
+    effectiveFrom: SafeParser.asDate(map['effectiveFrom'] ?? map['effective_from'] ?? map['created_at']) ?? DateTime.now(),
+    effectiveTo: SafeParser.asDate(map['effectiveTo'] ?? map['effective_to']),
+    barangay: SafeParser.asNonNullString(map['barangay']),
+    createdAt: SafeParser.asDateTime(map['createdAt'] ?? map['created_at']) ?? DateTime.now(),
   );
 }

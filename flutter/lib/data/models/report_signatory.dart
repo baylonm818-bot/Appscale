@@ -1,3 +1,5 @@
+import '../../core/utils/safe_parser.dart';
+
 class ReportSignatory {
   final String barangay;
   final String bnsName;
@@ -37,16 +39,16 @@ class ReportSignatory {
     'barangayLogoPath': barangayLogoPath,
   };
 
-  factory ReportSignatory.fromMap(Map<String, dynamic> map) => ReportSignatory(
-    barangay: (map['barangay'] as String?) ?? '',
-    bnsName: (map['bnsName'] as String?) ?? '',
-    punongBarangayName: (map['punongBarangayName'] as String?) ?? '',
-    mnaoAdminAideName: (map['mnaoAdminAideName'] as String?) ?? '',
-    dnpcName: (map['dnpcName'] as String?) ?? '',
-    bnsPosition: (map['bnsPosition'] as String?) ?? 'Barangay Nutrition Scholar (BNS)',
-    punongBarangayPosition: (map['punongBarangayPosition'] as String?) ?? 'Punong Barangay',
-    mnaoAdminAidePosition: (map['mnaoAdminAidePosition'] as String?) ?? 'Admin Aide IV- MNAO OIC',
-    dnpcPosition: (map['dnpcPosition'] as String?) ?? 'DNPC',
-    barangayLogoPath: (map['barangayLogoPath'] as String?) ?? '',
+  factory ReportSignatory.fromMap(Map<dynamic, dynamic> map) => ReportSignatory(
+    barangay: SafeParser.asNonNullString(map['barangay'], ''),
+    bnsName: SafeParser.asNonNullString(map['bnsName'], ''),
+    punongBarangayName: SafeParser.asNonNullString(map['punongBarangayName'], ''),
+    mnaoAdminAideName: SafeParser.asNonNullString(map['mnaoAdminAideName'], ''),
+    dnpcName: SafeParser.asNonNullString(map['dnpcName'], ''),
+    bnsPosition: SafeParser.asNonNullString(map['bnsPosition'], 'Barangay Nutrition Scholar (BNS)'),
+    punongBarangayPosition: SafeParser.asNonNullString(map['punongBarangayPosition'], 'Punong Barangay'),
+    mnaoAdminAidePosition: SafeParser.asNonNullString(map['mnaoAdminAidePosition'], 'Admin Aide IV- MNAO OIC'),
+    dnpcPosition: SafeParser.asNonNullString(map['dnpcPosition'], 'DNPC'),
+    barangayLogoPath: SafeParser.asNonNullString(map['barangayLogoPath'], ''),
   );
 }

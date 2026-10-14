@@ -1,3 +1,5 @@
+import '../../core/utils/safe_parser.dart';
+
 class Guardian {
   final String fullName;
   final String relationship;
@@ -33,18 +35,14 @@ class Guardian {
     'relationship': relationship,
     'contactNo': contactNo,
     'linkedMotherId': linkedMotherId,
-    'birthDate': birthDate?.toIso8601String(),
+    'birthDate': birthDate != null ? SafeParser.toDateString(birthDate!) : null,
   };
 
   factory Guardian.fromMap(Map map) => Guardian(
-    fullName: (map['fullName'] ?? map['full_name'] ?? '') as String,
-    relationship: (map['relationship'] ?? '') as String,
-    contactNo: (map['contactNo'] ?? map['contact_number'] ?? '') as String,
-    linkedMotherId: (map['linkedMotherId'] ?? map['mother_id']) as String?,
-    birthDate: map['birthDate'] != null
-        ? DateTime.tryParse(map['birthDate'] as String)
-        : (map['birth_date'] != null
-            ? DateTime.tryParse(map['birth_date'] as String)
-            : null),
+    fullName: SafeParser.asNonNullString(map['fullName'] ?? map['full_name']),
+    relationship: SafeParser.asNonNullString(map['relationship'], 'Guardian'),
+    contactNo: SafeParser.asNonNullString(map['contactNo'] ?? map['contact_number']),
+    linkedMotherId: SafeParser.asString(map['linkedMotherId'] ?? map['mother_id']),
+    birthDate: SafeParser.asDate(map['birthDate'] ?? map['birth_date']),
   );
 }

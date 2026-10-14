@@ -1,3 +1,5 @@
+import '../../core/utils/safe_parser.dart';
+
 class ProgramSchedule {
   final String id;
   final String title;
@@ -58,7 +60,7 @@ class ProgramSchedule {
     'id': id,
     'title': title,
     'programType': programType,
-    'date': date.toIso8601String(),
+    'date': SafeParser.toDateString(date),
     'startTime': startTime,
     'endTime': endTime,
     'location': location,
@@ -69,20 +71,20 @@ class ProgramSchedule {
     'createdAt': createdAt.toIso8601String(),
   };
 
-  factory ProgramSchedule.fromMap(Map<dynamic, dynamic> map) => ProgramSchedule(
-    id: (map['id'] ?? '').toString(),
-    title: (map['title'] ?? 'Activity').toString(),
+  factory ProgramSchedule.fromMap(Map map) => ProgramSchedule(
+    id: SafeParser.asNonNullString(map['id']),
+    title: SafeParser.asNonNullString(map['title'], 'Activity'),
     programType: normalizeProgramType(
-      (map['programType'] ?? map['schedule_type'] ?? 'Feeding').toString(),
+      SafeParser.asNonNullString(map['programType'] ?? map['schedule_type'], 'Feeding'),
     ),
-    date: DateTime.tryParse((map['date'] ?? '').toString()) ?? DateTime.now(),
-    startTime: (map['startTime'] ?? map['schedule_time'] ?? '08:00 AM').toString(),
-    endTime: (map['endTime'] ?? '12:00 PM').toString(),
-    location: (map['location'] ?? map['venue'] ?? 'Health Center').toString(),
-    targetGroup: (map['targetGroup'] ?? map['target_role'] ?? 'All Beneficiaries').toString(),
-    notes: (map['notes'] ?? '').toString(),
-    barangay: (map['barangay'] ?? '').toString(),
-    createdBy: (map['createdBy'] ?? map['facilitator'] ?? (map['assigned_to'] ?? 'RHU Web Admin')).toString(),
-    createdAt: DateTime.tryParse((map['createdAt'] ?? '').toString()) ?? DateTime.now(),
+    date: SafeParser.asDate(map['date'] ?? map['schedule_date']) ?? DateTime.now(),
+    startTime: SafeParser.asNonNullString(map['startTime'] ?? map['schedule_time'], '08:00 AM'),
+    endTime: SafeParser.asNonNullString(map['endTime'] ?? map['end_time'], '12:00 PM'),
+    location: SafeParser.asNonNullString(map['location'] ?? map['venue'], 'Health Center'),
+    targetGroup: SafeParser.asNonNullString(map['targetGroup'] ?? map['target_role'], 'All Beneficiaries'),
+    notes: SafeParser.asNonNullString(map['notes']),
+    barangay: SafeParser.asNonNullString(map['barangay']),
+    createdBy: SafeParser.asNonNullString(map['createdBy'] ?? map['facilitator'] ?? map['assigned_to'], 'RHU Web Admin'),
+    createdAt: SafeParser.asDateTime(map['createdAt'] ?? map['created_at']) ?? DateTime.now(),
   );
 }

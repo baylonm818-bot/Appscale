@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../core/constants/api_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -707,20 +708,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       }
     }
 
-    final normalizedUrl = (() {
-      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-        return trimmed;
-      }
-      if (trimmed.startsWith('/')) {
-        final relative = trimmed.replaceFirst(RegExp(r'^/+'), '');
-        if (relative.startsWith('uploads/')) return 'https://appscale-1.onrender.com/$relative';
-        if (relative.startsWith('profile-pictures/')) return 'https://appscale-1.onrender.com/uploads/$relative';
-        return trimmed;
-      }
-      if (trimmed.startsWith('uploads/')) return 'https://appscale-1.onrender.com/$trimmed';
-      if (trimmed.startsWith('profile-pictures/')) return 'https://appscale-1.onrender.com/uploads/$trimmed';
-      return trimmed;
-    })();
+    final normalizedUrl = ApiConstants.resolveMediaUrl(trimmed);
 
     if (normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
       return ClipOval(

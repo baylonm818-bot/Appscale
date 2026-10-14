@@ -1,3 +1,5 @@
+import '../../core/utils/safe_parser.dart';
+
 class DewormingRecord {
   final String id;
   final String childId;
@@ -37,31 +39,29 @@ class DewormingRecord {
     'childName': childName,
     'barangay': barangay,
     'ageInMonths': ageInMonths,
-    'dateGiven': dateGiven.toIso8601String(),
+    'dateGiven': SafeParser.toDateString(dateGiven),
     'drugName': drugName,
     'round': round,
     'adverseEvents': adverseEvents,
     'administeredBy': administeredBy,
     'remarks': remarks,
-    'nextDueDate': nextDueDate?.toIso8601String(),
+    'nextDueDate': nextDueDate != null ? SafeParser.toDateString(nextDueDate!) : null,
     'createdAt': createdAt.toIso8601String(),
   };
 
   factory DewormingRecord.fromMap(Map<dynamic, dynamic> map) => DewormingRecord(
-    id: map['id'] as String,
-    childId: map['childId'] as String,
-    childName: map['childName'] as String,
-    barangay: map['barangay'] as String,
-    ageInMonths: (map['ageInMonths'] as num?)?.toInt() ?? 0,
-    dateGiven: DateTime.parse(map['dateGiven'] as String),
-    drugName: map['drugName'] as String,
-    round: map['round'] as String? ?? '1st Round (Jan - Jun)',
-    adverseEvents: map['adverseEvents'] as String? ?? 'None',
-    administeredBy: map['administeredBy'] as String? ?? 'BNS',
-    remarks: map['remarks'] as String? ?? '',
-    nextDueDate: map['nextDueDate'] != null
-        ? DateTime.parse(map['nextDueDate'] as String)
-        : null,
-    createdAt: DateTime.parse(map['createdAt'] as String),
+    id: SafeParser.asNonNullString(map['id'] ?? map['service_id'] ?? map['external_id']),
+    childId: SafeParser.asNonNullString(map['childId'] ?? map['child_id'] ?? map['child_external_id']),
+    childName: SafeParser.asNonNullString(map['childName'] ?? map['child_name'], 'Child'),
+    barangay: SafeParser.asNonNullString(map['barangay']),
+    ageInMonths: SafeParser.asNonNullInt(map['ageInMonths'] ?? map['age_in_months'], 0),
+    dateGiven: SafeParser.asDate(map['dateGiven'] ?? map['service_date']) ?? DateTime.now(),
+    drugName: SafeParser.asNonNullString(map['drugName'] ?? map['service_name'] ?? map['dosage'], 'Albendazole 400mg'),
+    round: SafeParser.asNonNullString(map['round'] ?? map['notes'], '1st Round (Jan - Jun)'),
+    adverseEvents: SafeParser.asNonNullString(map['adverseEvents'], 'None'),
+    administeredBy: SafeParser.asNonNullString(map['administeredBy'] ?? map['provided_by'], 'BNS'),
+    remarks: SafeParser.asNonNullString(map['remarks'] ?? map['notes']),
+    nextDueDate: SafeParser.asDate(map['nextDueDate'] ?? map['next_schedule']),
+    createdAt: SafeParser.asDateTime(map['createdAt'] ?? map['created_at']) ?? DateTime.now(),
   );
 }

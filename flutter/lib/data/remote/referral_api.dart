@@ -1,6 +1,7 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../../core/constants/api_constants.dart';
+import '../../core/utils/safe_parser.dart';
 import '../local/hive_boxes.dart';
 import '../models/referral.dart';
 import 'beneficiary_api.dart';
@@ -8,11 +9,7 @@ import 'beneficiary_api.dart';
 class ReferralApi {
   ReferralApi._();
 
-  static String get _baseUrl {
-    const configured = String.fromEnvironment('API_BASE_URL');
-    if (configured.isNotEmpty) return configured;
-    return kIsWeb ? 'https://appscale-1.onrender.com/api' : 'https://appscale-1.onrender.com/api';
-  }
+  static String get _baseUrl => ApiConstants.apiBaseUrl;
 
   static Future<ApiResponse> submit(Referral referral) async {
     final settings = SettingsRepository();
@@ -61,7 +58,7 @@ class ReferralApi {
             headers: headers,
             body: jsonEncode(payload),
           )
-          .timeout(const Duration(seconds: 25));
+          .timeout(ApiConstants.requestTimeout);
 
       Map<String, dynamic>? body;
       try {
@@ -92,7 +89,7 @@ class ReferralApi {
       return ApiResponse(
         success: false,
         statusCode: 0,
-        message: 'Network error submitting referral: $e',
+        message: SafeParser.friendlyNetworkError(e),
       );
     }
   }
@@ -116,7 +113,7 @@ class ReferralApi {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(ApiConstants.requestTimeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
@@ -148,7 +145,7 @@ class ReferralApi {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(ApiConstants.requestTimeout);
 
       Map<String, dynamic>? body;
       try {
@@ -165,7 +162,7 @@ class ReferralApi {
       return ApiResponse(
         success: false,
         statusCode: 0,
-        message: 'Network error archiving referral: $e',
+        message: SafeParser.friendlyNetworkError(e),
       );
     }
   }
@@ -188,7 +185,7 @@ class ReferralApi {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(ApiConstants.requestTimeout);
 
       Map<String, dynamic>? body;
       try {
@@ -205,7 +202,7 @@ class ReferralApi {
       return ApiResponse(
         success: false,
         statusCode: 0,
-        message: 'Network error unarchiving referral: $e',
+        message: SafeParser.friendlyNetworkError(e),
       );
     }
   }

@@ -16,9 +16,16 @@ class MeasurementRepository {
   List<Measurement> getForChild(String childId) {
     final raw = _box.get(childId) as List?;
     if (raw == null) return [];
-    final list = raw
-        .map((e) => Measurement.fromMap(Map<String, dynamic>.from(e as Map)))
-        .toList();
+    final list = <Measurement>[];
+    for (final e in raw) {
+      try {
+        if (e is Map) {
+          list.add(Measurement.fromMap(Map<String, dynamic>.from(e)));
+        }
+      } catch (err, stack) {
+        debugPrint('Skipping corrupt Measurement for child $childId: $err\n$stack');
+      }
+    }
     list.sort((a, b) => b.date.compareTo(a.date));
     return list;
   }

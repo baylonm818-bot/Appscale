@@ -65,7 +65,11 @@ class ProgramScheduleRepository {
       }
       if (!targetsVisible) continue;
 
-      list.add(ProgramSchedule.fromMap(map));
+      try {
+        list.add(ProgramSchedule.fromMap(map));
+      } catch (err, stack) {
+        debugPrint('Skipping corrupt ProgramSchedule: $err\n$stack');
+      }
     }
     list.sort((a, b) => a.date.compareTo(b.date));
     return list;

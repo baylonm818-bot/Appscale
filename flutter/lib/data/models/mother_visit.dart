@@ -1,3 +1,5 @@
+import '../../core/utils/safe_parser.dart';
+
 class MotherVisit {
   final DateTime date;
   final bool present;
@@ -36,7 +38,7 @@ class MotherVisit {
   DateTime get effectiveCreatedAt => createdAt ?? date;
 
   Map<String, dynamic> toMap() => {
-    'date': date.toIso8601String(),
+    'date': SafeParser.toDateString(date),
     'present': present,
     'breastfeedingPractice': breastfeedingPractice,
     'topicsCounseled': topicsCounseled,
@@ -48,22 +50,21 @@ class MotherVisit {
     'createdAt': effectiveCreatedAt.toIso8601String(),
   };
 
-  factory MotherVisit.fromMap(Map<String, dynamic> map) => MotherVisit(
-    date: DateTime.parse(map['date'] as String),
-    present: map['present'] as bool,
-    breastfeedingPractice: map['breastfeedingPractice'] as String?,
-    topicsCounseled:
-        (map['topicsCounseled'] as List?)?.map((e) => e.toString()).toList() ??
-        [],
-    hasMedicalConcern: map['hasMedicalConcern'] as bool? ?? false,
-    concernNote: map['concernNote'] as String?,
-    observation: map['observation'] as String?,
-    observationNote: map['observationNote'] as String?,
-    needsReferral: map['needsReferral'] as bool? ??
-        ((map['hasMedicalConcern'] as bool? ?? false) ||
-            map['observation'] == 'Signs of concern'),
-    createdAt: map['createdAt'] != null
-        ? DateTime.tryParse(map['createdAt'] as String)
-        : null,
+  factory MotherVisit.fromMap(Map map) => MotherVisit(
+    date: SafeParser.asDate(map['date'] ?? map['service_date']) ?? DateTime.now(),
+    present: SafeParser.asNonNullBool(map['present'], true),
+    breastfeedingPractice: SafeParser.asString(map['breastfeedingPractice'] ?? map['dosage']),
+    topicsCounseled: (map['topicsCounseled'] as List?)?.map((e) => e.toString()).toList() ??
+        (map['service_name'] != null ? [map['service_name'].toString()] : []),
+    hasMedicalConcern: SafeParser.asNonNullBool(map['hasMedicalConcern'], false),
+    concernNote: SafeParser.asString(map['concernNote']),
+    observation: SafeParser.asString(map['observation']),
+    observationNote: SafeParser.asString(map['observationNote']),
+    needsReferral: SafeParser.asNonNullBool(
+      map['needsReferral'],
+      SafeParser.asNonNullBool(map['hasMedicalConcern'], false) ||
+          SafeParser.asString(map['observation']) == 'Signs of concern',
+    ),
+    createdAt: SafeParser.asDateTime(map['createdAt'] ?? map['created_at']),
   );
 }

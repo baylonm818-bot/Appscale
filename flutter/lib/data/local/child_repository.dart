@@ -26,11 +26,28 @@ class ChildRepository {
 
   Child? getById(String id) {
     final map = _box.get(id);
-    return map == null ? null : Child.fromMap(map as Map);
+    if (map == null || map is! Map) return null;
+    try {
+      return Child.fromMap(map);
+    } catch (e, stack) {
+      debugPrint('Skipping corrupt Child record $id: $e\n$stack');
+      return null;
+    }
   }
 
-  List<Child> getAll() =>
-      _box.values.map((c) => Child.fromMap(c as Map)).toList();
+  List<Child> getAll() {
+    final list = <Child>[];
+    for (final c in _box.values) {
+      try {
+        if (c is Map) {
+          list.add(Child.fromMap(c));
+        }
+      } catch (e, stack) {
+        debugPrint('Skipping corrupt Child in getAll: $e\n$stack');
+      }
+    }
+    return list;
+  }
 
   List<Child> getByBarangay(String barangay) =>
       getAll().where((c) => c.barangay == barangay).toList();

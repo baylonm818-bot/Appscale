@@ -1,3 +1,5 @@
+import '../../core/utils/safe_parser.dart';
+
 class AppNotification {
   final String id;
   final String title;
@@ -48,29 +50,14 @@ class AppNotification {
   };
 
   factory AppNotification.fromMap(Map<dynamic, dynamic> map) {
-    final rawTs = (map['timestamp'] ?? map['created_at'] ?? '').toString();
-    DateTime parsed;
-    try {
-      if (rawTs.isEmpty) {
-        parsed = DateTime.now().toUtc();
-      } else if (!rawTs.endsWith('Z') && !rawTs.contains('+') && rawTs.contains('T')) {
-        parsed = DateTime.parse('${rawTs}Z');
-      } else if (!rawTs.endsWith('Z') && !rawTs.contains('+') && RegExp(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}').hasMatch(rawTs)) {
-        parsed = DateTime.parse('${rawTs.replaceFirst(' ', 'T')}Z');
-      } else {
-        parsed = DateTime.parse(rawTs).toUtc();
-      }
-    } catch (_) {
-      parsed = DateTime.now().toUtc();
-    }
     return AppNotification(
-      id: (map['id'] ?? map['notification_id'] ?? '').toString(),
-      title: map['title'] as String? ?? 'Notification',
-      message: map['message'] as String? ?? '',
-      type: map['type'] as String? ?? 'general',
-      referralId: map['referralId'] as String?,
-      timestamp: parsed,
-      isRead: map['isRead'] as bool? ?? false,
+      id: SafeParser.asNonNullString(map['id'] ?? map['notification_id'], ''),
+      title: SafeParser.asNonNullString(map['title'], 'Notification'),
+      message: SafeParser.asNonNullString(map['message'], ''),
+      type: SafeParser.asNonNullString(map['type'], 'general'),
+      referralId: SafeParser.asString(map['referralId'] ?? map['referral_id']),
+      timestamp: SafeParser.asDateTime(map['timestamp'] ?? map['created_at']) ?? DateTime.now(),
+      isRead: SafeParser.asNonNullBool(map['isRead'] ?? map['is_read'], false),
     );
   }
 }

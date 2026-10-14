@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../../core/constants/api_constants.dart';
+import '../../core/utils/safe_parser.dart';
 import '../local/feeding_enrollment_repository.dart';
 import '../local/hive_boxes.dart';
 import '../local/sync_id_mapper.dart';
@@ -27,11 +29,7 @@ class ApiResponse {
 class BeneficiaryApi {
   BeneficiaryApi._();
 
-  static String get _baseUrl {
-    const configured = String.fromEnvironment('API_BASE_URL');
-    if (configured.isNotEmpty) return configured;
-    return kIsWeb ? 'https://appscale-1.onrender.com/api' : 'https://appscale-1.onrender.com/api';
-  }
+  static String get _baseUrl => ApiConstants.apiBaseUrl;
 
   static Future<ApiResponse> syncChild(Child child) async {
     final settings = SettingsRepository();
@@ -514,7 +512,7 @@ class BeneficiaryApi {
             headers: headers,
             body: jsonEncode(payload),
           )
-          .timeout(const Duration(seconds: 25));
+          .timeout(ApiConstants.requestTimeout);
 
       Map<String, dynamic>? data;
       try {
@@ -565,7 +563,7 @@ class BeneficiaryApi {
       return ApiResponse(
         success: false,
         statusCode: 0,
-        message: 'Network error: ${e.toString().replaceFirst('Exception: ', '')}',
+        message: SafeParser.friendlyNetworkError(e),
       );
     }
   }
@@ -593,7 +591,7 @@ class BeneficiaryApi {
             headers: headers,
             body: jsonEncode(payload),
           )
-          .timeout(const Duration(seconds: 25));
+          .timeout(ApiConstants.requestTimeout);
 
       Map<String, dynamic>? data;
       try {
@@ -620,7 +618,7 @@ class BeneficiaryApi {
       return ApiResponse(
         success: false,
         statusCode: 0,
-        message: 'Network error: ${e.toString().replaceFirst('Exception: ', '')}',
+        message: SafeParser.friendlyNetworkError(e),
       );
     }
   }
@@ -648,7 +646,7 @@ class BeneficiaryApi {
             headers: headers,
             body: jsonEncode(payload),
           )
-          .timeout(const Duration(seconds: 25));
+          .timeout(ApiConstants.requestTimeout);
 
       Map<String, dynamic>? data;
       try {
@@ -675,7 +673,7 @@ class BeneficiaryApi {
       return ApiResponse(
         success: false,
         statusCode: 0,
-        message: 'Network error: ${e.toString().replaceFirst('Exception: ', '')}',
+        message: SafeParser.friendlyNetworkError(e),
       );
     }
   }
@@ -688,7 +686,7 @@ class BeneficiaryApi {
       if (token != null && token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
 
       final uri = Uri.parse('$_baseUrl/mobile/barangays');
-      final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+      final resp = await http.get(uri, headers: headers).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
         final list = (jsonDecode(resp.body) as List).map((e) => e.toString()).toList();
         if (list.isNotEmpty) return list;
@@ -777,7 +775,7 @@ class BeneficiaryApi {
       }
       final resp = await http
           .get(uri, headers: headers)
-          .timeout(const Duration(seconds: 10));
+          .timeout(ApiConstants.requestTimeout);
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
         final data = jsonDecode(resp.body) as Map<String, dynamic>;
         return data['duplicateExists'] == true;
@@ -788,6 +786,5 @@ class BeneficiaryApi {
     return false;
   }
 
-  static String _date(DateTime value) =>
-      value.toIso8601String().split('T').first;
+  static String _date(DateTime value) => SafeParser.toDateString(value);
 }

@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
+import '../../core/constants/api_constants.dart';
+import '../../core/utils/safe_parser.dart';
 import '../local/hive_boxes.dart';
 import '../local/app_data_bus.dart';
 import '../local/referral_repository.dart';
@@ -12,7 +14,7 @@ class SyncService {
   SyncService._();
   static final instance = SyncService._();
 
-  static const _baseUrl = 'https://appscale-1.onrender.com/api';
+  static String get _baseUrl => ApiConstants.apiBaseUrl;
 
   /// Fetches ALL barangay data from the server in a single request
   /// (`GET /api/mobile/sync`) and merges it into local Hive boxes.
@@ -35,7 +37,7 @@ class SyncService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      ).timeout(const Duration(seconds: 20));
+      ).timeout(ApiConstants.requestTimeout);
 
       if (resp.statusCode < 200 || resp.statusCode >= 300) {
         debugPrint('[SyncService] Pull failed: ${resp.statusCode} ${resp.body}');
@@ -48,7 +50,7 @@ class SyncService {
       return SyncResult(success: true, syncedAt: payload['syncedAt'] as String?);
     } catch (e) {
       debugPrint('[SyncService] Pull error: $e');
-      return SyncResult(success: false, error: e.toString());
+      return SyncResult(success: false, error: SafeParser.friendlyNetworkError(e));
     }
   }
 

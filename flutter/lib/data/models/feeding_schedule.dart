@@ -1,3 +1,5 @@
+import '../../core/utils/safe_parser.dart';
+
 class FeedingSchedule {
   final List<int> daysOfWeek; // DateTime.monday=1 ... sunday=7
   final String startTime;
@@ -38,22 +40,24 @@ class FeedingSchedule {
     'startTime': startTime,
     'endTime': endTime,
     'location': location,
-    'startDate': startDate.toIso8601String(),
-    'endDate': endDate?.toIso8601String(),
+    'startDate': SafeParser.toDateString(startDate),
+    'endDate': endDate != null ? SafeParser.toDateString(endDate!) : null,
     'barangay': barangay,
     'createdAt': createdAt.toIso8601String(),
   };
 
-  factory FeedingSchedule.fromMap(Map<String, dynamic> map) => FeedingSchedule(
-    daysOfWeek: (map['daysOfWeek'] as List).map((e) => e as int).toList(),
-    startTime: map['startTime'] as String,
-    endTime: map['endTime'] as String,
-    location: map['location'] as String,
-    startDate: DateTime.parse(map['startDate'] as String),
-    endDate: map['endDate'] != null
-        ? DateTime.parse(map['endDate'] as String)
-        : null,
-    barangay: map['barangay'] as String,
-    createdAt: DateTime.parse(map['createdAt'] as String),
+  factory FeedingSchedule.fromMap(Map map) => FeedingSchedule(
+    daysOfWeek: (map['daysOfWeek'] as List?)
+            ?.map((e) => SafeParser.asInt(e))
+            .whereType<int>()
+            .toList() ??
+        const [1, 2, 3, 4, 5],
+    startTime: SafeParser.asNonNullString(map['startTime'] ?? map['start_time'] ?? map['feeding_time'], '10:00 AM'),
+    endTime: SafeParser.asNonNullString(map['endTime'] ?? map['end_time'], '11:00 AM'),
+    location: SafeParser.asNonNullString(map['location'] ?? map['venue'], 'Health Center'),
+    startDate: SafeParser.asDate(map['startDate']) ?? DateTime.now(),
+    endDate: SafeParser.asDate(map['endDate']),
+    barangay: SafeParser.asNonNullString(map['barangay']),
+    createdAt: SafeParser.asDateTime(map['createdAt'] ?? map['created_at']) ?? DateTime.now(),
   );
 }
