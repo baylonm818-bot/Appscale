@@ -1,25 +1,38 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate} from 'react-router-dom';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Wifi, CheckCircle2 } from 'lucide-react';
 import Login from './pages/Login';
-import DownloadApp from './pages/DownloadApp';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/AdminLayout';
-import Dashboard from './admin/Dashboard';
-import UserManagement from './admin/UserManagement';
-import Masterlist from './admin/MasterList';
-import Schedule from './admin/Schedule';
-import Notifications from './admin/Notification';
-import Profile from './admin/Profile';
-
 import BHWLayout from './components/BhwLayout';
-import BHWDashboard from './bhw/Dashboard';
-import BHWSchedule from './bhw/Schedule';
-import BHWNeedAttention from './bhw/NeedAttention';
-import BHWReferrals from './bhw/Referrals';
-import BHWMedicalRecords from './bhw/MedicalRecords';
-import BHWNotifications from './bhw/Notification';
-import BHWProfile from './bhw/Profile';
+
+// Lazy-loaded routes for optimal bundle chunking and faster initial paint
+const DownloadApp = lazy(() => import('./pages/DownloadApp'));
+const Dashboard = lazy(() => import('./admin/Dashboard'));
+const UserManagement = lazy(() => import('./admin/UserManagement'));
+const Masterlist = lazy(() => import('./admin/MasterList'));
+const Schedule = lazy(() => import('./admin/Schedule'));
+const Notifications = lazy(() => import('./admin/Notification'));
+const Profile = lazy(() => import('./admin/Profile'));
+
+const BHWDashboard = lazy(() => import('./bhw/Dashboard'));
+const BHWSchedule = lazy(() => import('./bhw/Schedule'));
+const BHWNeedAttention = lazy(() => import('./bhw/NeedAttention'));
+const BHWReferrals = lazy(() => import('./bhw/Referrals'));
+const BHWMedicalRecords = lazy(() => import('./bhw/MedicalRecords'));
+const BHWNotifications = lazy(() => import('./bhw/Notification'));
+const BHWProfile = lazy(() => import('./bhw/Profile'));
+
+function RouteLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[400px] w-full">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-medium text-slate-500">Loading module...</p>
+      </div>
+    </div>
+  );
+}
 
 function AutoSyncNotification() {
   const [showSyncBanner, setShowSyncBanner] = useState(false);
@@ -58,50 +71,55 @@ function App() {
   document.documentElement.removeAttribute('data-theme');
   document.documentElement.classList.remove('dark');
 
-  return(
+  return (
     <BrowserRouter>
       <AutoSyncNotification />
-      <Routes>
-        <Route path ="/" element ={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/download" element={<DownloadApp />} />
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/download" element={<DownloadApp />} />
 
-        <Route path="/admin" element ={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminLayout />
-          </ProtectedRoute>
-        }>
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="users" element={<UserManagement />} />
-          <Route path="masterlist" element={<Masterlist/>} />
-          <Route path="schedule" element={<Schedule/>} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="profile" element={<Profile/>} />
-        </Route>
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="masterlist" element={<Masterlist />} />
+            <Route path="schedule" element={<Schedule />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
 
-        <Route
-          path="/bhw"
-          element={
-            <ProtectedRoute allowedRoles={['bhw', 'bns']}>
-              <BHWLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="dashboard" element={<BHWDashboard />} />
-          <Route path="need-attention" element={<BHWNeedAttention/>} />
-          <Route path="referrals" element={<BHWReferrals/>} />
-          <Route path="medical-records" element={<BHWMedicalRecords/>} />
-          <Route path="schedule" element={<BHWSchedule/>} />
-          <Route path="notifications" element={<BHWNotifications/>} />
-          <Route path="profile" element={<BHWProfile/>} />
-        </Route>
-               
-        {/* Top-level route redirects for consistency */}
-        <Route path="/notifications" element={<Navigate to="/admin/notifications" replace />} />
+          <Route
+            path="/bhw"
+            element={
+              <ProtectedRoute allowedRoles={['bhw', 'bns']}>
+                <BHWLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="dashboard" element={<BHWDashboard />} />
+            <Route path="need-attention" element={<BHWNeedAttention />} />
+            <Route path="referrals" element={<BHWReferrals />} />
+            <Route path="medical-records" element={<BHWMedicalRecords />} />
+            <Route path="schedule" element={<BHWSchedule />} />
+            <Route path="notifications" element={<BHWNotifications />} />
+            <Route path="profile" element={<BHWProfile />} />
+          </Route>
 
-        {/* Catch-all unknown routes: redirect to login / dashboard */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+          {/* Top-level route redirects for consistency */}
+          <Route path="/notifications" element={<Navigate to="/admin/notifications" replace />} />
+
+          {/* Catch-all unknown routes: redirect to login / dashboard */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
