@@ -31,14 +31,15 @@ const {
 } = require('../controllers/mobileBeneficiaryControllers');
 const { transferBeneficiary, getBarangays, checkDuplicate } = require('../controllers/masterlistControllers');
 
-// Mobile app users are BNS/BHW — enforce role (allow admin for server-side syncs)
+// Mobile app users are BNS/BHW — enforce role (allow admin for server-side queries)
 router.use(roleCheck(['bhw', 'bns', 'admin']));
 
-router.post('/children', upsertChild);
-router.post('/mothers', upsertMother);
-router.post('/nutrition-records', syncNutritionRecord);
-router.put('/nutrition-records', updateNutritionRecord);
-router.delete('/nutrition-records', deleteNutritionRecord);
+// Admin is view-only for children, mothers, and nutritional status — mutations restricted to BNS/BHW
+router.post('/children', roleCheck(['bhw', 'bns']), upsertChild);
+router.post('/mothers', roleCheck(['bhw', 'bns']), upsertMother);
+router.post('/nutrition-records', roleCheck(['bhw', 'bns']), syncNutritionRecord);
+router.put('/nutrition-records', roleCheck(['bhw', 'bns']), updateNutritionRecord);
+router.delete('/nutrition-records', roleCheck(['bhw', 'bns']), deleteNutritionRecord);
 router.post('/schedules', createMobileSchedule);
 router.post('/transfer', transferBeneficiary);
 

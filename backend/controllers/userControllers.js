@@ -213,8 +213,14 @@ exports.updateUser = async (req, res) => {
                 }
             }
 
+            const updateDeletedAtClause = status === 'inactive'
+                ? ', deleted_at = COALESCE(deleted_at, NOW())'
+                : status === 'active'
+                    ? ', deleted_at = NULL'
+                    : '';
+
             await pool.query(
-                'UPDATE users SET status = ?, deactivation_reason = ?, failed_attempts = 0 WHERE user_id = ?',
+                `UPDATE users SET status = ?, deactivation_reason = ?, failed_attempts = 0${updateDeletedAtClause} WHERE user_id = ?`,
                 [status, deactivation_reason || null, user_id]
             );
 
@@ -381,5 +387,54 @@ exports.updateUser = async (req, res) => {
                 return res.status(409).json({ message: 'This barangay already has an active user with this role.' });
             }
             return res.status(500).json({ message: 'Server Error. Please try again later.' });
+        }
+    };
+
+    /**
+     * Purges accounts that have been deactivated for 3 or more years.
+     * Safely preserves historical beneficiary records (sets foreign keys to NULL or retains historical IDs).
+     */
+    exports.purgeExpiredUsers = async (req, res) => {
+        try {
+            // Find users deactivated >= 3 years ago
+            const [expiredUsers] = await pool.query(
+                `SELECT user_id, first_name, last_name, email, role, barangay, deleted_at
+                 FROM users
+                 WHERE status = 'inactive'
+                   AND deleted_at IS NOT NULL
+                   AND deleted_at <= DATE_SUB(NOW(), INTERVAL 3 YEAR)`
+            );
+
+            if (!expiredUsers || expiredUsers.length === 0) {
+                if (res) return res.status(200).json({ message: 'No accounts eligible for 3-year retention purge.', purgedCount: 0 });
+                return { purgedCount: 0 };
+            }
+
+            const expiredIds = expiredUsers.map(u => u.user_id);
+
+            // Nullify or reassign foreign key references to preserve children/mother/measurement records
+            await pool.query('UPDATE children SET encoded_by = NULL WHERE encoded_by IN (?)', [expiredIds]).catch(() => {});
+            await pool.query('UPDATE mothers SET encoded_by = NULL WHERE encoded_by IN (?)', [expiredIds]).catch(() => {});
+            await pool.query('UPDATE nutrition_records SET recorded_by = NULL WHERE recorded_by IN (?)', [expiredIds]).catch(() => {});
+            await pool.query('UPDATE schedules SET assigned_to = NULL WHERE assigned_to IN (?)', [expiredIds]).catch(() => {});
+            await pool.query('UPDATE schedules SET created_by = NULL WHERE created_by IN (?)', [expiredIds]).catch(() => {});
+
+            // Permanently remove users
+            const [deleteResult] = await pool.query('DELETE FROM users WHERE user_id IN (?)', [expiredIds]);
+
+            console.log(`[Retention Purge] Successfully permanently purged ${deleteResult.affectedRows} account(s) deactivated >= 3 years.`);
+
+            if (res) {
+                return res.status(200).json({
+                    message: `Successfully permanently purged ${deleteResult.affectedRows} account(s) past 3-year retention period.`,
+                    purgedCount: deleteResult.affectedRows,
+                    purgedUsers: expiredUsers.map(u => ({ id: u.user_id, email: u.email, role: u.role, barangay: u.barangay })),
+                });
+            }
+            return { purgedCount: deleteResult.affectedRows };
+        } catch (error) {
+            console.error('Purge expired users error:', error);
+            if (res) return res.status(500).json({ message: 'Server error during retention purge.' });
+            throw error;
         }
     };

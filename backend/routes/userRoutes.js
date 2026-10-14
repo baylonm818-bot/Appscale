@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getUsers, createUsers, updateUser, updateUserStatus, getUserStats, archiveUser, restoreUser, unlockUserByIdentifier } = require('../controllers/userControllers');
+const { getUsers, createUsers, updateUser, updateUserStatus, getUserStats, archiveUser, restoreUser, unlockUserByIdentifier, purgeExpiredUsers } = require('../controllers/userControllers');
 const roleCheck = require('../middleware/roleMiddleware');
 
 // Admin manages accounts; BHW may view and update same-barangay staff records
@@ -11,6 +11,7 @@ router.patch('/:user_id/status', roleCheck(['admin']), updateUserStatus);
 router.patch('/:user_id/archive', roleCheck(['admin']), archiveUser);
 router.patch('/:user_id/restore', roleCheck(['admin']), restoreUser);
 router.patch('/unlock', roleCheck(['admin']), unlockUserByIdentifier);
+router.post('/purge-expired', roleCheck(['admin']), purgeExpiredUsers);
 router.get('/stats', roleCheck(['admin', 'bhw']), getUserStats);
 
 module.exports = router;

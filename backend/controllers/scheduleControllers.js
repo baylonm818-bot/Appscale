@@ -138,3 +138,61 @@ exports.updateScheduleStatus = async (req, res) => {
     return res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };
+
+exports.updateSchedule = async (req, res) => {
+  const { id } = req.params;
+  const { title, schedule_type, schedule_date, schedule_time, venue, barangay, assigned_to, target_role, facilitator, notes } = req.body;
+
+  if (!title || !schedule_type || !schedule_date) {
+    return res.status(400).json({ message: 'Please fill in all required fields (title, schedule_type, schedule_date).' });
+  }
+
+  try {
+    const [[existing]] = await pool.query('SELECT schedule_id FROM schedules WHERE schedule_id = ?', [id]);
+    if (!existing) {
+      return res.status(404).json({ message: 'Schedule not found.' });
+    }
+
+    await pool.query(
+      `UPDATE schedules
+       SET title = ?, schedule_type = ?, schedule_date = ?, schedule_time = ?,
+           venue = ?, barangay = ?, assigned_to = ?, target_role = ?, facilitator = ?, notes = ?
+       WHERE schedule_id = ?`,
+      [
+        title,
+        schedule_type,
+        schedule_date,
+        schedule_time || null,
+        venue || null,
+        barangay || null,
+        assigned_to || null,
+        target_role || null,
+        facilitator || null,
+        notes || null,
+        id,
+      ]
+    );
+
+    return res.status(200).json({ message: 'Schedule updated successfully.' });
+  } catch (error) {
+    console.error('Update schedule error:', error);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+exports.deleteSchedule = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [[existing]] = await pool.query('SELECT schedule_id FROM schedules WHERE schedule_id = ?', [id]);
+    if (!existing) {
+      return res.status(404).json({ message: 'Schedule not found.' });
+    }
+
+    await pool.query('DELETE FROM schedules WHERE schedule_id = ?', [id]);
+    return res.status(200).json({ message: 'Schedule deleted successfully.' });
+  } catch (error) {
+    console.error('Delete schedule error:', error);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};

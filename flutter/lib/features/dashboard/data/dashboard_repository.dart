@@ -121,8 +121,11 @@ class DashboardRepository {
     }
 
     final total = allChildren.length;
+    // Always include the 5 primary categories (Normal, At risk, Severe, Overweight, Not weighed)
+    // even when 0, plus Obese or Needs re-measurement if present.
+    const coreFive = {'Normal', 'At risk', 'Severe', 'Overweight', 'Not weighed'};
     return order
-        .where((s) => (counts[s] ?? 0) > 0 || s == 'Normal' || s == 'At risk' || s == 'Severe')
+        .where((s) => coreFive.contains(s) || (counts[s] ?? 0) > 0)
         .map(
           (s) => NutritionStatusItem(
             label: s,

@@ -163,6 +163,17 @@ const HOST = process.env.HOST || '0.0.0.0';
         console.error('Medical record schema initialization failed:', error && error.message ? error.message : error);
     }
 
+    // Daily retention cleanup for accounts deactivated >= 3 years
+    try {
+        const { purgeExpiredUsers } = require('./controllers/userControllers');
+        purgeExpiredUsers().catch((e) => console.warn('Initial retention cleanup warning:', e && e.message));
+        setInterval(() => {
+            purgeExpiredUsers().catch((e) => console.warn('Recurring retention cleanup warning:', e && e.message));
+        }, 24 * 60 * 60 * 1000); // every 24 hours
+    } catch (retentionErr) {
+        console.warn('Retention task setup warning:', retentionErr && retentionErr.message);
+    }
+
     app.listen(PORT, HOST, () => {
         console.log(`AppScale Backend running on http://${HOST}:${PORT} (Mobile & Web connectivity ready)`);
     });
