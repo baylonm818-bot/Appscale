@@ -7,6 +7,8 @@ import 'package:appscalev3/data/models/mother.dart';
 import 'package:appscalev3/data/models/referral.dart';
 import 'package:appscalev3/data/models/report_signatory.dart';
 import 'package:appscalev3/data/models/vitamin_a_record.dart';
+import 'package:appscalev3/core/theme/app_colors.dart';
+import 'package:appscalev3/features/masterlist/utils/child_status_meta.dart';
 
 void main() {
   group('SafeParser tests', () {
@@ -202,4 +204,70 @@ void main() {
       expect(sig.bnsName, '12345');
     });
   });
+
+  group('ChildStatusMeta Normalization & Colors', () {
+    test('Severe variants map to AppColors.statRed', () {
+      final severeVariants = [
+        'Severe',
+        'severe',
+        'severely_underweight',
+        'Severely Underweight',
+        'severely_stunted',
+        'Severely Stunted',
+        'severely_wasted',
+        'sam',
+        'SAM',
+        'wasting_severe',
+        'severe_acute_malnutrition',
+      ];
+      for (final variant in severeVariants) {
+        expect(ChildStatusMeta.colorFor(variant), AppColors.statRed,
+            reason: 'Variant "$variant" must map to statRed');
+      }
+    });
+
+    test('At risk variants map to AppColors.statOrange', () {
+      final atRiskVariants = [
+        'At risk',
+        'at_risk',
+        'moderate',
+        'moderate_at_risk',
+        'underweight',
+        'Underweight',
+        'stunted',
+        'Stunted',
+        'wasted',
+        'mam',
+        'MAM',
+      ];
+      for (final variant in atRiskVariants) {
+        expect(ChildStatusMeta.colorFor(variant), AppColors.statOrange,
+            reason: 'Variant "$variant" must map to statOrange');
+      }
+    });
+
+    test('Normal variants map to AppColors.primaryGreen', () {
+      for (final variant in ['Normal', 'normal', 'N', 'tall', 'Tall']) {
+        expect(ChildStatusMeta.colorFor(variant), AppColors.primaryGreen);
+      }
+    });
+
+    test('Overweight & Obese map to statBlue and statPurple', () {
+      expect(ChildStatusMeta.colorFor('Overweight'), AppColors.statBlue);
+      expect(ChildStatusMeta.colorFor('overweight'), AppColors.statBlue);
+      expect(ChildStatusMeta.colorFor('Obese'), AppColors.statPurple);
+      expect(ChildStatusMeta.colorFor('obese'), AppColors.statPurple);
+    });
+
+    test('Not weighed maps to AppColors.notWeighed', () {
+      for (final variant in ['Not weighed', 'not_weighed', 'unweighed', '--', 'none']) {
+        expect(ChildStatusMeta.colorFor(variant), AppColors.notWeighed);
+      }
+    });
+
+    test('Unknown status returns visible warning color (statAmber) instead of silent gray', () {
+      expect(ChildStatusMeta.colorFor('completely_unknown_xyz'), AppColors.statAmber);
+    });
+  });
 }
+

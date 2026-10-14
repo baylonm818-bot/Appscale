@@ -63,7 +63,7 @@ class _StatusRow extends StatelessWidget {
             child: LinearProgressIndicator(
               value: item.percent / 100,
               minHeight: 7,
-              backgroundColor: AppColors.border,
+              backgroundColor: item.color.withValues(alpha: 0.18),
               valueColor: AlwaysStoppedAnimation(item.color),
             ),
           ),

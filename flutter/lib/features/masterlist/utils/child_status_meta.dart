@@ -8,17 +8,33 @@ import '../../../data/models/child.dart';
 class ChildStatusMeta {
   ChildStatusMeta._();
 
+  /// Normalizes status strings (trim, lowercase, replace hyphens and spaces with underscores)
+  static String normalizeKey(String? status) {
+    if (status == null) return '';
+    return status.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_');
+  }
+
   static String formatStatus(String? status) {
     if (status == null || status.trim().isEmpty) return 'Normal';
-    final s = status.trim().toLowerCase().replaceAll('_', ' ');
-    switch (s) {
-      case 'severely underweight':
+    final key = normalizeKey(status);
+    switch (key) {
+      case 'severe':
+      case 'severe_acute_malnutrition':
+      case 'sam':
+      case 'wasting_severe':
+        return 'Severe';
+      case 'severely_underweight':
       case 'suw':
         return 'Severely Underweight';
       case 'underweight':
       case 'uw':
         return 'Underweight';
-      case 'severely stunted':
+      case 'at_risk':
+      case 'moderate':
+      case 'moderate_acute_malnutrition':
+      case 'mam':
+        return 'At risk';
+      case 'severely_stunted':
       case 'sst':
         return 'Severely Stunted';
       case 'stunted':
@@ -26,12 +42,10 @@ class ChildStatusMeta {
         return 'Stunted';
       case 'tall':
         return 'Tall';
-      case 'severely wasted':
-      case 'sam':
-        return 'SAM';
+      case 'severely_wasted':
+        return 'Severely Wasted';
       case 'wasted':
-      case 'mam':
-        return 'MAM';
+        return 'Wasted';
       case 'overweight':
       case 'ow':
         return 'Overweight';
@@ -41,13 +55,18 @@ class ChildStatusMeta {
       case 'normal':
       case 'n':
         return 'Normal';
-      case 'not weighed':
+      case 'not_weighed':
+      case 'unweighed':
+      case 'not_yet_classified':
+      case 'none':
+      case '--':
         return 'Not weighed';
-      case 'needs re-measurement':
-      case 'needs remeasurement':
-      case 're-measurement':
+      case 'needs_re_measurement':
+      case 'needs_remeasurement':
+      case 're_measurement':
         return 'Needs re-measurement';
       default:
+        final s = status.trim().replaceAll('_', ' ');
         return s
             .split(' ')
             .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
@@ -56,36 +75,75 @@ class ChildStatusMeta {
   }
 
   static Color colorFor(String rawStatus) {
-    final status = formatStatus(rawStatus);
-    switch (status) {
-      case 'Normal':
+    final key = normalizeKey(rawStatus);
+    switch (key) {
+      // 1. Severe variants
+      case 'severe':
+      case 'severely_underweight':
+      case 'suw':
+      case 'severely_stunted':
+      case 'sst':
+      case 'severely_wasted':
+      case 'sam':
+      case 'wasting_severe':
+      case 'severe_acute_malnutrition':
+        return AppColors.statRed;
+
+      // 2. At risk / Moderate variants
+      case 'at_risk':
+      case 'moderate':
+      case 'moderate_at_risk':
+      case 'moderate_acute_malnutrition':
+      case 'underweight':
+      case 'uw':
+      case 'stunted':
+      case 'st':
+      case 'wasted':
+      case 'mam':
+        return AppColors.statOrange;
+
+      // 3. Normal variants
+      case 'normal':
+      case 'n':
+      case 'tall':
         return AppColors.primaryGreen;
-      case 'Underweight':
-        return AppColors.statAmber;
-      case 'Severely Underweight':
-        return AppColors.statRed;
-      case 'Overweight':
+
+      // 4. Overweight variants
+      case 'overweight':
+      case 'ow':
         return AppColors.statBlue;
-      case 'Obese':
+
+      // 5. Obese variants
+      case 'obese':
+      case 'ob':
         return AppColors.statPurple;
-      case 'Stunted':
-        return AppColors.statOrange;
-      case 'Severely Stunted':
-        return AppColors.statRed;
-      case 'Not weighed':
+
+      // 6. Not weighed variants
+      case 'not_weighed':
+      case 'unweighed':
+      case 'not_yet_classified':
+      case 'none':
+      case '--':
+      case '__':
+      case '-':
+      case '':
         return AppColors.notWeighed;
-      case 'Needs re-measurement':
+
+      // 7. Needs re-measurement
+      case 'needs_re_measurement':
+      case 'needs_remeasurement':
+      case 're_measurement':
         return AppColors.statRed;
-      case 'SAM':
-        return AppColors.statRed;
-      case 'MAM':
-        return AppColors.statOrange;
+
       default:
-        return AppColors.textMuted;
+        // Visible warning color fallback + debug log (never silently return gray)
+        debugPrint('[ChildStatusMeta] Unknown nutrition status key: "$rawStatus" (normalized: "$key")');
+        return AppColors.statAmber;
     }
   }
 
-  static bool needsAttention(String status) => formatStatus(status) == 'Not weighed';
+  static bool needsAttention(String status) =>
+      normalizeKey(status) == 'not_weighed';
 
   static const allStatuses = [
     'All',
