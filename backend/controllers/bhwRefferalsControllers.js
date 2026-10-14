@@ -540,7 +540,7 @@ exports.updateReferralStatus = async (req, res) => {
 
   try {
     const [[referral]] = await pool.query(
-      `SELECT r.child_id, r.mother_id, r.barangay, r.referred_by,
+      `SELECT r.child_id, r.mother_id, COALESCE(c.barangay, m.barangay) AS barangay, r.referred_by,
               COALESCE(c.first_name, m.first_name) AS first_name,
               COALESCE(c.last_name, m.last_name) AS last_name
        FROM referrals r
@@ -563,17 +563,19 @@ exports.updateReferralStatus = async (req, res) => {
       checkup: 'Checkup',
     };
 
-    if (normalizedStatus === 'Ongoing' && serviceLabels[service_type] && service_date && provided_by && referral.child_id) {
+    const effectiveProvidedBy = provided_by || req.user?.user_id || null;
+
+    if (normalizedStatus === 'Ongoing' && serviceLabels[service_type] && service_date && referral.child_id) {
       await pool.query(
         `INSERT INTO child_services (child_id, service_type, service_date, provided_by)
          VALUES (?, ?, ?, ?)`,
-        [referral.child_id, serviceLabels[service_type], service_date, provided_by]
+        [referral.child_id, serviceLabels[service_type], service_date, effectiveProvidedBy]
       );
-    } else if (normalizedStatus === 'Ongoing' && serviceLabels[service_type] && service_date && provided_by && referral.mother_id) {
+    } else if (normalizedStatus === 'Ongoing' && serviceLabels[service_type] && service_date && referral.mother_id) {
       await pool.query(
         `INSERT INTO mother_services (mother_id, service_type, service_date, provided_by)
          VALUES (?, ?, ?, ?)`,
-        [referral.mother_id, serviceLabels[service_type], service_date, provided_by]
+        [referral.mother_id, serviceLabels[service_type], service_date, effectiveProvidedBy]
       );
     }
 
