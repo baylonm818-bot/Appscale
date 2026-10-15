@@ -33,7 +33,6 @@ class ChildProfileHeader extends StatelessWidget {
     final validMeasurements = measurements.where((m) => m.isPlausible).toList();
     final hasValidMeasurements = validMeasurements.isNotEmpty;
     final latestValidMeasurement = hasValidMeasurements ? validMeasurements.first : null;
-    final latestAnyMeasurement = measurements.isNotEmpty ? measurements.first : null;
 
     final effectiveWfa = latestValidMeasurement?.weightForAgeStatus;
     final effectiveHfa = latestValidMeasurement?.heightForAgeStatus;
