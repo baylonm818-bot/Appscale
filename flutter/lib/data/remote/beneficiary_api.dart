@@ -161,7 +161,7 @@ class BeneficiaryApi {
         SyncIdMapper.instance.getChildServerId(childExternalId);
 
     return _put('/mobile/nutrition-records', {
-      if (serverId != null) 'record_id': serverId,
+      'record_id': ?serverId,
       'child_id': resolvedChildServerId,
       'child_external_id': childExternalId,
       'record_date': _date(measurement.date),
