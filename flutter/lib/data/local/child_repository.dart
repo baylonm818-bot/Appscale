@@ -9,6 +9,8 @@ import 'app_data_bus.dart';
 import 'mother_repository.dart';
 import '../models/child_status_filter.dart';
 import '../remote/beneficiary_api.dart';
+import '../growth_standards/growth_classifier.dart';
+import '../growth_standards/measurement_validator.dart';
 
 class ChildRepository {
   Box get _box => Hive.box(HiveBoxes.children);
@@ -303,6 +305,106 @@ class ChildRepository {
       getByBarangay(barangay).where((c) => c.isActive).length;
   int countInactive(String barangay) =>
       getByBarangay(barangay).where((c) => !c.isActive).length;
+
+  /// Recomputes all measurements for a child when their birth date changes,
+  /// updating each measurement's status based on their age at that measurement's date.
+  Future<void> recomputeAllMeasurementsForChild(String childId, DateTime newBirthDate) async {
+    final child = getById(childId);
+    if (child == null) return;
+
+    final measurementsBox = Hive.box(HiveBoxes.measurements);
+    final rawList = measurementsBox.get(childId) as List?;
+    if (rawList == null || rawList.isEmpty) return;
+
+    final updatedList = <dynamic>[];
+
+    for (final raw in rawList) {
+      if (raw is! Map) {
+        updatedList.add(raw);
+        continue;
+      }
+      final map = Map<String, dynamic>.from(raw);
+      final m = Measurement.fromMap(map);
+
+      // Completed months between newBirthDate and measurement.date
+      int months = (m.date.year - newBirthDate.year) * 12 + (m.date.month - newBirthDate.month);
+      if (m.date.day < newBirthDate.day) {
+        months -= 1;
+      }
+      final ageAtMeasurement = months < 0 ? 0 : months;
+
+      final isPlausible = MeasurementValidator.isPlausibleRecord(
+        heightCm: m.heightCm,
+        weightKg: m.weightKg,
+        muacCm: m.muacCm,
+        ageMonths: ageAtMeasurement,
+      );
+
+      String weightStatus = 'Needs re-measurement';
+      String heightStatus = 'Needs re-measurement';
+      String wastingStatus = 'Needs re-measurement';
+      double? bmiVal;
+      String? bmiStatus;
+
+      if (isPlausible) {
+        weightStatus = GrowthClassifier.classifyWeightForAge(
+          weightKg: m.weightKg,
+          ageMonths: ageAtMeasurement,
+          gender: child.gender,
+        );
+        heightStatus = GrowthClassifier.classifyHeightForAge(
+          heightCm: m.heightCm,
+          ageMonths: ageAtMeasurement,
+          gender: child.gender,
+        );
+        wastingStatus = GrowthClassifier.classifyWeightForLength(
+          weightKg: m.weightKg,
+          heightCm: m.heightCm,
+          gender: child.gender,
+        );
+
+        final hMeters = m.heightCm / 100;
+        if (hMeters > 0) {
+          bmiVal = double.parse((m.weightKg / (hMeters * hMeters)).toStringAsFixed(2));
+          if (bmiVal < 18.5) {
+            bmiStatus = 'Underweight';
+          } else if (bmiVal < 25.0) {
+            bmiStatus = 'Normal';
+          } else if (bmiVal < 30.0) {
+            bmiStatus = 'Overweight';
+          } else {
+            bmiStatus = 'Obese';
+          }
+        }
+      }
+
+      final updatedM = Measurement(
+        date: m.date,
+        weightKg: m.weightKg,
+        heightCm: m.heightCm,
+        muacCm: m.muacCm,
+        bilateralPittingEdema: m.bilateralPittingEdema,
+        weightForAgeStatus: weightStatus,
+        heightForAgeStatus: heightStatus,
+        weightForLengthStatus: wastingStatus,
+        customBmi: bmiVal,
+        customBmiStatus: bmiStatus,
+      );
+
+      final newMap = updatedM.toMap();
+      // Preserve internal sync metadata
+      for (final key in map.keys) {
+        if (key.toString().startsWith('_') || key == 'server_id' || key == 'record_id') {
+          newMap[key] = map[key];
+        }
+      }
+      updatedList.add(newMap);
+    }
+
+    await measurementsBox.put(childId, updatedList);
+    await recomputeChildStatusFromMeasurements(childId);
+    AppDataBus.notifyChanged();
+  }
 
   /// Recomputes child's overall nutrition status from their measurements.
   /// Rule: Child status must use only the latest VALID measurement.

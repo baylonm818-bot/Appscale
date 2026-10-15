@@ -26,11 +26,11 @@ class Measurement {
   });
 
   /// Plausibility check for 0-59 months: height 45-125 cm, weight 2-30 kg, MUAC 8-20 cm (if provided).
-  /// Excludes MUAC 0.0 or outside 8-20 cm.
+  /// Excludes MUAC <= 0.0 or outside 8-20 cm. Missing or null MUAC does not flag invalid.
   bool get isPlausible {
     if (heightCm < 45.0 || heightCm > 125.0) return false;
     if (weightKg < 2.0 || weightKg > 30.0) return false;
-    if (muacCm != null && (muacCm! < 8.0 || muacCm! > 20.0)) return false;
+    if (muacCm != null && muacCm! > 0 && (muacCm! < 8.0 || muacCm! > 20.0)) return false;
     return true;
   }
 
@@ -93,25 +93,29 @@ class Measurement {
     'date': SafeParser.toDateString(date),
     'weightKg': weightKg,
     'heightCm': heightCm,
-    'muacCm': muacCm,
+    'muacCm': (muacCm != null && muacCm! > 0) ? muacCm : null,
     'bilateralPittingEdema': bilateralPittingEdema,
     'weightForAgeStatus': weightForAgeStatus,
     'heightForAgeStatus': heightForAgeStatus,
     'weightForLengthStatus': weightForLengthStatus,
-    'bmi': bmi,
-    'bmiStatus': bmiStatus,
+    'bmi': isPlausible ? bmi : null,
+    'bmiStatus': isPlausible ? bmiStatus : 'Needs re-measurement',
   };
 
-  factory Measurement.fromMap(Map map) => Measurement(
-    date: SafeParser.asDate(map['date'] ?? map['record_date']) ?? DateTime.now(),
-    weightKg: SafeParser.asNonNullDouble(map['weightKg'] ?? map['weight_kg']),
-    heightCm: SafeParser.asNonNullDouble(map['heightCm'] ?? map['height_cm']),
-    muacCm: SafeParser.asDouble(map['muacCm'] ?? map['muac_cm']),
-    bilateralPittingEdema: SafeParser.asNonNullBool(map['bilateralPittingEdema'] ?? map['edema'] ?? map['bilateral_edema']),
-    weightForAgeStatus: SafeParser.asNonNullString(map['weightForAgeStatus'] ?? map['weight_status'], 'Normal'),
-    heightForAgeStatus: SafeParser.asNonNullString(map['heightForAgeStatus'] ?? map['height_status'], 'Normal'),
-    weightForLengthStatus: SafeParser.asNonNullString(map['weightForLengthStatus'] ?? map['overall_status'], 'Normal'),
-    customBmi: SafeParser.asDouble(map['bmi']),
-    customBmiStatus: SafeParser.asString(map['bmiStatus'] ?? map['bmi_status']),
-  );
+  factory Measurement.fromMap(Map map) {
+    final rawMuac = SafeParser.asDouble(map['muacCm'] ?? map['muac_cm']);
+    final effectiveMuac = (rawMuac != null && rawMuac > 0) ? rawMuac : null;
+    return Measurement(
+      date: SafeParser.asDate(map['date'] ?? map['record_date']) ?? DateTime.now(),
+      weightKg: SafeParser.asNonNullDouble(map['weightKg'] ?? map['weight_kg']),
+      heightCm: SafeParser.asNonNullDouble(map['heightCm'] ?? map['height_cm']),
+      muacCm: effectiveMuac,
+      bilateralPittingEdema: SafeParser.asNonNullBool(map['bilateralPittingEdema'] ?? map['edema'] ?? map['bilateral_edema']),
+      weightForAgeStatus: SafeParser.asNonNullString(map['weightForAgeStatus'] ?? map['weight_status'], 'Normal'),
+      heightForAgeStatus: SafeParser.asNonNullString(map['heightForAgeStatus'] ?? map['height_status'], 'Normal'),
+      weightForLengthStatus: SafeParser.asNonNullString(map['weightForLengthStatus'] ?? map['overall_status'], 'Normal'),
+      customBmi: SafeParser.asDouble(map['bmi']),
+      customBmiStatus: SafeParser.asString(map['bmiStatus'] ?? map['bmi_status']),
+    );
+  }
 }

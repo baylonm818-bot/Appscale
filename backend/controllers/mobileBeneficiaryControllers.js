@@ -670,37 +670,54 @@ exports.syncNutritionRecord = async (req, res) => {
 
     const safeWeight = Number(weight_kg) || 0;
     const safeHeight = Number(height_cm) || 0;
-    const safeMuac = Number(muac_cm) || 0;
+    const safeMuac = muac_cm != null && Number(muac_cm) > 0 ? Number(muac_cm) : null;
 
     const plausibility = validateMeasurementPlausibility(
       safeWeight,
       safeHeight,
       child?.age_in_months || 0
     );
-    if (!plausibility.isValid) {
-      return res.status(400).json({
-        message: plausibility.message,
-        code: 'implausible_measurement',
-        field: plausibility.field,
-      });
+    const isPlausible = plausibility.isValid;
+
+    let computedBmi = null;
+    let bmiStatus = null;
+    let ws = null;
+    let hs = null;
+    let os = null;
+
+    if (isPlausible) {
+      const calculated = computeNutritionStatus(
+        safeWeight,
+        safeHeight,
+        child?.age_in_months || 0,
+        child?.sex || 'male'
+      );
+      ws = normalizeNutritionStatus(weight_status) || normalizeNutritionStatus(calculated.weightStatus);
+      hs = normalizeNutritionStatus(height_status) || normalizeNutritionStatus(calculated.heightStatus);
+      os = normalizeNutritionStatus(overall_status) || normalizeNutritionStatus(calculated.overallStatus);
+
+      if (safeHeight > 0 && safeWeight > 0) {
+        const heightInMeters = safeHeight / 100;
+        computedBmi = Number((safeWeight / (heightInMeters * heightInMeters)).toFixed(2));
+        if (computedBmi < 18.5) bmiStatus = 'Underweight';
+        else if (computedBmi < 25.0) bmiStatus = 'Normal';
+        else if (computedBmi < 30.0) bmiStatus = 'Overweight';
+        else bmiStatus = 'Obese';
+      }
+    } else {
+      ws = 'Needs re-measurement';
+      hs = 'Needs re-measurement';
+      os = 'Needs re-measurement';
+      computedBmi = null;
+      bmiStatus = 'Needs re-measurement';
     }
 
-    const calculated = computeNutritionStatus(
-      safeWeight,
-      safeHeight,
-      child?.age_in_months || 0,
-      child?.sex || 'male'
-    );
-
-    const ws = normalizeNutritionStatus(weight_status) || normalizeNutritionStatus(calculated.weightStatus);
-    const hs = normalizeNutritionStatus(height_status) || normalizeNutritionStatus(calculated.heightStatus);
-    const os = normalizeNutritionStatus(overall_status) || normalizeNutritionStatus(calculated.overallStatus);
     const recBy = recorded_by || req.user?.user_id || null;
     const date = record_date || new Date().toISOString().slice(0, 10);
 
     const [existing] = await pool.query(
-      'SELECT record_id, child_id, record_date FROM nutrition_records WHERE child_id = ? AND record_date = ? LIMIT 1',
-      [resolvedChildId, date]
+      'SELECT record_id, child_id, record_date FROM nutrition_records WHERE child_id = ? AND (record_date = ? OR DATE(record_date) = ?) LIMIT 1',
+      [resolvedChildId, date, String(date).slice(0, 10)]
     );
 
     if (existing.length > 0) {
@@ -709,19 +726,8 @@ exports.syncNutritionRecord = async (req, res) => {
         duplicate: true,
         record_id: existing[0].record_id,
         overall_status: os,
+        isPlausible,
       });
-    }
-
-    // Module 3 Requirement: "The system will automatically identify the nutritional status (obese, normal, underweight, etc.) based on the result of beneficiaries computed BMI."
-    let computedBmi = null;
-    let bmiStatus = null;
-    if (safeHeight > 0 && safeWeight > 0) {
-      const heightInMeters = safeHeight / 100;
-      computedBmi = Number((safeWeight / (heightInMeters * heightInMeters)).toFixed(2));
-      if (computedBmi < 18.5) bmiStatus = 'Underweight';
-      else if (computedBmi < 25.0) bmiStatus = 'Normal';
-      else if (computedBmi < 30.0) bmiStatus = 'Overweight';
-      else bmiStatus = 'Obese';
     }
 
     const [result] = await pool.query(
@@ -748,9 +754,9 @@ exports.syncNutritionRecord = async (req, res) => {
       ]
     );
 
-    // Auto-notification for SAM/MAM children
+    // Auto-notification for SAM/MAM children (ONLY for valid/plausible records)
     const normalizedOverall = String(os || '').toUpperCase();
-    if (['SAM', 'MAM'].includes(normalizedOverall)) {
+    if (isPlausible && ['SAM', 'MAM'].includes(normalizedOverall)) {
       try {
         const [[childRow]] = await pool.query(
           'SELECT first_name, last_name, barangay FROM children WHERE child_id = ? LIMIT 1',
@@ -819,6 +825,7 @@ exports.syncNutritionRecord = async (req, res) => {
 // ── UPDATE NUTRITION RECORD ──
 exports.updateNutritionRecord = async (req, res) => {
   const {
+    record_id,
     child_id,
     child_external_id,
     record_date,
@@ -831,6 +838,7 @@ exports.updateNutritionRecord = async (req, res) => {
     audit_note,
   } = req.body;
 
+  let conn;
   try {
     let resolvedChildId = null;
     if (child_id && /^\d+$/.test(String(child_id))) {
@@ -850,53 +858,129 @@ exports.updateNutritionRecord = async (req, res) => {
       return res.status(400).json({ message: 'Child ID and record date are required.' });
     }
 
+    // Lookup child details for age and sex
+    const [[child]] = await pool.query(
+      'SELECT age_in_months, sex, birth_date FROM children WHERE child_id = ? LIMIT 1',
+      [resolvedChildId]
+    );
+
+    // Calculate age in completed months at measurement date if birth_date is available
+    let ageMonths = child?.age_in_months || 0;
+    if (child?.birth_date && record_date) {
+      const bDate = new Date(child.birth_date);
+      const mDate = new Date(record_date);
+      let months = (mDate.getFullYear() - bDate.getFullYear()) * 12 + (mDate.getMonth() - bDate.getMonth());
+      if (mDate.getDate() < bDate.getDate()) {
+        months -= 1;
+      }
+      ageMonths = Math.max(0, months);
+    }
+
     const safeWeight = Number(weight_kg) || 0;
     const safeHeight = Number(height_cm) || 0;
-    const safeMuac = muac_cm != null ? Number(muac_cm) : null;
+    const safeMuac = muac_cm != null && Number(muac_cm) > 0 ? Number(muac_cm) : null;
+
+    const plausibility = validateMeasurementPlausibility(safeWeight, safeHeight, ageMonths);
+    const isPlausible = plausibility.isValid;
 
     let computedBmi = null;
     let bmiStatus = null;
-    if (safeHeight > 0 && safeWeight > 0) {
-      const heightInMeters = safeHeight / 100;
-      computedBmi = Number((safeWeight / (heightInMeters * heightInMeters)).toFixed(2));
-      if (computedBmi < 18.5) bmiStatus = 'Underweight';
-      else if (computedBmi < 25.0) bmiStatus = 'Normal';
-      else if (computedBmi < 30.0) bmiStatus = 'Overweight';
-      else bmiStatus = 'Obese';
+    let ws = null;
+    let hs = null;
+    let os = null;
+
+    if (isPlausible) {
+      if (safeHeight > 0 && safeWeight > 0) {
+        const heightInMeters = safeHeight / 100;
+        computedBmi = Number((safeWeight / (heightInMeters * heightInMeters)).toFixed(2));
+        if (computedBmi < 18.5) bmiStatus = 'Underweight';
+        else if (computedBmi < 25.0) bmiStatus = 'Normal';
+        else if (computedBmi < 30.0) bmiStatus = 'Overweight';
+        else bmiStatus = 'Obese';
+      }
+      ws = normalizeNutritionStatus(weight_status);
+      hs = normalizeNutritionStatus(height_status);
+      os = normalizeNutritionStatus(overall_status);
+    } else {
+      // Implausible measurement: do not compute BMI or nutrition status
+      ws = 'Needs re-measurement';
+      hs = 'Needs re-measurement';
+      os = 'Needs re-measurement';
+      computedBmi = null;
+      bmiStatus = 'Needs re-measurement';
     }
 
     const updatedBy = req.user?.user_id || req.body.recorded_by || null;
     const note = audit_note || `Updated by user #${updatedBy || 'BNS'} on ${new Date().toISOString()}`;
 
-    const [updateResult] = await pool.query(
-      `UPDATE nutrition_records
-       SET weight_kg = ?, height_cm = ?, muac_cm = ?,
-           weight_status = ?, height_status = ?, overall_status = ?,
-           bmi = ?, bmi_status = ?, remarks = CONCAT(COALESCE(remarks, ''), ' [', ?, ']')
-       WHERE child_id = ? AND record_date = ?`,
-      [
-        safeWeight,
-        safeHeight,
-        safeMuac,
-        weight_status || null,
-        height_status || null,
-        overall_status || null,
-        computedBmi,
-        bmiStatus,
-        note,
-        resolvedChildId,
-        record_date,
-      ]
-    );
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    let updateResult;
+    const dateOnly = String(record_date).slice(0, 10);
+
+    if (record_id) {
+      [updateResult] = await conn.query(
+        `UPDATE nutrition_records
+         SET weight_kg = ?, height_cm = ?, muac_cm = ?,
+             weight_status = ?, height_status = ?, overall_status = ?,
+             bmi = ?, bmi_status = ?, remarks = CONCAT(COALESCE(remarks, ''), ' [', ?, ']')
+         WHERE record_id = ?`,
+        [
+          safeWeight,
+          safeHeight,
+          safeMuac,
+          ws,
+          hs,
+          os,
+          computedBmi,
+          bmiStatus,
+          note,
+          record_id,
+        ]
+      );
+    } else {
+      [updateResult] = await conn.query(
+        `UPDATE nutrition_records
+         SET weight_kg = ?, height_cm = ?, muac_cm = ?,
+             weight_status = ?, height_status = ?, overall_status = ?,
+             bmi = ?, bmi_status = ?, remarks = CONCAT(COALESCE(remarks, ''), ' [', ?, ']')
+         WHERE child_id = ? AND (record_date = ? OR DATE(record_date) = ?)`,
+        [
+          safeWeight,
+          safeHeight,
+          safeMuac,
+          ws,
+          hs,
+          os,
+          computedBmi,
+          bmiStatus,
+          note,
+          resolvedChildId,
+          record_date,
+          dateOnly,
+        ]
+      );
+    }
+
+    await conn.commit();
 
     return res.status(200).json({
       message: 'Nutrition record updated successfully.',
       affectedRows: updateResult.affectedRows,
       synced: true,
+      isPlausible,
     });
   } catch (error) {
+    if (conn) await conn.rollback();
     console.error('Update nutrition record error:', error);
-    return res.status(500).json({ message: 'Server error updating nutrition record.' });
+    const sqlMsg = error.sqlMessage || error.message || 'Unknown database error';
+    return res.status(500).json({
+      message: `Failed to update nutrition record: ${sqlMsg}`,
+      code: error.code || 'SERVER_ERROR',
+    });
+  } finally {
+    if (conn) conn.release();
   }
 };
 

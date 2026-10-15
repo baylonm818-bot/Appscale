@@ -417,8 +417,17 @@ class _AddChildScreenState extends State<AddChildScreen> {
     );
 
     try {
+      final birthDateChanged = widget.isEditMode &&
+          widget.existingChild != null &&
+          (widget.existingChild!.birthDate.year != _birthDate!.year ||
+           widget.existingChild!.birthDate.month != _birthDate!.month ||
+           widget.existingChild!.birthDate.day != _birthDate!.day);
+
       if (widget.isEditMode) {
         await _childRepo.update(child);
+        if (birthDateChanged) {
+          await _childRepo.recomputeAllMeasurementsForChild(child.id, child.birthDate);
+        }
       } else {
         await _childRepo.add(child);
       }

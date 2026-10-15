@@ -99,22 +99,6 @@ class _EditMeasurementDialogState extends State<EditMeasurementDialog> {
 
     setState(() => _isSaving = true);
 
-    final weightStatus = GrowthClassifier.classifyWeightForAge(
-      weightKg: rawW,
-      ageMonths: _assessmentAgeMonths,
-      gender: widget.child.gender,
-    );
-    final heightStatus = GrowthClassifier.classifyHeightForAge(
-      heightCm: rawH,
-      ageMonths: _assessmentAgeMonths,
-      gender: widget.child.gender,
-    );
-    final wastingStatus = GrowthClassifier.classifyWeightForLength(
-      weightKg: rawW,
-      heightCm: rawH,
-      gender: widget.child.gender,
-    );
-
     final isPlausible = MeasurementValidator.isPlausibleRecord(
       heightCm: rawH,
       weightKg: rawW,
@@ -122,17 +106,42 @@ class _EditMeasurementDialogState extends State<EditMeasurementDialog> {
       ageMonths: _assessmentAgeMonths,
     );
 
-    final hMeters = rawH / 100;
-    final bmiVal = hMeters > 0 ? double.parse((rawW / (hMeters * hMeters)).toStringAsFixed(2)) : 0.0;
-    String bmiStatus = 'Normal';
-    if (bmiVal < 18.5) {
-      bmiStatus = 'Underweight';
-    } else if (bmiVal < 25.0) {
-      bmiStatus = 'Normal';
-    } else if (bmiVal < 30.0) {
-      bmiStatus = 'Overweight';
-    } else {
-      bmiStatus = 'Obese';
+    String weightStatus = 'Needs re-measurement';
+    String heightStatus = 'Needs re-measurement';
+    String wastingStatus = 'Needs re-measurement';
+    double? bmiVal;
+    String? bmiStatus;
+
+    if (isPlausible) {
+      weightStatus = GrowthClassifier.classifyWeightForAge(
+        weightKg: rawW,
+        ageMonths: _assessmentAgeMonths,
+        gender: widget.child.gender,
+      );
+      heightStatus = GrowthClassifier.classifyHeightForAge(
+        heightCm: rawH,
+        ageMonths: _assessmentAgeMonths,
+        gender: widget.child.gender,
+      );
+      wastingStatus = GrowthClassifier.classifyWeightForLength(
+        weightKg: rawW,
+        heightCm: rawH,
+        gender: widget.child.gender,
+      );
+
+      final hMeters = rawH / 100;
+      if (hMeters > 0) {
+        bmiVal = double.parse((rawW / (hMeters * hMeters)).toStringAsFixed(2));
+        if (bmiVal < 18.5) {
+          bmiStatus = 'Underweight';
+        } else if (bmiVal < 25.0) {
+          bmiStatus = 'Normal';
+        } else if (bmiVal < 30.0) {
+          bmiStatus = 'Overweight';
+        } else {
+          bmiStatus = 'Obese';
+        }
+      }
     }
 
     final updated = Measurement(
@@ -141,11 +150,11 @@ class _EditMeasurementDialogState extends State<EditMeasurementDialog> {
       heightCm: rawH,
       muacCm: rawM,
       bilateralPittingEdema: _edema,
-      weightForAgeStatus: isPlausible ? weightStatus : 'Needs re-measurement',
-      heightForAgeStatus: isPlausible ? heightStatus : 'Needs re-measurement',
-      weightForLengthStatus: isPlausible ? wastingStatus : 'Needs re-measurement',
-      customBmi: isPlausible ? bmiVal : null,
-      customBmiStatus: isPlausible ? bmiStatus : 'Needs re-measurement',
+      weightForAgeStatus: weightStatus,
+      heightForAgeStatus: heightStatus,
+      weightForLengthStatus: wastingStatus,
+      customBmi: bmiVal,
+      customBmiStatus: bmiStatus,
     );
 
     final settings = SettingsRepository();
@@ -154,7 +163,7 @@ class _EditMeasurementDialogState extends State<EditMeasurementDialog> {
     final customNote = _auditNoteController.text.trim();
     final finalAuditNote = customNote.isNotEmpty ? '$auditUserText: $customNote' : auditUserText;
 
-    await MeasurementRepository().updateMeasurement(
+    final syncRes = await MeasurementRepository().updateMeasurement(
       childId: widget.child.id,
       originalDate: widget.measurement.date,
       updatedMeasurement: updated,
@@ -162,6 +171,15 @@ class _EditMeasurementDialogState extends State<EditMeasurementDialog> {
     );
 
     if (mounted) {
+      setState(() => _isSaving = false);
+      if (syncRes != null && !syncRes.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved locally. Server sync: ${syncRes.message}'),
+            backgroundColor: AppColors.statOrange,
+          ),
+        );
+      }
       Navigator.pop(context, true);
     }
   }

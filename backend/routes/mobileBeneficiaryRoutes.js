@@ -39,6 +39,7 @@ router.post('/children', roleCheck(['bhw', 'bns']), upsertChild);
 router.post('/mothers', roleCheck(['bhw', 'bns']), upsertMother);
 router.post('/nutrition-records', roleCheck(['bhw', 'bns']), syncNutritionRecord);
 router.put('/nutrition-records', roleCheck(['bhw', 'bns']), updateNutritionRecord);
+router.patch('/nutrition-records', roleCheck(['bhw', 'bns']), updateNutritionRecord);
 router.delete('/nutrition-records', roleCheck(['bhw', 'bns']), deleteNutritionRecord);
 router.post('/schedules', createMobileSchedule);
 router.post('/transfer', transferBeneficiary);

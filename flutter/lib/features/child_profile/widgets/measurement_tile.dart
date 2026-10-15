@@ -177,9 +177,19 @@ class MeasurementTile extends StatelessWidget {
                           color: AppColors.statRed.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
-                          'Entry outside plausible ranges for 0-59 months (H: 45-125 cm, W: 2-30 kg, MUAC: 8-20 cm). Nutritional status and BMI are not computed. Please re-measure.',
-                          style: TextStyle(
+                        child: Text(
+                          MeasurementValidator.getPlausibilityErrorDetail(
+                            heightCm: measurement.heightCm,
+                            weightKg: measurement.weightKg,
+                            muacCm: measurement.muacCm,
+                          ).isNotEmpty
+                              ? MeasurementValidator.getPlausibilityErrorDetail(
+                                  heightCm: measurement.heightCm,
+                                  weightKg: measurement.weightKg,
+                                  muacCm: measurement.muacCm,
+                                )
+                              : 'Entry outside plausible ranges for 0-59 months (H: 45-125 cm, W: 2-30 kg, MUAC: 8-20 cm). Nutritional status and BMI are not computed. Please re-measure.',
+                          style: const TextStyle(
                             color: AppColors.statRed,
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
@@ -252,9 +262,9 @@ class MeasurementTile extends StatelessWidget {
                           icon: Icons.favorite_outline,
                           iconColor: const Color(0xFFCC2E6D),
                           label: 'MUAC',
-                          value: measurement.muacCm != null
+                          value: (measurement.muacCm != null && measurement.muacCm! > 0)
                               ? '${measurement.muacCm} cm'
-                              : 'N/A',
+                              : '—',
                         ),
                       ],
                     ),

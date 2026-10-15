@@ -29,28 +29,33 @@ class ChildProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showStuntingBadge =
-        child.stuntingStatus == 'Stunted' ||
-        child.stuntingStatus == 'Severely Stunted';
-    final showWastingBadge =
-        child.wastingStatus == 'SAM' || child.wastingStatus == 'MAM';
-
     final measurements = MeasurementRepository().getForChild(child.id);
-    final hasMeasurements = measurements.isNotEmpty;
-    final latestMeasurement = hasMeasurements ? measurements.first : null;
-    final isLatestPlausible = latestMeasurement?.isPlausible ?? false;
-    final needsReferral = latestMeasurement != null &&
-        isLatestPlausible &&
-        (latestMeasurement.isSevere ||
-         child.wastingStatus == 'SAM' ||
-         child.wastingStatus == 'MAM' ||
-         child.nutritionStatus == 'Severely Underweight');
+    final validMeasurements = measurements.where((m) => m.isPlausible).toList();
+    final hasValidMeasurements = validMeasurements.isNotEmpty;
+    final latestValidMeasurement = hasValidMeasurements ? validMeasurements.first : null;
+    final latestAnyMeasurement = measurements.isNotEmpty ? measurements.first : null;
+
+    final effectiveWfa = latestValidMeasurement?.weightForAgeStatus;
+    final effectiveHfa = latestValidMeasurement?.heightForAgeStatus;
+    final effectiveWfl = latestValidMeasurement?.effectiveWastingStatus;
+
+    final showStuntingBadge = hasValidMeasurements &&
+        (effectiveHfa == 'Stunted' || effectiveHfa == 'Severely Stunted');
+    final showWastingBadge = hasValidMeasurements &&
+        (effectiveWfl == 'SAM' || effectiveWfl == 'MAM');
+
+    final needsReferral = hasValidMeasurements &&
+        latestValidMeasurement != null &&
+        (latestValidMeasurement.isSevere ||
+         effectiveWfl == 'SAM' ||
+         effectiveWfl == 'MAM' ||
+         effectiveWfa == 'Severely Underweight');
 
     final referralStatus = ReferralRepository().getReferralHeaderStatus(
       beneficiaryId: child.id,
-      hasRecords: hasMeasurements,
+      hasRecords: hasValidMeasurements,
       needsReferralFromRecord: needsReferral,
-      recordDate: latestMeasurement?.date,
+      recordDate: latestValidMeasurement?.date,
     );
 
     return Container(
@@ -153,34 +158,42 @@ class ChildProfileHeader extends StatelessWidget {
             runSpacing: 6,
             children: [
               if (isActive) ...[
-                // Weight-for-Age badge (WFA)
-                StatusBadge(
-                  label: child.nutritionStatus,
-                  color: ChildStatusMeta.colorFor(child.nutritionStatus),
-                  onDark: true,
-                ),
-                if (showStuntingBadge)
-                  StatusBadge(
-                    label: child.stuntingStatus,
-                    color: ChildStatusMeta.colorFor(child.stuntingStatus),
+                if (!hasValidMeasurements) ...[
+                  const StatusBadge(
+                    label: 'No valid measurement yet',
+                    color: AppColors.notWeighed,
                     onDark: true,
                   ),
-                // Weight-for-Length/Height (WFH) - for under-5s, WFH replaces BMI.
-                // Never show Overweight and Obese together.
-                if (showWastingBadge ||
-                    ((child.wastingStatus == 'Obese' || child.wastingStatus == 'Overweight') &&
-                     child.nutritionStatus != child.wastingStatus))
+                ] else ...[
+                  // Weight-for-Age badge (WFA)
                   StatusBadge(
-                    label: child.wastingStatus,
-                    color: ChildStatusMeta.colorFor(child.wastingStatus),
+                    label: effectiveWfa ?? 'Normal',
+                    color: ChildStatusMeta.colorFor(effectiveWfa ?? 'Normal'),
                     onDark: true,
                   ),
-                if (referralStatus.chipLabel != null)
-                  StatusBadge(
-                    label: referralStatus.chipLabel!,
-                    color: referralStatus.chipColor!,
-                    onDark: true,
-                  ),
+                  if (showStuntingBadge)
+                    StatusBadge(
+                      label: effectiveHfa!,
+                      color: ChildStatusMeta.colorFor(effectiveHfa),
+                      onDark: true,
+                    ),
+                  // Weight-for-Length/Height (WFH) - for under-5s, WFH replaces BMI.
+                  // Never show Overweight and Obese together.
+                  if (showWastingBadge ||
+                      ((effectiveWfl == 'Obese' || effectiveWfl == 'Overweight') &&
+                       effectiveWfa != effectiveWfl))
+                    StatusBadge(
+                      label: effectiveWfl!,
+                      color: ChildStatusMeta.colorFor(effectiveWfl),
+                      onDark: true,
+                    ),
+                  if (referralStatus.chipLabel != null)
+                    StatusBadge(
+                      label: referralStatus.chipLabel!,
+                      color: referralStatus.chipColor!,
+                      onDark: true,
+                    ),
+                ],
               ] else
                 StatusBadge(
                   label: 'Inactive · ${child.inactiveReason ?? "Unspecified"}',

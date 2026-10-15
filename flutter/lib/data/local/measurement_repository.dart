@@ -80,9 +80,23 @@ class MeasurementRepository {
         if (map['_syncStatus'] != 'synced') {
           try {
             final m = Measurement.fromMap(map);
-            final res = await BeneficiaryApi.syncNutritionRecord(childId, m);
+            final action = (map['_action'] ?? 'create').toString();
+            final auditNote = map['_auditNote']?.toString();
+
+            final ApiResponse res;
+            if (action == 'update') {
+              res = await BeneficiaryApi.updateNutritionRecord(
+                childExternalId: childId,
+                measurement: m,
+                auditNote: auditNote,
+              );
+            } else {
+              res = await BeneficiaryApi.syncNutritionRecord(childId, m);
+            }
+
             if (res.success) {
               map['_syncStatus'] = 'synced';
+              map.remove('_action');
               map.remove('_lastSyncError');
               map['_retryCount'] = 0;
               anyUpdated = true;
@@ -129,7 +143,7 @@ class MeasurementRepository {
 
   /// Updates a measurement in Hive and syncs the update to the server.
   /// Also triggers recompute of the child's status from latest valid measurement.
-  Future<void> updateMeasurement({
+  Future<ApiResponse?> updateMeasurement({
     required String childId,
     required DateTime originalDate,
     required Measurement updatedMeasurement,
@@ -139,17 +153,22 @@ class MeasurementRepository {
     final origDateStr = originalDate.toIso8601String().substring(0, 10);
     final newDateStr = updatedMeasurement.date.toIso8601String();
 
+    String? foundServerId;
     final updated = list.map((raw) {
       final m = Map<String, dynamic>.from(raw as Map);
       final rawDate = (m['date'] ?? '').toString();
       final isMatch = rawDate.startsWith(origDateStr) ||
           m['_localId'] == originalDate.toIso8601String();
       if (isMatch) {
+        foundServerId = m['record_id']?.toString() ?? m['server_id']?.toString();
         final newMap = updatedMeasurement.toMap()
           ..['_syncStatus'] = 'pending'
           ..['_action'] = 'update'
           ..['_localId'] = newDateStr
           ..['_auditNote'] = auditNote;
+        if (foundServerId != null) {
+          newMap['server_id'] = foundServerId;
+        }
         return newMap;
       }
       return m;
@@ -159,7 +178,7 @@ class MeasurementRepository {
     await ChildRepository().recomputeChildStatusFromMeasurements(childId);
     AppDataBus.notifyChanged();
 
-    _trySyncUpdate(childId, updatedMeasurement, auditNote);
+    return await _syncUpdateImmediately(childId, updatedMeasurement, auditNote, foundServerId);
   }
 
   /// Deletes a measurement from Hive and syncs the deletion to the server.
@@ -199,6 +218,9 @@ class MeasurementRepository {
             m['_syncStatus'] = 'synced';
             m.remove('_lastSyncError');
             m['_retryCount'] = 0;
+            if (res.data != null && res.data is Map && (res.data as Map)['record_id'] != null) {
+              m['server_id'] = (res.data as Map)['record_id'].toString();
+            }
           } else {
             m['_syncStatus'] = 'failed';
             m['_lastSyncError'] = res.message;
@@ -221,12 +243,18 @@ class MeasurementRepository {
     });
   }
 
-  void _trySyncUpdate(String childId, Measurement measurement, String? auditNote) {
-    Future(() async {
+  Future<ApiResponse?> _syncUpdateImmediately(
+    String childId,
+    Measurement measurement,
+    String? auditNote,
+    String? serverId,
+  ) async {
+    try {
       final res = await BeneficiaryApi.updateNutritionRecord(
         childExternalId: childId,
         measurement: measurement,
         auditNote: auditNote,
+        serverId: serverId,
       );
       final list = (_box.get(childId) as List?) ?? [];
       final dateStr = measurement.date.toIso8601String();
@@ -238,7 +266,7 @@ class MeasurementRepository {
             m.remove('_action');
             m.remove('_lastSyncError');
           } else {
-            m['_syncStatus'] = 'failed';
+            m['_syncStatus'] = 'pending';
             m['_lastSyncError'] = res.message;
           }
         }
@@ -246,7 +274,10 @@ class MeasurementRepository {
       }).toList();
       await _box.put(childId, updated);
       AppDataBus.notifyChanged();
-    });
+      return res;
+    } catch (e) {
+      return ApiResponse(success: false, statusCode: 500, message: e.toString());
+    }
   }
 
   void _trySyncDelete(String childId, DateTime recordDate) {

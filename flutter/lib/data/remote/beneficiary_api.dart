@@ -145,6 +145,7 @@ class BeneficiaryApi {
     required String childExternalId,
     required Measurement measurement,
     String? auditNote,
+    String? serverId,
   }) async {
     final settings = SettingsRepository();
     final token = settings.authToken;
@@ -160,12 +161,13 @@ class BeneficiaryApi {
         SyncIdMapper.instance.getChildServerId(childExternalId);
 
     return _put('/mobile/nutrition-records', {
+      if (serverId != null) 'record_id': serverId,
       'child_id': resolvedChildServerId,
       'child_external_id': childExternalId,
       'record_date': _date(measurement.date),
       'weight_kg': measurement.weightKg,
       'height_cm': measurement.heightCm,
-      'muac_cm': measurement.muacCm,
+      'muac_cm': (measurement.muacCm != null && measurement.muacCm! > 0) ? measurement.muacCm : null,
       'weight_status': measurement.weightForAgeStatus,
       'height_status': measurement.heightForAgeStatus,
       'overall_status': measurement.effectiveWastingStatus,

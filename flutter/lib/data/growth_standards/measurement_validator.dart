@@ -103,11 +103,46 @@ class MeasurementValidator {
       if (weightKg < minPlausibleWeightKg || weightKg > maxPlausibleWeightKg) {
         return false;
       }
-      if (muacCm != null && (muacCm < minPlausibleMuacCm || muacCm > maxPlausibleMuacCm)) {
+      if (muacCm != null && muacCm > 0 && (muacCm < minPlausibleMuacCm || muacCm > maxPlausibleMuacCm)) {
         return false;
       }
     }
     return true;
+  }
+
+  /// Returns specific field violation message(s) if out of plausible range.
+  static String getPlausibilityErrorDetail({
+    required double heightCm,
+    required double weightKg,
+    double? muacCm,
+  }) {
+    final issues = <String>[];
+    final wStr = weightKg.truncateToDouble() == weightKg ? weightKg.toInt().toString() : weightKg.toString();
+    final hStr = heightCm.truncateToDouble() == heightCm ? heightCm.toInt().toString() : heightCm.toString();
+
+    if (weightKg < minPlausibleWeightKg) {
+      issues.add('Weight $wStr kg is below 2 kg');
+    } else if (weightKg > maxPlausibleWeightKg) {
+      issues.add('Weight $wStr kg is above 30 kg');
+    }
+
+    if (heightCm < minPlausibleHeightCm) {
+      issues.add('Height $hStr cm is below 45 cm');
+    } else if (heightCm > maxPlausibleHeightCm) {
+      issues.add('Height $hStr cm is above 125 cm');
+    }
+
+    if (muacCm != null && muacCm > 0) {
+      final mStr = muacCm.truncateToDouble() == muacCm ? muacCm.toInt().toString() : muacCm.toString();
+      if (muacCm < minPlausibleMuacCm) {
+        issues.add('MUAC $mStr cm is below 8 cm');
+      } else if (muacCm > maxPlausibleMuacCm) {
+        issues.add('MUAC $mStr cm is above 20 cm');
+      }
+    }
+
+    if (issues.isEmpty) return '';
+    return '${issues.join(', ')}. Plausible ranges for 0-59 months: H: 45-125 cm, W: 2-30 kg, MUAC: 8-20 cm. Nutritional status and BMI are not computed.';
   }
 
   static ValidationResult checkWeight(double weight, int ageMonths) {
