@@ -191,68 +191,35 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     setState(() => _muacValidation = res);
   }
 
-  // Computed live as the BNS types — this feeds the preview card.
-  ({String weight, String height, String wasting, double bmi, String bmiStatus})?
-      get _liveResult {
+  // Computed live as the BNS types — this feeds the preview card via WHO assessment.
+  GrowthAssessment? get _liveAssessment {
     final w = MeasurementValidator.parseDecimal(_weightController.text);
     final h = MeasurementValidator.parseDecimal(_heightController.text);
     if (w == null || h == null || h <= 0) return null;
 
-    // Do not compute BMI or nutritional status from invalid values
-    final wRes = MeasurementValidator.checkWeight(w, _assessmentAgeMonths);
-    if (wRes.isError) return null;
+    final days = _monthYear.difference(widget.child.birthDate).inDays;
+    final assessmentDays = days < 0 ? 0 : days;
 
-    final hRes = MeasurementValidator.checkHeight(
-      h,
-      _assessmentAgeMonths,
-      previousHeightCm: _previousEntry?.heightCm,
-    );
-    if (hRes.isError) return null;
-
-    final rawMuac = _isMuacEligible ? _muacController.text.trim() : null;
-    if (rawMuac != null && rawMuac.isNotEmpty) {
-      final m = MeasurementValidator.parseDecimal(rawMuac);
-      if (m != null) {
-        final mRes = MeasurementValidator.checkMuac(m, _assessmentAgeMonths);
-        if (mRes.isError) return null;
-      }
+    int daysSincePrev;
+    if (_previousEntry != null) {
+      daysSincePrev = _monthYear.difference(_previousEntry!.date).inDays;
+    } else {
+      daysSincePrev = 999;
     }
 
-    final weightStatus = GrowthClassifier.classifyWeightForAge(
-      weightKg: w,
-      ageMonths: _assessmentAgeMonths,
-      gender: widget.child.gender,
-    );
-    final heightStatus = GrowthClassifier.classifyHeightForAge(
-      heightCm: h,
-      ageMonths: _assessmentAgeMonths,
-      gender: widget.child.gender,
-    );
-    final wastingStatus = GrowthClassifier.classifyWeightForLength(
+    return GrowthClassifier.assess(
       weightKg: w,
       heightCm: h,
-      gender: widget.child.gender,
-    );
-
-    final hMeters = h / 100;
-    final bmiVal = double.parse((w / (hMeters * hMeters)).toStringAsFixed(2));
-    final effectiveWasting = _edema ? 'SAM' : wastingStatus;
-
-    final isPlausible = MeasurementValidator.isPlausibleRecord(
-      heightCm: h,
-      weightKg: w,
-      muacCm: rawMuac != null ? MeasurementValidator.parseDecimal(rawMuac) : null,
       ageMonths: _assessmentAgeMonths,
-    );
-
-    return (
-      weight: isPlausible ? weightStatus : 'Needs re-measurement',
-      height: isPlausible ? heightStatus : 'Needs re-measurement',
-      wasting: isPlausible ? effectiveWasting : 'Needs re-measurement',
-      bmi: bmiVal,
-      bmiStatus: isPlausible ? effectiveWasting : 'Needs re-measurement',
+      ageInDays: assessmentDays,
+      gender: widget.child.gender,
+      edema: _edema,
+      previousWeightKg: _previousEntry?.weightKg,
+      previousHeightCm: _previousEntry?.heightCm,
+      daysSincePrevious: daysSincePrev,
     );
   }
+
 
   Future<void> _handleSave() async {
     // 1. Date Validation: Check measurement date is not before birth date or in future
@@ -511,13 +478,17 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
               if (rawM != null) Text('MUAC: ${rawM.toStringAsFixed(1)} cm'),
               const SizedBox(height: 8),
               const Text('Auto-computed nutritional status:'),
-              if (_liveResult != null) ...[
+              if (_liveAssessment != null && !_liveAssessment!.isInvalid) ...[
+                Text('Weight-for-age: ${_liveAssessment!.weightForAgeStatus}'),
+                Text('Height-for-age: ${_liveAssessment!.heightForAgeStatus}'),
+                Text('Weight-for-length/height: ${_liveAssessment!.weightForLengthStatus}'),
+                if (_liveAssessment!.bmi != null)
+                  Text('BMI: ${_liveAssessment!.bmi} kg/m²'),
+              ] else if (_liveAssessment != null && _liveAssessment!.isInvalid) ...[
                 Text(
-                  'Computed BMI: ${_liveResult!.bmi} kg/m² (${_liveResult!.bmiStatus})',
+                  'Flagged: ${_liveAssessment!.invalidReason ?? "Needs re-measurement"}',
+                  style: const TextStyle(color: AppColors.statRed, fontWeight: FontWeight.bold),
                 ),
-                Text('Weight-for-age: ${_liveResult!.weight}'),
-                Text('Height-for-age: ${_liveResult!.height}'),
-                Text('Wasting: ${_liveResult!.wasting}'),
               ],
             ],
           ),
@@ -543,28 +514,29 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     final h = rawH;
     final muac = rawM;
 
-    final weightStatus = GrowthClassifier.classifyWeightForAge(
+    final days = _monthYear.difference(widget.child.birthDate).inDays;
+    final assessmentDays = days < 0 ? 0 : days;
+
+    int daysSincePrev;
+    if (_previousEntry != null) {
+      daysSincePrev = _monthYear.difference(_previousEntry!.date).inDays;
+    } else {
+      daysSincePrev = 999;
+    }
+
+    final assessment = GrowthClassifier.assess(
       weightKg: w,
-      ageMonths: _assessmentAgeMonths,
-      gender: widget.child.gender,
-    );
-    final heightStatus = GrowthClassifier.classifyHeightForAge(
       heightCm: h,
       ageMonths: _assessmentAgeMonths,
+      ageInDays: assessmentDays,
       gender: widget.child.gender,
-    );
-    final wastingStatus = GrowthClassifier.classifyWeightForLength(
-      weightKg: w,
-      heightCm: h,
-      gender: widget.child.gender,
+      edema: _edema,
+      previousWeightKg: _previousEntry?.weightKg,
+      previousHeightCm: _previousEntry?.heightCm,
+      daysSincePrevious: daysSincePrev,
     );
 
-    final isPlausible = !forceFlagImplausible && MeasurementValidator.isPlausibleRecord(
-      heightCm: h,
-      weightKg: w,
-      muacCm: muac,
-      ageMonths: _assessmentAgeMonths,
-    );
+    final isPlausible = !forceFlagImplausible && !assessment.isInvalid;
 
     final measurement = Measurement(
       date: _monthYear,
@@ -572,11 +544,13 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       heightCm: h,
       muacCm: muac,
       bilateralPittingEdema: _edema,
-      weightForAgeStatus: isPlausible ? weightStatus : 'Needs re-measurement',
-      heightForAgeStatus: isPlausible ? heightStatus : 'Needs re-measurement',
-      weightForLengthStatus: isPlausible ? wastingStatus : 'Needs re-measurement',
-      customBmi: isPlausible ? _liveResult?.bmi : null,
-      customBmiStatus: isPlausible ? _liveResult?.bmiStatus : 'Needs re-measurement',
+      weightForAgeStatus: isPlausible ? assessment.weightForAgeStatus : 'Needs re-measurement',
+      heightForAgeStatus: isPlausible ? assessment.heightForAgeStatus : 'Needs re-measurement',
+      weightForLengthStatus: isPlausible ? assessment.weightForLengthStatus : 'Needs re-measurement',
+      customBmi: isPlausible ? assessment.bmi : null,
+      customBmiStatus: isPlausible ? assessment.weightForLengthStatus : 'Needs re-measurement',
+      ageInDays: assessmentDays,
+      ageInMonths: _assessmentAgeMonths,
     );
 
     await _measurementRepo.addMeasurement(widget.child.id, measurement);
@@ -587,7 +561,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
     await _activityRepo.logActivity(
       type: 'measurement_recorded',
-      title: 'Recorded measurement for ${widget.child.fullName} (BMI: ${isPlausible ? measurement.bmi : "—"} - ${measurement.bmiStatus})',
+      title: 'Recorded measurement for ${widget.child.fullName} (${isPlausible ? assessment.statusSummary : "Needs re-measurement"})',
     );
 
     // Module 3: Notify BNS if there are beneficiaries at high risk of nutritional concerns
@@ -599,7 +573,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             r.status.toLowerCase() != 'cancelled');
 
     if (isPlausible &&
-        (measurement.isSevere || measurement.bmiStatus == 'Obese') &&
+        (measurement.isSevere || assessment.weightForLengthStatus == 'Obese') &&
         !hasExistingReferral) {
       final severeReason = _buildSevereReason(measurement);
       await NotificationRepository().add(
@@ -607,7 +581,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
           id: NotificationRepository.generateId(),
           title: 'High Risk Alert: ${widget.child.fullName}',
           message:
-              '${widget.child.fullName} is at high risk of nutritional concerns: $severeReason (Computed BMI: ${measurement.bmi} kg/m²). Referral to BHW recommended.',
+              '${widget.child.fullName} is at high risk of nutritional concerns: $severeReason. Referral to BHW recommended.',
           timestamp: DateTime.now().toUtc(),
           isRead: false,
           referralId: null,
@@ -615,6 +589,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
         ),
       );
     }
+
 
     if (!mounted) return;
     setState(() => _isSaving = false);
@@ -678,7 +653,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final result = _liveResult;
+    final assessment = _liveAssessment;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -898,70 +873,114 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                         ),
                       ],
                     ),
-                    if (result != null) ...[
+                    if (assessment != null) ...[
                       const SizedBox(height: AppSpacing.md),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFAEEDA),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFEF9F27)),
+                      if (assessment.isInvalid) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.statRed.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.statRed),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                size: 20,
+                                color: AppColors.statRed,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Invalid Value / Needs re-measurement',
+                                      style: TextStyle(
+                                        color: AppColors.statRed,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      assessment.invalidReason ??
+                                          'Value outside biologically plausible WHO cutoffs. Nutritional status and BMI are not computed.',
+                                      style: const TextStyle(
+                                        color: AppColors.statRed,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.favorite,
-                                  size: 15,
-                                  color: Color(0xFF633806),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Auto-computed Nutritional Status',
-                                  style: TextStyle(
-                                    color: const Color(0xFF633806),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                      ] else ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFAEEDA),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFEF9F27)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.favorite,
+                                    size: 15,
+                                    color: Color(0xFF633806),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 6,
-                              children: [
-                                StatusBadge(
-                                  label: 'BMI: ${result.bmi}',
-                                  color: ChildStatusMeta.colorFor(result.wasting),
-                                ),
-                                StatusBadge(
-                                  label: 'WFA: ${result.weight}',
-                                  color: ChildStatusMeta.colorFor(
-                                    result.weight,
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Auto-computed Nutritional Status (WHO)',
+                                    style: TextStyle(
+                                      color: const Color(0xFF633806),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
-                                StatusBadge(
-                                  label: 'HFA: ${result.height}',
-                                  color: ChildStatusMeta.colorFor(
-                                    result.height,
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  StatusBadge(
+                                    label: 'WFA: ${assessment.weightForAgeStatus}',
+                                    color: ChildStatusMeta.colorFor(
+                                      assessment.weightForAgeStatus,
+                                    ),
                                   ),
-                                ),
-                                StatusBadge(
-                                  label: 'WFH: ${result.wasting}',
-                                  color: ChildStatusMeta.colorFor(
-                                    result.wasting,
+                                  StatusBadge(
+                                    label: 'HFA: ${assessment.heightForAgeStatus}',
+                                    color: ChildStatusMeta.colorFor(
+                                      assessment.heightForAgeStatus,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                  StatusBadge(
+                                    label: 'WFH: ${assessment.weightForLengthStatus}',
+                                    color: ChildStatusMeta.colorFor(
+                                      assessment.weightForLengthStatus,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ],
+
                     if (_previousEntry != null) ...[
                       const SizedBox(height: AppSpacing.lg),
                       Text(

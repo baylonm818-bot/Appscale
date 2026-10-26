@@ -126,7 +126,7 @@ function getGrowthRangeForAge(ageMonths) {
   return GROWTH_RANGE_TABLE[GROWTH_RANGE_TABLE.length - 1];
 }
 
-function validateMeasurementPlausibility(weightKg, heightCm, ageMonths) {
+function validateMeasurementPlausibility(weightKg, heightCm, ageMonths, sex) {
   let w, h, m;
   if (typeof weightKg === 'object' && weightKg !== null) {
     w = Number(weightKg.weight ?? weightKg.weight_kg ?? weightKg.weightKg);
@@ -136,6 +136,44 @@ function validateMeasurementPlausibility(weightKg, heightCm, ageMonths) {
     w = Number(weightKg);
     h = Number(heightCm);
     m = Number(ageMonths || 0);
+  }
+
+  // Baseline 0-59 months range check
+  if (m <= 59) {
+    if (w && (w < 2.0 || w > 30.0)) {
+      return {
+        isValid: false,
+        field: 'weight_kg',
+        message: `Weight ${w} kg is outside plausible range for 0–59 months (2–30 kg).`,
+      };
+    }
+    if (h && (h < 45.0 || h > 125.0)) {
+      return {
+        isValid: false,
+        field: 'height_cm',
+        message: `Height ${h} cm is outside plausible range for 0–59 months (45–125 cm).`,
+      };
+    }
+
+    // WHO BIV (Biological Implausible Values) check:
+    // e.g., an infant measuring 45cm with weight 6.0kg has extreme implausible weight-for-length
+    // At 45cm, expected weight is ~2.4kg (+3SD is 3.3kg). 6.0kg is nearly +8 SDs.
+    if (w > 0 && h > 0) {
+      if (h <= 50.0 && w >= 5.8) {
+        return {
+          isValid: false,
+          field: 'weight_kg',
+          message: `Weight ${w} kg is biologically implausible for length ${h} cm (WHO WFL z > +5 SD). Needs re-measurement.`,
+        };
+      }
+      if (m >= 2 && h <= 45.0) {
+        return {
+          isValid: false,
+          field: 'height_cm',
+          message: `Height ${h} cm is biologically implausible for age ${m} months (WHO HFA z < -6 SD). Needs re-measurement.`,
+        };
+      }
+    }
   }
 
   const range = getGrowthRangeForAge(m);
@@ -165,3 +203,4 @@ module.exports = {
   getGrowthRangeForAge,
   validateMeasurementPlausibility,
 };
+

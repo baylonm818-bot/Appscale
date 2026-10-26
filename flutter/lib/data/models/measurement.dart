@@ -6,11 +6,13 @@ class Measurement {
   final double heightCm;
   final double? muacCm;
   final bool bilateralPittingEdema;
-  final String weightForAgeStatus; // Severely Underweight / Underweight / Normal
+  final String weightForAgeStatus; // Severely Underweight / Underweight / Normal / Overweight
   final String heightForAgeStatus; // Severely Stunted / Stunted / Normal / Tall
   final String weightForLengthStatus; // SAM / MAM / Normal / Overweight / Obese
   final double? customBmi;
   final String? customBmiStatus;
+  final int? ageInDays;
+  final int? ageInMonths;
 
   const Measurement({
     required this.date,
@@ -23,18 +25,26 @@ class Measurement {
     required this.weightForLengthStatus,
     this.customBmi,
     this.customBmiStatus,
+    this.ageInDays,
+    this.ageInMonths,
   });
 
-  /// Plausibility check for 0-59 months: height 45-125 cm, weight 2-30 kg, MUAC 8-20 cm (if provided).
-  /// Excludes MUAC <= 0.0 or outside 8-20 cm. Missing or null MUAC does not flag invalid.
+  /// Plausibility check for 0-59 months:
+  /// Evaluates both range bounds and WHO BIV cutoffs or explicit 'Needs re-measurement'.
   bool get isPlausible {
+    if (weightForAgeStatus == 'Needs re-measurement' ||
+        heightForAgeStatus == 'Needs re-measurement' ||
+        weightForLengthStatus == 'Needs re-measurement' ||
+        customBmiStatus == 'Needs re-measurement') {
+      return false;
+    }
     if (heightCm < 45.0 || heightCm > 125.0) return false;
     if (weightKg < 2.0 || weightKg > 30.0) return false;
     if (muacCm != null && muacCm! > 0 && (muacCm! < 8.0 || muacCm! > 20.0)) return false;
     return true;
   }
 
-  /// Module 3 Requirement: "The system will automatically identify the nutritional status (obese, normal, underweight, etc.) based on the result of beneficiaries computed BMI."
+  /// Informational BMI value (kg/m²).
   double get bmi {
     if (customBmi != null) return customBmi!;
     if (heightCm <= 0) return 0.0;
@@ -51,37 +61,42 @@ class Measurement {
   }
 
   /// Edema present overrides the wasting classification to SAM regardless
-  /// of the weight-for-length number — this is a real WHO/NNC rule, not
-  /// a cosmetic warning, since edema itself signals severe acute malnutrition.
+  /// of the weight-for-length number per WHO/NNC guidelines.
   String get effectiveWastingStatus {
     if (!isPlausible) return 'Needs re-measurement';
     return bilateralPittingEdema ? 'SAM' : weightForLengthStatus;
   }
 
-  /// WHO/NNC classification is age-aware: children under 24 months are
-  /// classified using weight-for-length while older children use BMI.
+  /// WHO/NNC classification indicator for child:
+  /// Under 24 months uses weight-for-length, while older children use weight-for-height.
   String statusForAgeMonths(int ageMonths) {
     if (!isPlausible) return 'Needs re-measurement';
     if (ageMonths <= 23) return effectiveWastingStatus;
-
     if (customBmiStatus != null && customBmiStatus!.isNotEmpty) {
       return customBmiStatus!;
     }
-
-    final val = bmi;
-    if (val <= 0) return 'Unknown';
-    if (val < 18.5) return 'Underweight';
-    if (val < 25.0) return 'Normal';
-    if (val < 30.0) return 'Overweight';
-    return 'Obese';
+    return effectiveWastingStatus;
   }
+
 
   bool get isSevere {
     if (!isPlausible) return false;
     return weightForAgeStatus == 'Severely Underweight' ||
         heightForAgeStatus == 'Severely Stunted' ||
-        effectiveWastingStatus == 'SAM' ||
-        bmiStatus == 'Obese';
+        effectiveWastingStatus == 'SAM';
+  }
+
+  /// Checks if this measurement is older than the recommended weighing interval:
+  /// - 0 to 23 months: Monthly weighing (due if > 30 days old)
+  /// - 24 to 59 months: Quarterly weighing (due if > 90 days old)
+  bool isDueForWeighing(DateTime asOfDate, {int? childAgeMonths}) {
+    final effectiveAgeMonths = childAgeMonths ?? ageInMonths ?? 0;
+    final diffDays = asOfDate.difference(date).inDays;
+    if (effectiveAgeMonths <= 23) {
+      return diffDays > 30;
+    } else {
+      return diffDays > 90;
+    }
   }
 
   Map<String, dynamic> toMap() => {
@@ -95,6 +110,8 @@ class Measurement {
     'weightForLengthStatus': weightForLengthStatus,
     'bmi': isPlausible ? bmi : null,
     'bmiStatus': isPlausible ? bmiStatus : 'Needs re-measurement',
+    'ageInDays': ageInDays,
+    'ageInMonths': ageInMonths,
   };
 
   factory Measurement.fromMap(Map map) {
@@ -111,6 +128,9 @@ class Measurement {
       weightForLengthStatus: SafeParser.asNonNullString(map['weightForLengthStatus'] ?? map['overall_status'], 'Normal'),
       customBmi: SafeParser.asDouble(map['bmi']),
       customBmiStatus: SafeParser.asString(map['bmiStatus'] ?? map['bmi_status']),
+      ageInDays: SafeParser.asInt(map['ageInDays'] ?? map['age_in_days']),
+      ageInMonths: SafeParser.asInt(map['ageInMonths'] ?? map['age_in_months']),
     );
   }
 }
+

@@ -52,12 +52,16 @@ class ChildProfileHeader extends StatelessWidget {
          effectiveWfl == 'MAM' ||
          effectiveWfa == 'Severely Underweight');
 
+    final isDueForWeighing = latestValidMeasurement != null &&
+        latestValidMeasurement.isDueForWeighing(DateTime.now(), childAgeMonths: child.ageInMonths);
+
     final referralStatus = ReferralRepository().getReferralHeaderStatus(
       beneficiaryId: child.id,
       hasRecords: hasValidMeasurements,
       needsReferralFromRecord: needsReferral,
       recordDate: latestValidMeasurement?.date,
     );
+
 
     return Container(
       width: double.infinity,
@@ -188,6 +192,12 @@ class ChildProfileHeader extends StatelessWidget {
                       color: ChildStatusMeta.colorFor(effectiveWfl),
                       onDark: true,
                     ),
+                  if (isDueForWeighing)
+                    const StatusBadge(
+                      label: 'Due for weighing',
+                      color: AppColors.statOrange,
+                      onDark: true,
+                    ),
                   if (referralStatus.chipLabel != null)
                     StatusBadge(
                       label: referralStatus.chipLabel!,
@@ -198,6 +208,7 @@ class ChildProfileHeader extends StatelessWidget {
               ] else
                 StatusBadge(
                   label: 'Inactive · ${child.inactiveReason ?? "Unspecified"}',
+
                   color: AppColors.textMuted,
                   onDark: true,
                 ),

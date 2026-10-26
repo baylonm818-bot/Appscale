@@ -1070,6 +1070,166 @@ void main() {
       expect(updated.nutritionStatus, equals('Not yet classified'));
     });
   });
+
+  group('Item 9: WHO Child Growth Standards & Z-Score Validation Suite', () {
+    test('1. Repro case: Born Aug 18, 2026, measured Oct 13, 2026 (1.8 mo), 6.0 kg, 45.0 cm is flagged invalid', () {
+      final birthDate = DateTime(2026, 8, 18);
+      final measDate = DateTime(2026, 10, 13);
+      final ageInDays = measDate.difference(birthDate).inDays; // 56 days (~1.8 mos)
+      final ageInMonths = 1; // Completed months: 1 month (or 2 rounded)
+
+      final assessment = GrowthClassifier.assess(
+        weightKg: 6.0,
+        heightCm: 45.0,
+        ageMonths: ageInMonths,
+        ageInDays: ageInDays,
+        gender: 'Boy',
+      );
+
+      // Must be flagged invalid / Needs re-measurement due to WHO BIV (HFA z < -6 SD, WFL z > +5 SD)
+      expect(assessment.isInvalid, isTrue);
+      expect(assessment.weightForAgeStatus, equals('Needs re-measurement'));
+      expect(assessment.heightForAgeStatus, equals('Needs re-measurement'));
+      expect(assessment.weightForLengthStatus, equals('Needs re-measurement'));
+      expect(assessment.statusSummary, equals('Needs re-measurement'));
+    });
+
+    test('2. Normal 2-month boy: 5.6 kg, 58.4 cm', () {
+      final assessment = GrowthClassifier.assess(
+        weightKg: 5.6,
+        heightCm: 58.4,
+        ageMonths: 2,
+        ageInDays: 61,
+        gender: 'Boy',
+      );
+
+      expect(assessment.isInvalid, isFalse);
+      expect(assessment.weightForAgeStatus, equals('Normal'));
+      expect(assessment.heightForAgeStatus, equals('Normal'));
+      expect(assessment.weightForLengthStatus, equals('Normal'));
+      expect(assessment.statusSummary, equals('Normal'));
+    });
+
+    test('3. Truly SAM child: 2-month boy with weight 3.9 kg, length 58.0 cm (or bilateral edema)', () {
+      final assessment = GrowthClassifier.assess(
+        weightKg: 3.9,
+        heightCm: 58.0,
+        ageMonths: 2,
+        ageInDays: 61,
+        gender: 'Boy',
+      );
+
+      expect(assessment.isInvalid, isFalse);
+      expect(assessment.weightForLengthStatus, equals('SAM'));
+      expect(assessment.statusSummary, equals('Severe'));
+
+
+      // Test with bilateral pitting edema
+      final edemaAssessment = GrowthClassifier.assess(
+        weightKg: 5.6,
+        heightCm: 58.4,
+        ageMonths: 2,
+        ageInDays: 61,
+        gender: 'Boy',
+        edema: true,
+      );
+      expect(edemaAssessment.weightForLengthStatus, equals('SAM'));
+      expect(edemaAssessment.statusSummary, equals('Severe'));
+    });
+
+    test('4. Truly Obese child: 2-month boy with weight 6.8 kg, length 55.0 cm', () {
+      final assessment = GrowthClassifier.assess(
+        weightKg: 6.8,
+        heightCm: 55.0,
+        ageMonths: 2,
+        ageInDays: 61,
+        gender: 'Boy',
+      );
+
+      expect(assessment.isInvalid, isFalse);
+      expect(assessment.weightForLengthStatus, equals('Obese'));
+      expect(assessment.statusSummary, equals('Obese'));
+    });
+
+    test('5. Boundary test at exactly 45.0 cm length (normal newborn weight 2.5 kg)', () {
+      final assessment = GrowthClassifier.assess(
+        weightKg: 2.5,
+        heightCm: 45.0,
+        ageMonths: 0,
+        ageInDays: 5,
+        gender: 'Boy',
+      );
+
+      expect(assessment.isInvalid, isFalse);
+      expect(assessment.weightForAgeStatus, equals('Normal'));
+      expect(assessment.weightForLengthStatus, equals('Normal'));
+    });
+
+    test('6. Same weight (6.8 kg) and height (65.0 cm) at 4 months vs 14 months produces different statuses', () {
+      // At 4 months: 6.8 kg / 65.0 cm is Normal (Median WFA is 7.0 kg, Median HFA is 63.9 cm)
+      final at4Mo = GrowthClassifier.assess(
+        weightKg: 6.8,
+        heightCm: 65.0,
+        ageMonths: 4,
+        ageInDays: 122,
+        gender: 'Boy',
+      );
+      expect(at4Mo.weightForAgeStatus, equals('Normal'));
+      expect(at4Mo.heightForAgeStatus, equals('Normal'));
+
+      // At 14 months: 6.8 kg / 65.0 cm is Severely Underweight (< 7.2 kg) and Severely Stunted (< 70.6 cm)
+      final at14Mo = GrowthClassifier.assess(
+        weightKg: 6.8,
+        heightCm: 65.0,
+        ageMonths: 14,
+        ageInDays: 426,
+        gender: 'Boy',
+      );
+      expect(at14Mo.weightForAgeStatus, equals('Severely Underweight'));
+      expect(at14Mo.heightForAgeStatus, equals('Severely Stunted'));
+    });
+
+
+    test('7. Record saved at 2 months keeps its status when viewed 3 months later (age immutability)', () {
+      final measDate = DateTime(2026, 2, 1);
+      final birthDate = DateTime(2025, 12, 1); // 2 months old at measurement
+      final ageInDays = measDate.difference(birthDate).inDays; // ~62 days
+
+      final assessment = GrowthClassifier.assess(
+        weightKg: 5.6,
+        heightCm: 58.4,
+        ageMonths: 2,
+        ageInDays: ageInDays,
+        gender: 'Boy',
+      );
+
+      final record = Measurement(
+        date: measDate,
+        weightKg: 5.6,
+        heightCm: 58.4,
+        bilateralPittingEdema: false,
+        weightForAgeStatus: assessment.weightForAgeStatus,
+        heightForAgeStatus: assessment.heightForAgeStatus,
+        weightForLengthStatus: assessment.weightForLengthStatus,
+        customBmi: assessment.bmi,
+        customBmiStatus: assessment.weightForLengthStatus,
+        ageInDays: ageInDays,
+        ageInMonths: 2,
+      );
+
+      // When serialized to map and back (simulating storage in Hive)
+      final map = record.toMap();
+      final loadedRecord = Measurement.fromMap(map);
+
+      // Verify that viewing 3 months later (e.g. today May 1, 2026) does not mutate the historical status
+      expect(loadedRecord.weightForAgeStatus, equals('Normal'));
+      expect(loadedRecord.heightForAgeStatus, equals('Normal'));
+      expect(loadedRecord.effectiveWastingStatus, equals('Normal'));
+      expect(loadedRecord.ageInDays, equals(ageInDays));
+      expect(loadedRecord.ageInMonths, equals(2));
+    });
+  });
 }
+
 
 

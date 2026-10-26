@@ -68,16 +68,26 @@ class DashboardRepository {
         .getEnrolledChildren(_currentBarangay)
         .length;
 
+    final now = DateTime.now();
+    final dueForWeighingCount = activeChildren.where((c) {
+      final m = measRepo.getLatestPlausible(c.id);
+      if (m == null) return true; // not weighed yet
+      return m.isDueForWeighing(now, childAgeMonths: c.ageInMonths);
+    }).length;
+
     return [
       StatCardData(
         label: 'Children (0-59 mos)',
         value: '${activeChildren.length}',
-        subtitle: childrenThisMonth > 0
-            ? '$childrenThisMonth new this month'
-            : 'No new this month',
+        subtitle: dueForWeighingCount > 0
+            ? '$dueForWeighingCount due for weighing'
+            : (childrenThisMonth > 0
+                ? '$childrenThisMonth new this month'
+                : 'All up to date'),
         accentColor: const Color(0xFF1B5E20), // dark green
         icon: Icons.child_care_rounded,
       ),
+
       StatCardData(
         label: 'Lactating Mothers',
         value: '${activeMothers.length}',

@@ -1,3 +1,4 @@
+import 'growth_classifier.dart';
 import 'growth_range_config.dart';
 
 enum ValidationSeverity {
@@ -94,6 +95,8 @@ class MeasurementValidator {
     required double weightKg,
     double? muacCm,
     int? ageMonths,
+    String? gender,
+    int? ageInDays,
   }) {
     // For children 0-59 months: height 45-125 cm, weight 2-30 kg, MUAC 8-20 cm (if entered)
     if (ageMonths == null || (ageMonths >= 0 && ageMonths <= 59)) {
@@ -106,9 +109,22 @@ class MeasurementValidator {
       if (muacCm != null && muacCm > 0 && (muacCm < minPlausibleMuacCm || muacCm > maxPlausibleMuacCm)) {
         return false;
       }
+
+      // Check WHO z-score plausibility
+      if (gender != null && ageMonths != null) {
+        final assessment = GrowthClassifier.assess(
+          weightKg: weightKg,
+          heightCm: heightCm,
+          ageMonths: ageMonths,
+          ageInDays: ageInDays,
+          gender: gender,
+        );
+        if (assessment.isInvalid) return false;
+      }
     }
     return true;
   }
+
 
   /// Returns specific field violation message(s) if out of plausible range.
   static String getPlausibilityErrorDetail({
