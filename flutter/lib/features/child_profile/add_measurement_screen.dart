@@ -209,14 +209,12 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     );
     if (hRes.isError) return null;
 
-    if (_isMuacEligible) {
-      final rawMuac = _muacController.text.trim();
-      if (rawMuac.isNotEmpty) {
-        final m = MeasurementValidator.parseDecimal(rawMuac);
-        if (m != null) {
-          final mRes = MeasurementValidator.checkMuac(m, _assessmentAgeMonths);
-          if (mRes.isError) return null;
-        }
+    final rawMuac = _isMuacEligible ? _muacController.text.trim() : null;
+    if (rawMuac != null && rawMuac.isNotEmpty) {
+      final m = MeasurementValidator.parseDecimal(rawMuac);
+      if (m != null) {
+        final mRes = MeasurementValidator.checkMuac(m, _assessmentAgeMonths);
+        if (mRes.isError) return null;
       }
     }
 
@@ -238,23 +236,21 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
     final hMeters = h / 100;
     final bmiVal = double.parse((w / (hMeters * hMeters)).toStringAsFixed(2));
-    String bmiStatus = 'Normal';
-    if (bmiVal < 18.5) {
-      bmiStatus = 'Underweight';
-    } else if (bmiVal < 25.0) {
-      bmiStatus = 'Normal';
-    } else if (bmiVal < 30.0) {
-      bmiStatus = 'Overweight';
-    } else {
-      bmiStatus = 'Obese';
-    }
+    final effectiveWasting = _edema ? 'SAM' : wastingStatus;
+
+    final isPlausible = MeasurementValidator.isPlausibleRecord(
+      heightCm: h,
+      weightKg: w,
+      muacCm: rawMuac != null ? MeasurementValidator.parseDecimal(rawMuac) : null,
+      ageMonths: _assessmentAgeMonths,
+    );
 
     return (
-      weight: weightStatus,
-      height: heightStatus,
-      wasting: _edema ? 'SAM' : wastingStatus,
+      weight: isPlausible ? weightStatus : 'Needs re-measurement',
+      height: isPlausible ? heightStatus : 'Needs re-measurement',
+      wasting: isPlausible ? effectiveWasting : 'Needs re-measurement',
       bmi: bmiVal,
-      bmiStatus: bmiStatus,
+      bmiStatus: isPlausible ? effectiveWasting : 'Needs re-measurement',
     );
   }
 
@@ -939,12 +935,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                               runSpacing: 6,
                               children: [
                                 StatusBadge(
-                                  label: 'BMI: ${result.bmi} (${result.bmiStatus})',
-                                  color: result.bmiStatus == 'Normal'
-                                      ? AppColors.primaryGreen
-                                      : result.bmiStatus == 'Underweight'
-                                          ? AppColors.statOrange
-                                          : AppColors.statRed,
+                                  label: 'BMI: ${result.bmi}',
+                                  color: ChildStatusMeta.colorFor(result.wasting),
                                 ),
                                 StatusBadge(
                                   label: 'WFA: ${result.weight}',

@@ -19,18 +19,22 @@ class ReferralNeedsService {
 
   bool _isChildSevere(Child c) {
     if (!c.isActive) return false;
+    final latest = _measurementRepo.getLatestPlausible(c.id);
+    if (latest != null) {
+      return latest.weightForAgeStatus == 'Severely Underweight' ||
+          latest.heightForAgeStatus == 'Severely Stunted' ||
+          latest.effectiveWastingStatus == 'SAM';
+    }
     if (c.nutritionStatus == 'Needs re-measurement' ||
         c.stuntingStatus == 'Needs re-measurement' ||
         c.wastingStatus == 'Needs re-measurement') {
       return false;
     }
-    final measurements = _measurementRepo.getForChild(c.id);
-    if (measurements.isNotEmpty && !measurements.first.isPlausible) {
-      return false;
-    }
+    final w = c.wastingStatus.trim().toUpperCase();
     return c.nutritionStatus == 'Severely Underweight' ||
         c.stuntingStatus == 'Severely Stunted' ||
-        c.wastingStatus == 'SAM';
+        w == 'SAM' ||
+        w == 'SEVERELY WASTED';
   }
 
   bool _isChildReferralActiveOrResolved(Child c) {

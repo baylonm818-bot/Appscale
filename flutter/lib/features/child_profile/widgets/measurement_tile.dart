@@ -216,14 +216,6 @@ class MeasurementTile extends StatelessWidget {
                             ),
                           ),
                           StatusBadge(
-                            label: 'BMI: ${measurement.bmi} (${measurement.bmiStatus})',
-                            color: measurement.bmiStatus == 'Normal'
-                                ? AppColors.primaryGreen
-                                : measurement.bmiStatus == 'Underweight'
-                                    ? AppColors.statOrange
-                                    : AppColors.statRed,
-                          ),
-                          StatusBadge(
                             label: wastingLabel,
                             color: ChildStatusMeta.colorFor(wastingLabel),
                           ),

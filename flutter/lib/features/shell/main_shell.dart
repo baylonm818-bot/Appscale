@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/main_scaffold.dart';
 import '../beneficiary/add_profile_sheet.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -70,6 +71,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     return (user?['role'] ?? '').toString().toLowerCase() == 'bns';
   }
 
+  bool _isRestoring = false;
+  bool _restoreFailed = false;
+
   @override
   Widget build(BuildContext context) {
     return MainScaffold(
@@ -89,15 +93,81 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           );
         }
       },
-      body: IndexedStack(
-        index: _navIndex,
+      body: Column(
         children: [
-          DashboardBody(onNavigateToMasterlist: _navigateToMasterlist),
-          MasterlistScreen(key: _masterlistKey),
-          ProgramScreen(
-            onNavigateToHome: () => setState(() => _navIndex = 0),
+          if (_isRestoring)
+            Container(
+              width: double.infinity,
+              color: AppColors.primaryGreen.withValues(alpha: 0.12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(AppColors.primaryGreen),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Syncing data with cloud in background...',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.darkGreen,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (_restoreFailed)
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFFFF3E0),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off, size: 14, color: Color(0xFFE65100)),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Cloud sync failed. Data available offline.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFFBF360C)),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _restoreFromServer,
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    child: const Text(
+                      'Retry',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFE65100),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: IndexedStack(
+              index: _navIndex,
+              children: [
+                DashboardBody(onNavigateToMasterlist: _navigateToMasterlist),
+                MasterlistScreen(key: _masterlistKey),
+                ProgramScreen(
+                  onNavigateToHome: () => setState(() => _navIndex = 0),
+                ),
+                const ReportsHomeScreen(),
+              ],
+            ),
           ),
-          const ReportsHomeScreen(),
         ],
       ),
     );
@@ -159,14 +229,33 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final token = _settings.authToken;
     if (barangay.isEmpty || token == null) return;
 
+    if (mounted) {
+      setState(() {
+        _isRestoring = true;
+        _restoreFailed = false;
+      });
+    }
+
     try {
-      await SyncService.instance.pullFromServer(
+      final res = await SyncService.instance.pullFromServer(
         barangay: barangay,
         token: token,
       );
       await _referralRepo.pullLatest(barangay: barangay);
+      if (mounted) {
+        setState(() {
+          _isRestoring = false;
+          _restoreFailed = !res.success;
+        });
+      }
     } catch (e) {
       debugPrint('Auto-restore failed (offline or server error): $e');
+      if (mounted) {
+        setState(() {
+          _isRestoring = false;
+          _restoreFailed = true;
+        });
+      }
     }
   }
 
@@ -302,7 +391,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         final dayStr = diffDays == 0 ? 'Today' : 'Tomorrow';
         PhoneSystemNotification.notify(
           title: 'Upcoming: ${s.title}',
-          message: '$dayStr (${s.programType}) at ${s.location} (${s.startTime}). Target: ${s.targetGroup.isNotEmpty ? s.targetGroup : "All participants"}',
+          message: '$dayStr (${s.programType}) at ${s.location} (${s.startTime}). Target: ${s.readableTargetGroup}',
         );
       }
     }

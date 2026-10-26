@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/local/child_repository.dart';
 import '../../../data/local/feeding_enrollment_repository.dart';
+import '../../../data/local/measurement_repository.dart';
 import '../../../data/local/hive_boxes.dart';
 import '../../../data/local/mother_repository.dart';
 import '../../masterlist/utils/child_status_meta.dart';
@@ -34,13 +35,34 @@ class DashboardRepository {
     final mothersThisMonth = activeMothers
         .where((m) => _isThisMonth(m.createdAt))
         .length;
-    // SAM = wasting SAM (weight-for-length/height < -3SD), strictly per clinical definition.
-    // Exclude records flagged as Needs re-measurement / implausible values.
-    final samCases = activeChildren
-        .where((c) =>
-            ChildStatusMeta.formatStatus(c.wastingStatus) == 'SAM' &&
-            c.wastingStatus != 'Needs re-measurement')
-        .length;
+    // SAM = Severe Acute Malnutrition (weight-for-length/height < -3SD or bilateral pitting edema).
+    // Severe = Any severe condition: Severely Underweight (WFA), Severely Stunted (HFA), or SAM (WFH).
+    // Both use the child's latest valid measurement from MeasurementRepository.
+    final measRepo = MeasurementRepository();
+    final samChildren = activeChildren.where((c) {
+      if (c.wastingStatus == 'Needs re-measurement') return false;
+      final m = measRepo.getLatestPlausible(c.id);
+      if (m != null) {
+        return m.effectiveWastingStatus == 'SAM';
+      }
+      final w = c.wastingStatus.trim().toUpperCase();
+      return w == 'SAM' || w == 'SEVERELY WASTED';
+    }).toList();
+
+    final severeChildren = activeChildren.where((c) {
+      final m = measRepo.getLatestPlausible(c.id);
+      if (m != null) {
+        return m.weightForAgeStatus == 'Severely Underweight' ||
+            m.heightForAgeStatus == 'Severely Stunted' ||
+            m.effectiveWastingStatus == 'SAM';
+      }
+      return c.nutritionStatus == 'Severely Underweight' ||
+          c.stuntingStatus == 'Severely Stunted' ||
+          c.wastingStatus.trim().toUpperCase() == 'SAM' ||
+          c.wastingStatus.trim().toUpperCase() == 'SEVERELY WASTED';
+    }).toList();
+
+    final samCases = samChildren.length;
 
     final enrolledCount = FeedingEnrollmentRepository()
         .getEnrolledChildren(_currentBarangay)
@@ -69,8 +91,10 @@ class DashboardRepository {
         label: 'SAM Cases',
         value: '$samCases',
         subtitle: samCases > 0
-            ? '$samCases acute wasting'
-            : 'No active cases',
+            ? '$samCases acute wasting · ${severeChildren.length} severe'
+            : (severeChildren.isNotEmpty
+                ? '${severeChildren.length} severe (no acute SAM)'
+                : 'No active cases'),
         accentColor: const Color(0xFFC62828), // deep red / terracotta
         icon: Icons.warning_amber_rounded,
       ),

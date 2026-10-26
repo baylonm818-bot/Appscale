@@ -778,7 +778,7 @@ class _VitaminAScreenState extends State<VitaminAScreen>
                     if (s.targetGroup.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Target: ${s.targetGroup}',
+                        'Target: ${s.readableTargetGroup}',
                         style: AppTextStyles.caption.copyWith(
                           fontSize: 11,
                           color: AppColors.darkGreen,

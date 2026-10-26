@@ -8,6 +8,7 @@ import '../../../../data/local/feeding_schedule_repository.dart';
 import '../../../../data/local/program_schedule_repository.dart';
 import '../../../../data/local/hive_boxes.dart';
 import '../../../../data/local/measurement_repository.dart';
+import '../../../../data/models/measurement.dart';
 import '../../../../shared/utils/app_page_route.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../set_feeding_schedule_screen.dart';
@@ -39,11 +40,24 @@ class OverviewTab extends StatelessWidget {
         ? programFeedingSchedules.first
         : null;
 
-    final samCount = enrolled.where((c) => c.wastingStatus == 'SAM').length;
-    final mamCount = enrolled.where((c) => c.wastingStatus == 'MAM').length;
-    final recoveredCount = enrolled
-        .where((c) => c.wastingStatus == 'Normal')
-        .length;
+    final measRepo = MeasurementRepository();
+    final samCount = enrolled.where((c) {
+      final m = measRepo.getLatestPlausible(c.id);
+      if (m != null) return m.effectiveWastingStatus == 'SAM';
+      final w = c.wastingStatus.trim().toUpperCase();
+      return w == 'SAM' || w == 'SEVERELY WASTED';
+    }).length;
+    final mamCount = enrolled.where((c) {
+      final m = measRepo.getLatestPlausible(c.id);
+      if (m != null) return m.effectiveWastingStatus == 'MAM';
+      final w = c.wastingStatus.trim().toUpperCase();
+      return w == 'MAM' || w == 'MODERATELY WASTED';
+    }).length;
+    final recoveredCount = enrolled.where((c) {
+      final m = measRepo.getLatestPlausible(c.id);
+      if (m != null) return m.effectiveWastingStatus == 'Normal';
+      return c.wastingStatus == 'Normal';
+    }).length;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -371,18 +385,34 @@ class _WeightTrendRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final measurements = MeasurementRepository().getForChildAscending(childId);
-    String trendLabel = 'No measurements yet';
+    final enrolledDate = FeedingEnrollmentRepository().enrolledAt(childId);
+    final allMeasurements = MeasurementRepository().getForChildAscending(childId);
+    // Strict plausibility check: exclude any invalid measurements
+    final validMeasurements = allMeasurements.where((m) => m.isPlausible).toList();
+
+    // Filter measurements relevant to feeding program: on or close to enrollment date onwards
+    List<Measurement> feedingMeasurements = validMeasurements;
+    if (enrolledDate != null) {
+      final enrollmentWindow = enrolledDate.subtract(const Duration(days: 14));
+      final sinceEnrollment = validMeasurements
+          .where((m) => !m.date.isBefore(enrollmentWindow))
+          .toList();
+      if (sinceEnrollment.isNotEmpty) {
+        feedingMeasurements = sinceEnrollment;
+      }
+    }
+
+    String trendLabel = 'No valid measurements yet';
     Color trendColor = AppColors.textMuted;
-    if (measurements.length >= 2) {
-      final diff = measurements.last.weightKg - measurements.first.weightKg;
+    if (feedingMeasurements.length >= 2) {
+      final diff = feedingMeasurements.last.weightKg - feedingMeasurements.first.weightKg;
       trendLabel =
           '${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(1)} kg since enrollment';
       trendColor = diff > 0
           ? AppColors.primaryGreen
           : (diff < 0 ? AppColors.statRed : AppColors.textMuted);
-    } else if (measurements.length == 1) {
-      trendLabel = 'Only 1 measurement so far';
+    } else if (feedingMeasurements.length == 1) {
+      trendLabel = '${feedingMeasurements.first.weightKg} kg (Baseline)';
     }
 
     return Container(

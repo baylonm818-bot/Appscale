@@ -33,6 +33,12 @@ class MeasurementRepository {
   List<Measurement> getForChildAscending(String childId) =>
       getForChild(childId).reversed.toList();
 
+  /// Returns the latest VALID (plausible) measurement for a child, or null if none exist.
+  Measurement? getLatestPlausible(String childId) {
+    final list = getForChild(childId).where((m) => m.isPlausible).toList();
+    return list.isNotEmpty ? list.first : null;
+  }
+
   int get totalCount {
     int count = 0;
     for (final raw in _box.values) {

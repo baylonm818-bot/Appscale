@@ -6,7 +6,6 @@ import '../../core/theme/app_text_styles.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/remote/auth_api.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../../data/remote/sync_service.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_text_field.dart';
 import '../shell/main_shell.dart';
@@ -75,92 +74,21 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       await _settings.setAuthUser(userMap);
-      await _settings.refreshProfileFromServer();
 
-      // ── Restore server data to local Hive ────────────────────────────────
-      // This ensures data survives app reinstalls and account switches.
-      try {
-        final barangay = _settings.authUser?['barangay'] as String?;
-        final newUserId = _settings.authUser?['user_id']?.toString() ?? '';
-
-        // Detect account switch: clear beneficiary data if a different user logged in
-        final prevUserId = Hive.box(HiveBoxes.settings).get('last_user_id') as String? ?? '';
-        if (prevUserId.isNotEmpty && prevUserId != newUserId) {
-          await Hive.box(HiveBoxes.children).clear();
-          await Hive.box(HiveBoxes.mothers).clear();
-          await Hive.box(HiveBoxes.measurements).clear();
-          await Hive.box(HiveBoxes.referrals).clear();
-          await Hive.box(HiveBoxes.notifications).clear();
-          debugPrint('Account switched ($prevUserId→$newUserId): cleared local Hive data.');
-        }
-        await Hive.box(HiveBoxes.settings).put('last_user_id', newUserId);
-
-        if (barangay != null && barangay.isNotEmpty && mounted) {
-          setState(() {
-            _loginPhase = 'Restoring your data...';
-          });
-
-          // Show non-dismissible restoration dialog with properly sized and styled indicator
-          showDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            builder: (ctx) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
-                      ),
-                    ),
-                    SizedBox(width: 20),
-                    Expanded(
-                      child: Text(
-                        'Restoring your data from cloud...',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.darkGreen,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-
-          final token = _settings.authToken;
-          final result = await SyncService.instance
-              .pullFromServer(
-                barangay: barangay,
-                token: token ?? '',
-              )
-              .timeout(const Duration(seconds: 15));
-
-          if (!result.success) {
-            debugPrint('Server pull after login partially failed: ${result.error}');
-          }
-
-          if (mounted && Navigator.of(context).canPop()) {
-            Navigator.of(context).pop(); // Dismiss restoration dialog
-          }
-        }
-      } catch (seedErr) {
-        if (mounted && Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        }
-        debugPrint('Failed to seed local data after login: $seedErr');
+      // Detect account switch: clear beneficiary data if a different user logged in
+      final prevUserId = Hive.box(HiveBoxes.settings).get('last_user_id') as String? ?? '';
+      if (prevUserId.isNotEmpty && prevUserId != newUserId) {
+        await Hive.box(HiveBoxes.children).clear();
+        await Hive.box(HiveBoxes.mothers).clear();
+        await Hive.box(HiveBoxes.measurements).clear();
+        await Hive.box(HiveBoxes.referrals).clear();
+        await Hive.box(HiveBoxes.notifications).clear();
+        debugPrint('Account switched ($prevUserId→$newUserId): cleared local Hive data.');
       }
+      await Hive.box(HiveBoxes.settings).put('last_user_id', newUserId);
 
+      // Navigate immediately to Home/MainShell as soon as auth succeeds.
+      // Data restoration and sync continue non-blockingly in the background.
       if (!mounted) return;
       Navigator.of(
         context,

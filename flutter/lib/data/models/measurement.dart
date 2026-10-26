@@ -47,12 +47,7 @@ class Measurement {
     if (customBmiStatus != null && customBmiStatus!.isNotEmpty) {
       return customBmiStatus!;
     }
-    final val = bmi;
-    if (val <= 0) return 'Unknown';
-    if (val < 18.5) return 'Underweight';
-    if (val < 25.0) return 'Normal';
-    if (val < 30.0) return 'Overweight';
-    return 'Obese';
+    return effectiveWastingStatus;
   }
 
   /// Edema present overrides the wasting classification to SAM regardless

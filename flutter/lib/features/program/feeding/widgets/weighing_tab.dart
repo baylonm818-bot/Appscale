@@ -110,8 +110,7 @@ class _ChildWeighRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final measurements = MeasurementRepository().getForChild(child.id);
-    final latest = measurements.isNotEmpty ? measurements.first : null;
+    final latest = MeasurementRepository().getLatestPlausible(child.id);
     final isPriority =
         child.nutritionStatus == 'Severely Underweight' ||
         child.wastingStatus == 'SAM' ||

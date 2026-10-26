@@ -83,16 +83,15 @@ class _ChildProgramsTabState extends State<ChildProgramsTab> {
           final vitARecords = VitaminARepository().getByChildId(widget.child.id);
           final dewormingRecords = DewormingRepository().getByChildId(widget.child.id);
 
-          // Calculate attendance
+          // Calculate attendance: only count on/after enrollment date, cap at elapsed days, no future dates
           final attRepo = FeedingAttendanceRepository();
-          final loggedDates = attRepo.getLoggedDates(widget.child.barangay);
-          var daysPresent = 0;
-          for (final d in loggedDates) {
-            final statuses = attRepo.getForDate(widget.child.barangay, d);
-            if (statuses[widget.child.id] == 'Present') {
-              daysPresent++;
-            }
-          }
+          final daysPresent = isEnrolledInFeeding || wasEverEnrolled
+              ? attRepo.getAttendedDaysForChild(
+                  widget.child.barangay,
+                  widget.child.id,
+                  enrolledDate: enrolledDate,
+                )
+              : 0;
 
           // Upcoming schedules for each program
           final upcomingSchedules = ProgramScheduleRepository().getUpcoming(widget.child.barangay);
@@ -289,7 +288,11 @@ class _ChildProgramsTabState extends State<ChildProgramsTab> {
             title: 'Vitamin A Supplementation',
             subtitle: hasVitA
                 ? '${vitARecords.length} dose(s) recorded'
-                : 'Pending / Not yet received',
+                : (widget.child.ageInMonths < 6
+                    ? 'Not eligible (<6 mos)'
+                    : (widget.child.ageInMonths > 59
+                        ? 'Not eligible (>59 mos)'
+                        : 'Pending / Not yet received')),
             isChecked: hasVitA,
             color: AppColors.statAmber,
           ),
@@ -297,7 +300,11 @@ class _ChildProgramsTabState extends State<ChildProgramsTab> {
             title: 'Deworming Tablet / Syrup',
             subtitle: hasDeworming
                 ? '${dewormingRecords.length} round(s) recorded'
-                : 'Pending / Not yet received',
+                : (!DewormingRepository.isEligible(widget.child.ageInMonths)
+                    ? (widget.child.ageInMonths < 12
+                        ? 'Not eligible (<12 mos)'
+                        : 'Not eligible (>59 mos)')
+                    : 'Pending / Not yet received'),
             isChecked: hasDeworming,
             color: AppColors.statOrange,
           ),
@@ -926,14 +933,23 @@ class _ChildProgramsTabState extends State<ChildProgramsTab> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.add_circle, color: AppColors.darkGreen),
-                tooltip: 'Record Dose',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    appPageRoute(RecordVitaminAScreen(initialChild: child)),
-                  );
-                },
+                icon: Icon(
+                  Icons.add_circle,
+                  color: age >= 6 && age <= 59
+                      ? AppColors.darkGreen
+                      : AppColors.border,
+                ),
+                tooltip: age >= 6 && age <= 59
+                    ? 'Record Dose'
+                    : (age < 6 ? 'Not eligible (<6 mos)' : 'Not eligible (>59 mos)'),
+                onPressed: age >= 6 && age <= 59
+                    ? () {
+                        Navigator.push(
+                          context,
+                          appPageRoute(RecordVitaminAScreen(initialChild: child)),
+                        );
+                      }
+                    : null,
               ),
             ],
           ),
@@ -1081,20 +1097,23 @@ class _ChildProgramsTabState extends State<ChildProgramsTab> {
                   ],
                 ),
               ),
-              if (isEligible)
-                IconButton(
-                  icon: const Icon(
-                    Icons.add_circle,
-                    color: AppColors.darkGreen,
-                  ),
-                  tooltip: 'Record Deworming',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      appPageRoute(RecordDewormingScreen(initialChild: child)),
-                    );
-                  },
+              IconButton(
+                icon: Icon(
+                  Icons.add_circle,
+                  color: isEligible ? AppColors.darkGreen : AppColors.border,
                 ),
+                tooltip: isEligible
+                    ? 'Record Deworming'
+                    : (child.ageInMonths < 12 ? 'Not eligible (<12 mos)' : 'Not eligible (>59 mos)'),
+                onPressed: isEligible
+                    ? () {
+                        Navigator.push(
+                          context,
+                          appPageRoute(RecordDewormingScreen(initialChild: child)),
+                        );
+                      }
+                    : null,
+              ),
             ],
           ),
           const SizedBox(height: 8),

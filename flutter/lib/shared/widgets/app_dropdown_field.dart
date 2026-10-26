@@ -71,6 +71,8 @@ class AppDropdownField extends StatelessWidget {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: options.contains(value) ? value : null,
+              menuMaxHeight: 300,
+              borderRadius: BorderRadius.circular(12),
               hint: hint != null
                   ? Text(
                       hint!,

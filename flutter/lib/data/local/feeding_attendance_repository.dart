@@ -78,4 +78,40 @@ class FeedingAttendanceRepository {
     }
     return total == 0 ? null : present / total;
   }
+
+  /// Calculates attended days for a child in the 120-day feeding program:
+  /// - Only counts attendance on or after child's enrollment date
+  /// - Never counts future dates
+  /// - Caps at elapsed days since enrollment
+  /// - Maximum capped at 120 days
+  int getAttendedDaysForChild(
+    String barangay,
+    String childId, {
+    DateTime? enrolledDate,
+  }) {
+    final loggedDates = getLoggedDates(barangay);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final enrolled = enrolledDate != null
+        ? DateTime(enrolledDate.year, enrolledDate.month, enrolledDate.day)
+        : null;
+
+    var daysPresent = 0;
+    for (final d in loggedDates) {
+      final dateOnly = DateTime(d.year, d.month, d.day);
+      if (enrolled != null && dateOnly.isBefore(enrolled)) continue;
+      if (dateOnly.isAfter(today)) continue;
+      final statuses = getForDate(barangay, d);
+      if (statuses[childId] == 'Present') {
+        daysPresent++;
+      }
+    }
+    if (enrolled != null) {
+      final elapsedDays = today.difference(enrolled).inDays + 1;
+      if (daysPresent > elapsedDays) {
+        daysPresent = elapsedDays;
+      }
+    }
+    return daysPresent.clamp(0, 120);
+  }
 }

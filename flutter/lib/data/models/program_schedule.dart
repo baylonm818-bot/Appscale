@@ -29,6 +29,37 @@ class ProgramSchedule {
     required this.createdAt,
   });
 
+  String get readableTargetGroup {
+    final raw = targetGroup.trim();
+    if (raw.isEmpty) return 'All Beneficiaries';
+    final lower = raw.toLowerCase().replaceAll('_', ' ');
+    switch (lower) {
+      case 'bns':
+        return 'BNS';
+      case 'bhw':
+        return 'BHW';
+      case 'all':
+      case 'all beneficiaries':
+      case 'beneficiaries':
+        return 'All Beneficiaries';
+      case 'children':
+      case '0 59 mos':
+      case '0-59 mos':
+        return 'Children (0-59 mos)';
+      case 'lactating':
+      case 'lactating mothers':
+        return 'Lactating Mothers';
+      case 'pregnant':
+      case 'pregnant women':
+        return 'Pregnant Women';
+      default:
+        if (lower.startsWith('brgy')) {
+          return 'Barangay ${raw.substring(4).trim()}';
+        }
+        return raw;
+    }
+  }
+
   static String normalizeProgramType(String value) {
     final normalized = value.trim();
     if (normalized.isEmpty) return 'Feeding';
