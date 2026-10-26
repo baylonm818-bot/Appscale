@@ -68,6 +68,10 @@ function canAccessSchedule(requester, schedule) {
     return creatorId === 0 || creatorId === requesterId ? true : false;
   }
 
+  if (targetRole && targetRole !== requesterRole && creatorId !== requesterId) {
+    return false;
+  }
+
   if (requesterRole === 'bhw') {
     if (creatorId === requesterId) return true;
     if (!matchesBarangay) return false;
@@ -189,7 +193,7 @@ function ensureSingleActiveRolePerBarangay({ users = [], role, barangay }) {
     const label = targetRole.toUpperCase();
     return {
       allowed: false,
-      message: `Barangay ${normalizedBarangay} already has an active ${label}`,
+      message: `This barangay already has an active ${label}. Deactivate or lock the existing ${label} before adding a replacement.`,
     };
   }
 
