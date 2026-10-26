@@ -10,11 +10,18 @@ import '../../../shared/widgets/empty_state.dart';
 import 'edit_measurement_dialog.dart';
 import 'measurement_tile.dart';
 
-class HistoryTab extends StatelessWidget {
+class HistoryTab extends StatefulWidget {
   final String childId;
   final Child? child;
 
   const HistoryTab({super.key, required this.childId, this.child});
+
+  @override
+  State<HistoryTab> createState() => _HistoryTabState();
+}
+
+class _HistoryTabState extends State<HistoryTab> {
+  bool _newestFirst = true;
 
   Future<void> _handleEdit(BuildContext context, Child resolvedChild, Measurement m) async {
     final updated = await EditMeasurementDialog.show(
@@ -74,17 +81,61 @@ class HistoryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final measurements = MeasurementRepository().getForChild(childId);
-    final resolvedChild = child ?? ChildRepository().getById(childId);
+    final rawMeasurements = MeasurementRepository().getForChild(widget.childId);
+    final resolvedChild = widget.child ?? ChildRepository().getById(widget.childId);
+
+    final measurements = List<Measurement>.from(rawMeasurements);
+    measurements.sort((a, b) => _newestFirst ? b.date.compareTo(a.date) : a.date.compareTo(b.date));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Measurement History',
-            style: AppTextStyles.h1.copyWith(fontSize: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Measurement History',
+                style: AppTextStyles.h1.copyWith(fontSize: 18),
+              ),
+              if (measurements.isNotEmpty)
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _newestFirst = !_newestFirst;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _newestFirst ? Icons.arrow_downward : Icons.arrow_upward,
+                          size: 14,
+                          color: AppColors.primaryGreen,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _newestFirst ? 'Newest' : 'Oldest',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: AppSpacing.md),
           if (measurements.isEmpty)
@@ -98,7 +149,7 @@ class HistoryTab extends StatelessWidget {
               measurements.length,
               (i) => MeasurementTile(
                 measurement: measurements[i],
-                isLatest: i == 0,
+                isLatest: _newestFirst ? (i == 0) : (i == measurements.length - 1),
                 onEdit: resolvedChild != null
                     ? () => _handleEdit(context, resolvedChild, measurements[i])
                     : null,

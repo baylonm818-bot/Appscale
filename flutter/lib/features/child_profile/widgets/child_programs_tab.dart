@@ -169,21 +169,28 @@ class _ChildProgramsTabState extends State<ChildProgramsTab> {
                     ),
                   ),
                 ],
-              _buildFeedingSection(
-                context,
-                isEnrolledInFeeding,
-                enrolledDate,
-                daysPresent,
-                nextSchedule: nextFeeding,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              _buildVitaminASection(context, vitARecords, nextSchedule: nextVitA),
-              const SizedBox(height: AppSpacing.lg),
-              _buildDewormingSection(context, dewormingRecords, nextSchedule: nextDeworming),
-              const SizedBox(height: 48),
-            ],
-          ),
-        );
+                _buildServicesProvidedChecklist(
+                  context,
+                  isEnrolledInFeeding: isEnrolledInFeeding,
+                  vitARecords: vitARecords,
+                  dewormingRecords: dewormingRecords,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _buildFeedingSection(
+                  context,
+                  isEnrolledInFeeding,
+                  enrolledDate,
+                  daysPresent,
+                  nextSchedule: nextFeeding,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _buildVitaminASection(context, vitARecords, nextSchedule: nextVitA),
+                const SizedBox(height: AppSpacing.lg),
+                _buildDewormingSection(context, dewormingRecords, nextSchedule: nextDeworming),
+                const SizedBox(height: 48),
+              ],
+            ),
+          );
         } catch (e) {
           return Center(
             child: Padding(
@@ -221,6 +228,137 @@ class _ChildProgramsTabState extends State<ChildProgramsTab> {
     } catch (_) {
       return null;
     }
+  }
+
+  Widget _buildServicesProvidedChecklist(
+    BuildContext context, {
+    required bool isEnrolledInFeeding,
+    required List<dynamic> vitARecords,
+    required List<dynamic> dewormingRecords,
+  }) {
+    final hasFeeding = isEnrolledInFeeding;
+    final hasVitA = vitARecords.isNotEmpty;
+    final hasDeworming = dewormingRecords.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.checklist_rounded,
+                  color: AppColors.primaryGreen,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Services Provided',
+                      style: AppTextStyles.h2.copyWith(fontSize: 15),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Health & nutrition intervention checklist',
+                      style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          const Divider(color: AppColors.border),
+          _checklistTile(
+            title: 'Vitamin A Supplementation',
+            subtitle: hasVitA
+                ? '${vitARecords.length} dose(s) recorded'
+                : 'Pending / Not yet received',
+            isChecked: hasVitA,
+            color: AppColors.statAmber,
+          ),
+          _checklistTile(
+            title: 'Deworming Tablet / Syrup',
+            subtitle: hasDeworming
+                ? '${dewormingRecords.length} round(s) recorded'
+                : 'Pending / Not yet received',
+            isChecked: hasDeworming,
+            color: AppColors.statOrange,
+          ),
+          _checklistTile(
+            title: 'Supplementary Feeding Program',
+            subtitle: hasFeeding ? 'Currently enrolled' : 'Not enrolled',
+            isChecked: hasFeeding,
+            color: AppColors.primaryGreen,
+          ),
+          _checklistTile(
+            title: 'Routine Growth Monitoring (OPT Plus)',
+            subtitle: 'Regular height & weight monitoring',
+            isChecked: true,
+            color: AppColors.statBlue,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _checklistTile({
+    required String title,
+    required String subtitle,
+    required bool isChecked,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(
+            isChecked ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            color: isChecked ? color : AppColors.textMuted,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isChecked ? AppColors.textPrimary : AppColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildFeedingSection(

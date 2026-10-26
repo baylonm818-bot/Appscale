@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Centralized UI utility for beautiful, floating, branded notification toasts
 /// across the AppScale Flutter app.
@@ -130,5 +131,27 @@ class AppNotificationUI {
         ),
       ),
     );
+  }
+}
+
+/// Utility for firing real, system status-bar phone notifications
+/// for schedules, reminders, downloads, and alerts.
+class PhoneSystemNotification {
+  static const MethodChannel _channel = MethodChannel('com.example.appscale/downloads');
+
+  static Future<void> notify({
+    required String title,
+    required String message,
+    int? id,
+  }) async {
+    try {
+      await _channel.invokeMethod('showPhoneNotification', {
+        'title': title,
+        'message': message,
+        'id': id ?? DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      });
+    } catch (e) {
+      debugPrint('[PhoneSystemNotification] Note: $e');
+    }
   }
 }

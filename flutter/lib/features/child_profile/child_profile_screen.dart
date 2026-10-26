@@ -47,6 +47,133 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
+  Future<void> _handleNoteDisability(Child current) async {
+    final hasCurrentDisability = current.disability.isNotEmpty &&
+        current.disability.toLowerCase() != 'none specified' &&
+        current.disability.toLowerCase() != 'none' &&
+        current.disability.toLowerCase() != 'no';
+
+    bool isDisabilityChecked = hasCurrentDisability;
+    final textController = TextEditingController(
+      text: hasCurrentDisability ? current.disability : '',
+    );
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.accessibility_new,
+                      color: AppColors.primaryGreen,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Disability Note',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Child has a disability / condition',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      isDisabilityChecked ? 'Checked: Specify below' : 'Auto: No disability',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                    value: isDisabilityChecked,
+                    activeColor: AppColors.primaryGreen,
+                    onChanged: (val) {
+                      setDialogState(() {
+                        isDisabilityChecked = val ?? false;
+                        if (!isDisabilityChecked) {
+                          textController.clear();
+                        }
+                      });
+                    },
+                  ),
+                  if (isDisabilityChecked) ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: textController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Specify Disability Details',
+                        hintText: 'e.g. Visual impairment, Cerebral palsy, Autism...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        isDense: true,
+                      ),
+                      maxLines: 2,
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                  ),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (saved == true) {
+      final updatedDisability = (!isDisabilityChecked || textController.text.trim().isEmpty)
+          ? 'None specified'
+          : textController.text.trim();
+
+      await ChildRepository().update(
+        current.copyWith(disability: updatedDisability),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isDisabilityChecked
+                  ? 'Disability note updated: $updatedDisability'
+                  : 'Disability set to None.',
+            ),
+            backgroundColor: AppColors.primaryGreen,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _handleMeasure(Child current) async {
     if (current.isTransferPending) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -283,13 +410,14 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               child: Column(
                 children: [
                   ChildProfileHeader(
-                  child: child,
-                  isActive: child.isActive,
-                  onEditPressed: () => _handleEdit(child),
-                  onStatusActionPressed: () => _handleStatusAction(child),
-                  onMeasurePressed: () => _handleMeasure(child),
-                  onReferralPressed: () => _handleCreateReferral(child),
-                ),
+                    child: child,
+                    isActive: child.isActive,
+                    onEditPressed: () => _handleEdit(child),
+                    onStatusActionPressed: () => _handleStatusAction(child),
+                    onMeasurePressed: () => _handleMeasure(child),
+                    onReferralPressed: () => _handleCreateReferral(child),
+                    onNoteDisabilityPressed: () => _handleNoteDisability(child),
+                  ),
                 if (child.isTransferPending)
                   Container(
                     width: double.infinity,

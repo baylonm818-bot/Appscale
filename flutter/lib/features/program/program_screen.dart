@@ -33,6 +33,9 @@ class ProgramScreen extends StatefulWidget {
 
 class _ProgramScreenState extends State<ProgramScreen> {
   bool _showingPrograms = true;
+  bool _isCalendarView = false;
+  DateTime _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime? _selectedCalendarDay;
   String _selectedFilter = 'All';
   final _scheduleRepo = ProgramScheduleRepository();
   final _settings = SettingsRepository();
@@ -268,43 +271,61 @@ class _ProgramScreenState extends State<ProgramScreen> {
                     'Program Schedules',
                     style: AppTextStyles.h2.copyWith(fontSize: 16),
                   ),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.darkGreen,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                  Row(
+                    children: [
+                      IconButton(
+                        tooltip: _isCalendarView ? 'List view' : 'Calendar view',
+                        icon: Icon(
+                          _isCalendarView ? Icons.view_list_rounded : Icons.calendar_month_rounded,
+                          color: AppColors.darkGreen,
+                          size: 22,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isCalendarView = !_isCalendarView;
+                          });
+                        },
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text(
-                      'Set Schedule',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    onPressed: () async {
-                      final createdType = await Navigator.push<String>(
-                        context,
-                        appPageRoute(
-                          AddProgramScheduleScreen(
-                            prefillProgramType: _selectedFilter == 'All'
-                                ? 'Feeding'
-                                : _selectedFilter,
+                      const SizedBox(width: 4),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.darkGreen,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                      );
-                      if (mounted && createdType != null) {
-                        setState(() {
-                          _selectedFilter = createdType;
-                        });
-                      }
-                    },
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text(
+                          'Set',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        onPressed: () async {
+                          final createdType = await Navigator.push<String>(
+                            context,
+                            appPageRoute(
+                              AddProgramScheduleScreen(
+                                prefillProgramType: _selectedFilter == 'All'
+                                    ? 'Feeding'
+                                    : _selectedFilter,
+                              ),
+                            ),
+                          );
+                          if (mounted && createdType != null) {
+                            setState(() {
+                              _selectedFilter = createdType;
+                            });
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -357,54 +378,299 @@ class _ProgramScreenState extends State<ProgramScreen> {
           ),
         ),
 
-        // Schedules List
+        // Schedules View (Calendar or List)
         Expanded(
-          child: filtered.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.event_available_outlined,
-                          size: 48,
-                          color: AppColors.textMuted,
+          child: _isCalendarView
+              ? _buildCalendarView(filtered)
+              : (filtered.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.event_available_outlined,
+                              size: 48,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No scheduled activities found',
+                              style: AppTextStyles.body.copyWith(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.add),
+                              label: const Text('Schedule an Activity'),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  appPageRoute(const AddProgramScheduleScreen()),
+                                );
+                              },
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No scheduled activities found',
-                          style: AppTextStyles.body.copyWith(
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          icon: const Icon(Icons.add),
-                          label: const Text('Schedule an Activity'),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              appPageRoute(const AddProgramScheduleScreen()),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 100),
-                  itemCount: filtered.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final s = filtered[index];
-                    return _buildScheduleCard(s);
-                  },
-                ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 100),
+                      itemCount: filtered.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final s = filtered[index];
+                        return _buildScheduleCard(s);
+                      },
+                    )),
         ),
       ],
+    );
+  }
+
+  Widget _buildCalendarView(List<ProgramSchedule> schedules) {
+    final year = _calendarMonth.year;
+    final month = _calendarMonth.month;
+    final firstDayOfMonth = DateTime(year, month, 1);
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final leadingEmptyDays = (firstDayOfMonth.weekday % 7); // 0=Sun, 1=Mon...
+
+    final monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    // Selected day schedules or all month schedules
+    final selectedDay = _selectedCalendarDay;
+    final selectedDaySchedules = selectedDay == null
+        ? schedules.where((s) => s.date.year == year && s.date.month == month).toList()
+        : schedules.where((s) =>
+            s.date.year == selectedDay.year &&
+            s.date.month == selectedDay.month &&
+            s.date.day == selectedDay.day).toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Month navigation header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left, color: AppColors.darkGreen),
+                  onPressed: () {
+                    setState(() {
+                      _calendarMonth = DateTime(year, month - 1, 1);
+                      _selectedCalendarDay = null;
+                    });
+                  },
+                ),
+                Text(
+                  '${monthNames[month - 1]} $year',
+                  style: AppTextStyles.h2.copyWith(fontSize: 15, color: AppColors.textPrimary),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right, color: AppColors.darkGreen),
+                  onPressed: () {
+                    setState(() {
+                      _calendarMonth = DateTime(year, month + 1, 1);
+                      _selectedCalendarDay = null;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Days of week header
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: const ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) {
+                return SizedBox(
+                  width: 38,
+                  child: Text(
+                    d,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: d == 'Sun' ? AppColors.statRed : AppColors.textSecondary,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // Calendar Grid
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: leadingEmptyDays + daysInMonth,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              crossAxisSpacing: 4,
+              mainAxisSpacing: 4,
+              childAspectRatio: 0.95,
+            ),
+            itemBuilder: (context, index) {
+              if (index < leadingEmptyDays) {
+                return const SizedBox.shrink();
+              }
+              final dayNum = index - leadingEmptyDays + 1;
+              final cellDate = DateTime(year, month, dayNum);
+              final isToday = DateTime.now().year == year &&
+                  DateTime.now().month == month &&
+                  DateTime.now().day == dayNum;
+              final isSelected = selectedDay != null &&
+                  selectedDay.year == year &&
+                  selectedDay.month == month &&
+                  selectedDay.day == dayNum;
+
+              final daySchedules = schedules.where((s) =>
+                  s.date.year == year &&
+                  s.date.month == month &&
+                  s.date.day == dayNum).toList();
+
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedCalendarDay = null; // Unselect to see all month
+                    } else {
+                      _selectedCalendarDay = cellDate;
+                    }
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.darkGreen
+                        : (isToday
+                            ? AppColors.primaryGreen.withValues(alpha: 0.15)
+                            : Colors.white),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColors.darkGreen
+                          : (isToday ? AppColors.primaryGreen : AppColors.border),
+                      width: isToday || isSelected ? 1.5 : 0.8,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$dayNum',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected
+                              ? Colors.white
+                              : (isToday ? AppColors.primaryGreen : AppColors.textPrimary),
+                        ),
+                      ),
+                      if (daySchedules.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: daySchedules.take(3).map((s) {
+                            Color dotColor;
+                            switch (s.programType) {
+                              case 'Feeding':
+                                dotColor = AppColors.primaryGreen;
+                                break;
+                              case 'Vitamin A':
+                                dotColor = AppColors.statAmber;
+                                break;
+                              case 'Deworming':
+                                dotColor = AppColors.statOrange;
+                                break;
+                              default:
+                                dotColor = Colors.blueAccent;
+                            }
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 1),
+                              width: 5,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: isSelected ? Colors.white : dotColor,
+                                shape: BoxShape.circle,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Selected Day or Month Events Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                selectedDay != null
+                    ? 'Events for ${monthNames[selectedDay.month - 1]} ${selectedDay.day}, ${selectedDay.year}'
+                    : 'Events in ${monthNames[month - 1]} $year',
+                style: AppTextStyles.h3.copyWith(fontSize: 14),
+              ),
+              if (selectedDay != null)
+                TextButton(
+                  onPressed: () => setState(() => _selectedCalendarDay = null),
+                  child: const Text('Show all month', style: TextStyle(fontSize: 11)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          if (selectedDaySchedules.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                'No scheduled activities on this date.',
+                style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+              ),
+            )
+          else
+            ...selectedDaySchedules.map((s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _buildScheduleCard(s),
+                )),
+        ],
+      ),
     );
   }
 

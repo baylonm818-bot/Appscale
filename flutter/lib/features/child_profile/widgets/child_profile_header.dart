@@ -16,6 +16,7 @@ class ChildProfileHeader extends StatelessWidget {
   final VoidCallback onStatusActionPressed;
   final VoidCallback onMeasurePressed;
   final VoidCallback? onReferralPressed;
+  final VoidCallback? onNoteDisabilityPressed;
 
   const ChildProfileHeader({
     super.key,
@@ -25,6 +26,7 @@ class ChildProfileHeader extends StatelessWidget {
     required this.onStatusActionPressed,
     required this.onMeasurePressed,
     this.onReferralPressed,
+    this.onNoteDisabilityPressed,
   });
 
   @override
@@ -203,14 +205,27 @@ class ChildProfileHeader extends StatelessWidget {
           ),
           if (isActive && !child.isTransferPending) ...[
             const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                _MeasureButton(onPressed: onMeasurePressed),
-                if (referralStatus.showReferButton && onReferralPressed != null) ...[
-                  const SizedBox(width: 8),
-                  _ReferralButton(onPressed: onReferralPressed!),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _MeasureButton(onPressed: onMeasurePressed),
+                  if (onNoteDisabilityPressed != null) ...[
+                    const SizedBox(width: 8),
+                    _DisabilityButton(
+                      hasDisability: child.disability.isNotEmpty &&
+                          child.disability.toLowerCase() != 'none specified' &&
+                          child.disability.toLowerCase() != 'none' &&
+                          child.disability.toLowerCase() != 'no',
+                      onPressed: onNoteDisabilityPressed!,
+                    ),
+                  ],
+                  if (referralStatus.showReferButton && onReferralPressed != null) ...[
+                    const SizedBox(width: 8),
+                    _ReferralButton(onPressed: onReferralPressed!),
+                  ],
                 ],
-              ],
+              ),
             ),
           ],
         ],
@@ -350,6 +365,48 @@ class _ReferralButton extends StatelessWidget {
               Text(
                 'Refer',
                 style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DisabilityButton extends StatelessWidget {
+  final bool hasDisability;
+  final VoidCallback onPressed;
+
+  const _DisabilityButton({
+    required this.hasDisability,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: hasDisability
+          ? const Color(0xFF6366F1) // Indigo/Purple accent
+          : Colors.white.withValues(alpha: 0.25),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.accessibility_new, color: Colors.white, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                hasDisability ? 'Disability Noted' : 'Note Disability',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,

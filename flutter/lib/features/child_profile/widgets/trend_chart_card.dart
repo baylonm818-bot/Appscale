@@ -281,8 +281,73 @@ class TrendChartCard extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 14),
+          // WHO Growth Standards / Standard Deviation (SD) Legend
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 13, color: AppColors.textMuted),
+                    const SizedBox(width: 5),
+                    Text(
+                      'WHO Growth Standards / SD Reference',
+                      style: AppTextStyles.caption.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    _sdBadge('<-3SD', 'Severe', const Color(0xFFEF4444)),
+                    _sdBadge('-3SD to -2SD', 'Moderate', const Color(0xFFF97316)),
+                    _sdBadge('-2SD to +2SD', 'Median / Normal', const Color(0xFF22C55E)),
+                    _sdBadge('>+2SD', 'Overweight / High', const Color(0xFF3B82F6)),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _sdBadge(String sd, String label, Color c) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: c,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          '$sd ($label)',
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 

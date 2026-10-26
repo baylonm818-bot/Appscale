@@ -18,6 +18,7 @@ import 'services/excel_table_data.dart';
 import 'services/report_excel_service.dart';
 import 'services/report_pdf_service.dart';
 import 'services/report_download_service.dart';
+import '../../shared/utils/app_notifications.dart';
 
 import '../../data/growth_standards/growth_classifier.dart';
 import '../../data/local/app_data_bus.dart';
@@ -97,6 +98,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
   void _showDownloadSuccess(String savedFileName) {
     if (!mounted) return;
+    PhoneSystemNotification.notify(
+      title: 'Download Complete',
+      message: 'Saved $savedFileName to your Downloads folder.',
+    );
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

@@ -255,6 +255,7 @@ class Child {
 
   Child copyWith({
     String? barangay,
+    String? disability,
     Guardian? guardian,
     String? nutritionStatus,
     String? stuntingStatus,
@@ -274,7 +275,7 @@ class Child {
     address: address,
     barangay: barangay ?? this.barangay,
     belongsToIpGroup: belongsToIpGroup,
-    disability: disability,
+    disability: disability ?? this.disability,
     guardian: guardian ?? this.guardian,
     createdAt: createdAt,
     nutritionStatus: nutritionStatus ?? this.nutritionStatus,

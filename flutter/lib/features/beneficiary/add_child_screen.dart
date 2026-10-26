@@ -106,6 +106,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   DateTime? _birthDate;
   String? _gender;
   bool _belongsToIpGroup = false;
+  bool _hasDisability = false;
   String? _relationship;
   DateTime? _guardianBirthDate;
   bool _guardianIsMonitoredMother = false;
@@ -125,6 +126,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
       _birthDate = existing.birthDate;
       _gender = existing.gender;
       _belongsToIpGroup = existing.belongsToIpGroup;
+      _hasDisability = existing.disability.isNotEmpty &&
+          existing.disability.toLowerCase() != 'none specified' &&
+          existing.disability.toLowerCase() != 'none' &&
+          existing.disability.toLowerCase() != 'no';
       _relationship = existing.guardian.relationship;
       _guardianBirthDate = existing.guardian.birthDate;
       if (existing.guardian.linkedMotherId != null) {
@@ -397,7 +402,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       address: _addressController.text.trim(),
       barangay: _currentBarangay,
       belongsToIpGroup: _belongsToIpGroup,
-      disability: _disabilityController.text.trim().isEmpty
+      disability: (!_hasDisability || _disabilityController.text.trim().isEmpty)
           ? 'None specified'
           : _disabilityController.text.trim(),
       guardian: Guardian(
@@ -768,12 +773,26 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             onChanged: (v) =>
                                 setState(() => _belongsToIpGroup = v),
                           ),
-                          AppTextField(
-                            label: 'Disability, if any',
-                            hint: 'None specified',
-                            icon: Icons.accessibility_new_outlined,
-                            controller: _disabilityController,
+                          AppYesNoToggle(
+                            label: 'Has Disability?',
+                            value: _hasDisability,
+                            onChanged: (v) {
+                              setState(() {
+                                _hasDisability = v;
+                                if (!v) {
+                                  _disabilityController.clear();
+                                }
+                              });
+                            },
                           ),
+                          if (_hasDisability) ...[
+                            AppTextField(
+                              label: 'Specify Disability *',
+                              hint: 'e.g. Visual impairment, Cerebral palsy, etc.',
+                              icon: Icons.accessibility_new_outlined,
+                              controller: _disabilityController,
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: AppSpacing.lg),

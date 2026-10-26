@@ -19,6 +19,7 @@ import '../../data/local/feeding_attendance_repository.dart';
 import '../../data/local/vitamin_a_repository.dart';
 import '../../data/local/deworming_repository.dart';
 import '../../data/local/mother_visit_repository.dart';
+import '../../data/local/program_schedule_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/app_data_bus.dart';
 import '../../data/remote/sync_service.dart';
@@ -110,9 +111,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     Future.microtask(() async {
       await _autoSyncPending();
       await _restoreFromServer();
+      _checkUpcomingScheduleReminders();
     });
     _autoSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _autoSyncPending();
+      _checkUpcomingScheduleReminders();
     });
 
     // Connectivity listener: when coming back online after being offline,
@@ -276,6 +279,32 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       }
     } finally {
       _isHandlingResume = false;
+    }
+  }
+
+  final Set<String> _notifiedScheduleIds = {};
+
+  void _checkUpcomingScheduleReminders() {
+    final barangay = _settings.authUser?['barangay']?.toString() ?? '';
+    final schedules = ProgramScheduleRepository().getUpcoming(barangay);
+    final now = DateTime.now();
+
+    for (final s in schedules) {
+      if (_notifiedScheduleIds.contains(s.id)) continue;
+
+      // If scheduled date is today or tomorrow (upcoming schedule approaching)
+      final diffDays = DateTime(s.date.year, s.date.month, s.date.day)
+          .difference(DateTime(now.year, now.month, now.day))
+          .inDays;
+
+      if (diffDays >= 0 && diffDays <= 1) {
+        _notifiedScheduleIds.add(s.id);
+        final dayStr = diffDays == 0 ? 'Today' : 'Tomorrow';
+        PhoneSystemNotification.notify(
+          title: 'Upcoming: ${s.title}',
+          message: '$dayStr (${s.programType}) at ${s.location} (${s.startTime}). Target: ${s.targetGroup.isNotEmpty ? s.targetGroup : "All participants"}',
+        );
+      }
     }
   }
 }
