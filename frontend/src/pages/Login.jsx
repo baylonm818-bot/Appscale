@@ -677,21 +677,6 @@ export default function LoginPage() {
                 Nutrition & Health Monitoring System
               </p>
             </div>
-
-            {/* 1-Second Animated Loading Progress Bar */}
-            <div className="mt-8 w-56 sm:w-64 h-2 bg-emerald-950/80 rounded-full overflow-hidden border border-emerald-500/30 p-[1px]">
-              <div 
-                className="h-full bg-gradient-to-r from-emerald-400 via-green-300 to-emerald-200 rounded-full"
-                style={{
-                  width: '100%',
-                  animation: 'splash-progress 1s linear forwards'
-                }}
-              />
-            </div>
-
-            <p className="mt-3.5 text-xs text-emerald-300/80 font-mono tracking-wider">
-              Initializing municipal records...
-            </p>
           </div>
         </div>
       )}
