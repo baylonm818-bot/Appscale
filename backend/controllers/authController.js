@@ -68,7 +68,7 @@ exports.checkAccount = async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      'SELECT user_id, role, full_name, email FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND deleted_at IS NULL LIMIT 1',
+      'SELECT user_id, role, first_name, last_name, email FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND deleted_at IS NULL LIMIT 1',
       [email]
     );
 
