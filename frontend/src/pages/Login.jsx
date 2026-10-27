@@ -8,11 +8,12 @@ import { useAuth } from "../components/AuthContext";
 function AppScaleLogo() {
   return (
     <div className="flex flex-col items-center gap-3 animate-fade-up">
-      <div className="w-28 h-28 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-[0_18px_60px_rgba(0,0,0,0.22)] overflow-hidden border-4 border-white/80 ring-4 ring-emerald-400/40 animate-pulse-glow transition-transform duration-300 hover:scale-110">
+      <div className="w-28 h-28 rounded-full bg-white flex items-center justify-center shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden border-4 border-white ring-4 ring-emerald-500/20 transition-transform duration-300 hover:scale-105">
         <img
           src={logo}
           alt="AppScale logo"
-          className="w-24 h-24 object-contain drop-shadow-md animate-float"
+          className="w-24 h-24 object-contain filter-none"
+          style={{ imageRendering: "-webkit-optimize-contrast" }}
           onError={(e) => {
             e.target.style.display = "none";
             e.target.parentElement.innerHTML = `
@@ -23,9 +24,9 @@ function AppScaleLogo() {
         />
       </div>
       <div className="text-center">
-        <span className="text-4xl font-black tracking-tight drop-shadow-md inline-block transition-transform duration-300 hover:scale-105">
+        <span className="text-4xl font-black tracking-tight drop-shadow-md inline-block">
           <span className="text-white">App</span>
-          <span className="animate-shimmer-text">Scale</span>
+          <span className="text-emerald-300">Scale</span>
         </span>
       </div>
     </div>
@@ -248,11 +249,27 @@ function LoginCard() {
   };
 
   return (
-    <div className="w-full max-w-md rounded-[28px] border border-white/40 bg-white/90 p-7 shadow-[0_30px_80px_rgba(10,42,20,0.32)] backdrop-blur-xl sm:p-9 animate-slide-in-right transition-all duration-300 hover:shadow-[0_35px_90px_rgba(10,42,20,0.40)]">
+    <div className="relative w-full max-w-md rounded-[28px] border border-white/40 bg-white/95 p-7 shadow-[0_30px_80px_rgba(10,42,20,0.32)] backdrop-blur-xl sm:p-9 animate-slide-in-right transition-all duration-300 hover:shadow-[0_35px_90px_rgba(10,42,20,0.40)]">
+      {/* ── Top-right X button for Forgot Password Modal ── */}
+      {showForgotPassword && (
+        <button
+          type="button"
+          onClick={() => {
+            setShowForgotPassword(false);
+            setForgotMessage("");
+          }}
+          aria-label="Close"
+          className="absolute right-5 top-5 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all duration-200 border border-slate-200 shadow-sm active:scale-90"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      )}
+
       <div className="mb-8">
-        <h2 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-          <span>Welcome back!</span>
-          <span className="inline-block animate-bounce text-2xl">👋</span>
+        <h2 className="text-3xl font-black tracking-tight text-slate-900">
+          Welcome back!
         </h2>
         <p className="mt-2 text-sm text-slate-500">Sign in to your account to continue</p>
       </div>
@@ -271,26 +288,13 @@ function LoginCard() {
 
       {showForgotPassword ? (
         <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="border-b border-slate-100 pb-3">
             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
               {resetStep === "email" && "Forgot password"}
               {resetStep === "otp" && "Enter OTP"}
               {resetStep === "password" && "Change password"}
             </h3>
-            <button
-              type="button"
-              onClick={() => {
-                setShowForgotPassword(false);
-                setForgotMessage("");
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-red-50 hover:text-red-600 transition-all duration-200 border border-slate-200/60 shadow-sm active:scale-95"
-            >
-              <span>Close</span>
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
 
           {resetStep === "email" && <div>
