@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo1.png";
 import { API_URL } from "../api/config";
 import { useAuth } from "../components/AuthContext";
-
 
 function AppScaleLogo() {
   return (
     <div className="flex flex-col items-center gap-3 animate-fade-up">
-      <div className="w-28 h-28 rounded-full bg-white flex items-center justify-center shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden border-4 border-white ring-4 ring-emerald-500/20 transition-transform duration-300 hover:scale-105">
+      <div className="w-28 h-28 rounded-full bg-white flex items-center justify-center p-2.5 shadow-[0_14px_45px_rgba(0,0,0,0.22)] border-4 border-white/90 ring-4 ring-emerald-400/30 transition-transform duration-300 hover:scale-105">
         <img
           src={logo}
           alt="AppScale logo"
-          className="w-24 h-24 object-contain filter-none"
+          className="w-full h-full object-contain filter-none"
           style={{ imageRendering: "-webkit-optimize-contrast" }}
           onError={(e) => {
             e.target.style.display = "none";
@@ -65,8 +64,46 @@ function LoginCard() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMessage, setForgotMessage] = useState("");
+  const [forgotMessageType, setForgotMessageType] = useState("info"); // 'error' | 'success' | 'info'
+  const [accountStatus, setAccountStatus] = useState("idle"); // 'idle' | 'checking' | 'valid' | 'invalid'
+  const [accountRole, setAccountRole] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Debounced check if account exists in system
+  useEffect(() => {
+    const trimmed = forgotEmail.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed)) {
+      setAccountStatus("idle");
+      setAccountRole("");
+      return;
+    }
+
+    setAccountStatus("checking");
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_URL}/auth/check-account?email=${encodeURIComponent(trimmed)}`);
+        const data = await res.json();
+        if (res.ok && data.exists) {
+          if (data.canReset) {
+            setAccountStatus("valid");
+            setAccountRole(data.role || "Authorized user");
+          } else {
+            setAccountStatus("invalid");
+            setAccountRole("Account not authorized for web reset");
+          }
+        } else {
+          setAccountStatus("not_found");
+          setAccountRole("");
+        }
+      } catch (err) {
+        // Fallback gracefully if endpoint is unavailable
+        setAccountStatus("idle");
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [forgotEmail]);
 
   // ── Load saved email on mount ──
   useEffect(() => {
@@ -135,7 +172,8 @@ function LoginCard() {
     setError("");
 
     if (!forgotEmail.trim()) {
-      setForgotMessage("Please enter the admin email.");
+      setForgotMessageType("error");
+      setForgotMessage("Please enter your registered email address.");
       return;
     }
 
@@ -145,19 +183,25 @@ function LoginCard() {
       const res = await fetch(`${API_URL}/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail }),
+        body: JSON.stringify({ email: forgotEmail.trim() }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Password reset failed.");
+      if (!res.ok) {
+        setForgotMessageType("error");
+        setForgotMessage(data.message || "No account found for this email.");
+        return;
+      }
 
-      setForgotMessage(data.message);
+      setForgotMessageType("success");
+      setForgotMessage(data.message || "OTP sent successfully! Please check your inbox.");
       setResetStep("otp");
       setOtpCode("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      setForgotMessage(err.message);
+      setForgotMessageType("error");
+      setForgotMessage(err.message || "Unable to send OTP. Please try again.");
     } finally {
       setForgotLoading(false);
     }
@@ -282,7 +326,13 @@ function LoginCard() {
       )}
 
       {forgotMessage && (
-        <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div
+          className={`mb-5 rounded-2xl border px-4 py-3 text-sm ${
+            forgotMessageType === "error"
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          }`}
+        >
           {forgotMessage}
         </div>
       )}
@@ -327,6 +377,37 @@ function LoginCard() {
                 <p className="mt-1.5 text-xs text-red-500 font-medium">
                   Please enter a valid email address (e.g., name@domain.com)
                 </p>
+              )}
+
+              {/* ── Real-Time Account Recognition Feedback ── */}
+              {forgotEmail.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(forgotEmail.trim()) && (
+                <div className="mt-2 text-xs">
+                  {accountStatus === "checking" && (
+                    <span className="inline-flex items-center gap-1.5 text-slate-500">
+                      <svg className="w-3.5 h-3.5 appscale-spinner text-slate-500" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Verifying account in system...
+                    </span>
+                  )}
+                  {accountStatus === "valid" && (
+                    <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      <span>✓ Account recognized:</span>
+                      <span className="font-bold text-emerald-800">{accountRole}</span>
+                    </span>
+                  )}
+                  {accountStatus === "not_found" && (
+                    <span className="inline-flex items-center gap-1 text-red-600 font-medium bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                      ✕ No registered account found with this email
+                    </span>
+                  )}
+                  {accountStatus === "invalid" && (
+                    <span className="inline-flex items-center gap-1 text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                      ⚠ {accountRole}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -377,7 +458,10 @@ function LoginCard() {
               disabled={
                 forgotLoading ||
                 !forgotEmail.trim() ||
-                !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(forgotEmail.trim())
+                !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(forgotEmail.trim()) ||
+                accountStatus === "not_found" ||
+                accountStatus === "invalid" ||
+                accountStatus === "checking"
               }
               className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-[#1b5e20] py-3.5 text-sm font-semibold text-white shadow-lg shadow-green-900/20 transition-all hover:bg-[#154a1a] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#1b5e20]"
             >
@@ -551,30 +635,30 @@ export default function LoginPage() {
   const [fadeOutSplash, setFadeOutSplash] = useState(false);
 
   useEffect(() => {
-    // Show splash screen for exactly 5 seconds, then smooth fade out
+    // Show splash screen for exactly 3 seconds, then smooth fade out
     const timer = setTimeout(() => {
       setFadeOutSplash(true);
-      setTimeout(() => setShowSplash(false), 700); // Wait for smooth 700ms fade
-    }, 5000);
+      setTimeout(() => setShowSplash(false), 500); // Wait for smooth 500ms fade
+    }, 3000);
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <>
-      {/* ── High-End Animated Splash Screen (5-second duration) ── */}
+      {/* ── High-End Animated Splash Screen (3-second duration) ── */}
       {showSplash && (
         <div 
-          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-[#061e0b] via-[#0d2f14] to-[#08220e] transition-opacity duration-700 ${
+          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-radial-[circle_at_center,_#0f3e1b_0%,_#09260e_60%,_#051508_100%] transition-opacity duration-500 ${
             fadeOutSplash ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
         >
           <div className="relative flex flex-col items-center px-4">
-            {/* Ambient emerald backlight glow */}
-            <div className="absolute -top-12 -left-12 w-64 h-64 rounded-full bg-emerald-500/20 blur-3xl animate-pulse" />
-            <div className="absolute -bottom-12 -right-12 w-64 h-64 rounded-full bg-green-400/15 blur-3xl animate-pulse" />
+            {/* Ambient soft backlight glow */}
+            <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full bg-emerald-400/15 blur-3xl animate-pulse" />
+            <div className="absolute -bottom-16 -right-16 w-64 h-64 rounded-full bg-green-500/15 blur-3xl animate-pulse" />
 
-            {/* Circular Logo Card - Solid crisp background, fully contained with no clipping */}
-            <div className="relative w-36 h-36 rounded-full bg-white flex items-center justify-center p-3 shadow-[0_20px_60px_rgba(0,0,0,0.35),0_0_40px_rgba(52,211,153,0.3)] border-4 border-emerald-400/80 ring-4 ring-emerald-500/20">
+            {/* Perfect Circular Logo Container - Seamless round frame with no clipping */}
+            <div className="relative w-36 h-36 rounded-full bg-white flex items-center justify-center p-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] border-4 border-white/95 ring-4 ring-emerald-400/30">
               <img
                 src={logo}
                 alt="AppScale Logo"
@@ -594,13 +678,13 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* 5-Second Animated Loading Progress Bar */}
+            {/* 3-Second Animated Loading Progress Bar */}
             <div className="mt-8 w-56 sm:w-64 h-2 bg-emerald-950/80 rounded-full overflow-hidden border border-emerald-500/30 p-[1px]">
               <div 
                 className="h-full bg-gradient-to-r from-emerald-400 via-green-300 to-emerald-200 rounded-full"
                 style={{
                   width: '100%',
-                  animation: 'splash-progress 5s linear forwards'
+                  animation: 'splash-progress 3s linear forwards'
                 }}
               />
             </div>
@@ -614,15 +698,15 @@ export default function LoginPage() {
 
       {/* ── Main Login View ── */}
       <div
-        className="relative flex min-h-screen overflow-hidden bg-[#0f2b1b]"
+        className="relative flex min-h-screen overflow-hidden bg-[#0a2315]"
         style={{
           backgroundImage:
-            "linear-gradient(135deg, rgba(9,42,24,0.88), rgba(35,123,78,0.72), rgba(12,34,22,0.9)), url('https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=1600&q=80')",
+            "linear-gradient(135deg, rgba(6,28,15,0.92), rgba(18,74,42,0.85), rgba(7,24,14,0.94)), url('https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=1600&q=80')",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.12),transparent_25%)]" />
+        <div className="absolute inset-0 bg-radial-[circle_at_top_left,_rgba(74,222,128,0.08)_0%,_transparent_50%]" />
 
         <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-white/8 blur-3xl animate-orb-spin" />
         <div className="absolute -bottom-20 -right-20 h-112 w-md rounded-full bg-emerald-300/10 blur-3xl animate-float" />

@@ -58,6 +58,39 @@ async function sendOtpEmail(email, otp) {
   });
 }
 
+// Check if account exists and can receive password reset
+exports.checkAccount = async (req, res) => {
+  const email = (req.query.email || req.body.email || '').trim();
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required.', exists: false });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      'SELECT user_id, role, full_name, email FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND deleted_at IS NULL LIMIT 1',
+      [email]
+    );
+
+    if (rows.length === 0) {
+      return res.status(200).json({ exists: false, canReset: false, message: 'No registered account found with this email.' });
+    }
+
+    const user = rows[0];
+    const canReset = ['admin', 'bhw'].includes(user.role);
+
+    return res.status(200).json({
+      exists: true,
+      canReset,
+      role: user.role === 'admin' ? 'Program Administrator' : user.role === 'bhw' ? 'Barangay Health Worker (BHW)' : user.role,
+      message: canReset ? 'Account verified.' : 'Password reset is only available for admin and BHW accounts.'
+    });
+  } catch (error) {
+    console.error('Check account error:', error);
+    return res.status(500).json({ message: 'Server error.', exists: false });
+  }
+};
+
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
   const normalizedEmail = (email || '').trim();
