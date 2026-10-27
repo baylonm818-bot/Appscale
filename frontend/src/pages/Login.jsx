@@ -7,7 +7,7 @@ import { useAuth } from "../components/AuthContext";
 function AppScaleLogo() {
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="w-28 h-28 rounded-full bg-white flex items-center justify-center p-2.5 shadow-[0_14px_45px_rgba(0,0,0,0.22)] border-4 border-white/90 ring-4 ring-emerald-400/30 transition-transform duration-300 hover:scale-105">
+      <div className="w-28 h-28 rounded-full bg-white flex items-center justify-center p-2.5 shadow-[0_14px_45px_rgba(0,0,0,0.22)] border-4 border-white/90 ring-4 ring-emerald-400/30">
         <img
           src={logo}
           alt="AppScale logo"
@@ -763,7 +763,7 @@ export default function LoginPage() {
               <AppScaleLogo />
             </div>
             <div className="mt-8 max-w-lg">
-              <h1 className="text-4xl font-black leading-tight tracking-tight text-white drop-shadow-xl xl:text-5xl transition-transform duration-300 hover:scale-102 animate-fade-up-1">
+              <h1 className="text-4xl font-black leading-tight tracking-tight text-white drop-shadow-xl xl:text-5xl animate-fade-up-1">
                 Barangay Nutrition<br />
                 <span className="animate-shimmer-text">Monitoring System</span>
               </h1>
@@ -782,7 +782,7 @@ export default function LoginPage() {
             <div className="w-full animate-fade-up-3">
               <LoginCard emailInputRef={emailInputRef} />
             </div>
-            <p className="mt-6 text-center text-xs font-semibold tracking-[0.18em] text-white/65 uppercase transition-colors hover:text-white animate-fade-up-4">
+            <p className="mt-6 text-center text-xs font-semibold tracking-[0.18em] text-white/65 uppercase animate-fade-up-4 select-none">
               Municipality of Gasan — Health Information System
             </p>
           </div>
