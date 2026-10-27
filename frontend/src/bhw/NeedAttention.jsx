@@ -59,6 +59,7 @@ function NeedAttention() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [ageFilter, setAgeFilter] = useState('all');
+  const [referralFilter, setReferralFilter] = useState('all'); // 'all', 'referred_bhw', 'referred_bns', 'referred', 'not_referred'
   const [sortBy, setSortBy] = useState('priority');
 
   // pagination
@@ -130,6 +131,18 @@ function NeedAttention() {
       });
     }
 
+    if (referralFilter !== 'all') {
+      if (referralFilter === 'referred_bhw') {
+        list = list.filter((c) => Boolean(c.is_referred) && String(c.referrer_role || 'BHW').toUpperCase() === 'BHW');
+      } else if (referralFilter === 'referred_bns') {
+        list = list.filter((c) => Boolean(c.is_referred) && String(c.referrer_role).toUpperCase() === 'BNS');
+      } else if (referralFilter === 'referred') {
+        list = list.filter((c) => Boolean(c.is_referred));
+      } else if (referralFilter === 'not_referred') {
+        list = list.filter((c) => !Boolean(c.is_referred));
+      }
+    }
+
     if (sortBy === 'priority') {
       list.sort(
         (a, b) =>
@@ -149,14 +162,14 @@ function NeedAttention() {
     }
 
     return list;
-  }, [children, search, statusFilter, ageFilter, sortBy]);
+  }, [children, search, statusFilter, ageFilter, referralFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredChildren.length / pageSize));
   const pagedChildren = filteredChildren.slice((page - 1) * pageSize, page * pageSize);
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, ageFilter, sortBy]);
+  }, [search, statusFilter, ageFilter, referralFilter, sortBy]);
 
   const openReferModal = (child, e) => {
     e.stopPropagation();
@@ -362,6 +375,18 @@ function NeedAttention() {
               <option value="underweight">Underweight</option>
               <option value="overweight">Overweight</option>
               <option value="obese">Obese</option>
+            </select>
+
+            <select
+              value={referralFilter}
+              onChange={(e) => setReferralFilter(e.target.value)}
+              className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#2e7d32]"
+            >
+              <option value="all">All Referral Status</option>
+              <option value="referred_bhw">Referred by BHW</option>
+              <option value="referred_bns">Referred by BNS</option>
+              <option value="referred">All Referred</option>
+              <option value="not_referred">Not Yet Referred</option>
             </select>
 
             <select

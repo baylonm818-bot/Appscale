@@ -44,6 +44,7 @@ function Referrals() {
   const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'child', 'mother'
   const [statusFilter, setStatusFilter] = useState(initialStatus || 'Pending');
   const [userInteractedWithFilter, setUserInteractedWithFilter] = useState(Boolean(initialStatus));
+  const [referrerRoleFilter, setReferrerRoleFilter] = useState('all'); // 'all', 'BHW', 'BNS'
   const [severityFilter, setSeverityFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
 
@@ -155,6 +156,10 @@ function Referrals() {
       list = list.filter((r) => r.severity === severityFilter);
     }
 
+    if (referrerRoleFilter !== 'all') {
+      list = list.filter((r) => String(r.referrer_role || 'BHW').toUpperCase() === referrerRoleFilter.toUpperCase());
+    }
+
     if (sortBy === 'severity') {
       list.sort(
         (a, b) => (severityPriority[a.severity] ?? 9) - (severityPriority[b.severity] ?? 9)
@@ -164,7 +169,7 @@ function Referrals() {
     }
 
     return list;
-  }, [typeFilteredReferrals, activeTypeFiltered, statusFilter, severityFilter, sortBy]);
+  }, [typeFilteredReferrals, activeTypeFiltered, statusFilter, severityFilter, referrerRoleFilter, sortBy]);
 
   const confirmArchiveExecution = async () => {
     if (!archiveConfirm) return;
@@ -405,6 +410,19 @@ function Referrals() {
             >
               Mother ({motherReferralsCount})
             </button>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-medium text-gray-500">Referred by:</label>
+            <select
+              value={referrerRoleFilter}
+              onChange={(e) => setReferrerRoleFilter(e.target.value)}
+              className="text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-gray-700 focus:outline-none focus:border-[#2e7d32]"
+            >
+              <option value="all">All Referrers</option>
+              <option value="BHW">Referred by BHW</option>
+              <option value="BNS">Referred by BNS</option>
+            </select>
           </div>
 
           <div className="flex items-center gap-1.5">
