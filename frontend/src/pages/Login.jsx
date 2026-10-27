@@ -635,20 +635,20 @@ export default function LoginPage() {
   const [fadeOutSplash, setFadeOutSplash] = useState(false);
 
   useEffect(() => {
-    // Show splash screen for exactly 3 seconds, then smooth fade out
+    // Show splash screen for exactly 1 second, then quick smooth fade out
     const timer = setTimeout(() => {
       setFadeOutSplash(true);
-      setTimeout(() => setShowSplash(false), 500); // Wait for smooth 500ms fade
-    }, 3000);
+      setTimeout(() => setShowSplash(false), 400); // Quick smooth 400ms fade
+    }, 1000);
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <>
-      {/* ── High-End Animated Splash Screen (3-second duration) ── */}
+      {/* ── High-End Animated Splash Screen (1-second duration) ── */}
       {showSplash && (
         <div 
-          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-radial-[circle_at_center,_#0f3e1b_0%,_#09260e_60%,_#051508_100%] transition-opacity duration-500 ${
+          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-radial-[circle_at_center,_#0f3e1b_0%,_#09260e_60%,_#051508_100%] transition-opacity duration-400 ${
             fadeOutSplash ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
         >
@@ -678,13 +678,13 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* 3-Second Animated Loading Progress Bar */}
+            {/* 1-Second Animated Loading Progress Bar */}
             <div className="mt-8 w-56 sm:w-64 h-2 bg-emerald-950/80 rounded-full overflow-hidden border border-emerald-500/30 p-[1px]">
               <div 
                 className="h-full bg-gradient-to-r from-emerald-400 via-green-300 to-emerald-200 rounded-full"
                 style={{
                   width: '100%',
-                  animation: 'splash-progress 3s linear forwards'
+                  animation: 'splash-progress 1s linear forwards'
                 }}
               />
             </div>
