@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
-import { X } from 'lucide-react';
+import { Search, X, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 
 const severityPriority = { high: 0, medium: 1, low: 2 };
 
@@ -41,6 +41,7 @@ function Referrals() {
   const initialStatus = normalizeFilterParam(urlStatusParam);
 
   // filters
+  const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'child', 'mother'
   const [statusFilter, setStatusFilter] = useState(initialStatus || 'Pending');
   const [userInteractedWithFilter, setUserInteractedWithFilter] = useState(Boolean(initialStatus));
@@ -152,6 +153,17 @@ function Referrals() {
       }
     }
 
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((r) => {
+        const benName = `${r.beneficiary_first_name || ''} ${r.beneficiary_last_name || ''}`.toLowerCase();
+        const reason = String(r.reason || '').toLowerCase();
+        const notes = String(r.notes || '').toLowerCase();
+        const refName = String(r.referrer_name || '').toLowerCase();
+        return benName.includes(q) || reason.includes(q) || notes.includes(q) || refName.includes(q);
+      });
+    }
+
     if (severityFilter !== 'all') {
       list = list.filter((r) => r.severity === severityFilter);
     }
@@ -169,7 +181,7 @@ function Referrals() {
     }
 
     return list;
-  }, [typeFilteredReferrals, activeTypeFiltered, statusFilter, severityFilter, referrerRoleFilter, sortBy]);
+  }, [typeFilteredReferrals, activeTypeFiltered, statusFilter, search, severityFilter, referrerRoleFilter, sortBy]);
 
   const confirmArchiveExecution = async () => {
     if (!archiveConfirm) return;
@@ -380,8 +392,24 @@ function Referrals() {
           )}
         </div>
 
-        {/* Secondary controls: Beneficiary Type & Sort By */}
+        {/* Secondary controls: Search, Beneficiary Type, Referrer, & Sort By */}
         <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3.5 py-1.5 border border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-100 transition min-w-[240px] flex-1">
+            <Search size={15} className="text-gray-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search beneficiary, reason, or notes…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="outline-none text-xs w-full bg-transparent text-gray-700 placeholder-gray-400"
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
           <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200">
             <button
               type="button"
@@ -470,7 +498,10 @@ function Referrals() {
             const benFullName = `${r.beneficiary_first_name || ''} ${r.beneficiary_last_name || ''}`.trim();
 
             return (
-              <div key={r.referral_id} className="p-4 rounded-xl border border-gray-100 hover:border-gray-200 transition bg-white space-y-2.5">
+              <div
+                key={r.referral_id}
+                className="p-4 rounded-xl border border-gray-100/90 hover:border-gray-200 hover:shadow-md transition-all duration-200 bg-white space-y-2.5 hover:-translate-y-0.5 animate-in fade-in"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
