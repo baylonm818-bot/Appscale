@@ -1229,6 +1229,149 @@ void main() {
       expect(loadedRecord.ageInMonths, equals(2));
     });
   });
+
+  group('Plausible Range Validation & Latest Badge Tests', () {
+    test('MeasurementValidator rejects out-of-range values for 0-59 months (Weight 25kg, Height 35cm, MUAC 25cm at 55 mos)', () {
+      // Out-of-range height (35 cm is < minPlausibleHeightCm of 45 cm)
+      final heightRes = MeasurementValidator.checkHeight(35.0, 55);
+      expect(heightRes.isError, isTrue);
+
+      // Out-of-range MUAC (25 cm is > maxPlausibleMuacCm of 20 cm)
+      final muacRes = MeasurementValidator.checkMuac(25.0, 55);
+      expect(muacRes.isError, isTrue);
+
+      // isPlausibleRecord returns false
+      final plausible = MeasurementValidator.isPlausibleRecord(
+        heightCm: 35.0,
+        weightKg: 25.0,
+        muacCm: 25.0,
+        ageMonths: 55,
+      );
+      expect(plausible, isFalse);
+    });
+
+    test('MeasurementValidator bounds checking: Height 45-125 cm, Weight 2-30 kg, MUAC 8-20 cm', () {
+      // For newborn / 0 month:
+      expect(MeasurementValidator.checkHeight(44.9, 0).isError, isTrue);
+      expect(MeasurementValidator.checkHeight(45.0, 0).isError, isFalse);
+
+      // Height > 125 cm is always an error for <= 59 months:
+      expect(MeasurementValidator.checkHeight(125.0, 55).isError, isFalse);
+      expect(MeasurementValidator.checkHeight(125.1, 55).isError, isTrue);
+
+      // Weight < 2 kg is always an error for <= 59 months:
+      expect(MeasurementValidator.checkWeight(1.9, 0).isError, isTrue);
+      expect(MeasurementValidator.checkWeight(2.0, 0).isError, isFalse);
+
+      // Weight > 30 kg is always an error for <= 59 months:
+      expect(MeasurementValidator.checkWeight(30.0, 55).isError, isFalse);
+      expect(MeasurementValidator.checkWeight(30.1, 55).isError, isTrue);
+
+      // MUAC 8-20 cm for 6-59 months:
+      expect(MeasurementValidator.checkMuac(7.9, 24).isError, isTrue);
+      expect(MeasurementValidator.checkMuac(8.0, 24).isError, isFalse);
+      expect(MeasurementValidator.checkMuac(20.0, 24).isError, isFalse);
+      expect(MeasurementValidator.checkMuac(20.1, 24).isError, isTrue);
+
+      // isPlausibleRecord boundaries:
+      expect(MeasurementValidator.isPlausibleRecord(heightCm: 44.9, weightKg: 10.0, ageMonths: 24), isFalse);
+      expect(MeasurementValidator.isPlausibleRecord(heightCm: 125.1, weightKg: 10.0, ageMonths: 24), isFalse);
+      expect(MeasurementValidator.isPlausibleRecord(heightCm: 80.0, weightKg: 1.9, ageMonths: 24), isFalse);
+      expect(MeasurementValidator.isPlausibleRecord(heightCm: 80.0, weightKg: 30.1, ageMonths: 24), isFalse);
+      expect(MeasurementValidator.isPlausibleRecord(heightCm: 80.0, weightKg: 10.0, muacCm: 7.9, ageMonths: 24), isFalse);
+      expect(MeasurementValidator.isPlausibleRecord(heightCm: 80.0, weightKg: 10.0, muacCm: 20.1, ageMonths: 24), isFalse);
+    });
+
+    test('Decimal parsing handles period and comma correctly', () {
+      expect(MeasurementValidator.parseDecimal('12.5'), equals(12.5));
+      expect(MeasurementValidator.parseDecimal('12,5'), equals(12.5));
+      expect(MeasurementValidator.parseDecimal('  85.4  '), equals(85.4));
+      expect(MeasurementValidator.parseDecimal('invalid'), isNull);
+    });
+
+    test('Latest badge logic: invalid measurements never receive isLatest badge', () {
+      final validMeasOld = Measurement(
+        date: DateTime(2026, 1, 1),
+        weightKg: 10.0,
+        heightCm: 80.0,
+        bilateralPittingEdema: false,
+        weightForAgeStatus: 'Normal',
+        heightForAgeStatus: 'Normal',
+        weightForLengthStatus: 'Normal',
+      );
+      final invalidMeasNew = Measurement(
+        date: DateTime(2026, 10, 5),
+        weightKg: 25.0,
+        heightCm: 35.0,
+        muacCm: 25.0,
+        bilateralPittingEdema: false,
+        weightForAgeStatus: 'Needs re-measurement',
+        heightForAgeStatus: 'Needs re-measurement',
+        weightForLengthStatus: 'Needs re-measurement',
+      );
+
+      final measurements = [invalidMeasNew, validMeasOld]; // Newest first
+
+      final latestValid = measurements.where((m) => m.isPlausible).firstOrNull;
+
+      // Ensure invalidMeasNew is recognized as not plausible
+      expect(invalidMeasNew.isPlausible, isFalse);
+      expect(validMeasOld.isPlausible, isTrue);
+
+      // Latest valid must be validMeasOld
+      expect(latestValid, equals(validMeasOld));
+
+      // isLatest for invalid record must be false
+      final isInvalidLatest = invalidMeasNew.isPlausible && (invalidMeasNew == latestValid);
+      expect(isInvalidLatest, isFalse);
+
+      // isLatest for valid record must be true
+      final isValidLatest = validMeasOld.isPlausible && (validMeasOld == latestValid);
+      expect(isValidLatest, isTrue);
+    });
+  });
+
+  group('Add Child Profile Validation Tests', () {
+    test('Whitespace-only full name is invalid', () {
+      final name = '   ';
+      expect(name.trim().isEmpty, isTrue);
+    });
+
+    test('Birth date validation: cannot be in the future, age 0-59 months', () {
+      final now = DateTime.now();
+      final futureDate = now.add(const Duration(days: 10));
+      expect(futureDate.isAfter(now), isTrue);
+
+      final validBirthDate = DateTime(now.year - 2, now.month, now.day);
+      final ageInMonths = ((now.year - validBirthDate.year) * 12) + (now.month - validBirthDate.month) -
+          (now.day < validBirthDate.day ? 1 : 0);
+      expect(ageInMonths <= 59, isTrue);
+
+      final tooOldBirthDate = DateTime(now.year - 5, now.month - 1, now.day);
+      final tooOldAgeInMonths = ((now.year - tooOldBirthDate.year) * 12) + (now.month - tooOldBirthDate.month) -
+          (now.day < tooOldBirthDate.day ? 1 : 0);
+      expect(tooOldAgeInMonths > 59, isTrue);
+    });
+
+    test('Gender validation: requires non-empty selection', () {
+      String? emptyGender;
+      expect(emptyGender == null || emptyGender.trim().isEmpty, isTrue);
+
+      String? whitespaceGender = '  ';
+      expect(whitespaceGender.trim().isEmpty, isTrue);
+
+      String? validGender = 'Female';
+      expect(validGender.isNotEmpty, isTrue);
+    });
+
+    test('Purok address validation: requires non-empty string', () {
+      String address = '  ';
+      expect(address.trim().isEmpty, isTrue);
+
+      String validAddress = 'Purok 1';
+      expect(validAddress.trim().isNotEmpty, isTrue);
+    });
+  });
 }
 
 

@@ -144,20 +144,38 @@ class _HistoryTabState extends State<HistoryTab> {
               message:
                   'No measurements recorded yet. Tap "+ Measure" to log the first one.',
             )
-          else
-            ...List.generate(
-              measurements.length,
-              (i) => MeasurementTile(
-                measurement: measurements[i],
-                isLatest: _newestFirst ? (i == 0) : (i == measurements.length - 1),
-                onEdit: resolvedChild != null
-                    ? () => _handleEdit(context, resolvedChild, measurements[i])
-                    : null,
-                onDelete: resolvedChild != null
-                    ? () => _handleDelete(context, resolvedChild, measurements[i])
-                    : null,
-              ),
+          else ...[
+            Builder(
+              builder: (context) {
+                // Find latest valid/plausible measurement
+                // If newestFirst, measurements is ordered newest to oldest, so the first plausible is the latest.
+                // If oldestFirst, the last plausible is the latest.
+                final latestValidMeasurement = _newestFirst
+                    ? measurements.where((m) => m.isPlausible).firstOrNull
+                    : measurements.where((m) => m.isPlausible).lastOrNull;
+
+                return Column(
+                  children: List.generate(
+                    measurements.length,
+                    (i) {
+                      final m = measurements[i];
+                      final isLatest = m.isPlausible && (m == latestValidMeasurement);
+                      return MeasurementTile(
+                        measurement: m,
+                        isLatest: isLatest,
+                        onEdit: resolvedChild != null
+                            ? () => _handleEdit(context, resolvedChild, m)
+                            : null,
+                        onDelete: resolvedChild != null
+                            ? () => _handleDelete(context, resolvedChild, m)
+                            : null,
+                      );
+                    },
+                  ),
+                );
+              },
             ),
+          ],
         ],
       ),
     );

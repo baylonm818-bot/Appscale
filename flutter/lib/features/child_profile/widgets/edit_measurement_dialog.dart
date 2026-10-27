@@ -97,14 +97,34 @@ class _EditMeasurementDialogState extends State<EditMeasurementDialog> {
       return;
     }
 
-    setState(() => _isSaving = true);
-
     final isPlausible = MeasurementValidator.isPlausibleRecord(
       heightCm: rawH,
       weightKg: rawW,
       muacCm: rawM,
       ageMonths: _assessmentAgeMonths,
+      gender: widget.child.gender,
     );
+
+    if (!isPlausible) {
+      final detail = MeasurementValidator.getPlausibilityErrorDetail(
+        heightCm: rawH,
+        weightKg: rawW,
+        muacCm: rawM,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            detail.isNotEmpty
+                ? detail
+                : 'Measurement is outside plausible range for 0–59 months (Height 45–125 cm, Weight 2–30 kg, MUAC 8–20 cm). Cannot save.',
+          ),
+          backgroundColor: AppColors.statRed,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
 
     String weightStatus = 'Needs re-measurement';
     String heightStatus = 'Needs re-measurement';

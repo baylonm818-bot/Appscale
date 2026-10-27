@@ -307,91 +307,42 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
 
     // Check if any field has hard error
     final hasHardErrors = weightRes.isError || heightRes.isError || muacRes.isError;
-    bool forceFlagImplausible = false;
 
     if (hasHardErrors) {
-      // Suggestion text or error explanation
-      final errorLines = <String>[];
-      if (weightRes.isError) errorLines.add('• ${weightRes.fullMessage}');
-      if (heightRes.isError) errorLines.add('• ${heightRes.fullMessage}');
-      if (muacRes.isError) errorLines.add('• ${muacRes.fullMessage}');
-
-      final proceedAnyway = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.error_outline_rounded, color: AppColors.statRed),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Out-of-range Value Detected',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ...errorLines.map((e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Text(e, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
-                  )),
-              const SizedBox(height: 8),
-              const Text(
-                'This value is outside expected physiological ranges. If you save anyway, it will be flagged as "Needs re-measurement" and will not produce a nutritional classification.',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Edit'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: AppColors.statRed),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Save anyway'),
-            ),
-          ],
-        ),
-      );
-
-      if (proceedAnyway != true) {
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-        return;
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
       }
-      forceFlagImplausible = true;
+      if (weightRes.isError) {
+        _weightFocusNode.requestFocus();
+      } else if (heightRes.isError) {
+        _heightFocusNode.requestFocus();
+      } else if (muacRes.isError) {
+        _muacFocusNode.requestFocus();
+      }
+      return;
     }
 
-    if (!forceFlagImplausible) {
-      final plausibilityErr = MeasurementValidator.validatePlausibility(
-        weight: rawW,
-        height: rawH,
-        muac: rawM,
-        ageMonths: _assessmentAgeMonths,
-        previousHeightCm: _previousEntry?.heightCm,
-      );
-      if (plausibilityErr != null) {
-        setState(() => _plausibilityError = plausibilityErr);
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-        return;
+    final plausibilityErr = MeasurementValidator.validatePlausibility(
+      weight: rawW,
+      height: rawH,
+      muac: rawM,
+      ageMonths: _assessmentAgeMonths,
+      previousHeightCm: _previousEntry?.heightCm,
+    );
+    if (plausibilityErr != null) {
+      setState(() => _plausibilityError = plausibilityErr);
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
       }
+      return;
     }
 
     final hasSoftWarnings =
@@ -463,7 +414,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       );
 
       if (confirmedWarning != true) return;
-    } else if (!forceFlagImplausible) {
+    } else {
       if (!mounted) return;
       final confirmed = await showDialog<bool>(
         context: context,
@@ -536,7 +487,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       daysSincePrevious: daysSincePrev,
     );
 
-    final isPlausible = !forceFlagImplausible && !assessment.isInvalid;
+    final isPlausible = !assessment.isInvalid;
 
     final measurement = Measurement(
       date: _monthYear,
@@ -754,14 +705,9 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                                 focusNode: _weightFocusNode,
                                 hasError: _weightValidation.isError,
                                 hasWarning: _weightValidation.isWarning,
+                                errorText: _weightValidation.isError ? _weightValidation.message : null,
                                 onChanged: (_) {
-                                  if (_weightValidation.hasMessage) {
-                                    setState(() {
-                                      _weightValidation = const ValidationResult();
-                                    });
-                                  } else {
-                                    setState(() {});
-                                  }
+                                  _validateWeight();
                                 },
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [
@@ -779,14 +725,9 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                                 focusNode: _heightFocusNode,
                                 hasError: _heightValidation.isError,
                                 hasWarning: _heightValidation.isWarning,
+                                errorText: _heightValidation.isError ? _heightValidation.message : null,
                                 onChanged: (_) {
-                                  if (_heightValidation.hasMessage) {
-                                    setState(() {
-                                      _heightValidation = const ValidationResult();
-                                    });
-                                  } else {
-                                    setState(() {});
-                                  }
+                                  _validateHeight();
                                 },
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [
@@ -826,14 +767,9 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                             focusNode: _muacFocusNode,
                             hasError: _muacValidation.isError,
                             hasWarning: _muacValidation.isWarning,
+                            errorText: _muacValidation.isError ? _muacValidation.message : null,
                             onChanged: (_) {
-                              if (_muacValidation.hasMessage) {
-                                setState(() {
-                                  _muacValidation = const ValidationResult();
-                                });
-                              } else {
-                                setState(() {});
-                              }
+                              _validateMuac();
                             },
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [

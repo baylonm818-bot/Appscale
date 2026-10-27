@@ -230,10 +230,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
     String? guardianContactErr;
 
     if (_fullNameController.text.trim().isEmpty) {
-      fullNameErr = 'This field is required';
+      fullNameErr = 'Full name is required';
     }
     if (_birthDate == null) {
-      birthDateErr = 'This field is required';
+      birthDateErr = 'Birth date is required';
     } else {
       final now = DateTime.now();
       if (_birthDate!.isAfter(now)) {
@@ -250,10 +250,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
       genderErr = 'Please select a gender';
     }
     if (_addressController.text.trim().isEmpty) {
-      addressErr = 'This field is required';
+      addressErr = 'Purok address is required';
     }
     if (_guardianNameController.text.trim().isEmpty) {
-      guardianNameErr = 'This field is required';
+      guardianNameErr = 'Guardian name is required';
     }
     if (_relationship == null || _relationship!.trim().isEmpty) {
       relationshipErr = 'Please select a relationship';
@@ -283,8 +283,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
       });
 
       GlobalKey? firstInvalidKey;
+      FocusNode? firstInvalidFocus;
       if (fullNameErr != null) {
         firstInvalidKey = _fullNameKey;
+        firstInvalidFocus = _fullNameFocusNode;
       } else if (birthDateErr != null) {
         firstInvalidKey = _birthDateKey;
       } else if (genderErr != null) {
@@ -306,6 +308,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
           curve: Curves.easeInOut,
           alignment: 0.1,
         );
+      }
+      if (firstInvalidFocus != null) {
+        firstInvalidFocus.requestFocus();
       }
 
       AppNotificationUI.showWarning(
@@ -631,7 +636,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                     ? 'Edit Child Profile'
                     : 'Add Child Profile',
                 onBack: _handleLeave,
-                onDone: _handleLeave,
+                onDone: _handleSave,
                 showDone: !widget.isEditMode,
               ),
               Expanded(
