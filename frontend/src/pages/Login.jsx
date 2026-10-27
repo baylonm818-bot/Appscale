@@ -7,12 +7,12 @@ import { useAuth } from "../components/AuthContext";
 
 function AppScaleLogo() {
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="w-28 h-28 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-[0_18px_60px_rgba(0,0,0,0.18)] overflow-hidden border-4 border-white/70 ring-4 ring-white/20">
+    <div className="flex flex-col items-center gap-3 animate-fade-up">
+      <div className="w-28 h-28 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-[0_18px_60px_rgba(0,0,0,0.22)] overflow-hidden border-4 border-white/80 ring-4 ring-emerald-400/40 animate-pulse-glow transition-transform duration-300 hover:scale-110">
         <img
           src={logo}
           alt="AppScale logo"
-          className="w-24 h-24 object-contain drop-shadow-md"
+          className="w-24 h-24 object-contain drop-shadow-md animate-float"
           onError={(e) => {
             e.target.style.display = "none";
             e.target.parentElement.innerHTML = `
@@ -23,9 +23,9 @@ function AppScaleLogo() {
         />
       </div>
       <div className="text-center">
-        <span className="text-4xl font-black tracking-tight drop-shadow-sm">
+        <span className="text-4xl font-black tracking-tight drop-shadow-md inline-block transition-transform duration-300 hover:scale-105">
           <span className="text-white">App</span>
-          <span className="text-emerald-100">Scale</span>
+          <span className="animate-shimmer-text">Scale</span>
         </span>
       </div>
     </div>
@@ -248,9 +248,12 @@ function LoginCard() {
   };
 
   return (
-    <div className="w-full max-w-md rounded-[28px] border border-white/40 bg-white/85 p-7 shadow-[0_30px_80px_rgba(10,42,20,0.28)] backdrop-blur-xl sm:p-9">
+    <div className="w-full max-w-md rounded-[28px] border border-white/40 bg-white/90 p-7 shadow-[0_30px_80px_rgba(10,42,20,0.32)] backdrop-blur-xl sm:p-9 animate-slide-in-right transition-all duration-300 hover:shadow-[0_35px_90px_rgba(10,42,20,0.40)]">
       <div className="mb-8">
-        <h2 className="text-3xl font-black tracking-tight text-slate-900">Welcome back!</h2>
+        <h2 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+          <span>Welcome back!</span>
+          <span className="inline-block animate-bounce text-2xl">👋</span>
+        </h2>
         <p className="mt-2 text-sm text-slate-500">Sign in to your account to continue</p>
       </div>
 
@@ -464,50 +467,109 @@ function LoginCard() {
 }
 
 export default function LoginPage() {
+  const [showSplash, setShowSplash] = useState(true);
+  const [fadeOutSplash, setFadeOutSplash] = useState(false);
+
+  useEffect(() => {
+    // Show splash screen for 1.8 seconds on initial load, then smooth fade out
+    const timer = setTimeout(() => {
+      setFadeOutSplash(true);
+      setTimeout(() => setShowSplash(false), 500); // Wait for transition
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div
-      className="relative flex min-h-screen overflow-hidden bg-[#0f2b1b]"
-      style={{
-        backgroundImage:
-          "linear-gradient(135deg, rgba(9,42,24,0.88), rgba(35,123,78,0.72), rgba(12,34,22,0.9)), url('https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=1600&q=80')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.12),transparent_25%)]" />
+    <>
+      {/* ── High-End Animated Splash Screen ── */}
+      {showSplash && (
+        <div 
+          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-[#09260e] via-[#123d18] to-[#0b2413] transition-opacity duration-500 ${
+            fadeOutSplash ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+        >
+          <div className="relative flex flex-col items-center">
+            {/* Spinning decorative background aura */}
+            <div className="absolute -inset-8 rounded-full bg-emerald-500/20 blur-2xl animate-pulse-glow" />
+            
+            {/* Pulsing Logo Container */}
+            <div className="relative w-32 h-32 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-[0_20px_70px_rgba(34,197,94,0.35)] border-4 border-emerald-400/60 ring-8 ring-emerald-500/20 animate-pulse-glow">
+              <img
+                src={logo}
+                alt="AppScale Logo"
+                className="w-24 h-24 object-contain animate-float"
+              />
+            </div>
 
-      <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-white/8 blur-3xl" />
-      <div className="absolute -bottom-20 -right-20 h-112 w-md rounded-full bg-emerald-300/10 blur-3xl" />
-      <div className="absolute left-1/3 top-1/2 h-52 w-52 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-2xl" />
+            {/* Shimmering App Title */}
+            <div className="mt-6 text-center">
+              <h1 className="text-4xl font-black tracking-tight drop-shadow-lg">
+                <span className="text-white">App</span>
+                <span className="animate-shimmer-text">Scale</span>
+              </h1>
+              <p className="mt-2 text-sm font-medium text-emerald-200/80 tracking-widest uppercase">
+                Nutrition & Health Monitoring System
+              </p>
+            </div>
 
-      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
+            {/* Sleek Loading Bar */}
+            <div className="mt-8 w-48 h-1.5 bg-emerald-950/80 rounded-full overflow-hidden border border-emerald-500/30">
+              <div className="h-full bg-gradient-to-r from-emerald-400 to-green-300 rounded-full animate-shimmer-text w-full animate-pulse" />
+            </div>
 
-      <div className="relative z-10 flex w-full flex-col items-center justify-center px-6 py-10 lg:flex-row lg:items-center lg:justify-between lg:px-10 xl:px-20">
-        <div className="flex w-full max-w-xl flex-col items-center justify-center text-center lg:items-center lg:text-center">
-          <div className="hidden lg:block">
-            <AppScaleLogo />
-          </div>
-          <div className="mt-8 max-w-lg">
-            <h1 className="text-4xl font-black leading-tight tracking-tight text-white drop-shadow-xl xl:text-5xl">
-              Barangay Nutrition<br />Monitoring System
-            </h1>
-            <hr className="mx-auto my-6 h-px w-24 border-0 bg-white/30" />
-            <p className="mx-auto max-w-md text-base leading-7 text-emerald-50/80 xl:text-lg">
-              Empowering Barangay health workers to monitor and improve the nutritional status of children and mothers in every community.
+            <p className="mt-4 text-xs text-emerald-400/70 font-mono animate-pulse">
+              Initializing application...
             </p>
           </div>
         </div>
+      )}
 
-        <div className="relative mt-8 flex w-full max-w-lg flex-col items-center justify-center lg:mt-0">
-          <div className="lg:hidden mb-8">
-            <AppScaleLogo />
+      {/* ── Main Login View ── */}
+      <div
+        className="relative flex min-h-screen overflow-hidden bg-[#0f2b1b]"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(9,42,24,0.88), rgba(35,123,78,0.72), rgba(12,34,22,0.9)), url('https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=1600&q=80')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.12),transparent_25%)]" />
+
+        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-white/8 blur-3xl animate-orb-spin" />
+        <div className="absolute -bottom-20 -right-20 h-112 w-md rounded-full bg-emerald-300/10 blur-3xl animate-float" />
+        <div className="absolute left-1/3 top-1/2 h-52 w-52 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-2xl animate-pulse" />
+
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
+
+        <div className="relative z-10 flex w-full flex-col items-center justify-center px-6 py-10 lg:flex-row lg:items-center lg:justify-between lg:px-10 xl:px-20">
+          <div className="flex w-full max-w-xl flex-col items-center justify-center text-center lg:items-center lg:text-center animate-fade-up">
+            <div className="hidden lg:block">
+              <AppScaleLogo />
+            </div>
+            <div className="mt-8 max-w-lg">
+              <h1 className="text-4xl font-black leading-tight tracking-tight text-white drop-shadow-xl xl:text-5xl transition-transform duration-300 hover:scale-102">
+                Barangay Nutrition<br />
+                <span className="animate-shimmer-text">Monitoring System</span>
+              </h1>
+              <hr className="mx-auto my-6 h-1 w-24 rounded-full border-0 bg-gradient-to-r from-emerald-400 to-green-200 shadow-sm" />
+              <p className="mx-auto max-w-md text-base leading-7 text-emerald-50/90 xl:text-lg">
+                Empowering Barangay health workers to monitor and improve the nutritional status of children and mothers in every community.
+              </p>
+            </div>
           </div>
-          <LoginCard />
-          <p className="mt-6 text-center text-xs tracking-[0.16em] text-white/55">
-            MUNICIPALITY OF GASAN — HEALTH INFORMATION SYSTEM
-          </p>
+
+          <div className="relative mt-8 flex w-full max-w-lg flex-col items-center justify-center lg:mt-0">
+            <div className="lg:hidden mb-8">
+              <AppScaleLogo />
+            </div>
+            <LoginCard />
+            <p className="mt-6 text-center text-xs font-semibold tracking-[0.18em] text-white/65 uppercase transition-colors hover:text-white">
+              Municipality of Gasan — Health Information System
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

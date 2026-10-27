@@ -452,3 +452,99 @@ button, a {
     line-height: 1.4 !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   AppScale Custom UI Animations (Splash Screen & Login)
+   ───────────────────────────────────────────────────────────── */
+@keyframes appscale-pulse-glow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 25px rgba(74, 222, 128, 0.4), 0 0 50px rgba(34, 197, 94, 0.2);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 40px rgba(74, 222, 128, 0.7), 0 0 80px rgba(34, 197, 94, 0.35);
+  }
+}
+
+@keyframes appscale-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes appscale-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes appscale-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes appscale-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes appscale-orb-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.12);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+.animate-pulse-glow {
+  animation: appscale-pulse-glow 2.4s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: appscale-float 4.2s ease-in-out infinite;
+}
+
+.animate-fade-up {
+  animation: appscale-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-slide-in-right {
+  animation: appscale-slide-in-right 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-shimmer-text {
+  background: linear-gradient(90deg, #ffffff 0%, #a7f3d0 30%, #ffffff 60%, #6ee7b7 100%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: appscale-shimmer 3.5s linear infinite;
+}
+
+.animate-orb-spin {
+  animation: appscale-orb-spin 22s linear infinite;
+}
+
