@@ -263,7 +263,9 @@ exports.getNeedAttention = async (req, res) => {
       'active_ref.referral_id AS active_referral_id',
       'active_ref.referral_status',
       'active_ref.referral_date',
-      'active_ref.referral_notes'
+      'active_ref.referral_notes',
+      'active_ref.referrer_role',
+      'active_ref.referrer_name'
     ];
     if (hasWasting) selectCols.splice(13, 0, 'nr.wasting_status');
 
@@ -293,7 +295,9 @@ exports.getNeedAttention = async (req, res) => {
          GROUP BY child_id
        ) latest_cs ON latest_cs.child_id = c.child_id
        LEFT JOIN (
-         SELECT r.child_id, r.referral_id, r.status AS referral_status, r.created_at AS referral_date, r.notes AS referral_notes
+         SELECT r.child_id, r.referral_id, r.status AS referral_status, r.created_at AS referral_date, r.notes AS referral_notes,
+                UPPER(COALESCE(u.role, 'BHW')) AS referrer_role,
+                CONCAT_WS(' ', u.first_name, u.last_name) AS referrer_name
          FROM referrals r
          INNER JOIN (
            SELECT child_id, MAX(referral_id) AS max_ref_id
@@ -303,6 +307,7 @@ exports.getNeedAttention = async (req, res) => {
              AND archived_at IS NULL
            GROUP BY child_id
          ) latest_r ON r.referral_id = latest_r.max_ref_id
+         LEFT JOIN users u ON u.user_id = r.referred_by
        ) active_ref ON active_ref.child_id = c.child_id
        WHERE ${barangayCondition}
          AND c.status = 'active'
@@ -343,10 +348,14 @@ exports.getNeedAttention = async (req, res) => {
         const match = c.referral_notes.match(/Facility:\s*([^\n\r]+)/i);
         if (match) destination = match[1].trim();
       }
+      const roleUpper = String(c.referrer_role || 'BHW').toUpperCase();
+      const referrerByLabel = roleUpper === 'BNS' ? 'Referred by BNS' : 'Referred by BHW';
+
       return {
         ...c,
         overall_status: overall,
         destination_facility: destination || 'BHS / RHU / Hospital',
+        referrer_by_label: referrerByLabel,
       };
     });
     return res.status(200).json(mappedChildren);

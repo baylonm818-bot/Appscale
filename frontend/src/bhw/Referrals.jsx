@@ -469,6 +469,13 @@ function Referrals() {
                       <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${statusClass}`}>
                         {displayStatus}
                       </span>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                        r.referrer_role === 'BNS'
+                          ? 'bg-purple-50 text-purple-700 border-purple-200'
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}>
+                        {r.referrer_by_label || (r.referrer_role === 'BNS' ? 'Referred by BNS' : 'Referred by BHW')}
+                      </span>
                       <span className="text-[11px] text-gray-400">{new Date(r.created_at).toLocaleDateString()}</span>
                     </div>
                     {r.reason && <p className="text-xs text-gray-800 font-medium">Reason: {r.reason}</p>}

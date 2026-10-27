@@ -485,8 +485,11 @@ exports.getReferrals = async (req, res) => {
          COALESCE(c.barangay, m.barangay) AS beneficiary_barangay,
          COALESCE(c.first_name, m.first_name) AS beneficiary_first_name,
          COALESCE(c.last_name, m.last_name) AS beneficiary_last_name,
-         COALESCE(c.barangay, m.barangay) AS barangay
+         COALESCE(c.barangay, m.barangay) AS barangay,
+         UPPER(COALESCE(u.role, 'BHW')) AS referrer_role,
+         CONCAT_WS(' ', u.first_name, u.last_name) AS referrer_name
        FROM referrals r
+       LEFT JOIN users u ON u.user_id = r.referred_by
        LEFT JOIN children c ON c.child_id = r.child_id
        LEFT JOIN mothers m ON m.mother_id = r.mother_id
        LEFT JOIN (
@@ -539,11 +542,16 @@ exports.getReferrals = async (req, res) => {
           .trim();
       }
 
+      const refRoleUpper = String(ref.referrer_role || 'BHW').toUpperCase();
+      const referrerByLabel = refRoleUpper === 'BNS' ? 'Referred by BNS' : 'Referred by BHW';
+
       return {
         ...ref,
         status: normalizedStatus,
         response_notes: notes,
         notes: notes,
+        referrer_role: refRoleUpper,
+        referrer_by_label: referrerByLabel,
         archived_at: ref.archived_at,
         archived_by: ref.archived_by,
         is_archived: Boolean(ref.archived_at),

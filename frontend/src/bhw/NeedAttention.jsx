@@ -14,6 +14,7 @@ import {
   Building2,
   Calendar,
   ExternalLink,
+  User,
 } from 'lucide-react';
 
 const statusColors = {
@@ -475,17 +476,21 @@ function NeedAttention() {
                             <div className="relative inline-block text-left group">
                               <Link
                                 to="/bhw/referrals"
-                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50/90 hover:bg-blue-100 hover:text-blue-800 border border-blue-200/80 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all shadow-2xs group-hover:border-blue-300"
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all shadow-2xs ${
+                                  c.referrer_role === 'BNS'
+                                    ? 'text-purple-700 bg-purple-50/90 hover:bg-purple-100 hover:text-purple-800 border border-purple-200/80 group-hover:border-purple-300'
+                                    : 'text-blue-700 bg-blue-50/90 hover:bg-blue-100 hover:text-blue-800 border border-blue-200/80 group-hover:border-blue-300'
+                                }`}
                               >
-                                <CheckCircle2 size={13} className="text-blue-600" />
-                                <span>Referred</span>
+                                <CheckCircle2 size={13} className={c.referrer_role === 'BNS' ? 'text-purple-600' : 'text-blue-600'} />
+                                <span>{c.referrer_by_label || (c.referrer_role === 'BNS' ? 'Referred by BNS' : 'Referred by BHW')}</span>
                               </Link>
 
                               {/* Beautiful Popover Card on Hover */}
-                              <div className="absolute bottom-full right-0 mb-2.5 hidden group-hover:flex flex-col w-64 p-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-blue-100 text-left z-50 pointer-events-none transition-all duration-200 animate-in fade-in zoom-in-95">
+                              <div className="absolute bottom-full right-0 mb-2.5 hidden group-hover:flex flex-col w-68 p-3.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200/90 text-left z-50 pointer-events-none transition-all duration-200 animate-in fade-in zoom-in-95">
                                 <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-700">
-                                    <CheckCircle2 size={13} className="text-blue-600 shrink-0" />
+                                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-900">
+                                    <CheckCircle2 size={13} className={c.referrer_role === 'BNS' ? 'text-purple-600 shrink-0' : 'text-blue-600 shrink-0'} />
                                     <span>Active Referral</span>
                                   </div>
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -499,7 +504,27 @@ function NeedAttention() {
                                   </span>
                                 </div>
 
-                                <div className="py-2 space-y-1.5 text-xs">
+                                <div className="py-2.5 space-y-2 text-xs">
+                                  {/* Referred By Role Badge */}
+                                  <div className="flex items-center gap-2">
+                                    <User size={13} className="text-gray-400 shrink-0" />
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] text-gray-400 uppercase font-semibold">Referred by:</span>
+                                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+                                        c.referrer_role === 'BNS'
+                                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                      }`}>
+                                        {c.referrer_role || 'BHW'}
+                                      </span>
+                                      {c.referrer_name && (
+                                        <span className="text-[11px] text-gray-700 font-medium truncate max-w-[110px]">
+                                          ({c.referrer_name})
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
                                   <div className="flex items-start gap-2 text-gray-700">
                                     <Building2 size={13} className="text-gray-400 mt-0.5 shrink-0" />
                                     <div className="min-w-0">
@@ -529,7 +554,7 @@ function NeedAttention() {
                                 </div>
 
                                 {/* Arrow pointer */}
-                                <div className="absolute top-full right-5 -mt-1 w-2.5 h-2.5 bg-white border-r border-b border-blue-100 transform rotate-45" />
+                                <div className="absolute top-full right-5 -mt-1 w-2.5 h-2.5 bg-white border-r border-b border-slate-200 transform rotate-45" />
                               </div>
                             </div>
                           ) : (
