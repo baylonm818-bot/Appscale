@@ -635,24 +635,26 @@ export default function LoginPage() {
   const [fadeOutSplash, setFadeOutSplash] = useState(false);
 
   useEffect(() => {
-    // Show splash screen for exactly 1 second, then quick smooth fade out
+    // Show splash screen for 1.2 seconds, then trigger a smooth cinematic zoom-dissolve transition
     const timer = setTimeout(() => {
       setFadeOutSplash(true);
-      setTimeout(() => setShowSplash(false), 400); // Quick smooth 400ms fade
-    }, 1000);
+      setTimeout(() => setShowSplash(false), 650); // 650ms smooth transition
+    }, 1200);
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <>
-      {/* ── High-End Animated Splash Screen (1-second duration) ── */}
+      {/* ── High-End Animated Splash Screen with Cinematic Transition ── */}
       {showSplash && (
         <div 
-          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-radial-[circle_at_center,_#0f3e1b_0%,_#09260e_60%,_#051508_100%] transition-opacity duration-400 ${
-            fadeOutSplash ? "opacity-0 pointer-events-none" : "opacity-100"
+          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-radial-[circle_at_center,_#0f3e1b_0%,_#09260e_60%,_#051508_100%] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            fadeOutSplash 
+              ? "opacity-0 scale-105 blur-[3px] pointer-events-none" 
+              : "opacity-100 scale-100 blur-0"
           }`}
         >
-          <div className="relative flex flex-col items-center px-4">
+          <div className="relative flex flex-col items-center px-4 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]">
             {/* Ambient soft backlight glow */}
             <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full bg-emerald-400/15 blur-3xl animate-pulse" />
             <div className="absolute -bottom-16 -right-16 w-64 h-64 rounded-full bg-green-500/15 blur-3xl animate-pulse" />
@@ -681,9 +683,9 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* ── Main Login View ── */}
+      {/* ── Main Login View (Smoothly Revealed) ── */}
       <div
-        className="relative flex min-h-screen overflow-hidden bg-[#0a2315]"
+        className="relative flex min-h-screen overflow-hidden bg-[#0a2315] animate-login-enter"
         style={{
           backgroundImage:
             "linear-gradient(135deg, rgba(6,28,15,0.92), rgba(18,74,42,0.85), rgba(7,24,14,0.94)), url('https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=1600&q=80')",
