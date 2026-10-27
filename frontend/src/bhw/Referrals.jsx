@@ -536,23 +536,24 @@ function Referrals() {
                     {serviceOptions.map((s) => {
                       const isChecked = selectedServices.includes(s.value);
                       return (
-                        <label
+                        <div
                           key={s.value}
                           onClick={() => toggleService(s.value)}
-                          className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition text-xs font-medium select-none ${
+                          className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition text-xs select-none ${
                             isChecked
-                              ? 'bg-emerald-50 text-emerald-900 border border-emerald-200 shadow-2xs font-semibold'
-                              : 'bg-white text-gray-700 border border-transparent hover:bg-gray-100/70'
+                              ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-semibold'
+                              : 'bg-white text-gray-700 border border-slate-200 hover:bg-gray-50'
                           }`}
                         >
                           <input
                             type="checkbox"
                             checked={isChecked}
-                            onChange={() => {}} // handled by parent onClick
-                            className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 pointer-events-none accent-[#2e7d32]"
+                            onChange={() => toggleService(s.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-[#2e7d32] cursor-pointer shrink-0"
                           />
-                          <span>{s.label}</span>
-                        </label>
+                          <span className="flex-1 cursor-pointer">{s.label}</span>
+                        </div>
                       );
                     })}
                   </div>
