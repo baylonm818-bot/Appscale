@@ -548,3 +548,49 @@ button, a {
   animation: appscale-orb-spin 22s linear infinite;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Universal High-Performance Spinner (Hardware Accelerated)
+   Respects prefers-reduced-motion with pulsing fallback
+   ───────────────────────────────────────────────────────────── */
+@keyframes appscale-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes appscale-spinner-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.92);
+  }
+}
+
+.appscale-spinner,
+.animate-spin {
+  display: inline-block;
+  will-change: transform;
+  animation: appscale-spin 0.75s linear infinite !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appscale-spinner,
+  .animate-spin {
+    animation: appscale-spinner-pulse 1.2s ease-in-out infinite !important;
+  }
+  .animate-pulse-glow,
+  .animate-float,
+  .animate-orb-spin,
+  .animate-fade-up,
+  .animate-slide-in-right,
+  .animate-shimmer-text {
+    animation: none !important;
+    transform: none !important;
+  }
+}
