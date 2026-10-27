@@ -22,6 +22,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { motion } from 'framer-motion';
 import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
 const statusColors = {
@@ -416,26 +417,26 @@ function MedicalRecords() {
                             key={c.child_id}
                             type="button"
                             onClick={() => openChild(c)}
-                            className={`w-full text-left p-3.5 flex items-center gap-3 transition-colors ${
+                            className={`w-full text-left p-3.5 flex items-center gap-3 transition-all duration-150 cursor-pointer ${
                               isSelected
-                                ? 'bg-green-50/80 border-l-4 border-green-600'
-                                : 'hover:bg-gray-50/70'
+                                ? 'bg-emerald-50/90 border-l-4 border-emerald-600 shadow-2xs'
+                                : 'hover:bg-slate-50/90 border-l-4 border-transparent'
                             }`}
                           >
-                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white ${
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white transition-transform duration-200 ${
                               isSelected
-                                ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32]'
+                                ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] scale-105 shadow-sm'
                                 : 'bg-gray-400'
                             }`}>
                               {(c.first_name ?? '?').charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold text-gray-900 truncate">{c.first_name} {c.last_name}</p>
+                              <p className={`text-xs font-bold truncate transition-colors ${isSelected ? 'text-emerald-950' : 'text-gray-900'}`}>{c.first_name} {c.last_name}</p>
                               <p className="text-[11px] text-gray-400 mt-0.5">
                                 {c.age_in_months} mos · {c.sex ? c.sex.toUpperCase() : 'N/A'} · {c.guardian_name || 'No guardian'}
                               </p>
                             </div>
-                            <span className={`px-2 py-0.5 rounded-full font-bold uppercase text-[10px] shrink-0 ${statusColors[c.overall_status] || 'bg-gray-100 text-gray-700'}`}>
+                            <span className={`px-2 py-0.5 rounded-full font-bold uppercase text-[10px] shrink-0 transition-colors ${statusColors[c.overall_status] || 'bg-gray-100 text-gray-700'}`}>
                               {c.overall_status || 'Normal'}
                             </span>
                           </button>
@@ -456,7 +457,13 @@ function MedicalRecords() {
                     <p className="text-xs text-gray-400 mt-1">View growth history, health assessments, and recorded interventions.</p>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <motion.div
+                    key={selectedChild.child_id}
+                    initial={{ opacity: 0, y: 12, scale: 0.995 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                  >
 
                     <div className="p-4 border-b border-gray-100 lg:hidden flex items-center">
                       <button
@@ -675,7 +682,7 @@ function MedicalRecords() {
                       )}
                     </div>
 
-                  </div>
+                  </motion.div>
                 )}
               </div>
 
@@ -740,19 +747,19 @@ function MedicalRecords() {
                             key={m.mother_id}
                             type="button"
                             onClick={() => openMother(m)}
-                            className={`w-full text-left p-3.5 flex items-center gap-3 transition-colors ${
+                            className={`w-full text-left p-3.5 flex items-center gap-3 transition-all duration-150 cursor-pointer ${
                               isSelected
-                                ? 'bg-teal-50/80 border-l-4 border-[#2e7d32]'
-                                : 'hover:bg-gray-50/70'
+                                ? 'bg-teal-50/90 border-l-4 border-[#2e7d32] shadow-2xs'
+                                : 'hover:bg-slate-50/90 border-l-4 border-transparent'
                             }`}
                           >
-                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white ${
-                              isSelected ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32]' : 'bg-teal-600'
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white transition-transform duration-200 ${
+                              isSelected ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] scale-105 shadow-sm' : 'bg-teal-600'
                             }`}>
                               {(m.first_name ?? '?').charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold text-gray-900 truncate">{m.first_name} {m.last_name}</p>
+                              <p className={`text-xs font-bold truncate transition-colors ${isSelected ? 'text-emerald-950' : 'text-gray-900'}`}>{m.first_name} {m.last_name}</p>
                               <p className="text-[11px] text-gray-400 mt-0.5">
                                 {m.age_years != null ? `${m.age_years} yrs` : '—'} · {m.purok || 'Purok N/A'}
                               </p>
@@ -778,7 +785,13 @@ function MedicalRecords() {
                     <p className="text-xs text-gray-400 mt-1">Review medical history, medications, supplements, and counseling provided.</p>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <motion.div
+                    key={selectedMother.mother_id}
+                    initial={{ opacity: 0, y: 12, scale: 0.995 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                  >
 
                     <div className="p-4 border-b border-gray-100 lg:hidden flex items-center">
                       <button
@@ -972,7 +985,7 @@ function MedicalRecords() {
                       )}
                     </div>
 
-                  </div>
+                  </motion.div>
                 )}
               </div>
 
