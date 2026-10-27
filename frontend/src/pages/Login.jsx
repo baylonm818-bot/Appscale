@@ -80,7 +80,8 @@ function LoginCard({ emailInputRef }) {
   // Debounced check if account exists in system
   useEffect(() => {
     const trimmed = forgotEmail.trim();
-    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed)) {
+    // Allow standard emails as well as intranet/local domains like admin@appscale.local
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[a-zA-Z0-9-]{2,}$/.test(trimmed)) {
       setAccountStatus("idle");
       setAccountRole("");
       return;
@@ -97,17 +98,22 @@ function LoginCard({ emailInputRef }) {
             setAccountRole(data.role || "Authorized user");
           } else {
             setAccountStatus("invalid");
-            setAccountRole("Account not authorized for web reset");
+            setAccountRole(data.message || "Account not authorized for password reset");
           }
-        } else {
+        } else if (res.ok && !data.exists) {
           setAccountStatus("not_found");
           setAccountRole("");
+        } else {
+          // If server error or rate-limited, allow form submission to proceed without blocking
+          setAccountStatus("valid");
+          setAccountRole("Account");
         }
       } catch (err) {
-        // Fallback gracefully if endpoint is unavailable
-        setAccountStatus("idle");
+        // Fallback gracefully so network glitch won't permanently disable Send OTP button
+        setAccountStatus("valid");
+        setAccountRole("Account");
       }
-    }, 450);
+    }, 350);
 
     return () => clearTimeout(timer);
   }, [forgotEmail]);
@@ -548,7 +554,7 @@ function LoginCard({ emailInputRef }) {
                 onClick={() => {
                   setShowForgotPassword(true);
                   setResetStep("email");
-                  setForgotEmail("");
+                  setForgotEmail(email.trim());
                   setOtpCode("");
                   setNewPassword("");
                   setConfirmPassword("");

@@ -77,13 +77,13 @@ exports.checkAccount = async (req, res) => {
     }
 
     const user = rows[0];
-    const canReset = ['admin', 'bhw'].includes(user.role);
+    const canReset = ['admin', 'bhw', 'bns'].includes(user.role);
 
     return res.status(200).json({
       exists: true,
       canReset,
-      role: user.role === 'admin' ? 'Program Administrator' : user.role === 'bhw' ? 'Barangay Health Worker (BHW)' : user.role,
-      message: canReset ? 'Account verified.' : 'Password reset is only available for admin and BHW accounts.'
+      role: user.role === 'admin' ? 'Program Administrator' : user.role === 'bhw' ? 'Barangay Health Worker (BHW)' : user.role === 'bns' ? 'Barangay Nutrition Scholar (BNS)' : user.role,
+      message: canReset ? 'Account verified.' : 'Password reset is not authorized for this account.'
     });
   } catch (error) {
     console.error('Check account error:', error);
@@ -112,8 +112,8 @@ exports.forgotPassword = async (req, res) => {
     const user = rows[0];
     console.log('Selected user for login:', user.user_id, user.role);
 
-    if (!['admin', 'bhw'].includes(user.role)) {
-      return res.status(403).json({ message: 'Password reset is only available for admin and BHW accounts.' });
+    if (!['admin', 'bhw', 'bns'].includes(user.role)) {
+      return res.status(403).json({ message: 'Password reset is not authorized for this account.' });
     }
 
     const otp = generateOtp();
@@ -172,8 +172,8 @@ exports.resetPassword = async (req, res) => {
 
     const user = rows[0];
 
-    if (!['admin', 'bhw'].includes(user.role)) {
-      return res.status(403).json({ message: 'Password reset is only available for admin and BHW accounts.' });
+    if (!['admin', 'bhw', 'bns'].includes(user.role)) {
+      return res.status(403).json({ message: 'Password reset is not authorized for this account.' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
