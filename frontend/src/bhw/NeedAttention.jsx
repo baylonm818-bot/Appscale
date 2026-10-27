@@ -63,10 +63,20 @@ function NeedAttention() {
 
   // refer modal
   const [referTarget, setReferTarget] = useState(null);
-  const [referSeverity, setReferSeverity] = useState('medium');
+  const [referDestination, setReferDestination] = useState('Rural Health Unit (RHU)');
+  const [referUrgency, setReferUrgency] = useState('Routine');
   const [referReason, setReferReason] = useState('');
   const [referSubmitting, setReferSubmitting] = useState(false);
   const [referError, setReferError] = useState('');
+
+  // toast state
+  const [toastMessage, setToastMessage] = useState(null); // { text, type: 'success' | 'error' }
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => setToastMessage(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
 
   // log visit / service modal
   const [visitTarget, setVisitTarget] = useState(null);
@@ -146,53 +156,72 @@ function NeedAttention() {
 
   const openReferModal = (child, e) => {
     e.stopPropagation();
+    if (child.is_referred) return;
     setReferTarget(child);
-    // Default severity from child's nutrition status
+
+    // Auto-detect urgency
     const isSevere = child.overall_status === 'SAM' ||
       child.weight_status === 'severely_underweight' ||
       child.weight_status === 'severly_underweight' ||
       child.height_status === 'severely_stunted' ||
       child.height_status === 'severly_stunted';
-    const isModerate = child.overall_status === 'MAM' ||
-      child.weight_status === 'underweight' ||
-      child.height_status === 'stunted';
 
-    let defaultSev = 'low';
-    let defaultReason = 'Nutrition intervention and clinical follow-up needed.';
+    const defaultUrgency = isSevere ? 'Urgent' : 'Routine';
+    setReferDestination('Rural Health Unit (RHU)');
+    setReferUrgency(defaultUrgency);
 
+    let defaultReason = '';
     if (isSevere) {
-      defaultSev = 'high';
-      defaultReason = `Severely malnourished (${child.overall_status || 'SAM'}) - Urgent RHU medical and nutritional evaluation required.`;
-    } else if (isModerate) {
-      defaultSev = 'medium';
-      defaultReason = `Moderate malnutrition (${child.overall_status || 'MAM'}) - Supplementary feeding and medical evaluation needed.`;
+      defaultReason = `Severely malnourished (${child.overall_status || 'SAM'}) with complications. Immediate medical attention and specialized therapeutic feeding required.`;
+    } else {
+      defaultReason = `Under child nutrition monitoring (${child.overall_status || 'MAM'}). Requires medical checkup and nutritional consultation.`;
     }
 
-    setReferSeverity(defaultSev);
     setReferReason(defaultReason);
     setReferError('');
   };
 
   const submitReferral = async () => {
     if (!referTarget || referSubmitting) return;
+
+    if (!referReason.trim()) {
+      setReferError('Please provide a reason or symptoms for the referral.');
+      return;
+    }
+
     setReferSubmitting(true);
     setReferError('');
     const benName = `${referTarget.first_name || ''} ${referTarget.last_name || ''}`.trim() || 'the child';
+    const severityMapped = referUrgency === 'Urgent' ? 'high' : 'medium';
+
     try {
       await axiosClient.post('/bhw/referrals', {
         child_id: referTarget.child_id,
         referral_type: 'child',
         beneficiary_type: 'child',
-        severity: referSeverity,
-        reason: referReason || 'Nutrition intervention follow-up needed',
-        notes: `Referred from Need Attention monitoring (${referTarget.overall_status || 'At Risk'})`,
+        facility: referDestination,
+        severity: severityMapped,
+        urgency: referUrgency,
+        reason: referReason.trim(),
+        nutrition_status: referTarget.overall_status || 'SAM',
+        notes: `Referred from Need Attention monitoring (${referTarget.overall_status || 'At Risk'}). Latest Weight: ${referTarget.weight_kg ? `${referTarget.weight_kg} kg` : 'N/A'}, Latest Height: ${referTarget.height_cm ? `${referTarget.height_cm} cm` : 'N/A'}.`,
         referred_by: user.user_id,
       });
+
       setReferTarget(null);
       await refetch();
-      alert(`Referral submitted for ${benName}. Partner BNS has been notified.`);
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
+      setToastMessage({
+        text: `Referral submitted for ${benName} to ${referDestination}. Partner BNS notified.`,
+        type: 'success',
+      });
     } catch (err) {
-      setReferError(err.response?.data?.message || 'Failed to submit referral. Please try again.');
+      const errMsg = err.response?.data?.message || 'Failed to submit referral. Please try again.';
+      setReferError(errMsg);
+      setToastMessage({
+        text: errMsg,
+        type: 'error',
+      });
     } finally {
       setReferSubmitting(false);
     }
@@ -442,8 +471,8 @@ function NeedAttention() {
                           {Boolean(c.is_referred) ? (
                             <Link
                               to="/bhw/referrals"
-                              title="Active referral ongoing. Click to view referrals"
-                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+                              title={`Referred to ${c.destination_facility || 'RHU'}${c.referral_date ? ` on ${new Date(c.referral_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''} (${c.referral_status || 'Pending'}). Click to view in Referrals.`}
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors shadow-2xs"
                             >
                               <CheckCircle2 size={13} className="text-blue-600" /> Referred
                             </Link>
@@ -571,41 +600,186 @@ function NeedAttention() {
         document.body
       )}
 
+      {/* ── Toast Notification Banner ── */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-9999 animate-in fade-in slide-in-from-bottom-5 duration-200">
+          <div
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold ${
+              toastMessage.type === 'success'
+                ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-900/20'
+                : 'bg-red-600 text-white border-red-500 shadow-red-900/20'
+            }`}
+          >
+            {toastMessage.type === 'success' ? (
+              <CheckCircle2 size={18} className="shrink-0 text-white" />
+            ) : (
+              <X size={18} className="shrink-0 text-white cursor-pointer" onClick={() => setToastMessage(null)} />
+            )}
+            <span>{toastMessage.text}</span>
+          </div>
+        </div>
+      )}
+
       {/* ── Refer Modal ── */}
       {referTarget && createPortal(
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setReferTarget(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-              <div className="bg-linear-to-r from-amber-600 to-orange-600 px-6 py-5 flex items-center justify-between text-white">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-linear-to-r from-amber-600 to-orange-600 px-6 py-5 flex items-center justify-between text-white shrink-0">
                 <div>
-                  <h3 className="font-bold text-base">Refer Child to RHU / Doctor</h3>
-                  <p className="text-xs text-white/80 mt-0.5">{referTarget.first_name} {referTarget.last_name}</p>
+                  <h3 className="font-bold text-base">Refer Child to Health Facility</h3>
+                  <p className="text-xs text-white/80 mt-0.5">BHW Referral for Specialized Medical / Nutrition Follow-up</p>
                 </div>
-                <button onClick={() => setReferTarget(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white">
+                <button onClick={() => setReferTarget(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white cursor-pointer">
                   <X size={16} />
                 </button>
               </div>
 
-              <div className="p-6 space-y-3.5 overflow-y-auto flex-1">
-                {referError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{referError}</div>}
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                {referError && (
+                  <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-semibold flex items-center gap-2">
+                    <X size={14} className="shrink-0 text-red-500" />
+                    <span>{referError}</span>
+                  </div>
+                )}
 
+                {/* Auto-filled Child Overview Card */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Child (Auto-filled)</span>
+                      <p className="text-sm font-bold text-gray-900">
+                        {referTarget.first_name} {referTarget.middle_initial ? `${referTarget.middle_initial}. ` : ''}{referTarget.last_name}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nutrition Status</span>
+                      <div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase inline-block mt-0.5 ${statusColors[referTarget.overall_status] || 'bg-amber-100 text-amber-800'}`}>
+                          {referTarget.overall_status || 'SAM'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200/60 grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Latest Weight</span>
+                      <span className="font-bold text-gray-800">{referTarget.weight_kg ? `${referTarget.weight_kg} kg` : 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Latest Height</span>
+                      <span className="font-bold text-gray-800">{referTarget.height_cm ? `${referTarget.height_cm} cm` : 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Recorded Date</span>
+                      <span className="font-bold text-gray-800">
+                        {referTarget.latest_measurement_date
+                          ? new Date(referTarget.latest_measurement_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : (referTarget.last_visit ? new Date(referTarget.last_visit).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Refer To Facility */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Severity Level *</label>
-                  <select value={referSeverity} onChange={(e) => setReferSeverity(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-600">
-                    <option value="low">Low — Routine checkup</option>
-                    <option value="medium">Medium — Growth faltering / MAM</option>
-                    <option value="high">High (Urgent) — SAM / Severe health concern</option>
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5 block">
+                    Refer To Destination Facility <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={referDestination}
+                    onChange={(e) => setReferDestination(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:border-amber-600 bg-white"
+                  >
+                    <option value="Barangay Health Station (BHS)">Barangay Health Station (BHS)</option>
+                    <option value="Rural Health Unit (RHU)">Rural Health Unit (RHU)</option>
+                    <option value="District Hospital">District Hospital</option>
                   </select>
                 </div>
 
+                {/* Urgency */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Reason for Referral *</label>
-                  <textarea rows={3} placeholder="Describe current condition, symptoms, or why RHU medical evaluation is recommended…" value={referReason} onChange={(e) => setReferReason(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-600 resize-none" />
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5 block">
+                    Urgency Level <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <label
+                      className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition text-xs ${
+                        referUrgency === 'Urgent'
+                          ? 'border-red-400 bg-red-50 text-red-900 font-bold ring-1 ring-red-300'
+                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="referUrgency"
+                        value="Urgent"
+                        checked={referUrgency === 'Urgent'}
+                        onChange={(e) => setReferUrgency(e.target.value)}
+                        className="mt-0.5 accent-red-600 cursor-pointer"
+                      />
+                      <div>
+                        <span className="block font-bold">Urgent</span>
+                        <span className="text-[11px] font-normal text-red-700/80">SAM with complications / acute illness</span>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition text-xs ${
+                        referUrgency === 'Routine'
+                          ? 'border-blue-400 bg-blue-50 text-blue-900 font-bold ring-1 ring-blue-300'
+                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="referUrgency"
+                        value="Routine"
+                        checked={referUrgency === 'Routine'}
+                        onChange={(e) => setReferUrgency(e.target.value)}
+                        className="mt-0.5 accent-blue-600 cursor-pointer"
+                      />
+                      <div>
+                        <span className="block font-bold">Routine</span>
+                        <span className="text-[11px] font-normal text-blue-700/80">Growth monitoring & standard checkup</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Reason / Symptoms (Required) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block">
+                      Reason / Symptoms <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[11px] text-gray-400 font-medium">Required</span>
+                  </div>
+                  <textarea
+                    rows={3}
+                    placeholder="Describe specific symptoms, clinical observations, or reasons for referral…"
+                    value={referReason}
+                    onChange={(e) => setReferReason(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-600 resize-none font-normal placeholder:text-gray-400"
+                  />
                 </div>
               </div>
-              <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-2 sticky bottom-0">
-                <button type="button" onClick={() => setReferTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">Cancel</button>
-                <button type="button" disabled={referSubmitting} onClick={submitReferral} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-60">
-                  {referSubmitting ? 'Submitting…' : 'Submit Referral'}
+
+              <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-3 sticky bottom-0">
+                <button
+                  type="button"
+                  onClick={() => setReferTarget(null)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 cursor-pointer transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={referSubmitting}
+                  onClick={submitReferral}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-60 cursor-pointer transition shadow-xs"
+                >
+                  {referSubmitting ? 'Submitting Referral…' : 'Submit Referral'}
                 </button>
               </div>
           </div>

@@ -30,6 +30,7 @@ function Referrals() {
     if (!p) return null;
     const lower = p.toLowerCase();
     if (lower === 'pending') return 'Pending';
+    if (lower === 'received') return 'Received';
     if (lower === 'ongoing') return 'Ongoing';
     if (lower === 'completed') return 'Completed';
     if (lower === 'archived') return 'Archived';
@@ -87,6 +88,7 @@ function Referrals() {
   const normalizeStatus = (s) => {
     const lower = String(s || '').toLowerCase();
     if (lower === 'pending') return 'Pending';
+    if (lower === 'received') return 'Received';
     if (lower === 'ongoing' || lower === 'responded') return 'Ongoing';
     if (lower === 'cancelled') return 'Cancelled';
     if (lower === 'completed' || lower === 'closed') return 'Completed';
@@ -266,6 +268,7 @@ function Referrals() {
 
   const allCount = activeTypeFiltered.length;
   const pendingCount = activeTypeFiltered.filter((r) => normalizeStatus(r.status) === 'Pending').length;
+  const receivedCount = activeTypeFiltered.filter((r) => normalizeStatus(r.status) === 'Received').length;
   const ongoingCount = activeTypeFiltered.filter((r) => normalizeStatus(r.status) === 'Ongoing').length;
   const completedCount = activeTypeFiltered.filter((r) => normalizeStatus(r.status) === 'Completed').length;
   const archivedCount = typeFilteredReferrals.filter(isArchived).length;
@@ -315,6 +318,17 @@ function Referrals() {
             }`}
           >
             Pending <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Pending' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'}`}>{pendingCount}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSelectStatusFilter('Received')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+              statusFilter === 'Received'
+                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
+            }`}
+          >
+            Received <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Received' ? 'bg-white/20 text-white' : 'bg-sky-100 text-sky-800'}`}>{receivedCount}</span>
           </button>
           <button
             type="button"
@@ -429,6 +443,10 @@ function Referrals() {
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
               : normStatus === 'Ongoing'
               ? 'bg-blue-50 text-blue-700 border-blue-200'
+              : normStatus === 'Received'
+              ? 'bg-sky-50 text-sky-700 border-sky-200'
+              : normStatus === 'Cancelled'
+              ? 'bg-rose-50 text-rose-700 border-rose-200'
               : 'bg-amber-50 text-amber-700 border-amber-200';
             const displayStatus = isItemArchived ? 'Archived' : normStatus;
             const benFullName = `${r.beneficiary_first_name || ''} ${r.beneficiary_last_name || ''}`.trim();
@@ -514,8 +532,10 @@ function Referrals() {
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Referral Status *</label>
                 <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] font-semibold">
                   <option value="Pending">Pending</option>
-                  <option value="Ongoing">Ongoing</option>
+                  <option value="Received">Received (Confirmed Receipt)</option>
+                  <option value="Ongoing">Ongoing (In Progress)</option>
                   <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
 

@@ -271,7 +271,8 @@ exports.createReferral = async (req, res) => {
       const [existing] = await conn.query(
         `SELECT referral_id, status
          FROM referrals
-         WHERE LOWER(status) IN ('pending', 'ongoing', 'responded', 'in progress')
+         WHERE LOWER(status) IN ('pending', 'received', 'ongoing', 'responded', 'in progress')
+           AND archived_at IS NULL
            AND (
              (? IS NOT NULL AND child_id = ?)
              OR (? IS NOT NULL AND mother_id = ?)
@@ -343,8 +344,10 @@ exports.createReferral = async (req, res) => {
       await conn.commit();
       conn.release();
 
-      // ── Notification — NON-FATAL, runs outside transaction ────────────────
-      // Missing columns in notifications table must NOT undo a successfully saved referral.
+      const referrerRole = String(req.user?.role || 'BHW').toUpperCase();
+      const referrerName = `${req.user?.first_name || ''} ${req.user?.last_name || ''}`.trim() || referrerRole;
+
+      // ── Notification to BNS — NON-FATAL ────────────────────────────────────
       try {
         const [notifCols] = await pool.query(
           `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
@@ -352,14 +355,13 @@ exports.createReferral = async (req, res) => {
         );
         const notifColSet = new Set(notifCols.map((c) => c.COLUMN_NAME));
 
-        const notifTitle = beneficiaryType === 'mother'
-          ? 'New Lactating Mother Referral'
-          : 'New Child Referral Submitted';
+        const notifTitle = `Referred by ${referrerRole}`;
+        const notifMessage = `${targetLabel} from ${targetBarangay || 'your barangay'} was referred to ${facilityName || 'health facility'} (${finalSeverity === 'high' ? 'Urgent' : 'Routine'}) by ${referrerName}.`;
 
         const nf = ['title', 'message', 'type', 'is_read'];
         const nv = [
           notifTitle,
-          `${targetLabel} from ${targetBarangay || 'Unknown Barangay'} needs follow-up (${severity || 'medium'} severity).`,
+          notifMessage,
           'referral',
           false,
         ];
@@ -367,7 +369,7 @@ exports.createReferral = async (req, res) => {
         if (notifColSet.has('related_id')) { nf.push('related_id'); nv.push(result.insertId); }
         if (notifColSet.has('created_by')) { nf.push('created_by'); nv.push(referringUserId); }
         if (notifColSet.has('created_at')) { nf.push('created_at'); nv.push(new Date()); }
-        if (notifColSet.has('recipient_role')) { nf.push('recipient_role'); nv.push('bhw'); }
+        if (notifColSet.has('recipient_role')) { nf.push('recipient_role'); nv.push('bns'); }
         if (notifColSet.has('barangay')) { nf.push('barangay'); nv.push(targetBarangay || null); }
 
         await pool.query(
@@ -378,7 +380,42 @@ exports.createReferral = async (req, res) => {
         console.error('Referral notification insert failed (non-fatal):', notifErr.message);
       }
 
-      return res.status(201).json({ message: 'Referral submitted successfully.', referral_id: result.insertId });
+      // ── Medical Records Audit Trail & Timeline — NON-FATAL ────────────────
+      try {
+        const benType = beneficiaryType === 'mother' ? 'mother' : 'child';
+        const benId = resolvedChildId || resolvedMotherId || 0;
+        const auditDetails = `Referred to ${facilityName || 'facility'}. Urgency: ${finalSeverity === 'high' ? 'Urgent' : 'Routine'}. Reason: ${reason}.`;
+
+        await pool.query(
+          `INSERT INTO medical_records_audit_trail
+           (record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name, action, action_details, modified_by, modifier_name, timestamp)
+           VALUES ('referral', ?, ?, ?, ?, 'create_referral', ?, ?, ?, NOW())`,
+          [result.insertId, benType, benId, targetLabel, auditDetails, referringUserId, referrerName]
+        );
+      } catch (auditErr) {
+        console.warn('Non-fatal referral audit trail insert error:', auditErr.message);
+      }
+
+      // ── Child Services Timeline Entry — NON-FATAL ─────────────────────────
+      if (beneficiaryType === 'child' && resolvedChildId) {
+        try {
+          const serviceName = `Referral to ${facilityName || 'Facility'}`;
+          const serviceNotes = `Urgency: ${finalSeverity === 'high' ? 'Urgent' : 'Routine'}. Reason: ${reason}`;
+          await pool.query(
+            `INSERT INTO child_services (child_id, service_type, service_name, service_date, provided_by, notes)
+             VALUES (?, 'Referral', ?, CURDATE(), ?, ?)`,
+            [resolvedChildId, serviceName, referringUserId, serviceNotes]
+          );
+        } catch (csErr) {
+          console.warn('Non-fatal child_services referral timeline insert error:', csErr.message);
+        }
+      }
+
+      return res.status(201).json({
+        message: 'Referral submitted successfully.',
+        referral_id: result.insertId,
+        status: 'Pending',
+      });
     } catch (txErr) {
       await conn.rollback();
       conn.release();
@@ -488,6 +525,7 @@ exports.getReferrals = async (req, res) => {
       let normalizedStatus = ref.status;
       const lower = String(ref.status || '').toLowerCase();
       if (lower === 'pending') normalizedStatus = 'Pending';
+      else if (lower === 'received') normalizedStatus = 'Received';
       else if (lower === 'ongoing' || lower === 'responded') normalizedStatus = 'Ongoing';
       else if (lower === 'cancelled') normalizedStatus = 'Cancelled';
       else if (lower === 'completed' || lower === 'closed') normalizedStatus = 'Completed';
@@ -526,16 +564,19 @@ exports.updateReferralStatus = async (req, res) => {
 
   const statusMap = {
     pending: 'Pending',
+    received: 'Received',
     ongoing: 'Ongoing',
     responded: 'Ongoing',
     completed: 'Completed',
     closed: 'Completed',
+    cancelled: 'Cancelled',
+    canceled: 'Cancelled',
   };
 
   const normalizedStatus = statusMap[String(status || '').toLowerCase()];
 
   if (!normalizedStatus) {
-    return res.status(400).json({ message: 'Invalid status value. Allowed: Pending, Ongoing, Completed.' });
+    return res.status(400).json({ message: 'Invalid status value. Allowed: Pending, Received, Ongoing, Completed, Cancelled.' });
   }
 
   try {

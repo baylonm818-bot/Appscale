@@ -252,15 +252,18 @@ exports.getNeedAttention = async (req, res) => {
       'c.child_id', 'c.first_name', 'c.last_name', 'c.middle_initial', 'c.sex', 'c.age_in_months',
       'c.guardian_name', 'c.guardian_contact', 'c.barangay',
       'nr.weight_kg', 'nr.height_cm', 'nr.weight_status', 'nr.height_status',
-      'nr.overall_status',
+      'nr.overall_status', 'nr.record_date AS latest_measurement_date',
       `CASE
          WHEN latest_cs.latest_service_date IS NOT NULL AND nr.record_date IS NOT NULL THEN
            GREATEST(nr.record_date, latest_cs.latest_service_date)
          WHEN latest_cs.latest_service_date IS NOT NULL THEN latest_cs.latest_service_date
          ELSE nr.record_date
        END AS last_visit`,
-      'CASE WHEN active_ref.active_referral_id IS NOT NULL THEN 1 ELSE 0 END AS is_referred',
-      'active_ref.active_referral_id'
+      'CASE WHEN active_ref.referral_id IS NOT NULL THEN 1 ELSE 0 END AS is_referred',
+      'active_ref.referral_id AS active_referral_id',
+      'active_ref.referral_status',
+      'active_ref.referral_date',
+      'active_ref.referral_notes'
     ];
     if (hasWasting) selectCols.splice(13, 0, 'nr.wasting_status');
 
@@ -290,12 +293,16 @@ exports.getNeedAttention = async (req, res) => {
          GROUP BY child_id
        ) latest_cs ON latest_cs.child_id = c.child_id
        LEFT JOIN (
-         SELECT child_id, MAX(referral_id) AS active_referral_id
-         FROM referrals
-         WHERE LOWER(status) IN ('pending', 'ongoing', 'responded', 'in progress')
-           AND child_id IS NOT NULL
-           AND archived_at IS NULL
-         GROUP BY child_id
+         SELECT r.child_id, r.referral_id, r.status AS referral_status, r.created_at AS referral_date, r.notes AS referral_notes
+         FROM referrals r
+         INNER JOIN (
+           SELECT child_id, MAX(referral_id) AS max_ref_id
+           FROM referrals
+           WHERE LOWER(status) IN ('pending', 'received', 'ongoing', 'responded', 'in progress')
+             AND child_id IS NOT NULL
+             AND archived_at IS NULL
+           GROUP BY child_id
+         ) latest_r ON r.referral_id = latest_r.max_ref_id
        ) active_ref ON active_ref.child_id = c.child_id
        WHERE ${barangayCondition}
          AND c.status = 'active'
@@ -331,7 +338,16 @@ exports.getNeedAttention = async (req, res) => {
           overall = 'overweight';
         }
       }
-      return { ...c, overall_status: overall };
+      let destination = '';
+      if (c.referral_notes) {
+        const match = c.referral_notes.match(/Facility:\s*([^\n\r]+)/i);
+        if (match) destination = match[1].trim();
+      }
+      return {
+        ...c,
+        overall_status: overall,
+        destination_facility: destination || 'BHS / RHU / Hospital',
+      };
     });
     return res.status(200).json(mappedChildren);
   } catch (error) {
