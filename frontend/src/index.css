@@ -519,6 +519,15 @@ button, a {
   }
 }
 
+@keyframes splash-progress {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
 .animate-pulse-glow {
   animation: appscale-pulse-glow 2.4s ease-in-out infinite;
 }

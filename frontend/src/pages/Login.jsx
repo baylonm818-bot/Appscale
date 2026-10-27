@@ -551,54 +551,62 @@ export default function LoginPage() {
   const [fadeOutSplash, setFadeOutSplash] = useState(false);
 
   useEffect(() => {
-    // Show splash screen for 1.8 seconds on initial load, then smooth fade out
+    // Show splash screen for exactly 5 seconds, then smooth fade out
     const timer = setTimeout(() => {
       setFadeOutSplash(true);
-      setTimeout(() => setShowSplash(false), 500); // Wait for transition
-    }, 1800);
+      setTimeout(() => setShowSplash(false), 700); // Wait for smooth 700ms fade
+    }, 5000);
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <>
-      {/* ── High-End Animated Splash Screen ── */}
+      {/* ── High-End Animated Splash Screen (5-second duration) ── */}
       {showSplash && (
         <div 
-          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-[#09260e] via-[#123d18] to-[#0b2413] transition-opacity duration-500 ${
+          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-[#061e0b] via-[#0d2f14] to-[#08220e] transition-opacity duration-700 ${
             fadeOutSplash ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
         >
-          <div className="relative flex flex-col items-center">
-            {/* Spinning decorative background aura */}
-            <div className="absolute -inset-8 rounded-full bg-emerald-500/20 blur-2xl animate-pulse-glow" />
-            
-            {/* Pulsing Logo Container */}
-            <div className="relative w-32 h-32 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-[0_20px_70px_rgba(34,197,94,0.35)] border-4 border-emerald-400/60 ring-8 ring-emerald-500/20 animate-pulse-glow">
+          <div className="relative flex flex-col items-center px-4">
+            {/* Ambient emerald backlight glow */}
+            <div className="absolute -top-12 -left-12 w-64 h-64 rounded-full bg-emerald-500/20 blur-3xl animate-pulse" />
+            <div className="absolute -bottom-12 -right-12 w-64 h-64 rounded-full bg-green-400/15 blur-3xl animate-pulse" />
+
+            {/* Circular Logo Card - Solid crisp background, fully contained with no clipping */}
+            <div className="relative w-36 h-36 rounded-full bg-white flex items-center justify-center p-3 shadow-[0_20px_60px_rgba(0,0,0,0.35),0_0_40px_rgba(52,211,153,0.3)] border-4 border-emerald-400/80 ring-4 ring-emerald-500/20">
               <img
                 src={logo}
                 alt="AppScale Logo"
-                className="w-24 h-24 object-contain animate-float"
+                className="w-full h-full object-contain filter-none"
+                style={{ imageRendering: "-webkit-optimize-contrast" }}
               />
             </div>
 
             {/* Shimmering App Title */}
-            <div className="mt-6 text-center">
-              <h1 className="text-4xl font-black tracking-tight drop-shadow-lg">
+            <div className="mt-7 text-center">
+              <h1 className="text-4xl sm:text-5xl font-black tracking-tight drop-shadow-xl">
                 <span className="text-white">App</span>
-                <span className="animate-shimmer-text">Scale</span>
+                <span className="text-emerald-300">Scale</span>
               </h1>
-              <p className="mt-2 text-sm font-medium text-emerald-200/80 tracking-widest uppercase">
+              <p className="mt-2 text-xs sm:text-sm font-semibold text-emerald-200/90 tracking-[0.2em] uppercase">
                 Nutrition & Health Monitoring System
               </p>
             </div>
 
-            {/* Sleek Loading Bar */}
-            <div className="mt-8 w-48 h-1.5 bg-emerald-950/80 rounded-full overflow-hidden border border-emerald-500/30">
-              <div className="h-full bg-gradient-to-r from-emerald-400 to-green-300 rounded-full animate-shimmer-text w-full animate-pulse" />
+            {/* 5-Second Animated Loading Progress Bar */}
+            <div className="mt-8 w-56 sm:w-64 h-2 bg-emerald-950/80 rounded-full overflow-hidden border border-emerald-500/30 p-[1px]">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-400 via-green-300 to-emerald-200 rounded-full"
+                style={{
+                  width: '100%',
+                  animation: 'splash-progress 5s linear forwards'
+                }}
+              />
             </div>
 
-            <p className="mt-4 text-xs text-emerald-400/70 font-mono animate-pulse">
-              Initializing application...
+            <p className="mt-3.5 text-xs text-emerald-300/80 font-mono tracking-wider">
+              Initializing municipal records...
             </p>
           </div>
         </div>
