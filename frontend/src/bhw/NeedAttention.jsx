@@ -11,6 +11,9 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
+  Building2,
+  Calendar,
+  ExternalLink,
 } from 'lucide-react';
 
 const statusColors = {
@@ -469,13 +472,66 @@ function NeedAttention() {
                             <Stethoscope size={13} className="text-emerald-700" /> Log Visit
                           </button>
                           {Boolean(c.is_referred) ? (
-                            <Link
-                              to="/bhw/referrals"
-                              title={`Referred to ${c.destination_facility || 'RHU'}${c.referral_date ? ` on ${new Date(c.referral_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''} (${c.referral_status || 'Pending'}). Click to view in Referrals.`}
-                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors shadow-2xs"
-                            >
-                              <CheckCircle2 size={13} className="text-blue-600" /> Referred
-                            </Link>
+                            <div className="relative inline-block text-left group">
+                              <Link
+                                to="/bhw/referrals"
+                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50/90 hover:bg-blue-100 hover:text-blue-800 border border-blue-200/80 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all shadow-2xs group-hover:border-blue-300"
+                              >
+                                <CheckCircle2 size={13} className="text-blue-600" />
+                                <span>Referred</span>
+                              </Link>
+
+                              {/* Beautiful Popover Card on Hover */}
+                              <div className="absolute bottom-full right-0 mb-2.5 hidden group-hover:flex flex-col w-64 p-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-blue-100 text-left z-50 pointer-events-none transition-all duration-200 animate-in fade-in zoom-in-95">
+                                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-700">
+                                    <CheckCircle2 size={13} className="text-blue-600 shrink-0" />
+                                    <span>Active Referral</span>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                    String(c.referral_status).toLowerCase() === 'received'
+                                      ? 'bg-sky-100 text-sky-800'
+                                      : String(c.referral_status).toLowerCase() === 'ongoing'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-amber-100 text-amber-800'
+                                  }`}>
+                                    {c.referral_status || 'Pending'}
+                                  </span>
+                                </div>
+
+                                <div className="py-2 space-y-1.5 text-xs">
+                                  <div className="flex items-start gap-2 text-gray-700">
+                                    <Building2 size={13} className="text-gray-400 mt-0.5 shrink-0" />
+                                    <div className="min-w-0">
+                                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Facility</p>
+                                      <p className="font-semibold text-gray-900 leading-tight truncate">
+                                        {c.destination_facility || 'Rural Health Unit (RHU)'}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-start gap-2 text-gray-700">
+                                    <Calendar size={13} className="text-gray-400 mt-0.5 shrink-0" />
+                                    <div>
+                                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Referred Date</p>
+                                      <p className="font-medium text-gray-800">
+                                        {c.referral_date
+                                          ? new Date(c.referral_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                          : 'Recently'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-blue-600">
+                                  <span>View in Referrals</span>
+                                  <ExternalLink size={12} className="text-blue-500" />
+                                </div>
+
+                                {/* Arrow pointer */}
+                                <div className="absolute top-full right-5 -mt-1 w-2.5 h-2.5 bg-white border-r border-b border-blue-100 transform rotate-45" />
+                              </div>
+                            </div>
                           ) : (
                             <button
                               type="button"
