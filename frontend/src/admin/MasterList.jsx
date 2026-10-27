@@ -1,7 +1,71 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
-import { Search, Baby, Heart, X, MapPin, ChevronDown, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Search, Baby, Heart, X, MapPin, ChevronDown, ChevronLeft, ChevronRight, Filter, Check } from 'lucide-react';
+
+/* ── Custom Popover Select (always drops DOWN with clean scrollbar) ── */
+function CustomSelect({ value, onChange, options, placeholder, className = '' }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const selectedOption = options.find((o) => o.value === value) || options[0];
+
+  return (
+    <div className={`relative ${className}`} ref={ref}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="flex items-center justify-between gap-2 pl-3 pr-2.5 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100/70 focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition cursor-pointer select-none whitespace-nowrap min-w-[120px]"
+      >
+        <span className="truncate">{selectedOption?.label || placeholder}</span>
+        <ChevronDown
+          size={14}
+          className={`text-gray-400 transition-transform duration-150 shrink-0 ${isOpen ? 'rotate-180 text-emerald-600' : ''}`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full mt-1.5 left-0 z-50 min-w-full w-max max-w-[260px] bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-left text-xs transition cursor-pointer select-none ${
+                  isSelected
+                    ? 'bg-emerald-50 text-emerald-800 font-bold'
+                    : 'text-gray-700 hover:bg-gray-50 font-medium'
+                }`}
+              >
+                <span className="truncate">{opt.label}</span>
+                {isSelected && <Check size={13} className="text-emerald-700 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ── Status badge configuration (exact names and colors aligned with dashboard and app) ── */
 const STATUS_CONFIG = {
@@ -61,13 +125,17 @@ const STATUS_CONFIG = {
     label: 'Graduate',
     cls: 'bg-teal-50 text-teal-700 border border-teal-200',
   },
+  active: {
+    label: 'Active',
+    cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  },
   completed: {
     label: 'Completed',
     cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   },
   ongoing: {
-    label: 'Ongoing',
-    cls: 'bg-amber-50 text-amber-700 border border-amber-200',
+    label: 'Active',
+    cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   },
   no_record: {
     label: 'No Record',
@@ -88,8 +156,8 @@ function normalizeStatusKey(rawStatus) {
   if (s === 'ob' || s === 'obese') return 'obese';
   if (s === 'normal') return 'normal';
   if (s === 'graduate') return 'graduate';
+  if (s === 'active' || s === 'ongoing') return 'active';
   if (s === 'completed') return 'completed';
-  if (s === 'ongoing') return 'ongoing';
   return 'no_record';
 }
 
@@ -189,7 +257,7 @@ function Masterlist() {
       displaySex: 'Mother',
       ageMonths: null,
       barangay: m.barangay || '—',
-      displayStatus: m.is_completed ? 'completed' : 'ongoing',
+      displayStatus: m.is_completed ? 'completed' : (m.status === 'inactive' ? 'completed' : 'active'),
     }));
 
     return {
@@ -417,58 +485,50 @@ function Masterlist() {
             {/* Filter Dropdowns */}
             <div className="flex flex-wrap items-center gap-2.5">
               {/* Type Filter */}
-              <div className="relative">
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100/70 focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition cursor-pointer"
-                >
-                  <option value="child">Children Only</option>
-                  <option value="mother">Mothers Only</option>
-                  <option value="all">All Beneficiaries</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              </div>
+              <CustomSelect
+                value={typeFilter}
+                onChange={setTypeFilter}
+                options={[
+                  { value: 'child', label: 'Children Only' },
+                  { value: 'mother', label: 'Mothers Only' },
+                  { value: 'all', label: 'All Beneficiaries' },
+                ]}
+                placeholder="Beneficiary Type"
+              />
 
               {/* Barangay Filter */}
-              <div className="relative">
-                <select
-                  value={barangayFilter}
-                  onChange={(e) => setBarangayFilter(e.target.value)}
-                  className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100/70 focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition cursor-pointer"
-                >
-                  <option value="all">All Barangays</option>
-                  {GASAN_BARANGAYS.map((b) => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              </div>
+              <CustomSelect
+                value={barangayFilter}
+                onChange={setBarangayFilter}
+                options={[
+                  { value: 'all', label: 'All Barangays' },
+                  ...GASAN_BARANGAYS.map((b) => ({ value: b, label: b })),
+                ]}
+                placeholder="Select Barangay"
+              />
 
               {/* Status Filter */}
-              <div className="relative">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100/70 focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition cursor-pointer"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="normal">Normal</option>
-                  <option value="underweight">Underweight</option>
-                  <option value="severely_underweight">Severely Underweight</option>
-                  <option value="stunted">Stunted</option>
-                  <option value="severely_stunted">Severely Stunted</option>
-                  <option value="wasted">Wasted</option>
-                  <option value="severely_wasted">Severely Wasted</option>
-                  <option value="overweight">Overweight</option>
-                  <option value="obese">Obese</option>
-                  <option value="graduate">Graduate</option>
-                  <option value="no_record">No Record</option>
-                  <option value="completed">Completed (Mother)</option>
-                  <option value="ongoing">Ongoing (Mother)</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              </div>
+              <CustomSelect
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={[
+                  { value: 'all', label: 'All Statuses' },
+                  { value: 'normal', label: 'Normal' },
+                  { value: 'underweight', label: 'Underweight' },
+                  { value: 'severely_underweight', label: 'Severely Underweight' },
+                  { value: 'stunted', label: 'Stunted' },
+                  { value: 'severely_stunted', label: 'Severely Stunted' },
+                  { value: 'wasted', label: 'Wasted' },
+                  { value: 'severely_wasted', label: 'Severely Wasted' },
+                  { value: 'overweight', label: 'Overweight' },
+                  { value: 'obese', label: 'Obese' },
+                  { value: 'graduate', label: 'Graduate' },
+                  { value: 'active', label: 'Active (Mother)' },
+                  { value: 'completed', label: 'Completed (Mother)' },
+                  { value: 'no_record', label: 'No Record' },
+                ]}
+                placeholder="Select Status"
+              />
 
               {/* Reset Button */}
               {hasActiveFilters && (
