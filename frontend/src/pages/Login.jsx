@@ -271,8 +271,9 @@ function LoginCard() {
 
       {showForgotPassword ? (
         <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-bold text-slate-900">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
               {resetStep === "email" && "Forgot password"}
               {resetStep === "otp" && "Enter OTP"}
               {resetStep === "password" && "Change password"}
@@ -283,9 +284,12 @@ function LoginCard() {
                 setShowForgotPassword(false);
                 setForgotMessage("");
               }}
-              className="text-sm font-medium text-slate-500 hover:text-slate-700"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-red-50 hover:text-red-600 transition-all duration-200 border border-slate-200/60 shadow-sm active:scale-95"
             >
-              Close
+              <span>Close</span>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
 
@@ -344,8 +348,8 @@ function LoginCard() {
           {resetStep === "email" && <button
             type="button"
             onClick={handleForgotPassword}
-            disabled={forgotLoading}
-            className="w-full rounded-2xl bg-[#1b5e20] py-3.5 text-sm font-semibold text-white shadow-lg shadow-green-900/20 transition hover:bg-[#154a1a] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={forgotLoading || !forgotEmail.trim()}
+            className="w-full rounded-2xl bg-[#1b5e20] py-3.5 text-sm font-semibold text-white shadow-lg shadow-green-900/20 transition-all hover:bg-[#154a1a] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#1b5e20]"
           >
             {forgotLoading ? "Sending…" : "Send OTP"}
           </button>}
