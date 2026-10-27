@@ -8,7 +8,7 @@ import { X } from 'lucide-react';
 const severityPriority = { high: 0, medium: 1, low: 2 };
 
 const serviceOptions = [
-  { value: '', label: 'General Follow-up / Health Consultation' },
+  { value: 'general', label: 'General Follow-up / Health Consultation' },
   { value: 'vitamin_a', label: 'Vitamin A Supplementation' },
   { value: 'deworming', label: 'Deworming Tablet' },
   { value: 'feeding', label: 'Supplementary Feeding' },
@@ -63,7 +63,7 @@ function Referrals() {
   const [actionTarget, setActionTarget] = useState(null);
   const [newStatus, setNewStatus] = useState('Ongoing');
   const [responseNotes, setResponseNotes] = useState('');
-  const [serviceType, setServiceType] = useState('');
+  const [selectedServices, setSelectedServices] = useState([]);
   const [serviceDate, setServiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [actionSubmitting, setActionSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
@@ -232,9 +232,15 @@ function Referrals() {
     const curr = normalizeStatus(r.status);
     setNewStatus(curr === 'Pending' ? 'Ongoing' : curr);
     setResponseNotes(r.response_notes || '');
-    setServiceType('');
+    setSelectedServices([]);
     setServiceDate(new Date().toISOString().slice(0, 10));
     setActionError('');
+  };
+
+  const toggleService = (val) => {
+    setSelectedServices((prev) =>
+      prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
+    );
   };
 
   const submitStatusUpdate = async () => {
@@ -245,7 +251,8 @@ function Referrals() {
       await axiosClient.patch(`/bhw/referrals/${actionTarget.referral_id}/status`, {
         status: newStatus,
         response_notes: responseNotes,
-        service_type: serviceType || null,
+        services: selectedServices,
+        service_type: selectedServices[0] || null,
         service_date: serviceDate,
       });
       setActionTarget(null);
@@ -514,13 +521,51 @@ function Referrals() {
 
               {newStatus === 'Ongoing' && (
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Service Provided</label>
-                  <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]">
-                    <option value="">Select service</option>
-                    {serviceOptions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                  </select>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block mt-3">Service Date</label>
-                  <input type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]" />
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Services Provided
+                    </label>
+                    {selectedServices.length > 0 && (
+                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        {selectedServices.length} selected
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 rounded-xl border border-gray-200 bg-slate-50/60 p-2.5">
+                    {serviceOptions.map((s) => {
+                      const isChecked = selectedServices.includes(s.value);
+                      return (
+                        <label
+                          key={s.value}
+                          onClick={() => toggleService(s.value)}
+                          className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition text-xs font-medium select-none ${
+                            isChecked
+                              ? 'bg-emerald-50 text-emerald-900 border border-emerald-200 shadow-2xs font-semibold'
+                              : 'bg-white text-gray-700 border border-transparent hover:bg-gray-100/70'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {}} // handled by parent onClick
+                            className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 pointer-events-none accent-[#2e7d32]"
+                          />
+                          <span>{s.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block mt-3">
+                    Service Date
+                  </label>
+                  <input
+                    type="date"
+                    value={serviceDate}
+                    onChange={(e) => setServiceDate(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#2e7d32] bg-white"
+                  />
                 </div>
               )}
 

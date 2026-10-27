@@ -565,18 +565,26 @@ exports.updateReferralStatus = async (req, res) => {
 
     const effectiveProvidedBy = provided_by || req.user?.user_id || null;
 
-    if (normalizedStatus === 'Ongoing' && serviceLabels[service_type] && service_date && referral.child_id) {
-      await pool.query(
-        `INSERT INTO child_services (child_id, service_type, service_date, provided_by)
-         VALUES (?, ?, ?, ?)`,
-        [referral.child_id, serviceLabels[service_type], service_date, effectiveProvidedBy]
-      );
-    } else if (normalizedStatus === 'Ongoing' && serviceLabels[service_type] && service_date && referral.mother_id) {
-      await pool.query(
-        `INSERT INTO mother_services (mother_id, service_type, service_date, provided_by)
-         VALUES (?, ?, ?, ?)`,
-        [referral.mother_id, serviceLabels[service_type], service_date, effectiveProvidedBy]
-      );
+    // Collect all selected services (either from array `services` or single `service_type`)
+    const rawServices = Array.isArray(req.body.services) ? req.body.services : (service_type ? [service_type] : []);
+    const validServices = rawServices.map(s => serviceLabels[s]).filter(Boolean);
+
+    if (normalizedStatus === 'Ongoing' && validServices.length > 0 && service_date) {
+      for (const sLabel of validServices) {
+        if (referral.child_id) {
+          await pool.query(
+            `INSERT INTO child_services (child_id, service_type, service_date, provided_by)
+             VALUES (?, ?, ?, ?)`,
+            [referral.child_id, sLabel, service_date, effectiveProvidedBy]
+          );
+        } else if (referral.mother_id) {
+          await pool.query(
+            `INSERT INTO mother_services (mother_id, service_type, service_date, provided_by)
+             VALUES (?, ?, ?, ?)`,
+            [referral.mother_id, sLabel, service_date, effectiveProvidedBy]
+          );
+        }
+      }
     }
 
     // Save items/supplies given if provided
