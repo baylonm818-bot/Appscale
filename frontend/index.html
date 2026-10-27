@@ -1,12 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" style="background-color: #061e0b;">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AppScale</title>
+    <title>AppScale — Barangay Nutrition Monitoring System</title>
+    <!-- Preload brand logo to completely eliminate empty white circle on initial paint -->
+    <link rel="preload" as="image" href="/logo1.png" type="image/png" fetchpriority="high" />
+    <style>
+      /* Zero white flash on first paint / hard refresh */
+      html, body {
+        background-color: #061e0b !important;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
   </head>
-  <body>
+  <body style="background-color: #061e0b;">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

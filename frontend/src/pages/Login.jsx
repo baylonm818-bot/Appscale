@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo1.png";
 import { API_URL } from "../api/config";
@@ -6,7 +6,7 @@ import { useAuth } from "../components/AuthContext";
 
 function AppScaleLogo() {
   return (
-    <div className="flex flex-col items-center gap-3 animate-fade-up">
+    <div className="flex flex-col items-center gap-3">
       <div className="w-28 h-28 rounded-full bg-white flex items-center justify-center p-2.5 shadow-[0_14px_45px_rgba(0,0,0,0.22)] border-4 border-white/90 ring-4 ring-emerald-400/30 transition-transform duration-300 hover:scale-105">
         <img
           src={logo}
@@ -32,24 +32,31 @@ function AppScaleLogo() {
   );
 }
 
-function Input({ label, type = "text", value, onChange, placeholder, required }) {
+function Input({ label, type = "text", value, onChange, placeholder, required, inputRef, error, id, ...props }) {
   return (
     <div>
-      <label className="block text-sm font-semibold text-gray-700 mb-1">
+      <label htmlFor={id} className="block text-sm font-semibold text-slate-700 mb-1.5">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       <input
+        id={id}
+        ref={inputRef}
         type={type}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-[#2e7d32]/20 transition shadow-sm"
+        className={`w-full bg-white border rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all shadow-xs ${
+          error
+            ? "border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+            : "border-slate-200 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
+        }`}
+        {...props}
       />
     </div>
   );
 }
 
-function LoginCard() {
+function LoginCard({ emailInputRef }) {
   const navigate = useNavigate();
   const { setUser } = useAuth();
   const [email, setEmail] = useState("");
@@ -143,8 +150,7 @@ function LoginCard() {
       }
 
       // prefer sessionStorage by default (less persistent). Only use localStorage
-      // when the user explicitly opts into "remember me". Consider using
-      // HttpOnly secure cookies for production to mitigate XSS risks.
+      // when the user explicitly opts into "remember me".
       const store = rememberMe ? localStorage : sessionStorage;
       store.setItem("token", data.token);
       store.setItem("role", data.user.role);
@@ -294,7 +300,7 @@ function LoginCard() {
   };
 
   return (
-    <div className="relative w-full max-w-md rounded-[28px] border border-white/40 bg-white/95 p-7 shadow-[0_30px_80px_rgba(10,42,20,0.32)] backdrop-blur-xl sm:p-9 animate-slide-in-right transition-all duration-300 hover:shadow-[0_35px_90px_rgba(10,42,20,0.40)]">
+    <div className="relative w-full max-w-md rounded-[28px] border border-white/40 bg-white/95 p-7 shadow-[0_30px_80px_rgba(10,42,20,0.32)] backdrop-blur-xl sm:p-9 transition-all duration-300 hover:shadow-[0_35px_90px_rgba(10,42,20,0.40)]">
       {/* ── Top-right X button for Forgot Password Modal ── */}
       {showForgotPassword && (
         <button
@@ -320,8 +326,11 @@ function LoginCard() {
       </div>
 
       {error && (
-        <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+        <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 animate-shake flex items-center gap-2">
+          <svg className="w-4 h-4 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>{error}</span>
         </div>
       )}
 
@@ -519,6 +528,8 @@ function LoginCard() {
       ) : (
         <form onSubmit={handleSignIn} className="space-y-5">
           <Input
+            id="login-email"
+            inputRef={emailInputRef}
             label="Email"
             type="email"
             value={email}
@@ -529,7 +540,7 @@ function LoginCard() {
 
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="text-sm font-semibold text-slate-700">
+              <label htmlFor="login-password" className="text-sm font-semibold text-slate-700">
                 Password <span className="text-red-500">*</span>
               </label>
               <button
@@ -551,18 +562,29 @@ function LoginCard() {
             </div>
             <div className="relative">
               <input
+                id="login-password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-16 text-sm text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-11 text-sm text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-500 transition hover:text-slate-700"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
               >
-                {showPassword ? "Hide" : "Show"}
+                {showPassword ? (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                )}
               </button>
             </div>
           </div>
@@ -594,6 +616,7 @@ function LoginCard() {
           <button
             type="submit"
             disabled={loading}
+            aria-busy={loading}
             className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-[#2e7d32] py-3.5 text-sm font-semibold text-white shadow-lg shadow-green-900/20 transition-all hover:bg-[#256427] active:bg-[#1b4d22] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-[#2e7d32]"
           >
             {loading ? (
@@ -631,36 +654,61 @@ function LoginCard() {
 }
 
 export default function LoginPage() {
-  const [showSplash, setShowSplash] = useState(true);
-  const [fadeOutSplash, setFadeOutSplash] = useState(false);
+  const [showSplash, setShowSplash] = useState(() => {
+    // Skip splash if user already experienced it in this browser session
+    try {
+      return !sessionStorage.getItem("appscale_splash_seen");
+    } catch {
+      return true;
+    }
+  });
+  const [splashExiting, setSplashExiting] = useState(false);
+  const emailInputRef = useRef(null);
 
   useEffect(() => {
-    // Show splash screen for 1.2 seconds, then trigger a smooth cinematic zoom-dissolve transition
+    if (!showSplash) {
+      // If splash was skipped, immediately focus email field
+      setTimeout(() => emailInputRef.current?.focus(), 150);
+      return;
+    }
+
+    // Splash display duration: 1.6s of entrance & presentation, then clean exit
     const timer = setTimeout(() => {
-      setFadeOutSplash(true);
-      setTimeout(() => setShowSplash(false), 650); // 650ms smooth transition
-    }, 1200);
+      setSplashExiting(true);
+      // Wait for exit fade out to complete before removing from DOM
+      setTimeout(() => {
+        try {
+          sessionStorage.setItem("appscale_splash_seen", "true");
+        } catch {
+          /* ignore storage error */
+        }
+        setShowSplash(false);
+        // Autofocus email input field right after transition
+        setTimeout(() => emailInputRef.current?.focus(), 150);
+      }, 500); // 500ms smooth fade-out
+    }, 1600);
+
     return () => clearTimeout(timer);
-  }, []);
+  }, [showSplash]);
 
   return (
     <>
-      {/* ── High-End Animated Splash Screen with Cinematic Transition ── */}
+      {/* ── High-End Animated Splash Screen (Zero Overlap with Login) ── */}
       {showSplash && (
         <div 
-          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-radial-[circle_at_center,_#0f3e1b_0%,_#09260e_60%,_#051508_100%] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            fadeOutSplash 
-              ? "opacity-0 scale-105 blur-[3px] pointer-events-none" 
-              : "opacity-100 scale-100 blur-0"
+          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-radial-[circle_at_center,_#0f3e1b_0%,_#09260e_60%,_#051508_100%] transition-opacity duration-500 ease-out ${
+            splashExiting 
+              ? "opacity-0 pointer-events-none" 
+              : "opacity-100"
           }`}
         >
-          <div className="relative flex flex-col items-center px-4 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]">
+          <div className="relative flex flex-col items-center px-4">
             {/* Ambient soft backlight glow */}
-            <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full bg-emerald-400/15 blur-3xl animate-pulse" />
-            <div className="absolute -bottom-16 -right-16 w-64 h-64 rounded-full bg-green-500/15 blur-3xl animate-pulse" />
+            <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full bg-emerald-400/20 blur-3xl animate-pulse" />
+            <div className="absolute -bottom-16 -right-16 w-64 h-64 rounded-full bg-green-500/20 blur-3xl animate-pulse" />
 
-            {/* Perfect Circular Logo Container - Seamless round frame with no clipping */}
-            <div className="relative w-36 h-36 rounded-full bg-white flex items-center justify-center p-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] border-4 border-white/95 ring-4 ring-emerald-400/30">
+            {/* Perfect Circular Logo Container with fade + scale in */}
+            <div className="relative w-36 h-36 rounded-full bg-white flex items-center justify-center p-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] border-4 border-white/95 ring-4 ring-emerald-400/30 animate-splash-logo">
               <img
                 src={logo}
                 alt="AppScale Logo"
@@ -669,23 +717,30 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Shimmering App Title */}
+            {/* Staggered Title & Tagline */}
             <div className="mt-7 text-center">
-              <h1 className="text-4xl sm:text-5xl font-black tracking-tight drop-shadow-xl">
+              <h1 className="text-4xl sm:text-5xl font-black tracking-tight drop-shadow-xl animate-fade-up-1">
                 <span className="text-white">App</span>
                 <span className="text-emerald-300">Scale</span>
               </h1>
-              <p className="mt-2 text-xs sm:text-sm font-semibold text-emerald-200/90 tracking-[0.2em] uppercase">
+              <p className="mt-2 text-xs sm:text-sm font-semibold text-emerald-200/90 tracking-[0.2em] uppercase animate-fade-up-2">
                 Nutrition & Health Monitoring System
               </p>
+            </div>
+
+            {/* Subtle progress indicator */}
+            <div className="mt-8 w-36 h-1 bg-white/10 rounded-full overflow-hidden relative">
+              <div className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-emerald-400 to-transparent rounded-full animate-progress-line" />
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Main Login View (Smoothly Revealed) ── */}
+      {/* ── Main Login View (Revealed smoothly without overlap) ── */}
       <div
-        className="relative flex min-h-screen overflow-hidden bg-[#0a2315] animate-login-enter"
+        className={`relative flex min-h-screen overflow-hidden bg-[#0a2315] ${
+          showSplash && !splashExiting ? "opacity-0 pointer-events-none" : "opacity-100 transition-opacity duration-500"
+        }`}
         style={{
           backgroundImage:
             "linear-gradient(135deg, rgba(6,28,15,0.92), rgba(18,74,42,0.85), rgba(7,24,14,0.94)), url('https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=1600&q=80')",
@@ -702,28 +757,32 @@ export default function LoginPage() {
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
 
         <div className="relative z-10 flex w-full flex-col items-center justify-center px-6 py-10 lg:flex-row lg:items-center lg:justify-between lg:px-10 xl:px-20">
-          <div className="flex w-full max-w-xl flex-col items-center justify-center text-center lg:items-center lg:text-center animate-fade-up">
-            <div className="hidden lg:block">
+          {/* Staggered Entrance Left Column */}
+          <div className="flex w-full max-w-xl flex-col items-center justify-center text-center lg:items-center lg:text-center">
+            <div className="hidden lg:block animate-fade-up-1">
               <AppScaleLogo />
             </div>
             <div className="mt-8 max-w-lg">
-              <h1 className="text-4xl font-black leading-tight tracking-tight text-white drop-shadow-xl xl:text-5xl transition-transform duration-300 hover:scale-102">
+              <h1 className="text-4xl font-black leading-tight tracking-tight text-white drop-shadow-xl xl:text-5xl transition-transform duration-300 hover:scale-102 animate-fade-up-1">
                 Barangay Nutrition<br />
                 <span className="animate-shimmer-text">Monitoring System</span>
               </h1>
-              <hr className="mx-auto my-6 h-1 w-24 rounded-full border-0 bg-gradient-to-r from-emerald-400 to-green-200 shadow-sm" />
-              <p className="mx-auto max-w-md text-base leading-7 text-emerald-50/90 xl:text-lg">
+              <hr className="mx-auto my-6 h-1 w-24 rounded-full border-0 bg-gradient-to-r from-emerald-400 to-green-200 shadow-sm animate-fade-up-2" />
+              <p className="mx-auto max-w-md text-base leading-7 text-emerald-50/90 xl:text-lg animate-fade-up-2">
                 Empowering Barangay health workers to monitor and improve the nutritional status of children and mothers in every community.
               </p>
             </div>
           </div>
 
+          {/* Staggered Entrance Right Column */}
           <div className="relative mt-8 flex w-full max-w-lg flex-col items-center justify-center lg:mt-0">
-            <div className="lg:hidden mb-8">
+            <div className="lg:hidden mb-8 animate-fade-up-1">
               <AppScaleLogo />
             </div>
-            <LoginCard />
-            <p className="mt-6 text-center text-xs font-semibold tracking-[0.18em] text-white/65 uppercase transition-colors hover:text-white">
+            <div className="w-full animate-fade-up-3">
+              <LoginCard emailInputRef={emailInputRef} />
+            </div>
+            <p className="mt-6 text-center text-xs font-semibold tracking-[0.18em] text-white/65 uppercase transition-colors hover:text-white animate-fade-up-4">
               Municipality of Gasan — Health Information System
             </p>
           </div>

@@ -52,21 +52,21 @@ html, body, #root {
   min-width: 320px;
   min-height: 100%;
   overflow-x: hidden;
+  background-color: #061e0b;
 }
 
 body {
   min-height: 100vh;
   -webkit-text-size-adjust: 100%;
-  background: var(--canvas);
+  background: #061e0b;
   color: var(--ink);
   font-size: 16px;
   line-height: 1.45;
-  transition: background 200ms ease, color 200ms ease;
 }
 
-body, #root {
-  background: var(--canvas);
-  color: var(--ink);
+/* Inside authenticated dashboard shells, canvas provides standard dashboard surface */
+.app-shell {
+  background: var(--canvas) !important;
 }
 
 .theme-toggle {
@@ -565,12 +565,58 @@ button, a {
   animation: appscale-float 4.2s ease-in-out infinite;
 }
 
-.animate-fade-up {
-  animation: appscale-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+@keyframes splash-scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-.animate-slide-in-right {
-  animation: appscale-slide-in-right 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+@keyframes progress-pulse {
+  0%, 100% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes shake-gentle {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.animate-splash-logo {
+  animation: splash-scale-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-progress-line {
+  animation: progress-pulse 1.8s ease-in-out infinite;
+}
+
+.animate-shake {
+  animation: shake-gentle 0.4s ease-in-out;
+}
+
+.animate-fade-up-1 {
+  animation: appscale-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+.animate-fade-up-2 {
+  animation: appscale-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+}
+
+.animate-fade-up-3 {
+  animation: appscale-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
+}
+
+.animate-fade-up-4 {
+  animation: appscale-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.52s both;
 }
 
 .animate-shimmer-text {
