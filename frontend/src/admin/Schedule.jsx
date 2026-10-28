@@ -381,8 +381,8 @@ function Schedule() {
     }
 
     // Current month days
-    for (let day = 1; day <= lastDayOfMonth; day++) {
-      const d = new Date(year, month, day);
+    for (let dayNum = 1; dayNum <= lastDayOfMonth; dayNum++) {
+      const d = new Date(year, month, dayNum);
       const key = formatDateKey(d);
       cells.push({
         dateObj: d,
@@ -396,8 +396,8 @@ function Schedule() {
 
     // Next month padding to fill a complete 35 or 42 grid
     const remaining = (7 - (cells.length % 7)) % 7;
-    for (let day = 1; day <= remaining; day++) {
-      const d = new Date(year, month + 1, day);
+    for (let dayNum = 1; dayNum <= remaining; dayNum++) {
+      const d = new Date(year, month + 1, dayNum);
       const key = formatDateKey(d);
       cells.push({
         dateObj: d,
