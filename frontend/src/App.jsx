@@ -14,6 +14,7 @@ import Notifications from './admin/Notification';
 import Profile from './admin/Profile';
 
 import BHWSchedule from './bhw/Schedule';
+import BHWProfile from './bhw/Profile';
 import NotFound from './pages/NotFound';
 
 // Lazy-loaded routes for secondary modules
@@ -24,7 +25,6 @@ const BHWNeedAttention = lazy(() => import('./bhw/NeedAttention'));
 const BHWReferrals = lazy(() => import('./bhw/Referrals'));
 const BHWMedicalRecords = lazy(() => import('./bhw/MedicalRecords'));
 const BHWNotifications = lazy(() => import('./bhw/Notification'));
-const BHWProfile = lazy(() => import('./bhw/Profile'));
 
 function RouteLoadingFallback() {
   return (

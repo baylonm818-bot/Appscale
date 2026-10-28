@@ -176,8 +176,8 @@ function Profile() {
   const storedUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
   const { user, updateUser, updateAvatar } = useAuth();
 
-  const [profile, setProfile]   = useState(() => user || (storedUser?.user_id ? storedUser : null));
-  const [loading, setLoading]   = useState(() => !(user || storedUser?.user_id));
+  const [profile, setProfile]   = useState(() => user || (storedUser && Object.keys(storedUser).length ? storedUser : {}));
+  const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
   const [activeTab, setActiveTab] = useState('profile');
   const [notificationPreferences, setNotificationPreferences] = useState(() => {
@@ -200,7 +200,7 @@ function Profile() {
 
   // Keep local profile state synced with AuthContext
   useEffect(() => {
-    if (user && user.user_id) {
+    if (user && typeof user === 'object') {
       setProfile((prev) => ({ ...(prev || {}), ...user }));
     }
   }, [user]);
@@ -208,13 +208,16 @@ function Profile() {
   const fetchProfile = async () => {
     try {
       const res = await axiosClient.get('/profile/me');
-      setProfile(res.data);
-      if (updateUser) updateUser(res.data);
+      if (res.data) {
+        setProfile((prev) => ({ ...(prev || {}), ...res.data }));
+        if (updateUser) updateUser(res.data);
+      }
+      setError('');
     } catch (err) {
       console.warn('[Profile] Non-critical profile sync warning:', err?.message);
-      // Only set blocking error if no profile data exists at all
-      if (!profile && !user && !storedUser?.user_id) {
-        setError('Failed to load profile.');
+      // If we don't have basic details yet, show non-blocking retry banner
+      if (!profile?.first_name && !user?.first_name && !storedUser?.first_name) {
+        setError('Unable to load profile data from server.');
       }
     } finally {
       setLoading(false);
@@ -408,10 +411,20 @@ function Profile() {
       </div>
     );
   }
-  if (error) return <p className="text-red-600 text-sm p-6">{error}</p>;
-
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 text-amber-800 text-xs px-4 py-3 rounded-xl">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => { setError(''); setLoading(true); fetchProfile(); }}
+            className="font-bold underline ml-3 hover:text-amber-900 cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* ── Profile Hero Card ── */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -460,13 +473,13 @@ function Profile() {
 
             {/* Role badge */}
             <span className="bg-green-100 text-green-800 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide shadow-sm">
-              {profile.role}
+              {profile?.role || 'Admin'}
             </span>
           </div>
 
-          <h2 className="text-xl font-black text-gray-900">{profile.first_name} {profile.last_name}</h2>
-          <p className="text-sm text-gray-400 mt-0.5">{profile.email}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{profile.barangay}{profile.municipality ? `, ${profile.municipality}` : ''}</p>
+          <h2 className="text-xl font-black text-gray-900">{profile?.first_name || ''} {profile?.last_name || ''}</h2>
+          <p className="text-sm text-gray-400 mt-0.5">{profile?.email || ''}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{profile?.barangay || ''}{profile?.municipality ? `, ${profile.municipality}` : ''}</p>
           {picError && <p className="text-xs text-red-600 mt-2">{picError}</p>}
         </div>
       </div>
@@ -503,12 +516,12 @@ function Profile() {
             </div>
             {profileMsg && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">{profileMsg}</div>}
             {profileErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">{profileErr}</div>}
-            <ProfileInfoRow label="First Name"      name="first_name"      value={profile.first_name}      onSave={handleFieldSave} />
-            <ProfileInfoRow label="Middle Initial"  name="middle_initial"  value={profile.middle_initial}  onSave={handleFieldSave} />
-            <ProfileInfoRow label="Last Name"       name="last_name"       value={profile.last_name}       onSave={handleFieldSave} />
-            <ProfileInfoRow label="Email"           name="email"           value={profile.email}           onSave={handleFieldSave} />
-            <ProfileInfoRow label="Contact Number"  name="contact_number"  value={profile.contact_number}  onSave={handleFieldSave} />
-            <ProfileInfoRow label="Purok"           name="purok"           value={profile.purok}           onSave={handleFieldSave} />
+            <ProfileInfoRow label="First Name"      name="first_name"      value={profile?.first_name || ''}      onSave={handleFieldSave} />
+            <ProfileInfoRow label="Middle Initial"  name="middle_initial"  value={profile?.middle_initial || ''}  onSave={handleFieldSave} />
+            <ProfileInfoRow label="Last Name"       name="last_name"       value={profile?.last_name || ''}       onSave={handleFieldSave} />
+            <ProfileInfoRow label="Email"           name="email"           value={profile?.email || ''}           onSave={handleFieldSave} />
+            <ProfileInfoRow label="Contact Number"  name="contact_number"  value={profile?.contact_number || ''}  onSave={handleFieldSave} />
+            <ProfileInfoRow label="Purok"           name="purok"           value={profile?.purok || ''}           onSave={handleFieldSave} />
           </>
         )}
 
@@ -597,9 +610,9 @@ function Profile() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
-                { label: 'Email',             value: profile.email    || '—' },
-                { label: 'Role',              value: (profile.role || '—').toUpperCase() },
-                { label: 'Assigned Barangay', value: profile.barangay || 'Municipal account' },
+                { label: 'Email',             value: profile?.email    || '—' },
+                { label: 'Role',              value: (profile?.role || '—').toUpperCase() },
+                { label: 'Assigned Barangay', value: profile?.barangay || 'Municipal account' },
                 { label: 'Session Status',    value: 'Active', green: true },
               ].map(({ label, value, green }) => (
                 <div key={label} className={`rounded-2xl p-4 ${green ? 'bg-green-50 border border-green-100' : 'bg-gray-50'}`}>
