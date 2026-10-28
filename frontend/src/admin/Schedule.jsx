@@ -479,45 +479,6 @@ function Schedule() {
         <SummaryCard icon={archIcon}  label="Archived"         value={counts.archived}  sublabel="Archived & cancelled"  isActive={activeFilter === 'archived'}  onClick={() => setActiveFilter('archived')} />
       </div>
 
-      {/* ── Next Upcoming Schedule Highlight Banner ── */}
-      {nextUpcomingActivity && (
-        <div className="bg-linear-to-r from-amber-500 via-amber-600 to-emerald-700 rounded-2xl p-4 sm:p-5 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-amber-400/40">
-          <div className="flex items-start sm:items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 shadow-inner">
-              <Sparkles size={24} className="text-amber-200 animate-spin-slow" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="bg-amber-400 text-amber-950 font-black text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-full shadow-2xs">
-                  NEXT SCHEDULED EVENT
-                </span>
-                <span className="text-amber-100 text-xs font-semibold">
-                  {(safeParseDate(nextUpcomingActivity.schedule_date) || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  {nextUpcomingActivity.schedule_time && ` · ${formatScheduleTime(nextUpcomingActivity.schedule_time)}`}
-                </span>
-              </div>
-              <h3 className="text-lg font-black tracking-tight mt-0.5 text-white">
-                {nextUpcomingActivity.title}
-              </h3>
-              <p className="text-xs text-amber-100/90 font-medium">
-                {nextUpcomingActivity.barangay || 'Whole Municipality'}
-                {nextUpcomingActivity.venue && ` · ${nextUpcomingActivity.venue}`}
-                {nextUpcomingActivity.facilitator && ` · ${nextUpcomingActivity.facilitator}`}
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleJumpToNextUpcoming}
-            className="self-start sm:self-auto flex items-center gap-2 bg-white text-gray-900 hover:bg-amber-50 hover:text-amber-900 px-4 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all cursor-pointer shrink-0"
-          >
-            <span>View in Calendar</span>
-            <ArrowRight size={14} />
-          </button>
-        </div>
-      )}
-
       {/* ── Top Bar Controls: Search + Add Activity ── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search */}
@@ -774,6 +735,45 @@ function Schedule() {
             </div>
           )}
         </div>
+
+        {/* ── Next Upcoming Schedule Highlight Banner (Placed at Bottom) ── */}
+        {nextUpcomingActivity && (
+          <div className="bg-linear-to-r from-amber-500 via-amber-600 to-emerald-700 rounded-2xl p-4 sm:p-5 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-amber-400/40">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 shadow-inner">
+                <Sparkles size={24} className="text-amber-200 animate-spin-slow" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="bg-amber-400 text-amber-950 font-black text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-full shadow-2xs">
+                    NEXT SCHEDULED EVENT
+                  </span>
+                  <span className="text-amber-100 text-xs font-semibold">
+                    {(safeParseDate(nextUpcomingActivity.schedule_date) || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {nextUpcomingActivity.schedule_time && ` · ${formatScheduleTime(nextUpcomingActivity.schedule_time)}`}
+                  </span>
+                </div>
+                <h3 className="text-lg font-black tracking-tight mt-0.5 text-white">
+                  {nextUpcomingActivity.title}
+                </h3>
+                <p className="text-xs text-amber-100/90 font-medium">
+                  {nextUpcomingActivity.barangay || 'Whole Municipality'}
+                  {nextUpcomingActivity.venue && ` · ${nextUpcomingActivity.venue}`}
+                  {nextUpcomingActivity.facilitator && ` · ${nextUpcomingActivity.facilitator}`}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleJumpToNextUpcoming}
+              className="self-start sm:self-auto flex items-center gap-2 bg-white text-gray-900 hover:bg-amber-50 hover:text-amber-900 px-4 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all cursor-pointer shrink-0"
+            >
+              <span>View in Calendar</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Add Schedule Modal ── */}
