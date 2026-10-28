@@ -156,16 +156,33 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               ),
             ),
           Expanded(
-            child: IndexedStack(
-              index: _navIndex,
-              children: [
-                DashboardBody(onNavigateToMasterlist: _navigateToMasterlist),
-                MasterlistScreen(key: _masterlistKey),
-                ProgramScreen(
-                  onNavigateToHome: () => setState(() => _navIndex = 0),
-                ),
-                const ReportsHomeScreen(),
-              ],
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.025),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: KeyedSubtree(
+                key: ValueKey<int>(_navIndex),
+                child: [
+                  DashboardBody(onNavigateToMasterlist: _navigateToMasterlist),
+                  MasterlistScreen(key: _masterlistKey),
+                  ProgramScreen(
+                    onNavigateToHome: () => setState(() => _navIndex = 0),
+                  ),
+                  const ReportsHomeScreen(),
+                ][_navIndex],
+              ),
             ),
           ),
         ],

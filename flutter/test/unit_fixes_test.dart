@@ -1355,9 +1355,9 @@ void main() {
 
     test('Gender validation: requires non-empty selection', () {
       String? emptyGender;
-      expect(emptyGender == null || emptyGender.trim().isEmpty, isTrue);
+      expect(emptyGender, isNull);
 
-      String? whitespaceGender = '  ';
+      String whitespaceGender = '  ';
       expect(whitespaceGender.trim().isEmpty, isTrue);
 
       String? validGender = 'Female';

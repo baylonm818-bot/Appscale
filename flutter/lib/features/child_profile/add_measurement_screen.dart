@@ -348,7 +348,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     final hasSoftWarnings =
         weightRes.isWarning || heightRes.isWarning || muacRes.isWarning;
 
-    if (hasSoftWarnings && !forceFlagImplausible) {
+    if (hasSoftWarnings) {
       if (!mounted) return;
       final confirmedWarning = await showDialog<bool>(
         context: context,
