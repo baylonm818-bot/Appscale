@@ -198,16 +198,30 @@ function Schedule() {
   // Calendar State
   const [calendarDate, setCalendarDate] = useState(() => new Date());
   const [selectedDateKey, setSelectedDateKey] = useState(() => formatDateKey(new Date()));
+  const [fetching, setFetching]         = useState(false);
 
   const fetchActivities = async () => {
+    setFetching(true);
+    setError('');
     try {
-      const [schedRes, usersRes] = await Promise.all([
+      const [schedRes, usersRes] = await Promise.allSettled([
         axiosClient.get('/schedule'),
         axiosClient.get('/users'),
       ]);
-      setActivities(schedRes.data || []);
-      setUsers((usersRes.data || []).filter((u) => u.status === 'active'));
-    } catch { setError('Failed to load schedule.'); }
+      if (schedRes.status === 'fulfilled' && schedRes.value?.data) {
+        setActivities(Array.isArray(schedRes.value.data) ? schedRes.value.data : []);
+      } else {
+        setActivities([]);
+      }
+      if (usersRes.status === 'fulfilled' && usersRes.value?.data) {
+        const uList = Array.isArray(usersRes.value.data) ? usersRes.value.data : [];
+        setUsers(uList.filter((u) => u && u.status === 'active'));
+      }
+    } catch {
+      setError('Unable to synchronize schedule data. Please check connection and try again.');
+    } finally {
+      setFetching(false);
+    }
   };
 
   useEffect(() => { fetchActivities(); }, []);
@@ -443,7 +457,19 @@ function Schedule() {
 
   return (
     <div className="space-y-6">
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && (
+        <div className="bg-red-50 border-2 border-red-200 text-red-800 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
+          <p className="text-sm font-semibold">{error}</p>
+          <button
+            type="button"
+            onClick={fetchActivities}
+            disabled={fetching}
+            className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer shrink-0 disabled:opacity-50"
+          >
+            {fetching ? 'Retrying…' : 'Try Again'}
+          </button>
+        </div>
+      )}
 
       {/* ── Stat Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

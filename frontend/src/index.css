@@ -221,16 +221,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .app-route-view {
   min-height: 100%;
-  animation: route-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  opacity: 1;
 }
-
-.app-route-view > div > * {
-  animation: route-enter 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.app-route-view > div > *:nth-child(2) { animation-delay: 60ms; }
-.app-route-view > div > *:nth-child(3) { animation-delay: 120ms; }
-.app-route-view > div > *:nth-child(4) { animation-delay: 180ms; }
 
 .motion-card,
 .motion-chart-card {

@@ -7,15 +7,17 @@ import AdminLayout from './components/AdminLayout';
 import BHWLayout from './components/BhwLayout';
 
 import Schedule from './admin/Schedule';
+import Dashboard from './admin/Dashboard';
+import UserManagement from './admin/UserManagement';
+import Masterlist from './admin/MasterList';
+import Notifications from './admin/Notification';
+import Profile from './admin/Profile';
+
 import BHWSchedule from './bhw/Schedule';
+import NotFound from './pages/NotFound';
 
 // Lazy-loaded routes for secondary modules
 const DownloadApp = lazy(() => import('./pages/DownloadApp'));
-const Dashboard = lazy(() => import('./admin/Dashboard'));
-const UserManagement = lazy(() => import('./admin/UserManagement'));
-const Masterlist = lazy(() => import('./admin/MasterList'));
-const Notifications = lazy(() => import('./admin/Notification'));
-const Profile = lazy(() => import('./admin/Profile'));
 
 const BHWDashboard = lazy(() => import('./bhw/Dashboard'));
 const BHWNeedAttention = lazy(() => import('./bhw/NeedAttention'));
@@ -136,8 +138,8 @@ function App() {
           {/* Top-level route redirects for consistency */}
           <Route path="/notifications" element={<Navigate to="/admin/notifications" replace />} />
 
-          {/* Catch-all unknown routes: redirect to login / dashboard */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          {/* Catch-all unknown routes */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

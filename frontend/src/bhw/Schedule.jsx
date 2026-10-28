@@ -394,11 +394,20 @@ function Schedule() {
     setSelectedDateKey(formatDateKey(targetDate));
   };
 
-  // Render page immediately without blocking skeleton delay
-  if (error) return <p className="text-red-600 p-6">{error}</p>;
-
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 border-2 border-red-200 text-red-800 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
+          <p className="text-sm font-semibold">{error}</p>
+          <button
+            type="button"
+            onClick={fetchActivities}
+            className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
 
       {/* ── Stat Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
