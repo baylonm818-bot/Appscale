@@ -1,7 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
+import { 
+  Calendar as CalendarIcon, 
+  List, 
+  ChevronLeft, 
+  ChevronRight, 
+  Clock, 
+  MapPin, 
+  User, 
+  Plus, 
+  CheckCircle2, 
+  XCircle, 
+  Archive,
+  Search,
+  Filter
+} from 'lucide-react';
 
 /* ── Helpers ── */
 const statusLabels = { pending: 'Scheduled', done: 'Completed', cancelled: 'Cancelled', archived: 'Archived', missed: 'Missed' };
@@ -21,6 +36,16 @@ const STATUS_STYLE = {
   missed:    'bg-amber-100   text-amber-700   ring-1 ring-amber-200',
 };
 
+const TYPE_COLORS = {
+  feeding: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  immunization: 'bg-blue-50 text-blue-700 border-blue-200',
+  deworming: 'bg-purple-50 text-purple-700 border-purple-200',
+  seminar: 'bg-amber-50 text-amber-700 border-amber-200',
+  home_visit: 'bg-teal-50 text-teal-700 border-teal-200',
+  checkup: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  weighing: 'bg-lime-50 text-lime-700 border-lime-200',
+};
+
 function StatusBadge({ status }) {
   return (
     <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${STATUS_STYLE[status] || 'bg-gray-100 text-gray-600'}`}>
@@ -35,7 +60,7 @@ function SummaryCard({ icon, label, value, sublabel, isActive, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left rounded-2xl p-5 shadow-sm transition-all duration-200 focus:outline-none
+      className={`w-full text-left rounded-2xl p-5 shadow-sm transition-all duration-200 focus:outline-none cursor-pointer
         ${isActive
           ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] shadow-md'
           : 'bg-white hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'
@@ -67,6 +92,13 @@ function formatScheduleTime(timeStr) {
   return timeStr;
 }
 
+function formatDateKey(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 /* ── Activity Row ── */
 function ActivityRow({ activity, onCancel, onComplete, onArchive }) {
   const date  = new Date(activity.schedule_date);
@@ -86,7 +118,7 @@ function ActivityRow({ activity, onCancel, onComplete, onArchive }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="font-semibold text-gray-900 text-sm">{activity.title}</h3>
-          <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[11px] font-medium capitalize">
+          <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[11px] font-medium capitalize">
             {activity.schedule_type?.replace('_', ' ')}
           </span>
           <StatusBadge status={status} />
@@ -105,18 +137,18 @@ function ActivityRow({ activity, onCancel, onComplete, onArchive }) {
       <div className="flex gap-2 shrink-0">
         {(activity.status === 'cancelled' || activity.status === 'done') && (
           <button onClick={() => onArchive(activity.schedule_id)}
-            className="px-3 py-1.5 text-xs font-semibold border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 transition">
+            className="px-3 py-1.5 text-xs font-semibold border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 transition cursor-pointer">
             Archive
           </button>
         )}
         {activity.status === 'pending' && !isMissed(activity) && (
           <>
             <button onClick={() => onComplete(activity.schedule_id)}
-              className="px-3 py-1.5 text-xs font-semibold border border-green-200 text-green-700 rounded-lg hover:bg-green-50 transition">
+              className="px-3 py-1.5 text-xs font-semibold border border-green-200 text-green-700 rounded-lg hover:bg-green-50 transition cursor-pointer">
               Mark Done
             </button>
             <button onClick={() => onCancel(activity.schedule_id)}
-              className="px-3 py-1.5 text-xs font-semibold border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition">
+              className="px-3 py-1.5 text-xs font-semibold border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer">
               Cancel
             </button>
           </>
@@ -137,17 +169,22 @@ const emptyForm = {
 
 /* ══════════════════════════════════════════════════════════ */
 function Schedule() {
-  const [activities, setActivities]   = useState([]);
+  const [activities, setActivities]     = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
-  const [search, setSearch]           = useState('');
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState('');
-  const [showModal, setShowModal]     = useState(false);
-  const [form, setForm]               = useState(emptyForm);
-  const [formError, setFormError]     = useState('');
-  const [schedErrors, setSchedErrors] = useState({});
-  const [saving, setSaving]           = useState(false);
-  const [users, setUsers]             = useState([]);
+  const [search, setSearch]             = useState('');
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState('');
+  const [showModal, setShowModal]       = useState(false);
+  const [form, setForm]                 = useState(emptyForm);
+  const [formError, setFormError]       = useState('');
+  const [schedErrors, setSchedErrors]   = useState({});
+  const [saving, setSaving]             = useState(false);
+  const [users, setUsers]               = useState([]);
+
+  // View mode: 'calendar' (default per user preference) or 'list'
+  const [viewMode, setViewMode]         = useState('calendar');
+  const [calendarDate, setCalendarDate] = useState(() => new Date());
+  const [selectedDateKey, setSelectedDateKey] = useState(() => formatDateKey(new Date()));
 
   const fetchActivities = async () => {
     setLoading(true);
@@ -182,6 +219,16 @@ function Schedule() {
       barangay: e.target.value === 'all' ? 'All Barangays' : '',
       assigned_to: '', target_role: '' });
     setSchedErrors((prev) => ({ ...prev, barangay: '', target_role: '', assigned_to: '' }));
+  };
+
+  const handleOpenAddForDate = (dateKey) => {
+    setForm({
+      ...emptyForm,
+      schedule_date: dateKey || formatDateKey(new Date()),
+    });
+    setSchedErrors({});
+    setFormError('');
+    setShowModal(true);
   };
 
   const handleSubmit = async (e) => {
@@ -229,17 +276,119 @@ function Schedule() {
     archived:  activities.filter((a) => a.status === 'archived' || a.status === 'cancelled' || isMissed(a)).length,
   };
 
-  const filteredActivities = activities.filter((a) => {
-    const matchFilter =
-      activeFilter === 'all'       ? true :
-      activeFilter === 'upcoming'  ? isUpcoming(a) :
-      activeFilter === 'completed' ? a.status === 'done' :
-      a.status === 'archived' || a.status === 'cancelled' || isMissed(a);
-    const matchSearch = !search ||
-      a.title?.toLowerCase().includes(search.toLowerCase()) ||
-      a.barangay?.toLowerCase().includes(search.toLowerCase());
-    return matchFilter && matchSearch;
-  });
+  const filteredActivities = useMemo(() => {
+    return activities.filter((a) => {
+      const matchFilter =
+        activeFilter === 'all'       ? true :
+        activeFilter === 'upcoming'  ? isUpcoming(a) :
+        activeFilter === 'completed' ? a.status === 'done' :
+        a.status === 'archived' || a.status === 'cancelled' || isMissed(a);
+      const matchSearch = !search ||
+        a.title?.toLowerCase().includes(search.toLowerCase()) ||
+        a.barangay?.toLowerCase().includes(search.toLowerCase());
+      return matchFilter && matchSearch;
+    });
+  }, [activities, activeFilter, search]);
+
+  // Calendar Grid Computation
+  const { calendarCells, currentMonthName, currentYear } = useMemo(() => {
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    const monthName = calendarDate.toLocaleString('default', { month: 'long' });
+
+    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Sun
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+
+    const cells = [];
+    const todayStr = formatDateKey(new Date());
+
+    // Group activities by date
+    const activitiesByDate = {};
+    filteredActivities.forEach((act) => {
+      if (!act.schedule_date) return;
+      const key = String(act.schedule_date).slice(0, 10);
+      if (!activitiesByDate[key]) activitiesByDate[key] = [];
+      activitiesByDate[key].push(act);
+    });
+
+    // Previous month padding
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const dayNum = prevMonthLastDay - i;
+      const d = new Date(year, month - 1, dayNum);
+      const key = formatDateKey(d);
+      cells.push({
+        dateObj: d,
+        dayNum,
+        dateKey: key,
+        isCurrentMonth: false,
+        isToday: key === todayStr,
+        activities: activitiesByDate[key] || [],
+      });
+    }
+
+    // Current month days
+    for (let day = 1; day <= lastDayOfMonth; day++) {
+      const d = new Date(year, month, day);
+      const key = formatDateKey(d);
+      cells.push({
+        dateObj: d,
+        dayNum: day,
+        dateKey: key,
+        isCurrentMonth: true,
+        isToday: key === todayStr,
+        activities: activitiesByDate[key] || [],
+      });
+    }
+
+    // Next month padding to fill a complete 35 or 42 grid
+    const remaining = (7 - (cells.length % 7)) % 7;
+    for (let day = 1; day <= remaining; day++) {
+      const d = new Date(year, month + 1, day);
+      const key = formatDateKey(d);
+      cells.push({
+        dateObj: d,
+        dayNum: day,
+        dateKey: key,
+        isCurrentMonth: false,
+        isToday: key === todayStr,
+        activities: activitiesByDate[key] || [],
+      });
+    }
+
+    return {
+      calendarCells: cells,
+      currentMonthName: monthName,
+      currentYear: year,
+    };
+  }, [calendarDate, filteredActivities]);
+
+  // Selected date activities
+  const selectedDateActivities = useMemo(() => {
+    return filteredActivities.filter((a) => {
+      if (!a.schedule_date) return false;
+      return String(a.schedule_date).slice(0, 10) === selectedDateKey;
+    });
+  }, [filteredActivities, selectedDateKey]);
+
+  const selectedDateFormatted = useMemo(() => {
+    if (!selectedDateKey) return '';
+    const [y, m, d] = selectedDateKey.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    return dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  }, [selectedDateKey]);
+
+  const handlePrevMonth = () => {
+    setCalendarDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+  const handleNextMonth = () => {
+    setCalendarDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+  const handleToday = () => {
+    const now = new Date();
+    setCalendarDate(now);
+    setSelectedDateKey(formatDateKey(now));
+  };
 
   const calIcon = <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
   const clockIcon = <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
@@ -258,71 +407,320 @@ function Schedule() {
         <SummaryCard icon={archIcon}  label="Archived"         value={counts.archived}  sublabel="Archived & cancelled"  isActive={activeFilter === 'archived'}  onClick={() => setActiveFilter('archived')} />
       </div>
 
-      {/* ── Search + Add button ── */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 relative">
-          <svg className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title or barangay…"
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition"
-          />
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center justify-center gap-2 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition shadow-sm"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Activity
-        </button>
-      </div>
-
-      {/* ── Activity List ── */}
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        {/* Result count bar */}
-        <div className="px-6 py-3 bg-gray-50/70 border-b border-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            {filteredActivities.length} {activeFilter === 'all' ? 'total' : activeFilter} activities
-          </p>
+      {/* ── Top Bar Controls: View Toggle, Search, Add Activity ── */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Left: View Mode Toggle */}
+        <div className="inline-flex p-1 bg-gray-100 rounded-xl border border-gray-200 self-start sm:self-auto shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setViewMode('calendar')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              viewMode === 'calendar'
+                ? 'bg-white text-[#1b5e20] shadow-sm'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <CalendarIcon size={14} className={viewMode === 'calendar' ? 'text-[#1b5e20]' : 'text-gray-400'} />
+            Calendar View
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              viewMode === 'list'
+                ? 'bg-white text-[#1b5e20] shadow-sm'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <List size={14} className={viewMode === 'list' ? 'text-[#1b5e20]' : 'text-gray-400'} />
+            List View
+          </button>
         </div>
 
-        {loading ? (
-          <div className="divide-y divide-gray-100">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="p-4 sm:p-5 flex items-center justify-between gap-4 animate-pulse">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="w-12 h-12 rounded-xl bg-gray-200 shrink-0" />
-                  <div className="space-y-2 flex-1">
-                    <div className="h-4 bg-gray-200 rounded w-1/3" />
-                    <div className="h-3 bg-gray-200 rounded w-1/2" />
-                  </div>
-                </div>
-                <div className="h-8 bg-gray-200 rounded-lg w-20" />
-              </div>
-            ))}
-          </div>
-        ) : filteredActivities.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
-              {calIcon}
-            </div>
-            <p className="text-sm font-semibold text-gray-500">No activities found</p>
-            <p className="text-xs text-gray-400">Try adjusting your filters or add a new activity.</p>
-          </div>
-        ) : (
-          filteredActivities.map((activity) => (
-            <ActivityRow key={activity.schedule_id} activity={activity}
-              onCancel={(id) => updateStatus(id, 'cancelled')}
-              onComplete={(id) => updateStatus(id, 'done')}
-              onArchive={(id) => updateStatus(id, 'archived')}
+        {/* Right: Search + Add */}
+        <div className="flex flex-1 sm:flex-initial items-center gap-3">
+          <div className="flex-1 sm:w-72 relative">
+            <Search size={16} className="text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by title or barangay…"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition bg-white"
             />
-          ))
-        )}
+          </div>
+          <button
+            onClick={() => handleOpenAddForDate(selectedDateKey)}
+            className="flex items-center justify-center gap-2 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-4 py-2 rounded-xl font-semibold text-xs sm:text-sm transition shadow-sm cursor-pointer shrink-0"
+          >
+            <Plus size={16} />
+            <span className="hidden xs:inline">Add Activity</span>
+            <span className="xs:hidden">Add</span>
+          </button>
+        </div>
       </div>
+
+      {/* ── Main Content: Calendar View or List View ── */}
+      {viewMode === 'calendar' ? (
+        <div className="space-y-6">
+          {/* Calendar Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Calendar Header: Month Navigator */}
+            <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4 bg-linear-to-r from-gray-50/80 via-white to-gray-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex items-center justify-center shadow-xs">
+                  <CalendarIcon size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">
+                    {currentMonthName} <span className="text-gray-400 font-normal">{currentYear}</span>
+                  </h2>
+                  <p className="text-xs text-gray-400 font-medium">
+                    Showing {filteredActivities.length} {activeFilter === 'all' ? 'total' : activeFilter} activities
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleToday}
+                  className="px-3 py-1.5 text-xs font-bold text-[#1b5e20] bg-green-50 hover:bg-green-100 border border-green-200/60 rounded-lg transition cursor-pointer"
+                >
+                  Today
+                </button>
+                <div className="flex items-center border border-gray-200 rounded-lg bg-white overflow-hidden shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={handlePrevMonth}
+                    title="Previous Month"
+                    className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition cursor-pointer"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <div className="w-px h-5 bg-gray-200" />
+                  <button
+                    type="button"
+                    onClick={handleNextMonth}
+                    title="Next Month"
+                    className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition cursor-pointer"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Weekday headers */}
+            <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50/60 text-center">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, idx) => (
+                <div
+                  key={d}
+                  className={`py-2.5 text-xs font-bold tracking-wider uppercase ${
+                    idx === 0 || idx === 6 ? 'text-gray-400' : 'text-gray-600'
+                  }`}
+                >
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar Grid Cells */}
+            <div className="grid grid-cols-7 border-collapse divide-x divide-y divide-gray-100 bg-gray-50/20">
+              {calendarCells.map((cell) => {
+                const isSelected = cell.dateKey === selectedDateKey;
+                const hasActivities = cell.activities.length > 0;
+
+                return (
+                  <div
+                    key={cell.dateKey}
+                    onClick={() => setSelectedDateKey(cell.dateKey)}
+                    className={`min-h-[96px] sm:min-h-[118px] p-1.5 sm:p-2 transition-all cursor-pointer flex flex-col justify-between group relative ${
+                      !cell.isCurrentMonth
+                        ? 'bg-gray-50/50 text-gray-300'
+                        : 'bg-white text-gray-800'
+                    } ${
+                      isSelected
+                        ? 'ring-2 ring-[#2e7d32] ring-inset z-10 bg-green-50/20 shadow-xs'
+                        : 'hover:bg-green-50/30'
+                    }`}
+                  >
+                    {/* Date Number Header */}
+                    <div className="flex items-center justify-between mb-1">
+                      <span
+                        className={`text-xs sm:text-sm font-bold w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                          cell.isToday
+                            ? 'bg-[#1b5e20] text-white font-black shadow-xs'
+                            : isSelected
+                            ? 'bg-[#2e7d32]/15 text-[#1b5e20] font-black'
+                            : !cell.isCurrentMonth
+                            ? 'text-gray-400'
+                            : 'text-gray-700 group-hover:text-gray-900'
+                        }`}
+                      >
+                        {cell.dayNum}
+                      </span>
+
+                      {/* Small counter pill if many */}
+                      {hasActivities && (
+                        <span className="text-[10px] font-extrabold text-[#1b5e20] bg-green-100/80 px-1.5 py-0.2 rounded-full">
+                          {cell.activities.length}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Activity Chips (max 2 visible on grid, +X more) */}
+                    <div className="space-y-1 flex-1 overflow-hidden">
+                      {cell.activities.slice(0, 2).map((act) => {
+                        const status = getDisplayStatus(act);
+                        const isDone = status === 'done';
+                        const isCancelled = status === 'cancelled';
+                        return (
+                          <div
+                            key={act.schedule_id}
+                            title={`${act.title} (${formatScheduleTime(act.schedule_time) || 'All day'}) - ${statusLabels[status] || status}`}
+                            className={`text-[10px] sm:text-[11px] font-semibold px-1.5 py-0.5 rounded-md truncate border flex items-center gap-1 ${
+                              isDone
+                                ? 'bg-green-50 text-green-700 border-green-200'
+                                : isCancelled
+                                ? 'bg-red-50 text-red-600 border-red-200 line-through opacity-70'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-2xs'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                              isDone ? 'bg-green-600' : isCancelled ? 'bg-red-500' : 'bg-emerald-600'
+                            }`} />
+                            <span className="truncate">{act.title}</span>
+                          </div>
+                        );
+                      })}
+
+                      {cell.activities.length > 2 && (
+                        <p className="text-[10px] font-bold text-gray-500 pl-1">
+                          +{cell.activities.length - 2} more
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Quick Add icon visible on cell hover */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenAddForDate(cell.dateKey);
+                      }}
+                      title={`Add activity on ${cell.dateKey}`}
+                      className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-md bg-white border border-gray-200 text-gray-400 hover:text-[#1b5e20] hover:border-green-300 hover:bg-green-50 shadow-2xs opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── Selected Day Activities Drawer / Panel ── */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-6 py-4 bg-linear-to-r from-gray-50 via-white to-gray-50 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-green-50 text-[#1b5e20] flex items-center justify-center">
+                  <CalendarIcon size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-sm sm:text-base">
+                    Activities for {selectedDateFormatted}
+                  </h3>
+                  <p className="text-xs text-gray-400 font-medium">
+                    {selectedDateActivities.length === 0
+                      ? 'No events scheduled on this day'
+                      : `${selectedDateActivities.length} event${selectedDateActivities.length > 1 ? 's' : ''} scheduled`}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleOpenAddForDate(selectedDateKey)}
+                className="flex items-center gap-1.5 text-xs font-bold text-[#1b5e20] bg-green-50 hover:bg-green-100 px-3.5 py-2 rounded-xl transition border border-green-200 cursor-pointer"
+              >
+                <Plus size={14} />
+                Schedule for this Day
+              </button>
+            </div>
+
+            {selectedDateActivities.length === 0 ? (
+              <div className="py-12 px-6 flex flex-col items-center justify-center text-center gap-2">
+                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-300">
+                  <CalendarIcon size={22} />
+                </div>
+                <p className="text-sm font-semibold text-gray-600">No activities on this date</p>
+                <p className="text-xs text-gray-400 max-w-sm">
+                  Click the button above to add an activity, feeding program, or visit for {selectedDateFormatted}.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {selectedDateActivities.map((activity) => (
+                  <ActivityRow
+                    key={activity.schedule_id}
+                    activity={activity}
+                    onCancel={(id) => updateStatus(id, 'cancelled')}
+                    onComplete={(id) => updateStatus(id, 'done')}
+                    onArchive={(id) => updateStatus(id, 'archived')}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* ── Standard List View ── */
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+          {/* Result count bar */}
+          <div className="px-6 py-3 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              {filteredActivities.length} {activeFilter === 'all' ? 'total' : activeFilter} activities
+            </p>
+            {search && (
+              <p className="text-xs text-gray-500 font-medium">
+                Matching: <span className="font-bold text-[#1b5e20]">"{search}"</span>
+              </p>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="divide-y divide-gray-100">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="p-4 sm:p-5 flex items-center justify-between gap-4 animate-pulse">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12 h-12 rounded-xl bg-gray-200 shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-1/3" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
+                    </div>
+                  </div>
+                  <div className="h-8 bg-gray-200 rounded-lg w-20" />
+                </div>
+              ))}
+            </div>
+          ) : filteredActivities.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
+                {calIcon}
+              </div>
+              <p className="text-sm font-semibold text-gray-500">No activities found</p>
+              <p className="text-xs text-gray-400">Try adjusting your filters or add a new activity.</p>
+            </div>
+          ) : (
+            filteredActivities.map((activity) => (
+              <ActivityRow key={activity.schedule_id} activity={activity}
+                onCancel={(id) => updateStatus(id, 'cancelled')}
+                onComplete={(id) => updateStatus(id, 'done')}
+                onArchive={(id) => updateStatus(id, 'archived')}
+              />
+            ))
+          )}
+        </div>
+      )}
 
       {/* ── Add Schedule Modal ── */}
       {showModal && createPortal(
