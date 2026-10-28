@@ -321,7 +321,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       return;
     }
 
-    // Adolescent mother warning check
+    // Mother age warning check (below 15 and above 49)
     if (_guardianBirthDate != null &&
         (_relationship?.trim().toLowerCase() == 'mother')) {
       final motherAge = (DateTime.now().difference(_guardianBirthDate!).inDays / 365).floor();
@@ -333,8 +333,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
         );
         return;
       }
-      if (motherAge < 18) {
-        final confirmYoungMother = await showDialog<bool>(
+      if (motherAge < 15 || motherAge > 49) {
+        final confirmMotherAge = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -342,11 +342,13 @@ class _AddChildScreenState extends State<AddChildScreen> {
               children: [
                 Icon(Icons.warning_amber_rounded, color: AppColors.statOrange),
                 SizedBox(width: 8),
-                Text('Adolescent mother'),
+                Expanded(child: Text('Mother Age Warning')),
               ],
             ),
             content: Text(
-              'Mother\'s recorded age is $motherAge years old (Adolescent mother under 18). Do you want to proceed?',
+              motherAge < 15
+                  ? 'Mother\'s recorded age is $motherAge years old (below 15). Are you sure this birth date is correct?'
+                  : 'Mother\'s recorded age is $motherAge years old (above 49). Are you sure this birth date is correct?',
             ),
             actions: [
               TextButton(
@@ -354,13 +356,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
                 child: const Text('Edit Date'),
               ),
               FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
                 onPressed: () => Navigator.pop(ctx, true),
                 child: const Text('Proceed'),
               ),
             ],
           ),
         );
-        if (confirmYoungMother != true) {
+        if (confirmMotherAge != true) {
           return;
         }
       }
@@ -739,19 +742,18 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             label: 'Purok Address',
                             isRequired: true,
                             hint: 'Select Purok',
-                            value: const [
-                              'Purok 1',
-                              'Purok 2',
-                              'Purok 3',
-                              'Purok 4',
-                              'Purok 5',
-                              'Purok 6',
-                              'Purok 7',
-                            ].contains(_addressController.text.trim())
-                                ? _addressController.text.trim()
-                                : (_addressController.text.trim().isNotEmpty
-                                    ? _addressController.text.trim()
-                                    : 'Purok 1'),
+                            value: () {
+                              final norm = Child.normalizePurok(_addressController.text.trim());
+                              return const [
+                                'Purok 1',
+                                'Purok 2',
+                                'Purok 3',
+                                'Purok 4',
+                                'Purok 5',
+                                'Purok 6',
+                                'Purok 7',
+                              ].contains(norm) ? norm : 'Purok 1';
+                            }(),
                             options: const [
                               'Purok 1',
                               'Purok 2',

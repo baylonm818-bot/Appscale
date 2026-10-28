@@ -58,7 +58,7 @@ class AppDateFormat {
     final cleanStart = formatTime(start);
     final cleanEnd = formatTime(end);
     if (cleanStart.isNotEmpty && cleanEnd.isNotEmpty) {
-      return '$cleanStart - $cleanEnd';
+      return '$cleanStart – $cleanEnd';
     }
     return cleanStart.isNotEmpty ? cleanStart : cleanEnd;
   }

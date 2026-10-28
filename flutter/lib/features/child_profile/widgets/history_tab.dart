@@ -6,6 +6,7 @@ import '../../../data/local/child_repository.dart';
 import '../../../data/local/measurement_repository.dart';
 import '../../../data/models/child.dart';
 import '../../../data/models/measurement.dart';
+import '../../../shared/utils/app_date_format.dart';
 import '../../../shared/widgets/empty_state.dart';
 import 'edit_measurement_dialog.dart';
 import 'measurement_tile.dart';
@@ -40,12 +41,13 @@ class _HistoryTabState extends State<HistoryTab> {
   }
 
   Future<void> _handleDelete(BuildContext context, Child resolvedChild, Measurement m) async {
+    final formattedDate = AppDateFormat.format(m.date);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Measurement'),
         content: Text(
-          'Are you sure you want to delete the measurement from ${_formatDate(m.date)}? Nutritional status will be recomputed.',
+          'Are you sure you want to delete the measurement from $formattedDate? Nutritional status will be recomputed.',
         ),
         actions: [
           TextButton(
@@ -70,14 +72,14 @@ class _HistoryTabState extends State<HistoryTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Measurement deleted and status recomputed.'),
-            backgroundColor: AppColors.statRed,
+            backgroundColor: AppColors.primaryGreen,
           ),
         );
       }
     }
   }
 
-  String _formatDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
+  String _formatDate(DateTime d) => AppDateFormat.format(d);
 
   @override
   Widget build(BuildContext context) {

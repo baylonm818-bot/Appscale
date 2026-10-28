@@ -133,14 +133,26 @@ class Child {
     return '$months ${months == 1 ? "mo" : "mos"}';
   }
 
-  String get formattedAddress {
-    final trimmed = address.trim();
-    if (trimmed.isEmpty) return 'Purok 1';
-    if (RegExp(r'^\d+$').hasMatch(trimmed)) {
-      return 'Purok $trimmed';
+  static String normalizePurok(String? raw) {
+    if (raw == null) return 'Purok 1';
+    final t = raw.trim().toLowerCase();
+    if (t.isEmpty) return 'Purok 1';
+    if (t == 'uni' || t == 'uno' || t == 'isa' || t == '1' || t == 'purok 1' || t == 'purok1') return 'Purok 1';
+    if (t == 'dos' || t == 'dalawa' || t == '2' || t == 'purok 2' || t == 'purok2') return 'Purok 2';
+    if (t == 'tres' || t == 'tatlo' || t == '3' || t == 'purok 3' || t == 'purok3') return 'Purok 3';
+    if (t == 'cuatro' || t == 'apat' || t == '4' || t == 'purok 4' || t == 'purok4') return 'Purok 4';
+    if (t == 'cinco' || t == 'lima' || t == '5' || t == 'purok 5' || t == 'purok5') return 'Purok 5';
+    if (t == 'seis' || t == 'anim' || t == '6' || t == 'purok 6' || t == 'purok6') return 'Purok 6';
+    if (t == 'siete' || t == 'pito' || t == '7' || t == 'purok 7' || t == 'purok7') return 'Purok 7';
+    if (RegExp(r'^\d+$').hasMatch(t)) return 'Purok $t';
+    if (t.startsWith('purok')) {
+      final numMatch = RegExp(r'\d+').firstMatch(t);
+      if (numMatch != null) return 'Purok ${numMatch.group(0)}';
     }
-    return trimmed;
+    return raw.trim();
   }
+
+  String get formattedAddress => normalizePurok(address);
 
   String get initials {
     final parts = fullName.trim().split(RegExp(r'\s+'));

@@ -46,17 +46,23 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
 
   DateTime _date = DateTime.now();
   bool _present = true;
-  String _breastfeedingPractice = 'Exclusive breastfeeding';
+  String? _breastfeedingPractice;
   final Set<String> _topics = {};
-  bool _hasConcern = false;
-  String _observation = 'Appears well';
-  bool _needsReferral = false;
+  bool? _hasConcern;
+  String? _observation;
+  bool? _needsReferral;
   bool _isSaving = false;
 
-  bool get _isFormValid =>
-      !_present ||
-      _observation != 'Signs of concern' ||
-      _observationNoteController.text.trim().isNotEmpty;
+  bool get _isFormValid {
+    if (!_present) return true;
+    if (_breastfeedingPractice == null || _breastfeedingPractice!.isEmpty) return false;
+    if (_hasConcern == null) return false;
+    if (_hasConcern == true && _concernNoteController.text.trim().isEmpty) return false;
+    if (_observation == null || _observation!.isEmpty) return false;
+    if (_observation == 'Signs of concern' && _observationNoteController.text.trim().isEmpty) return false;
+    if (_needsReferral == null) return false;
+    return true;
+  }
 
   Future<void> _handleSave() async {
     if (!_isFormValid) {
@@ -337,7 +343,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Any medical concern raised?',
+                                'Any medical concern raised? *',
                                 style: AppTextStyles.label,
                               ),
                               const SizedBox(height: 6),
@@ -346,7 +352,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                                   Expanded(
                                     child: _toggle(
                                       'No',
-                                      !_hasConcern,
+                                      _hasConcern == false,
                                       () => setState(() => _hasConcern = false),
                                     ),
                                   ),
@@ -354,19 +360,20 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                                   Expanded(
                                     child: _toggle(
                                       'Yes',
-                                      _hasConcern,
+                                      _hasConcern == true,
                                       () => setState(() => _hasConcern = true),
                                     ),
                                   ),
                                 ],
                               ),
-                              if (_hasConcern) ...[
+                              if (_hasConcern == true) ...[
                                 const SizedBox(height: 10),
                                 AppTextField(
-                                  label: 'Describe the concern',
+                                  label: 'Describe the concern *',
                                   hint: 'e.g. mastitis, low milk supply',
                                   icon: Icons.medical_information_outlined,
                                   controller: _concernNoteController,
+                                  onChanged: (_) => setState(() {}),
                                 ),
                               ],
                             ],
@@ -375,7 +382,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Your observation of her condition',
+                                'Your observation of her condition *',
                                 style: AppTextStyles.label,
                               ),
                               const SizedBox(height: 6),
@@ -406,10 +413,11 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                               if (_observation == 'Signs of concern') ...[
                                 const SizedBox(height: 10),
                                 AppTextField(
-                                  label: 'Note, required',
+                                  label: 'Note, required *',
                                   hint: 'e.g. looks thin, pale, fatigued',
                                   icon: Icons.notes_outlined,
                                   controller: _observationNoteController,
+                                  onChanged: (_) => setState(() {}),
                                 ),
                               ],
                             ],
@@ -418,7 +426,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Needs referral to BHW?',
+                                'Needs referral to BHW? *',
                                 style: AppTextStyles.label,
                               ),
                               const SizedBox(height: 6),
@@ -427,9 +435,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                                   Expanded(
                                     child: _toggle(
                                       'No',
-                                      !_needsReferral &&
-                                          !_hasConcern &&
-                                          _observation != 'Signs of concern',
+                                      _needsReferral == false,
                                       () => setState(() => _needsReferral = false),
                                     ),
                                   ),
@@ -437,9 +443,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                                   Expanded(
                                     child: _toggle(
                                       'Yes',
-                                      _needsReferral ||
-                                          _hasConcern ||
-                                          _observation == 'Signs of concern',
+                                      _needsReferral == true,
                                       () => setState(() => _needsReferral = true),
                                       danger: true,
                                     ),
@@ -454,7 +458,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                     const SizedBox(height: AppSpacing.xl),
                     AppButton(
                       label: 'Save visit',
-                      onPressed: _handleSave,
+                      onPressed: (!_isFormValid || _isSaving) ? null : _handleSave,
                       isLoading: _isSaving,
                     ),
                     const SizedBox(height: 10),

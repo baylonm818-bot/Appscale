@@ -19,6 +19,10 @@ import '../../data/models/referral.dart';
 import '../../data/remote/auth_api.dart';
 import '../../data/remote/beneficiary_api.dart';
 import '../../data/remote/sync_service.dart';
+import '../../shared/utils/app_page_route.dart';
+import '../beneficiary/add_child_screen.dart';
+import '../beneficiary/add_mother_screen.dart';
+import '../child_profile/child_profile_screen.dart';
 
 class SyncItem {
   final String id;
@@ -792,6 +796,41 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     }
   }
 
+  Future<void> _editRecord(SyncItem item) async {
+    if (item.type == 'child') {
+      final child = _children.getById(item.id);
+      if (child != null && mounted) {
+        await Navigator.push(
+          context,
+          appPageRoute(AddChildScreen(existingChild: child)),
+        );
+        setState(() {});
+      }
+    } else if (item.type == 'mother') {
+      final mother = _mothers.getById(item.id);
+      if (mother != null && mounted) {
+        await Navigator.push(
+          context,
+          appPageRoute(AddMotherScreen(existingMother: mother)),
+        );
+        setState(() {});
+      }
+    } else if (item.type == 'measurement') {
+      final parts = item.id.split('_');
+      if (parts.isNotEmpty) {
+        final childId = parts[0];
+        final child = _children.getById(childId);
+        if (child != null && mounted) {
+          await Navigator.push(
+            context,
+            appPageRoute(ChildProfileScreen(child: child)),
+          );
+          setState(() {});
+        }
+      }
+    }
+  }
+
   String _formatLastSynced(String? iso) {
     if (iso == null || iso.isEmpty) return 'Never';
     try {
@@ -834,7 +873,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
       ];
-      return '${months[local.month - 1]} ${local.day}';
+      return '${months[local.month - 1]} ${local.day}, ${local.year}';
     }
   }
 
@@ -957,6 +996,23 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  if (item.status == 'failed' && (item.type == 'child' || item.type == 'mother' || item.type == 'measurement')) ...[
+                    SizedBox(
+                      height: 28,
+                      child: TextButton(
+                        onPressed: _isSyncing ? null : () => _editRecord(item),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.statRed,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        child: const Text(
+                          'Edit record',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                   SizedBox(
                     height: 28,
                     child: OutlinedButton(
@@ -1141,25 +1197,33 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: pendingCount == 0
-                              ? AppColors.lightGreenBg
-                              : AppColors.statAmber.withValues(alpha: 0.12),
+                          color: failedCount > 0
+                              ? const Color(0xFFFFF1F2)
+                              : (pendingCount == 0
+                                  ? AppColors.lightGreenBg
+                                  : AppColors.statAmber.withValues(alpha: 0.12)),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: pendingCount == 0
-                                ? AppColors.primaryGreen.withValues(alpha: 0.4)
-                                : AppColors.statAmber.withValues(alpha: 0.4),
+                            color: failedCount > 0
+                                ? const Color(0xFFFECDD3)
+                                : (pendingCount == 0
+                                    ? AppColors.primaryGreen.withValues(alpha: 0.4)
+                                    : AppColors.statAmber.withValues(alpha: 0.4)),
                           ),
                         ),
                         child: Row(
                           children: [
                             Icon(
-                              pendingCount == 0
-                                  ? Icons.cloud_done_outlined
-                                  : Icons.cloud_upload_outlined,
-                              color: pendingCount == 0
-                                  ? AppColors.darkGreen
-                                  : AppColors.statOrange,
+                              failedCount > 0
+                                  ? Icons.error_outline
+                                  : (pendingCount == 0
+                                      ? Icons.cloud_done_outlined
+                                      : Icons.cloud_upload_outlined),
+                              color: failedCount > 0
+                                  ? AppColors.statRed
+                                  : (pendingCount == 0
+                                      ? AppColors.darkGreen
+                                      : AppColors.statOrange),
                               size: 24,
                             ),
                             const SizedBox(width: 12),
@@ -1168,15 +1232,19 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    pendingCount == 0
-                                        ? 'All local device records are in sync'
-                                        : (pendingCount == 1 ? '1 record pending' : '$pendingCount records pending'),
+                                    failedCount > 0
+                                        ? (failedCount == 1 ? '1 record needs attention' : '$failedCount records need attention')
+                                        : (pendingCount == 0
+                                            ? 'All local device records are in sync'
+                                            : (pendingCount == 1 ? '1 record pending' : '$pendingCount records pending')),
                                     style: AppTextStyles.body.copyWith(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
-                                      color: pendingCount == 0
-                                          ? AppColors.darkGreen
-                                          : const Color(0xFF856404),
+                                      color: failedCount > 0
+                                          ? AppColors.statRed
+                                          : (pendingCount == 0
+                                              ? AppColors.darkGreen
+                                              : const Color(0xFF856404)),
                                     ),
                                   ),
                                   const SizedBox(height: 2),

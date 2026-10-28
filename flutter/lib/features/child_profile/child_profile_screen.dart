@@ -192,20 +192,22 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   }
 
   Future<void> _handleCreateReferral(Child current) async {
-    final measurements = MeasurementRepository().getForChild(current.id);
+    final rawMeasurements = MeasurementRepository().getForChild(current.id);
+    final validMeasurements = rawMeasurements.where((m) => m.isPlausible).toList();
     String reason = 'Child nutrition referral';
-    if (measurements.isNotEmpty) {
-      final latest = measurements.first;
+    if (validMeasurements.isNotEmpty) {
+      final latest = validMeasurements.first;
       final parts = <String>[];
-      if (latest.effectiveWastingStatus == 'SAM' ||
-          latest.effectiveWastingStatus == 'MAM') {
-        parts.add('Wasting: ${latest.effectiveWastingStatus}');
+      if (latest.effectiveWastingStatus == 'SAM') {
+        parts.add('Severely Wasted (SAM)');
+      } else if (latest.effectiveWastingStatus == 'MAM') {
+        parts.add('Moderately Wasted (MAM)');
       }
       if (latest.heightForAgeStatus == 'Severely Stunted') {
-        parts.add('Stunting: Severely Stunted');
+        parts.add('Severely Stunted');
       }
       if (latest.weightForAgeStatus == 'Severely Underweight') {
-        parts.add('Weight: Severely Underweight');
+        parts.add('Severely Underweight');
       }
       if (parts.isNotEmpty) {
         reason = parts.join(' · ');

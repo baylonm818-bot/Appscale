@@ -43,10 +43,16 @@ function computeNutritionStatus(weightKg, heightCm, ageMonths, sex) {
     else if (h < expectedHeight * 0.92) heightStatus = 'stunted';
   }
 
-  if (weightStatus === 'severely_underweight' || heightStatus === 'severely_stunted') {
-    overallStatus = 'SAM';
-  } else if (weightStatus === 'underweight' || heightStatus === 'stunted') {
-    overallStatus = 'MAM';
+  // Rule: overall status = worst of valid indicators.
+  // SAM means severe wasting (WFH) ONLY. Do not mix SAM with stunting or underweight.
+  if (weightStatus === 'severely_underweight') {
+    overallStatus = 'severely_underweight';
+  } else if (heightStatus === 'severely_stunted') {
+    overallStatus = 'severely_stunted';
+  } else if (weightStatus === 'underweight') {
+    overallStatus = 'underweight';
+  } else if (heightStatus === 'stunted') {
+    overallStatus = 'stunted';
   } else if (weightStatus === 'obese') {
     overallStatus = 'obese';
   } else if (weightStatus === 'overweight') {

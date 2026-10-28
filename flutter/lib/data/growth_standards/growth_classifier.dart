@@ -16,6 +16,7 @@ class GrowthAssessment {
   final String weightForLengthStatus;  // SAM / MAM / Normal / Overweight / Obese
   final double? bmi;                   // Informational only, never adult BMI status
   final String statusSummary;          // Severe / At risk / Obese / Overweight / Normal / Needs re-measurement
+  final String? overallStatus;         // Worst indicator exact name: Severely Wasted (SAM) / Severely Stunted / Severely Underweight / Moderately Wasted (MAM) / Stunted / Underweight / Obese / Overweight / Normal
 
   const GrowthAssessment({
     required this.isInvalid,
@@ -28,7 +29,23 @@ class GrowthAssessment {
     required this.weightForLengthStatus,
     this.bmi,
     required this.statusSummary,
+    this.overallStatus,
   });
+
+  /// Overall status: exact worst of valid indicators per WHO guidelines.
+  String get effectiveOverallStatus {
+    if (isInvalid) return 'Needs re-measurement';
+    if (overallStatus != null) return overallStatus!;
+    if (weightForLengthStatus == 'SAM') return 'Severely Wasted (SAM)';
+    if (heightForAgeStatus == 'Severely Stunted') return 'Severely Stunted';
+    if (weightForAgeStatus == 'Severely Underweight') return 'Severely Underweight';
+    if (weightForLengthStatus == 'MAM') return 'Moderately Wasted (MAM)';
+    if (heightForAgeStatus == 'Stunted') return 'Stunted';
+    if (weightForAgeStatus == 'Underweight') return 'Underweight';
+    if (weightForLengthStatus == 'Obese') return 'Obese';
+    if (weightForLengthStatus == 'Overweight' || weightForAgeStatus == 'Overweight') return 'Overweight';
+    return 'Normal';
+  }
 
   bool get isSevere =>
       !isInvalid &&
@@ -277,6 +294,28 @@ class GrowthClassifier {
       summary = 'Normal';
     }
 
+    // Overall status = worst of valid indicators per WHO guidelines
+    String exactWorstStatus;
+    if (wflStatus == 'SAM') {
+      exactWorstStatus = 'Severely Wasted (SAM)';
+    } else if (hfaStatus == 'Severely Stunted') {
+      exactWorstStatus = 'Severely Stunted';
+    } else if (wfaStatus == 'Severely Underweight') {
+      exactWorstStatus = 'Severely Underweight';
+    } else if (wflStatus == 'MAM') {
+      exactWorstStatus = 'Moderately Wasted (MAM)';
+    } else if (hfaStatus == 'Stunted') {
+      exactWorstStatus = 'Stunted';
+    } else if (wfaStatus == 'Underweight') {
+      exactWorstStatus = 'Underweight';
+    } else if (wflStatus == 'Obese') {
+      exactWorstStatus = 'Obese';
+    } else if (wflStatus == 'Overweight' || wfaStatus == 'Overweight') {
+      exactWorstStatus = 'Overweight';
+    } else {
+      exactWorstStatus = 'Normal';
+    }
+
     return GrowthAssessment(
       isInvalid: false,
       wfaZScore: wfaZ,
@@ -287,6 +326,7 @@ class GrowthClassifier {
       weightForLengthStatus: wflStatus,
       bmi: computedBmi,
       statusSummary: summary,
+      overallStatus: exactWorstStatus,
     );
   }
 

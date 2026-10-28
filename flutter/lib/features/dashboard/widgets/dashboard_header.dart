@@ -10,6 +10,7 @@ class DashboardHeader extends StatelessWidget {
   final String bnsName;
   final String barangayName;
   final int pendingSyncCount;
+  final int failedSyncCount;
   final int unreadNotificationCount;
   final String? profileImageUrl;
   final VoidCallback onNotificationTap;
@@ -21,6 +22,7 @@ class DashboardHeader extends StatelessWidget {
     required this.bnsName,
     required this.barangayName,
     required this.pendingSyncCount,
+    this.failedSyncCount = 0,
     this.unreadNotificationCount = 0,
     this.profileImageUrl,
     required this.onNotificationTap,
@@ -154,8 +156,10 @@ class DashboardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initials = bnsName.trim().isNotEmpty ? bnsName.trim()[0].toUpperCase() : 'B';
-    final syncLabel = pendingSyncCount == 0 ? '0 pending' : '$pendingSyncCount pending';
+    final hasFailed = failedSyncCount > 0;
+    final syncLabel = hasFailed
+        ? '$failedSyncCount failed'
+        : (pendingSyncCount == 0 ? '0 pending' : '$pendingSyncCount pending');
 
     return AppGradientHeader(
       child: Row(
@@ -194,12 +198,18 @@ class DashboardHeader extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
+                color: hasFailed
+                    ? AppColors.statRed.withValues(alpha: 0.9)
+                    : Colors.white.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.sync, color: Colors.white, size: 14),
+                  Icon(
+                    hasFailed ? Icons.warning_amber_rounded : Icons.sync,
+                    color: Colors.white,
+                    size: 14,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     syncLabel,

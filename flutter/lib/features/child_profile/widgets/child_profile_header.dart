@@ -161,37 +161,55 @@ class ChildProfileHeader extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               if (isActive) ...[
                 if (!hasValidMeasurements) ...[
                   const StatusBadge(
-                    label: 'No valid measurement yet',
+                    label: 'Not weighed',
                     color: AppColors.notWeighed,
                     onDark: true,
                   ),
                 ] else ...[
-                  // Weight-for-Age badge (WFA)
-                  StatusBadge(
-                    label: effectiveWfa ?? 'Normal',
-                    color: ChildStatusMeta.colorFor(effectiveWfa ?? 'Normal'),
-                    onDark: true,
+                  // ONE overall status chip (worst indicator)
+                  Builder(
+                    builder: (context) {
+                      String overallLabel = 'Normal';
+                      Color overallColor = AppColors.primaryGreen;
+
+                      if (effectiveWfl == 'SAM') {
+                        overallLabel = 'Severely Wasted (SAM)';
+                        overallColor = AppColors.statRed;
+                      } else if (effectiveHfa == 'Severely Stunted') {
+                        overallLabel = 'Severely Stunted';
+                        overallColor = AppColors.statRed;
+                      } else if (effectiveWfa == 'Severely Underweight') {
+                        overallLabel = 'Severely Underweight';
+                        overallColor = AppColors.statRed;
+                      } else if (effectiveWfl == 'MAM') {
+                        overallLabel = 'Moderately Wasted (MAM)';
+                        overallColor = AppColors.statOrange;
+                      } else if (effectiveHfa == 'Stunted') {
+                        overallLabel = 'Stunted';
+                        overallColor = AppColors.statOrange;
+                      } else if (effectiveWfa == 'Underweight') {
+                        overallLabel = 'Underweight';
+                        overallColor = AppColors.statOrange;
+                      } else if (effectiveWfl == 'Obese') {
+                        overallLabel = 'Obese';
+                        overallColor = AppColors.statPurple;
+                      } else if (effectiveWfl == 'Overweight' || effectiveWfa == 'Overweight') {
+                        overallLabel = 'Overweight';
+                        overallColor = AppColors.statBlue;
+                      }
+
+                      return StatusBadge(
+                        label: overallLabel,
+                        color: overallColor,
+                        onDark: true,
+                      );
+                    },
                   ),
-                  if (showStuntingBadge)
-                    StatusBadge(
-                      label: effectiveHfa!,
-                      color: ChildStatusMeta.colorFor(effectiveHfa),
-                      onDark: true,
-                    ),
-                  // Weight-for-Length/Height (WFH) - for under-5s, WFH replaces BMI.
-                  // Never show Overweight and Obese together.
-                  if (showWastingBadge ||
-                      ((effectiveWfl == 'Obese' || effectiveWfl == 'Overweight') &&
-                       effectiveWfa != effectiveWfl))
-                    StatusBadge(
-                      label: effectiveWfl!,
-                      color: ChildStatusMeta.colorFor(effectiveWfl),
-                      onDark: true,
-                    ),
                   if (isDueForWeighing)
                     const StatusBadge(
                       label: 'Due for weighing',
@@ -208,12 +226,29 @@ class ChildProfileHeader extends StatelessWidget {
               ] else
                 StatusBadge(
                   label: 'Inactive · ${child.inactiveReason ?? "Unspecified"}',
-
                   color: AppColors.textMuted,
                   onDark: true,
                 ),
             ],
           ),
+          if (isActive && hasValidMeasurements) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'WFA: ${effectiveWfa ?? "Normal"}  •  HFA: ${effectiveHfa ?? "Normal"}  •  WFH: ${effectiveWfl ?? "Normal"}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
           if (isActive && !child.isTransferPending) ...[
             const SizedBox(height: AppSpacing.sm),
             SingleChildScrollView(
