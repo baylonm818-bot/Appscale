@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
-import { CountUp, modalVariants, backdropVariants } from '../components/ui/motion';
+import { CountUp, modalVariants, backdropVariants, staggerContainer } from '../components/ui/motion';
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -478,12 +478,17 @@ function Schedule() {
       )}
 
       {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div
+        variants={staggerContainer(0.06)}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+      >
         <SummaryCard icon={calIcon}   label="Total Activities" value={counts.all}       sublabel="All records"          isActive={activeFilter === 'all'}       onClick={() => setActiveFilter('all')} />
         <SummaryCard icon={clockIcon} label="Upcoming"         value={counts.upcoming}  sublabel="Scheduled activities"  isActive={activeFilter === 'upcoming'}  onClick={() => setActiveFilter('upcoming')} />
         <SummaryCard icon={checkIcon} label="Completed"        value={counts.completed} sublabel="Done activities"       isActive={activeFilter === 'completed'} onClick={() => setActiveFilter('completed')} />
         <SummaryCard icon={archIcon}  label="Archived"         value={counts.archived}  sublabel="Archived & cancelled"  isActive={activeFilter === 'archived'}  onClick={() => setActiveFilter('archived')} />
-      </div>
+      </motion.div>
 
       {/* ── Top Bar Controls: Search + Add Activity ── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

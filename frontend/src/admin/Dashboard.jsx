@@ -4,7 +4,7 @@ import axiosClient from '../api/axiosClient';
 import { motion } from 'framer-motion';
 import { Users, Baby, Heart, MapPin, Calendar, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { CountUp, ShimmerSkeleton } from '../components/ui/motion';
+import { CountUp, ShimmerSkeleton, staggerContainer } from '../components/ui/motion';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -231,7 +231,7 @@ function Dashboard() {
       </motion.div>
 
       {/* ── 4 Stat Cards ── */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={staggerContainer(0.08, 0.05)} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={Users}
           label="Total Health Workers"
@@ -271,7 +271,7 @@ function Dashboard() {
             <div className="flex items-center justify-between gap-3 mb-1">
               <h3 className="font-bold text-gray-900 text-base">Municipal Nutrition Breakdown</h3>
               <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
-                {stats.totalChildren} active children
+                <CountUp value={stats.totalChildren} /> active children
               </span>
             </div>
             <p className="text-xs text-gray-400 mb-5">Latest health & growth assessment per child (each child counted once)</p>
@@ -287,7 +287,7 @@ function Dashboard() {
                     <div className="flex justify-between items-center text-xs mb-1">
                       <span className="font-semibold text-gray-700">{statusLabels[key] || key}</span>
                       <span className="text-gray-400 font-medium">
-                        <strong className="text-gray-900 font-bold">{num}</strong> ({percentage}%)
+                        <strong className="text-gray-900 font-bold"><CountUp value={num} /></strong> (<CountUp value={percentage} />%)
                       </span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">

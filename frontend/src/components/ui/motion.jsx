@@ -81,6 +81,7 @@ export function CountUp({ value = 0, duration = 700, className = '' }) {
   const target = typeof value === 'number' ? value : parseInt(String(value).replace(/[^0-9.-]/g, ''), 10) || 0;
   const [displayValue, setDisplayValue] = useState(() => (shouldReduceMotion ? target : 0));
   const hasAnimatedRef = useRef(false);
+  const prevTargetRef = useRef(0);
 
   // Normalize duration: if passed in seconds (e.g. 0.7 or 0.8), convert to milliseconds (700 or 800)
   const durationMs = duration <= 10 ? duration * 1000 : duration;
@@ -88,15 +89,20 @@ export function CountUp({ value = 0, duration = 700, className = '' }) {
   useEffect(() => {
     if (shouldReduceMotion) {
       setDisplayValue(target);
+      prevTargetRef.current = target;
       return;
     }
 
-    if (hasAnimatedRef.current) {
+    const startVal = hasAnimatedRef.current ? prevTargetRef.current : 0;
+    hasAnimatedRef.current = true;
+    prevTargetRef.current = target;
+
+    // If already at target value, no need to run frame loop
+    if (startVal === target) {
       setDisplayValue(target);
       return;
     }
 
-    hasAnimatedRef.current = true;
     let startTimestamp = null;
     let animationFrameId;
 
@@ -105,7 +111,8 @@ export function CountUp({ value = 0, duration = 700, className = '' }) {
       const progress = Math.min((timestamp - startTimestamp) / durationMs, 1);
       // Ease-out cubic: smooth deceleration
       const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplayValue(Math.round(eased * target));
+      const current = Math.round(startVal + (target - startVal) * eased);
+      setDisplayValue(current);
 
       if (progress < 1) {
         animationFrameId = requestAnimationFrame(step);
