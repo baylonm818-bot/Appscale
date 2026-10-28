@@ -143,7 +143,6 @@ function Schedule() {
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
 
   // Calendar State
-  const [viewMode, setViewMode] = useState('calendar');
   const [calendarDate, setCalendarDate] = useState(() => new Date());
   const [selectedDateKey, setSelectedDateKey] = useState(() => formatDateKey(new Date()));
 
@@ -406,300 +405,240 @@ function Schedule() {
         />
       </div>
 
-      {/* ── Controls Bar: View Toggle, Search, Add Activity ── */}
+      {/* ── Top Bar Controls: Search + Add Activity ── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* View Mode Toggle */}
-        <div className="inline-flex p-1 bg-gray-100 rounded-xl border border-gray-200 self-start sm:self-auto shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setViewMode('calendar')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              viewMode === 'calendar'
-                ? 'bg-white text-[#1b5e20] shadow-sm'
-                : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            <Calendar size={14} className={viewMode === 'calendar' ? 'text-[#1b5e20]' : 'text-gray-400'} />
-            Calendar View
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              viewMode === 'list'
-                ? 'bg-white text-[#1b5e20] shadow-sm'
-                : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            <List size={14} className={viewMode === 'list' ? 'text-[#1b5e20]' : 'text-gray-400'} />
-            List View
-          </button>
+        {/* Search */}
+        <div className="flex-1 sm:max-w-md relative">
+          <Search size={16} className="text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search activity by title or venue…"
+            className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition bg-white text-gray-800 placeholder-gray-400 font-medium"
+          />
         </div>
 
-        {/* Search + Add */}
-        <div className="flex flex-1 sm:flex-initial items-center gap-3">
-          <div className="flex-1 sm:w-72 relative">
-            <Search size={16} className="text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search activity by title or venue…"
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition bg-white"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => handleOpenAddForDate(selectedDateKey)}
-            className="flex items-center justify-center gap-2 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-4 py-2 rounded-xl font-semibold text-xs sm:text-sm transition shadow-sm shrink-0 cursor-pointer"
-          >
-            <Plus size={16} />
-            <span className="hidden xs:inline">Add Activity</span>
-            <span className="xs:hidden">Add</span>
-          </button>
-        </div>
+        {/* Add Activity */}
+        <button
+          type="button"
+          onClick={() => handleOpenAddForDate(selectedDateKey)}
+          className="flex items-center justify-center gap-2 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-sm shrink-0 cursor-pointer"
+        >
+          <Plus size={18} />
+          <span>Add Activity</span>
+        </button>
       </div>
 
-      {/* ── Content View ── */}
-      {viewMode === 'calendar' ? (
-        <div className="space-y-6">
-          {/* Calendar Grid Container */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            {/* Header: Month Navigator */}
-            <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4 bg-linear-to-r from-gray-50/80 via-white to-gray-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex items-center justify-center shadow-xs">
-                  <Calendar size={20} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">
-                    {currentMonthName} <span className="text-gray-400 font-normal">{currentYear}</span>
-                  </h2>
-                  <p className="text-xs text-gray-400 font-medium">
-                    {filteredActivities.length} {activeFilter === 'all' ? 'total' : activeFilter} activities in {user.barangay || 'Barangay'}
-                  </p>
-                </div>
+      {/* ── Main Interactive Calendar View ── */}
+      <div className="space-y-6">
+        {/* Calendar Grid Container with crisp border-2 */}
+        <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden">
+          {/* Header: Month Navigator */}
+          <div className="px-6 py-4 border-b-2 border-gray-200 flex flex-wrap items-center justify-between gap-4 bg-linear-to-r from-gray-50 via-white to-gray-50">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex items-center justify-center shadow-sm">
+                <Calendar size={22} />
               </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleToday}
-                  className="px-3 py-1.5 text-xs font-bold text-[#1b5e20] bg-green-50 hover:bg-green-100 border border-green-200/60 rounded-lg transition cursor-pointer"
-                >
-                  Today
-                </button>
-                <div className="flex items-center border border-gray-200 rounded-lg bg-white overflow-hidden shadow-2xs">
-                  <button
-                    type="button"
-                    onClick={handlePrevMonth}
-                    title="Previous Month"
-                    className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition cursor-pointer"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <div className="w-px h-5 bg-gray-200" />
-                  <button
-                    type="button"
-                    onClick={handleNextMonth}
-                    title="Next Month"
-                    className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition cursor-pointer"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Weekday headers */}
-            <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50/60 text-center">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, idx) => (
-                <div
-                  key={d}
-                  className={`py-2.5 text-xs font-bold tracking-wider uppercase ${
-                    idx === 0 || idx === 6 ? 'text-gray-400' : 'text-gray-600'
-                  }`}
-                >
-                  {d}
-                </div>
-              ))}
-            </div>
-
-            {/* Grid */}
-            <div className="grid grid-cols-7 border-collapse divide-x divide-y divide-gray-100 bg-gray-50/20">
-              {calendarCells.map((cell) => {
-                const isSelected = cell.dateKey === selectedDateKey;
-                const hasActivities = cell.activities.length > 0;
-
-                return (
-                  <div
-                    key={cell.dateKey}
-                    onClick={() => setSelectedDateKey(cell.dateKey)}
-                    className={`min-h-[96px] sm:min-h-[118px] p-1.5 sm:p-2 transition-all cursor-pointer flex flex-col justify-between group relative ${
-                      !cell.isCurrentMonth
-                        ? 'bg-gray-50/50 text-gray-300'
-                        : 'bg-white text-gray-800'
-                    } ${
-                      isSelected
-                        ? 'ring-2 ring-[#2e7d32] ring-inset z-10 bg-green-50/20 shadow-xs'
-                        : 'hover:bg-green-50/30'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span
-                        className={`text-xs sm:text-sm font-bold w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                          cell.isToday
-                            ? 'bg-[#1b5e20] text-white font-black shadow-xs'
-                            : isSelected
-                            ? 'bg-[#2e7d32]/15 text-[#1b5e20] font-black'
-                            : !cell.isCurrentMonth
-                            ? 'text-gray-400'
-                            : 'text-gray-700 group-hover:text-gray-900'
-                        }`}
-                      >
-                        {cell.dayNum}
-                      </span>
-
-                      {hasActivities && (
-                        <span className="text-[10px] font-extrabold text-[#1b5e20] bg-green-100/80 px-1.5 py-0.2 rounded-full">
-                          {cell.activities.length}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="space-y-1 flex-1 overflow-hidden">
-                      {cell.activities.slice(0, 2).map((act) => {
-                        const status = getDisplayStatus(act);
-                        const isDone = status === 'done';
-                        const isCancelled = status === 'cancelled';
-                        return (
-                          <div
-                            key={act.schedule_id}
-                            title={`${act.title} (${formatScheduleTime(act.schedule_time) || 'All day'}) - ${statusLabels[status] || status}`}
-                            className={`text-[10px] sm:text-[11px] font-semibold px-1.5 py-0.5 rounded-md truncate border flex items-center gap-1 ${
-                              isDone
-                                ? 'bg-green-50 text-green-700 border-green-200'
-                                : isCancelled
-                                ? 'bg-red-50 text-red-600 border-red-200 line-through opacity-70'
-                                : 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-2xs'
-                            }`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                              isDone ? 'bg-green-600' : isCancelled ? 'bg-red-500' : 'bg-emerald-600'
-                            }`} />
-                            <span className="truncate">{act.title}</span>
-                          </div>
-                        );
-                      })}
-
-                      {cell.activities.length > 2 && (
-                        <p className="text-[10px] font-bold text-gray-500 pl-1">
-                          +{cell.activities.length - 2} more
-                        </p>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenAddForDate(cell.dateKey);
-                      }}
-                      title={`Add activity on ${cell.dateKey}`}
-                      className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-md bg-white border border-gray-200 text-gray-400 hover:text-[#1b5e20] hover:border-green-300 hover:bg-green-50 shadow-2xs opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer"
-                    >
-                      <Plus size={12} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Selected Date Detail Drawer */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 bg-linear-to-r from-gray-50 via-white to-gray-50 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-green-50 text-[#1b5e20] flex items-center justify-center">
-                  <Calendar size={18} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-sm sm:text-base">
-                    Activities for {selectedDateFormatted}
-                  </h3>
-                  <p className="text-xs text-gray-400 font-medium">
-                    {selectedDateActivities.length === 0
-                      ? 'No events scheduled on this day'
-                      : `${selectedDateActivities.length} event${selectedDateActivities.length > 1 ? 's' : ''} scheduled`}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleOpenAddForDate(selectedDateKey)}
-                className="flex items-center gap-1.5 text-xs font-bold text-[#1b5e20] bg-green-50 hover:bg-green-100 px-3.5 py-2 rounded-xl transition border border-green-200 cursor-pointer"
-              >
-                <Plus size={14} />
-                Schedule for this Day
-              </button>
-            </div>
-
-            {selectedDateActivities.length === 0 ? (
-              <div className="py-12 px-6 flex flex-col items-center justify-center text-center gap-2">
-                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-300">
-                  <Calendar size={22} />
-                </div>
-                <p className="text-sm font-semibold text-gray-600">No activities on this date</p>
-                <p className="text-xs text-gray-400 max-w-sm">
-                  Click the button above to add an activity or visit for {selectedDateFormatted}.
+              <div>
+                <h2 className="text-xl font-black text-gray-900 tracking-tight">
+                  {currentMonthName} <span className="text-[#2e7d32] font-black">{currentYear}</span>
+                </h2>
+                <p className="text-xs text-gray-500 font-semibold mt-0.5">
+                  {filteredActivities.length} {activeFilter === 'all' ? 'total' : activeFilter} activities in {user.barangay || 'Barangay'}
                 </p>
               </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {selectedDateActivities.map((activity) => (
-                  <ActivityRow
-                    key={activity.schedule_id}
-                    activity={activity}
-                    onComplete={(id) => updateStatus(id, 'done')}
-                    onArchive={(id) => updateStatus(id, 'archived')}
-                  />
-                ))}
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleToday}
+                className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#1b5e20] hover:bg-[#154a1a] rounded-lg transition shadow-xs cursor-pointer"
+              >
+                Today
+              </button>
+              <div className="flex items-center border-2 border-gray-200 rounded-lg bg-white overflow-hidden shadow-2xs">
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  title="Previous Month"
+                  className="p-1.5 text-gray-700 hover:text-black hover:bg-gray-100 transition cursor-pointer"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <div className="w-0.5 h-6 bg-gray-200" />
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  title="Next Month"
+                  className="p-1.5 text-gray-700 hover:text-black hover:bg-gray-100 transition cursor-pointer"
+                >
+                  <ChevronRight size={20} />
+                </button>
               </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* ── Standard List View ── */
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-          <div className="px-6 py-3.5 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              {filteredActivities.length} {activeFilter === 'all' ? 'total' : activeFilter} activities in {user.barangay || 'Barangay'}
-            </p>
-            {search && (
-              <p className="text-xs text-gray-500 font-medium">
-                Matching: <span className="font-bold text-[#1b5e20]">"{search}"</span>
-              </p>
-            )}
+            </div>
           </div>
 
-          {filteredActivities.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <Calendar className="text-gray-300" size={32} />
-              <p className="text-sm font-semibold text-gray-500">No activities found</p>
-              <p className="text-xs text-gray-400">There are no activities matching your filter criteria.</p>
+          {/* Weekday headers - Clear, bold headers with borders */}
+          <div className="grid grid-cols-7 border-b-2 border-gray-200 bg-gray-100/90 text-center">
+            {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, idx) => (
+              <div
+                key={d}
+                className={`py-3 text-xs font-black tracking-wider uppercase border-r-2 border-gray-200 last:border-r-0 ${
+                  idx === 0 ? 'text-red-600 bg-red-50/40' : idx === 6 ? 'text-blue-600 bg-blue-50/40' : 'text-gray-700'
+                }`}
+              >
+                <span className="hidden md:inline">{d}</span>
+                <span className="md:hidden">{d.slice(0, 3)}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Calendar Grid Cells with distinct line separators */}
+          <div className="grid grid-cols-7 border-collapse border-b-2 border-gray-200 bg-gray-200 gap-[1.5px]">
+            {calendarCells.map((cell) => {
+              const isSelected = cell.dateKey === selectedDateKey;
+              const hasActivities = cell.activities.length > 0;
+
+              return (
+                <div
+                  key={cell.dateKey}
+                  onClick={() => setSelectedDateKey(cell.dateKey)}
+                  className={`min-h-[105px] sm:min-h-[130px] p-2 sm:p-2.5 transition-all cursor-pointer flex flex-col justify-between group relative ${
+                    !cell.isCurrentMonth
+                      ? 'bg-gray-50 text-gray-400 opacity-60'
+                      : 'bg-white text-gray-900'
+                  } ${
+                    isSelected
+                      ? 'ring-3 ring-[#1b5e20] ring-inset z-10 bg-green-50/40 shadow-sm'
+                      : 'hover:bg-green-50/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span
+                      className={`text-xs sm:text-sm font-black w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                        cell.isToday
+                          ? 'bg-[#1b5e20] text-white shadow-md ring-2 ring-green-300'
+                          : isSelected
+                          ? 'bg-[#2e7d32] text-white shadow-xs'
+                          : !cell.isCurrentMonth
+                          ? 'text-gray-400'
+                          : 'text-gray-800 group-hover:text-green-900 group-hover:bg-green-100'
+                      }`}
+                    >
+                      {cell.dayNum}
+                    </span>
+
+                    {hasActivities && (
+                      <span className="text-[11px] font-black text-[#1b5e20] bg-green-100 border border-green-300 px-2 py-0.5 rounded-full shadow-2xs">
+                        {cell.activities.length}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Activity chips */}
+                  <div className="space-y-1.5 flex-1 overflow-hidden">
+                    {cell.activities.slice(0, 2).map((act) => {
+                      const status = getDisplayStatus(act);
+                      const isDone = status === 'done';
+                      const isCancelled = status === 'cancelled';
+                      return (
+                        <div
+                          key={act.schedule_id}
+                          title={`${act.title} (${formatScheduleTime(act.schedule_time) || 'All day'}) - ${statusLabels[status] || status}`}
+                          className={`text-[11px] font-bold px-2 py-1 rounded-lg truncate border-2 flex items-center gap-1.5 transition ${
+                            isDone
+                              ? 'bg-green-100 text-green-900 border-green-300'
+                              : isCancelled
+                              ? 'bg-red-100 text-red-800 border-red-300 line-through opacity-80'
+                              : 'bg-emerald-50 text-[#1b5e20] border-emerald-300 shadow-xs'
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${
+                            isDone ? 'bg-green-600' : isCancelled ? 'bg-red-600' : 'bg-emerald-600 ring-2 ring-emerald-200'
+                          }`} />
+                          <span className="truncate">{act.title}</span>
+                        </div>
+                      );
+                    })}
+
+                    {cell.activities.length > 2 && (
+                      <p className="text-[11px] font-extrabold text-[#2e7d32] pl-1">
+                        +{cell.activities.length - 2} more events
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenAddForDate(cell.dateKey);
+                    }}
+                    title={`Add activity on ${cell.dateKey}`}
+                    className="absolute bottom-2 right-2 w-6 h-6 rounded-lg bg-white border-2 border-green-600 text-[#1b5e20] hover:bg-[#1b5e20] hover:text-white shadow-sm opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Selected Date Detail Drawer */}
+        <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 bg-linear-to-r from-gray-50 via-white to-gray-50 border-b-2 border-gray-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-green-100 border border-green-300 text-[#1b5e20] flex items-center justify-center shadow-xs">
+                <Calendar size={20} />
+              </div>
+              <div>
+                <h3 className="font-black text-gray-900 text-base">
+                  Activities for {selectedDateFormatted}
+                </h3>
+                <p className="text-xs text-gray-500 font-semibold">
+                  {selectedDateActivities.length === 0
+                    ? 'No events scheduled on this day'
+                    : `${selectedDateActivities.length} event${selectedDateActivities.length > 1 ? 's' : ''} scheduled`}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleOpenAddForDate(selectedDateKey)}
+              className="flex items-center gap-1.5 text-xs font-bold text-[#1b5e20] bg-green-50 hover:bg-green-100 px-4 py-2 rounded-xl transition border-2 border-green-300 shadow-2xs cursor-pointer"
+            >
+              <Plus size={15} />
+              Schedule for this Day
+            </button>
+          </div>
+
+          {selectedDateActivities.length === 0 ? (
+            <div className="py-14 px-6 flex flex-col items-center justify-center text-center gap-2">
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
+                <Calendar size={26} />
+              </div>
+              <p className="text-sm font-bold text-gray-700">No activities on this date</p>
+              <p className="text-xs text-gray-500 max-w-sm">
+                Click "+ Schedule for this Day" to add an immunization, weighing, or visit for {selectedDateFormatted}.
+              </p>
             </div>
           ) : (
-            filteredActivities.map((act) => (
-              <ActivityRow
-                key={act.schedule_id}
-                activity={act}
-                onComplete={(id) => updateStatus(id, 'done')}
-                onArchive={(id) => updateStatus(id, 'archived')}
-              />
-            ))
+            <div className="divide-y-2 divide-gray-100">
+              {selectedDateActivities.map((activity) => (
+                <ActivityRow
+                  key={activity.schedule_id}
+                  activity={activity}
+                  onComplete={(id) => updateStatus(id, 'done')}
+                  onArchive={(id) => updateStatus(id, 'archived')}
+                />
+              ))}
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* ── Centered Add Schedule Modal Popup ── */}
       {showModal && createPortal(
