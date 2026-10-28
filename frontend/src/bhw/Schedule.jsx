@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
-import { Calendar, Clock, CheckCircle2, Archive, Search, X, List, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, Archive, Search, X, ChevronLeft, ChevronRight, Plus, Sparkles, ArrowRight } from 'lucide-react';
 import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
 
 const statusLabels = { pending: 'Scheduled', done: 'Completed', cancelled: 'Cancelled', archived: 'Archived', missed: 'Missed' };
@@ -76,28 +76,42 @@ function formatDateKey(dateObj) {
   return `${y}-${m}-${d}`;
 }
 
-function ActivityRow({ activity, onComplete, onArchive }) {
+function ActivityRow({ activity, isNext, onComplete, onArchive }) {
   const date = new Date(activity.schedule_date);
   const month = date.toLocaleString('en-US', { month: 'short' });
   const day = date.getDate();
   const status = getDisplayStatus(activity);
 
   return (
-    <div className="flex flex-col gap-3 px-6 py-4 hover:bg-green-50/30 transition-colors border-b border-gray-50 last:border-0 sm:flex-row sm:items-center sm:gap-5">
-      <div className="flex flex-col items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white shrink-0 shadow-xs text-center">
-        <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">{month} {date.getFullYear()}</span>
+    <div className={`flex flex-col gap-3 px-6 py-4 transition-all border-b border-gray-100 last:border-0 sm:flex-row sm:items-center sm:gap-5 ${
+      isNext
+        ? 'bg-amber-50/70 hover:bg-amber-50/90 border-l-4 border-l-amber-500 shadow-2xs'
+        : 'hover:bg-green-50/30'
+    }`}>
+      <div className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl text-white shrink-0 shadow-xs text-center ${
+        isNext
+          ? 'bg-linear-to-br from-amber-600 to-amber-500 ring-2 ring-amber-300'
+          : 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32]'
+      }`}>
+        <span className="text-[9px] font-bold uppercase tracking-wider opacity-90">{month} {date.getFullYear()}</span>
         <span className="text-base font-black leading-none">{day}</span>
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-bold text-gray-900 text-sm">{activity.title}</h3>
-          <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize">
+          {isNext && (
+            <span className="inline-flex items-center gap-1 bg-amber-500 text-white text-[11px] font-extrabold px-2.5 py-0.5 rounded-full shadow-xs animate-pulse">
+              <Sparkles size={11} className="fill-white" />
+              NEXT UPCOMING
+            </span>
+          )}
+          <h3 className={`font-bold text-sm ${isNext ? 'text-amber-950 font-extrabold' : 'text-gray-900'}`}>{activity.title}</h3>
+          <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize">
             {activity.schedule_type?.replace('_', ' ')}
           </span>
           <StatusBadge status={status} />
         </div>
-        <p className="text-xs text-gray-400 mt-1 wrap-break-word">
+        <p className="text-xs text-gray-500 mt-1 wrap-break-word">
           {activity.barangay || 'Barangay Activity'}
           {activity.venue && ` · ${activity.venue}`}
           {activity.facilitator && ` · ${activity.facilitator}`}
@@ -240,6 +254,29 @@ function Schedule() {
     });
   }, [activities, activeFilter, search]);
 
+  // Compute the single NEXT upcoming pending schedule for BHW
+  const nextUpcomingActivity = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcoming = activities.filter((a) => {
+      if (a.status !== 'pending' || !a.schedule_date) return false;
+      const d = new Date(a.schedule_date);
+      return d >= today;
+    });
+
+    if (upcoming.length === 0) return null;
+
+    // Sort by date ascending, then time ascending
+    upcoming.sort((a, b) => {
+      const timeA = new Date(`${a.schedule_date.slice(0, 10)}T${a.schedule_time || '00:00'}`).getTime();
+      const timeB = new Date(`${b.schedule_date.slice(0, 10)}T${b.schedule_time || '00:00'}`).getTime();
+      return timeA - timeB;
+    });
+
+    return upcoming[0];
+  }, [activities]);
+
   // Calendar Grid Computation
   const { calendarCells, currentMonthName, currentYear } = useMemo(() => {
     const year = calendarDate.getFullYear();
@@ -280,7 +317,7 @@ function Schedule() {
       const key = formatDateKey(d);
       cells.push({
         dateObj: d,
-        dayNum: day,
+        dayNum,
         dateKey: key,
         isCurrentMonth: true,
         isToday: key === todayStr,
@@ -294,7 +331,7 @@ function Schedule() {
       const key = formatDateKey(d);
       cells.push({
         dateObj: d,
-        dayNum: day,
+        dayNum,
         dateKey: key,
         isCurrentMonth: false,
         isToday: key === todayStr,
@@ -333,6 +370,13 @@ function Schedule() {
     const now = new Date();
     setCalendarDate(now);
     setSelectedDateKey(formatDateKey(now));
+  };
+
+  const handleJumpToNextUpcoming = () => {
+    if (!nextUpcomingActivity) return;
+    const targetDate = new Date(nextUpcomingActivity.schedule_date);
+    setCalendarDate(new Date(targetDate.getFullYear(), targetDate.getMonth(), 1));
+    setSelectedDateKey(formatDateKey(targetDate));
   };
 
   if (loading) {
@@ -404,6 +448,45 @@ function Schedule() {
           onClick={() => setActiveFilter('archived')}
         />
       </div>
+
+      {/* ── Next Upcoming Schedule Highlight Banner ── */}
+      {nextUpcomingActivity && (
+        <div className="bg-linear-to-r from-amber-500 via-amber-600 to-emerald-700 rounded-2xl p-4 sm:p-5 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-amber-400/40">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 shadow-inner">
+              <Sparkles size={24} className="text-amber-200 animate-spin-slow" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="bg-amber-400 text-amber-950 font-black text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-full shadow-2xs">
+                  NEXT SCHEDULED EVENT
+                </span>
+                <span className="text-amber-100 text-xs font-semibold">
+                  {new Date(nextUpcomingActivity.schedule_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {nextUpcomingActivity.schedule_time && ` · ${formatScheduleTime(nextUpcomingActivity.schedule_time)}`}
+                </span>
+              </div>
+              <h3 className="text-lg font-black tracking-tight mt-0.5 text-white">
+                {nextUpcomingActivity.title}
+              </h3>
+              <p className="text-xs text-amber-100/90 font-medium">
+                {nextUpcomingActivity.barangay || 'Barangay Activity'}
+                {nextUpcomingActivity.venue && ` · ${nextUpcomingActivity.venue}`}
+                {nextUpcomingActivity.facilitator && ` · ${nextUpcomingActivity.facilitator}`}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleJumpToNextUpcoming}
+            className="self-start sm:self-auto flex items-center gap-2 bg-white text-gray-900 hover:bg-amber-50 hover:text-amber-900 px-4 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all cursor-pointer shrink-0"
+          >
+            <span>View in Calendar</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
 
       {/* ── Top Bar Controls: Search + Add Activity ── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -499,6 +582,7 @@ function Schedule() {
             {calendarCells.map((cell) => {
               const isSelected = cell.dateKey === selectedDateKey;
               const hasActivities = cell.activities.length > 0;
+              const hasNextUpcoming = nextUpcomingActivity && cell.activities.some((a) => a.schedule_id === nextUpcomingActivity.schedule_id);
 
               return (
                 <div
@@ -507,6 +591,8 @@ function Schedule() {
                   className={`min-h-[105px] sm:min-h-[130px] p-2 sm:p-2.5 transition-all cursor-pointer flex flex-col justify-between group relative ${
                     !cell.isCurrentMonth
                       ? 'bg-gray-50 text-gray-400 opacity-60'
+                      : hasNextUpcoming
+                      ? 'bg-amber-50/60 text-gray-900 ring-2 ring-amber-400 ring-inset'
                       : 'bg-white text-gray-900'
                   } ${
                     isSelected
@@ -515,19 +601,28 @@ function Schedule() {
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span
-                      className={`text-xs sm:text-sm font-black w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
-                        cell.isToday
-                          ? 'bg-[#1b5e20] text-white shadow-md ring-2 ring-green-300'
-                          : isSelected
-                          ? 'bg-[#2e7d32] text-white shadow-xs'
-                          : !cell.isCurrentMonth
-                          ? 'text-gray-400'
-                          : 'text-gray-800 group-hover:text-green-900 group-hover:bg-green-100'
-                      }`}
-                    >
-                      {cell.dayNum}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span
+                        className={`text-xs sm:text-sm font-black w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                          cell.isToday
+                            ? 'bg-[#1b5e20] text-white shadow-md ring-2 ring-green-300'
+                            : isSelected
+                            ? 'bg-[#2e7d32] text-white shadow-xs'
+                            : hasNextUpcoming
+                            ? 'bg-amber-500 text-white shadow-xs font-black'
+                            : !cell.isCurrentMonth
+                            ? 'text-gray-400'
+                            : 'text-gray-800 group-hover:text-green-900 group-hover:bg-green-100'
+                        }`}
+                      >
+                        {cell.dayNum}
+                      </span>
+                      {hasNextUpcoming && (
+                        <span className="hidden xl:inline text-[9px] font-black bg-amber-500 text-white px-1.5 py-0.2 rounded uppercase tracking-wider animate-pulse">
+                          Next
+                        </span>
+                      )}
+                    </div>
 
                     {hasActivities && (
                       <span className="text-[11px] font-black text-[#1b5e20] bg-green-100 border border-green-300 px-2 py-0.5 rounded-full shadow-2xs">
@@ -542,21 +637,29 @@ function Schedule() {
                       const status = getDisplayStatus(act);
                       const isDone = status === 'done';
                       const isCancelled = status === 'cancelled';
+                      const isNext = nextUpcomingActivity && act.schedule_id === nextUpcomingActivity.schedule_id;
+
                       return (
                         <div
                           key={act.schedule_id}
-                          title={`${act.title} (${formatScheduleTime(act.schedule_time) || 'All day'}) - ${statusLabels[status] || status}`}
+                          title={`${act.title} (${formatScheduleTime(act.schedule_time) || 'All day'}) - ${isNext ? 'NEXT UPCOMING' : (statusLabels[status] || status)}`}
                           className={`text-[11px] font-bold px-2 py-1 rounded-lg truncate border-2 flex items-center gap-1.5 transition ${
-                            isDone
+                            isNext
+                              ? 'bg-amber-400 text-amber-950 border-amber-500 shadow-md ring-2 ring-amber-300/80'
+                              : isDone
                               ? 'bg-green-100 text-green-900 border-green-300'
                               : isCancelled
                               ? 'bg-red-100 text-red-800 border-red-300 line-through opacity-80'
                               : 'bg-emerald-50 text-[#1b5e20] border-emerald-300 shadow-xs'
                           }`}
                         >
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${
-                            isDone ? 'bg-green-600' : isCancelled ? 'bg-red-600' : 'bg-emerald-600 ring-2 ring-emerald-200'
-                          }`} />
+                          {isNext ? (
+                            <Sparkles size={11} className="text-amber-950 shrink-0 fill-amber-950 animate-spin-slow" />
+                          ) : (
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${
+                              isDone ? 'bg-green-600' : isCancelled ? 'bg-red-600' : 'bg-emerald-600 ring-2 ring-emerald-200'
+                            }`} />
+                          )}
                           <span className="truncate">{act.title}</span>
                         </div>
                       );
@@ -631,6 +734,7 @@ function Schedule() {
                 <ActivityRow
                   key={activity.schedule_id}
                   activity={activity}
+                  isNext={nextUpcomingActivity && activity.schedule_id === nextUpcomingActivity.schedule_id}
                   onComplete={(id) => updateStatus(id, 'done')}
                   onArchive={(id) => updateStatus(id, 'archived')}
                 />
