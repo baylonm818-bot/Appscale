@@ -5,7 +5,6 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../data/local/measurement_repository.dart';
 import '../../../data/local/referral_repository.dart';
 import '../../../data/models/child.dart';
-import '../../masterlist/utils/child_status_meta.dart';
 import '../../masterlist/widgets/status_badge.dart';
 import '../../../shared/utils/app_date_format.dart';
 
@@ -39,11 +38,6 @@ class ChildProfileHeader extends StatelessWidget {
     final effectiveWfa = latestValidMeasurement?.weightForAgeStatus;
     final effectiveHfa = latestValidMeasurement?.heightForAgeStatus;
     final effectiveWfl = latestValidMeasurement?.effectiveWastingStatus;
-
-    final showStuntingBadge = hasValidMeasurements &&
-        (effectiveHfa == 'Stunted' || effectiveHfa == 'Severely Stunted');
-    final showWastingBadge = hasValidMeasurements &&
-        (effectiveWfl == 'SAM' || effectiveWfl == 'MAM');
 
     final needsReferral = hasValidMeasurements &&
         latestValidMeasurement != null &&

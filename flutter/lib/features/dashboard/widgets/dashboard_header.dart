@@ -160,6 +160,11 @@ class DashboardHeader extends StatelessWidget {
     final syncLabel = hasFailed
         ? '$failedSyncCount failed'
         : (pendingSyncCount == 0 ? '0 pending' : '$pendingSyncCount pending');
+    final initials = bnsName.trim().split(RegExp(r'\s+')).length >= 2
+        ? (bnsName.trim().split(RegExp(r'\s+'))[0][0] +
+                bnsName.trim().split(RegExp(r'\s+'))[1][0])
+            .toUpperCase()
+        : (bnsName.trim().isNotEmpty ? bnsName.trim()[0].toUpperCase() : '?');
 
     return AppGradientHeader(
       child: Row(

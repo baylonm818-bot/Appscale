@@ -79,8 +79,6 @@ class _HistoryTabState extends State<HistoryTab> {
     }
   }
 
-  String _formatDate(DateTime d) => AppDateFormat.format(d);
-
   @override
   Widget build(BuildContext context) {
     final rawMeasurements = MeasurementRepository().getForChild(widget.childId);

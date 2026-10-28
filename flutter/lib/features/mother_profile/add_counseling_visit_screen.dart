@@ -76,15 +76,17 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
 
     try {
       final isReferralMarked = _present &&
-          (_needsReferral || _hasConcern || _observation == 'Signs of concern');
+          (_needsReferral == true ||
+              _hasConcern == true ||
+              _observation == 'Signs of concern');
 
       final visit = MotherVisit(
         date: _date,
         present: _present,
         breastfeedingPractice: _present ? _breastfeedingPractice : null,
         topicsCounseled: _present ? _topics.toList() : [],
-        hasMedicalConcern: _present && _hasConcern,
-        concernNote: _present && _hasConcern
+        hasMedicalConcern: _present && _hasConcern == true,
+        concernNote: _present && _hasConcern == true
             ? _concernNoteController.text.trim()
             : null,
         observation: _present ? _observation : null,
@@ -171,7 +173,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
         _observationNoteController.text.trim().isNotEmpty) {
       parts.add(_observationNoteController.text.trim());
     }
-    if (_hasConcern && _concernNoteController.text.trim().isNotEmpty) {
+    if (_hasConcern == true && _concernNoteController.text.trim().isNotEmpty) {
       parts.add(_concernNoteController.text.trim());
     }
     return parts.isEmpty ? 'Signs of concern observed' : parts.join(' · ');
