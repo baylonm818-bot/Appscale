@@ -662,6 +662,15 @@ exports.syncNutritionRecord = async (req, res) => {
       return res.status(400).json({ message: 'Valid child_id or child_external_id is required.' });
     }
 
+    if (record_date) {
+      const recDate = new Date(record_date);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (recDate > today) {
+        return res.status(400).json({ message: 'Measurement record date cannot be in the future.' });
+      }
+    }
+
     // Get child details for accurate status calculation
     const [[child]] = await pool.query(
       'SELECT age_in_months, sex FROM children WHERE child_id = ?',
@@ -1495,6 +1504,16 @@ exports.getMobileSync = async (req, res) => {
       visibleSchedules = schedList;
     }
 
+    const formattedNotifications = (notifications || []).map((n) => {
+      let createdAt = n.created_at;
+      if (createdAt instanceof Date) {
+        createdAt = createdAt.toISOString();
+      } else if (createdAt && typeof createdAt === 'string' && !createdAt.endsWith('Z')) {
+        createdAt = new Date(createdAt).toISOString();
+      }
+      return { ...n, created_at: createdAt };
+    });
+
     return res.status(200).json({
       children,
       nutritionRecords,
@@ -1507,7 +1526,7 @@ exports.getMobileSync = async (req, res) => {
       feedingSchedule: feedingSchedule && feedingSchedule[0] ? feedingSchedule[0] : null,
       schedules: visibleSchedules,
       referrals,
-      notifications,
+      notifications: formattedNotifications,
       profilePicture,
       syncedAt: new Date().toISOString(),
     });

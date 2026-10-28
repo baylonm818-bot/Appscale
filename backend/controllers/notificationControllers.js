@@ -135,7 +135,14 @@ function normalizeNotificationToEnglish(notif) {
     .replace(/^Bagong Iskedyul/i, 'New Schedule')
     .replace(/^Paalala/i, 'Reminder');
 
-  return { ...notif, title, message };
+  let createdAt = notif.created_at;
+  if (createdAt instanceof Date) {
+    createdAt = createdAt.toISOString();
+  } else if (createdAt && typeof createdAt === 'string' && !createdAt.endsWith('Z')) {
+    createdAt = new Date(createdAt).toISOString();
+  }
+
+  return { ...notif, title, message, created_at: createdAt };
 }
 
     const [rawNotifications] = await pool.query(

@@ -209,12 +209,18 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         final map = Map<String, dynamic>.from(raw);
         final status = map['_syncStatus']?.toString() ?? 'synced';
         final error = map['_lastSyncError']?.toString();
-        final timeStr = map['_syncedAt'] ?? map['date'];
+        // Never allow future measurement date to masquerade as sync timestamp
+        final rawSyncedAt = map['_syncedAt'];
         DateTime dt;
-        try {
-          dt = timeStr != null ? DateTime.parse(timeStr.toString()) : DateTime.now();
-        } catch (_) {
-          dt = DateTime.now();
+        if (rawSyncedAt != null) {
+          dt = DateTime.tryParse(rawSyncedAt.toString()) ?? DateTime.now();
+        } else {
+          final dateVal = map['date'] != null ? DateTime.tryParse(map['date'].toString()) : null;
+          if (dateVal != null && !dateVal.isAfter(DateTime.now())) {
+            dt = dateVal;
+          } else {
+            dt = DateTime.now();
+          }
         }
 
         String title;
@@ -835,12 +841,15 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     if (iso == null || iso.isEmpty) return 'Never';
     try {
       final dt = DateTime.parse(iso).toLocal();
-      final date =
-          '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      final month = months[dt.month - 1];
       final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
       final minute = dt.minute.toString().padLeft(2, '0');
       final period = dt.hour >= 12 ? 'PM' : 'AM';
-      return '$date at $hour:$minute $period';
+      return '$month ${dt.day}, ${dt.year} • $hour:$minute $period';
     } catch (_) {
       return iso;
     }
@@ -867,13 +876,13 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     if (isToday) {
       return timeStr;
     } else if (isYesterday) {
-      return 'Yesterday';
+      return 'Yesterday • $timeStr';
     } else {
-      final months = [
+      const months = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
       ];
-      return '${months[local.month - 1]} ${local.day}, ${local.year}';
+      return '${months[local.month - 1]} ${local.day}, ${local.year} • $timeStr';
     }
   }
 

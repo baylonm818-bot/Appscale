@@ -90,6 +90,15 @@ class ChildProfileHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: AppSpacing.sm),
+              if (isActive && !child.isTransferPending) ...[
+                _MeasureButton(onPressed: onMeasurePressed),
+                if (referralStatus.showReferButton && onReferralPressed != null) ...[
+                  const SizedBox(width: 6),
+                  _ReferralButton(onPressed: onReferralPressed!),
+                ],
+                const SizedBox(width: 6),
+              ],
               _OverflowMenu(
                 isActive: isActive,
                 isTransferPending: child.isTransferPending,
@@ -243,29 +252,14 @@ class ChildProfileHeader extends StatelessWidget {
               ),
             ),
           ],
-          if (isActive && !child.isTransferPending) ...[
+          if (isActive && !child.isTransferPending && onNoteDisabilityPressed != null) ...[
             const SizedBox(height: AppSpacing.sm),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _MeasureButton(onPressed: onMeasurePressed),
-                  if (onNoteDisabilityPressed != null) ...[
-                    const SizedBox(width: 8),
-                    _DisabilityButton(
-                      hasDisability: child.disability.isNotEmpty &&
-                          child.disability.toLowerCase() != 'none specified' &&
-                          child.disability.toLowerCase() != 'none' &&
-                          child.disability.toLowerCase() != 'no',
-                      onPressed: onNoteDisabilityPressed!,
-                    ),
-                  ],
-                  if (referralStatus.showReferButton && onReferralPressed != null) ...[
-                    const SizedBox(width: 8),
-                    _ReferralButton(onPressed: onReferralPressed!),
-                  ],
-                ],
-              ),
+            _DisabilityButton(
+              hasDisability: child.disability.isNotEmpty &&
+                  child.disability.toLowerCase() != 'none specified' &&
+                  child.disability.toLowerCase() != 'none' &&
+                  child.disability.toLowerCase() != 'no',
+              onPressed: onNoteDisabilityPressed!,
             ),
           ],
         ],

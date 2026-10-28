@@ -56,7 +56,7 @@ class AppNotification {
       message: SafeParser.asNonNullString(map['message'], ''),
       type: SafeParser.asNonNullString(map['type'], 'general'),
       referralId: SafeParser.asString(map['referralId'] ?? map['referral_id']),
-      timestamp: SafeParser.asDateTime(map['timestamp'] ?? map['created_at']) ?? DateTime.now(),
+      timestamp: SafeParser.asUtcDateTime(map['timestamp'] ?? map['created_at'])?.toLocal() ?? DateTime.now(),
       isRead: SafeParser.asNonNullBool(map['isRead'] ?? map['is_read'], false),
     );
   }

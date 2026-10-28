@@ -135,6 +135,13 @@ class MeasurementRepository {
   /// Saves the measurement to local Hive storage immediately (offline-safe),
   /// then tries to sync to the server in the background.
   Future<void> addMeasurement(String childId, Measurement measurement) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final mDate = DateTime(measurement.date.year, measurement.date.month, measurement.date.day);
+    if (mDate.isAfter(today)) {
+      throw ArgumentError('Measurement date cannot be in the future.');
+    }
+
     final current = (_box.get(childId) as List?) ?? [];
     final recordDate = measurement.date.toIso8601String();
     final map = measurement.toMap()

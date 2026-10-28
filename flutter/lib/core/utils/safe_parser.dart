@@ -90,12 +90,31 @@ class SafeParser {
   }
 
   /// Parses a full DateTime timestamp (preserving hours, minutes, seconds).
+  /// If the string is ISO format without timezone or offset, it normalizes it so that
+  /// server UTC timestamps are parsed consistently.
   static DateTime? asDateTime(dynamic v) {
     if (v == null) return null;
     if (v is DateTime) return v;
     final raw = v.toString().trim();
     if (raw.isEmpty) return null;
-    return DateTime.tryParse(raw);
+    final parsed = DateTime.tryParse(raw);
+    if (parsed != null) return parsed;
+    // If lacks 'T' or timezone, attempt normalization
+    final normalized = raw.replaceAll(' ', 'T');
+    return DateTime.tryParse(normalized);
+  }
+
+  /// Parses a DateTime explicitly in UTC.
+  static DateTime? asUtcDateTime(dynamic v) {
+    if (v == null) return null;
+    if (v is DateTime) return v.toUtc();
+    final raw = v.toString().trim();
+    if (raw.isEmpty) return null;
+    var norm = raw.replaceAll(' ', 'T');
+    if (!norm.contains('Z') && !norm.contains('+') && !RegExp(r'-\d\d:?\d\d$').hasMatch(norm)) {
+      norm = '${norm}Z';
+    }
+    return DateTime.tryParse(norm)?.toUtc() ?? DateTime.tryParse(raw)?.toUtc();
   }
 
   /// Formats a DateTime as date-only string 'yyyy-MM-dd' without UTC conversion.

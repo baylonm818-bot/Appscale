@@ -33,7 +33,6 @@ class ProgramScreen extends StatefulWidget {
 
 class _ProgramScreenState extends State<ProgramScreen> {
   bool _showingPrograms = true;
-  bool _isCalendarView = false;
   DateTime _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime? _selectedCalendarDay;
   String _selectedFilter = 'All';
@@ -273,20 +272,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
                   ),
                   Row(
                     children: [
-                      IconButton(
-                        tooltip: _isCalendarView ? 'List view' : 'Calendar view',
-                        icon: Icon(
-                          _isCalendarView ? Icons.view_list_rounded : Icons.calendar_month_rounded,
-                          color: AppColors.darkGreen,
-                          size: 22,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isCalendarView = !_isCalendarView;
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 4),
+                      
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.darkGreen,
@@ -378,54 +364,9 @@ class _ProgramScreenState extends State<ProgramScreen> {
           ),
         ),
 
-        // Schedules View (Calendar or List)
+        // Schedules View (Calendar only)
         Expanded(
-          child: _isCalendarView
-              ? _buildCalendarView(filtered)
-              : (filtered.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.event_available_outlined,
-                              size: 48,
-                              color: AppColors.textMuted,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'No scheduled activities found',
-                              style: AppTextStyles.body.copyWith(
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            OutlinedButton.icon(
-                              icon: const Icon(Icons.add),
-                              label: const Text('Schedule an Activity'),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  appPageRoute(const AddProgramScheduleScreen()),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 100),
-                      itemCount: filtered.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final s = filtered[index];
-                        return _buildScheduleCard(s);
-                      },
-                    )),
+          child: _buildCalendarView(filtered),
         ),
       ],
     );

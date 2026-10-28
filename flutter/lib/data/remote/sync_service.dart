@@ -136,13 +136,20 @@ class SyncService {
     final nutritionRecords = (payload['nutritionRecords'] as List? ?? []);
     // Group by child external_id so we can store as lists in Hive
     final Map<String, List<Map<String, dynamic>>> groupedNr = {};
+    final todayStr = _dateOnly(DateTime.now());
     for (final nr in nutritionRecords) {
       final childExtId = (nr['child_external_id'] ?? '').toString();
       if (childExtId.isEmpty) continue;
+      final recDate = _dateOnly(nr['record_date']);
+      // Reject future measurement dates
+      if (recDate.compareTo(todayStr) > 0) {
+        debugPrint('[SyncService] Rejecting future-dated measurement $recDate for child $childExtId');
+        continue;
+      }
       groupedNr.putIfAbsent(childExtId, () => []);
       groupedNr[childExtId]!.add({
         'childId': childExtId,
-        'date': _dateOnly(nr['record_date']),
+        'date': recDate,
         'weightKg': _toDouble(nr['weight_kg']),
         'heightCm': _toDouble(nr['height_cm']),
         'muacCm': _toOptionalDouble(nr['muac_cm']),

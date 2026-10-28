@@ -39,22 +39,37 @@ class ActivityLogRepository {
     final derived = <ActivityLogEntry>[];
     try {
       if (Hive.isBoxOpen(HiveBoxes.measurements)) {
-        for (final raw in Hive.box(HiveBoxes.measurements).values) {
-          if (raw is Map) {
-            final date = DateTime.tryParse((raw['date'] ?? raw['createdAt'] ?? '').toString());
-            final childId = raw['childId']?.toString() ?? '';
-            String childName = '';
-            if (Hive.isBoxOpen(HiveBoxes.children)) {
-              final c = Hive.box(HiveBoxes.children).get(childId);
-              if (c is Map) childName = (c['fullName'] ?? '').toString();
-            }
+        final mBox = Hive.box(HiveBoxes.measurements);
+        for (final key in mBox.keys) {
+          final childId = key.toString();
+          String childName = '';
+          if (Hive.isBoxOpen(HiveBoxes.children)) {
+            final c = Hive.box(HiveBoxes.children).get(childId);
+            if (c is Map) childName = (c['fullName'] ?? '').toString();
+          }
+
+          final list = mBox.get(key);
+          final records = list is List ? list : [list];
+          for (final raw in records) {
+            if (raw is! Map) continue;
+            final recTimeStr = raw['_syncedAt'] ?? raw['createdAt'] ?? raw['date'];
+            final date = DateTime.tryParse((recTimeStr ?? '').toString());
+            final measureDateStr = raw['date']?.toString();
             if (date != null) {
+              String subtitle = childName.isNotEmpty
+                  ? 'Recorded measurement for $childName'
+                  : 'Recorded child measurement';
+              if (measureDateStr != null && measureDateStr.isNotEmpty) {
+                final mDate = DateTime.tryParse(measureDateStr);
+                if (mDate != null) {
+                  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                  subtitle += ' (${months[mDate.month - 1]} ${mDate.day})';
+                }
+              }
               derived.add(
                 ActivityLogEntry(
                   type: 'measurement_recorded',
-                  title: childName.isNotEmpty
-                      ? 'Recorded measurement for $childName'
-                      : 'Recorded child measurement',
+                  title: subtitle,
                   timestamp: date,
                 ),
               );

@@ -3,7 +3,8 @@ String timeAgo(DateTime date) {
   final target = date.toUtc();
   final diff = now.difference(target);
 
-  if (diff.inSeconds < 45 || diff.isNegative) return 'Just now';
+  // If created just moments ago or clock skew slightly negative, show 'Just now'
+  if (diff.isNegative || diff.inSeconds < 60) return 'Just now';
   if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
   if (diff.inHours < 24) return '${diff.inHours}h ago';
   if (diff.inDays < 7) return '${diff.inDays}d ago';

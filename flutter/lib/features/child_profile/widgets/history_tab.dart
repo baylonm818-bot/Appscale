@@ -163,7 +163,7 @@ class _HistoryTabState extends State<HistoryTab> {
                       return MeasurementTile(
                         measurement: m,
                         isLatest: isLatest,
-                        onEdit: resolvedChild != null
+                        onEdit: (resolvedChild != null && isLatest)
                             ? () => _handleEdit(context, resolvedChild, m)
                             : null,
                         onDelete: resolvedChild != null
