@@ -192,19 +192,16 @@ function Dashboard() {
             variants={wordContainerVariants}
             initial="hidden"
             animate="visible"
-            className="text-2xl sm:text-3xl font-black tracking-tight leading-tight flex flex-wrap items-center gap-x-2"
+            className="text-2xl sm:text-3xl font-black tracking-tight leading-tight"
           >
-            <motion.span variants={wordPopVariants} className="inline-block">
+            <motion.span variants={wordPopVariants} className="inline-block mr-2 text-white">
               Hello,
             </motion.span>
-            <motion.span
-              variants={wordPopVariants}
-              className="inline-block bg-white/20 px-2.5 py-0.5 rounded-xl border border-white/25 shadow-xs text-emerald-100 font-black tracking-tight"
-            >
+            <motion.span variants={wordPopVariants} className="inline-block text-white">
               {user.first_name || user.username || 'Health Worker'}!
             </motion.span>
           </motion.h1>
-          <p className="text-emerald-100/90 text-sm mt-2.5 leading-relaxed animate-fade-up-2">
+          <p className="text-emerald-100/80 text-sm mt-1.5 leading-relaxed animate-fade-up-2">
             Barangay {user.barangay || 'Assignment'} · Child health, growth records, and malnutrition intervention monitoring.
           </p>
         </div>
