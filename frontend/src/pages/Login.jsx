@@ -660,93 +660,18 @@ function LoginCard({ emailInputRef }) {
 }
 
 export default function LoginPage() {
-  const [showSplash, setShowSplash] = useState(() => {
-    // Skip splash if user already experienced it in this browser session
-    try {
-      return !sessionStorage.getItem("appscale_splash_seen");
-    } catch {
-      return true;
-    }
-  });
-  const [splashExiting, setSplashExiting] = useState(false);
   const emailInputRef = useRef(null);
 
   useEffect(() => {
-    if (!showSplash) {
-      // If splash was skipped, immediately focus email field
-      setTimeout(() => emailInputRef.current?.focus(), 150);
-      return;
-    }
-
-    // Splash display duration: 1.6s of entrance & presentation, then clean exit
-    const timer = setTimeout(() => {
-      setSplashExiting(true);
-      // Wait for exit fade out to complete before removing from DOM
-      setTimeout(() => {
-        try {
-          sessionStorage.setItem("appscale_splash_seen", "true");
-        } catch {
-          /* ignore storage error */
-        }
-        setShowSplash(false);
-        // Autofocus email input field right after transition
-        setTimeout(() => emailInputRef.current?.focus(), 150);
-      }, 500); // 500ms smooth fade-out
-    }, 1600);
-
-    return () => clearTimeout(timer);
-  }, [showSplash]);
+    // Immediately autofocus email input field on mount
+    setTimeout(() => emailInputRef.current?.focus(), 100);
+  }, []);
 
   return (
     <>
-      {/* ── High-End Animated Splash Screen (Zero Overlap with Login) ── */}
-      {showSplash && (
-        <div 
-          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-radial-[circle_at_center,_#0f3e1b_0%,_#09260e_60%,_#051508_100%] transition-opacity duration-500 ease-out ${
-            splashExiting 
-              ? "opacity-0 pointer-events-none" 
-              : "opacity-100"
-          }`}
-        >
-          <div className="relative flex flex-col items-center px-4">
-            {/* Ambient soft backlight glow */}
-            <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full bg-emerald-400/20 blur-3xl animate-pulse" />
-            <div className="absolute -bottom-16 -right-16 w-64 h-64 rounded-full bg-green-500/20 blur-3xl animate-pulse" />
-
-            {/* Perfect Circular Logo Container with fade + scale in */}
-            <div className="relative w-36 h-36 rounded-full bg-white flex items-center justify-center p-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.35)] border-4 border-white/95 ring-4 ring-emerald-400/30 animate-splash-logo">
-              <img
-                src={logo}
-                alt="AppScale Logo"
-                className="w-full h-full object-contain filter-none"
-                style={{ imageRendering: "-webkit-optimize-contrast" }}
-              />
-            </div>
-
-            {/* Staggered Title & Tagline */}
-            <div className="mt-7 text-center">
-              <h1 className="text-4xl sm:text-5xl font-black tracking-tight drop-shadow-xl animate-fade-up-1">
-                <span className="text-white">App</span>
-                <span className="text-emerald-300">Scale</span>
-              </h1>
-              <p className="mt-2 text-xs sm:text-sm font-semibold text-emerald-200/90 tracking-[0.2em] uppercase animate-fade-up-2">
-                Nutrition & Health Monitoring System
-              </p>
-            </div>
-
-            {/* Subtle progress indicator */}
-            <div className="mt-8 w-36 h-1 bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-emerald-400 to-transparent rounded-full animate-progress-line" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Main Login View (Revealed smoothly without overlap) ── */}
+      {/* ── Main Login View ── */}
       <div
-        className={`relative flex min-h-screen overflow-hidden bg-[#0a2315] ${
-          showSplash && !splashExiting ? "opacity-0 pointer-events-none" : "opacity-100 transition-opacity duration-500"
-        }`}
+        className="relative flex min-h-screen overflow-hidden bg-[#0a2315] opacity-100"
         style={{
           backgroundImage:
             "linear-gradient(135deg, rgba(6,28,15,0.92), rgba(18,74,42,0.85), rgba(7,24,14,0.94)), url('https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=1600&q=80')",
