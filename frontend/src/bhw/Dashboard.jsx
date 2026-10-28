@@ -25,6 +25,31 @@ const itemVariants = {
   },
 };
 
+const wordContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const wordPopVariants = {
+  hidden: { opacity: 0, y: 18, scale: 0.85 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring',
+      stiffness: 380,
+      damping: 22,
+    },
+  },
+};
+
 function StatCard({ icon: Icon, label, value, sublabel, to, accent }) {
   const content = (
     <motion.div
@@ -163,10 +188,23 @@ function Dashboard() {
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-emerald-100 backdrop-blur-xs mb-3 animate-fade-up-1">
             <CheckCircle2 size={13} /> {user.role ? user.role.toUpperCase() : 'BHW'} Monitoring Portal
           </span>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight animate-fade-up-1">
-            Hello, <span className="animate-shimmer-text">{user.first_name || user.username || 'Health Worker'}</span>!
-          </h1>
-          <p className="text-emerald-100/90 text-sm mt-1.5 leading-relaxed animate-fade-up-2">
+          <motion.h1
+            variants={wordContainerVariants}
+            initial="hidden"
+            animate="visible"
+            className="text-2xl sm:text-3xl font-black tracking-tight leading-tight flex flex-wrap items-center gap-x-2"
+          >
+            <motion.span variants={wordPopVariants} className="inline-block">
+              Hello,
+            </motion.span>
+            <motion.span
+              variants={wordPopVariants}
+              className="inline-block bg-white/20 px-2.5 py-0.5 rounded-xl border border-white/25 shadow-xs text-emerald-100 font-black tracking-tight"
+            >
+              {user.first_name || user.username || 'Health Worker'}!
+            </motion.span>
+          </motion.h1>
+          <p className="text-emerald-100/90 text-sm mt-2.5 leading-relaxed animate-fade-up-2">
             Barangay {user.barangay || 'Assignment'} · Child health, growth records, and malnutrition intervention monitoring.
           </p>
         </div>
