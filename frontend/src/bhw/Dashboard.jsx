@@ -160,13 +160,13 @@ function Dashboard() {
         className="relative rounded-2xl overflow-hidden shadow-sm bg-linear-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-600 p-6 sm:p-8 text-white"
       >
         <div className="relative z-10 max-w-2xl">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-emerald-100 backdrop-blur-xs mb-3">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-emerald-100 backdrop-blur-xs mb-3 animate-fade-up-1">
             <CheckCircle2 size={13} /> {user.role ? user.role.toUpperCase() : 'BHW'} Monitoring Portal
           </span>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">
-            Hello, {user.first_name || user.username || 'Health Worker'}!
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight animate-fade-up-1">
+            Hello, <span className="animate-shimmer-text">{user.first_name || user.username || 'Health Worker'}</span>!
           </h1>
-          <p className="text-emerald-100/80 text-sm mt-1.5 leading-relaxed">
+          <p className="text-emerald-100/90 text-sm mt-1.5 leading-relaxed animate-fade-up-2">
             Barangay {user.barangay || 'Assignment'} · Child health, growth records, and malnutrition intervention monitoring.
           </p>
         </div>
