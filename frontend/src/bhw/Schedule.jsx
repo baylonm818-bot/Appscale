@@ -6,10 +6,23 @@ import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
 
 const statusLabels = { pending: 'Scheduled', done: 'Completed', cancelled: 'Cancelled', archived: 'Archived', missed: 'Missed' };
 
+const safeParseDate = (dateVal) => {
+  if (!dateVal) return null;
+  const str = String(dateVal).trim();
+  const dateOnly = str.slice(0, 10);
+  const parts = dateOnly.split('-').map(Number);
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 const isUpcoming = (activity) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return activity.status === 'pending' && new Date(activity.schedule_date) >= today;
+  const d = safeParseDate(activity.schedule_date);
+  return activity.status === 'pending' && d !== null && d >= today;
 };
 
 const isMissed = (activity) => activity.status === 'pending' && !isUpcoming(activity);
@@ -77,9 +90,10 @@ function formatDateKey(dateObj) {
 }
 
 function ActivityRow({ activity, isNext, onComplete, onArchive }) {
-  const date = new Date(activity.schedule_date);
+  const date = safeParseDate(activity.schedule_date) || new Date();
   const month = date.toLocaleString('en-US', { month: 'short' });
   const day = date.getDate();
+  const year = date.getFullYear();
   const status = getDisplayStatus(activity);
 
   return (
@@ -93,7 +107,7 @@ function ActivityRow({ activity, isNext, onComplete, onArchive }) {
           ? 'bg-linear-to-br from-amber-600 to-amber-500 ring-2 ring-amber-300'
           : 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32]'
       }`}>
-        <span className="text-[9px] font-bold uppercase tracking-wider opacity-90">{month} {date.getFullYear()}</span>
+        <span className="text-[9px] font-bold uppercase tracking-wider opacity-90">{month} {year}</span>
         <span className="text-base font-black leading-none">{day}</span>
       </div>
 
@@ -147,7 +161,6 @@ function Schedule() {
   const [activities, setActivities] = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -161,7 +174,6 @@ function Schedule() {
   const [selectedDateKey, setSelectedDateKey] = useState(() => formatDateKey(new Date()));
 
   const fetchActivities = async () => {
-    setLoading(true);
     try {
       const response = await axiosClient.get('/bhw/schedule', {
         params: { barangay: user.barangay, user_id: user.user_id, role: user.role },
@@ -169,8 +181,6 @@ function Schedule() {
       setActivities(response.data || []);
     } catch {
       setError('Failed to load schedule.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -261,17 +271,22 @@ function Schedule() {
 
     const upcoming = activities.filter((a) => {
       if (a.status !== 'pending' || !a.schedule_date) return false;
-      const d = new Date(a.schedule_date);
-      return d >= today;
+      const d = safeParseDate(a.schedule_date);
+      return d !== null && d >= today;
     });
 
     if (upcoming.length === 0) return null;
 
     // Sort by date ascending, then time ascending
     upcoming.sort((a, b) => {
-      const timeA = new Date(`${a.schedule_date.slice(0, 10)}T${a.schedule_time || '00:00'}`).getTime();
-      const timeB = new Date(`${b.schedule_date.slice(0, 10)}T${b.schedule_time || '00:00'}`).getTime();
-      return timeA - timeB;
+      const da = safeParseDate(a.schedule_date) || new Date(0);
+      const db = safeParseDate(b.schedule_date) || new Date(0);
+      const timeDiff = da.getTime() - db.getTime();
+      if (timeDiff !== 0) return timeDiff;
+
+      const timeA = String(a.schedule_time || '00:00');
+      const timeB = String(b.schedule_time || '00:00');
+      return timeA.localeCompare(timeB);
     });
 
     return upcoming[0];
@@ -355,8 +370,8 @@ function Schedule() {
 
   const selectedDateFormatted = useMemo(() => {
     if (!selectedDateKey) return '';
-    const [y, m, d] = selectedDateKey.split('-').map(Number);
-    const dateObj = new Date(y, m - 1, d);
+    const dateObj = safeParseDate(selectedDateKey);
+    if (!dateObj) return selectedDateKey;
     return dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   }, [selectedDateKey]);
 
@@ -374,7 +389,7 @@ function Schedule() {
 
   const handleJumpToNextUpcoming = () => {
     if (!nextUpcomingActivity) return;
-    const targetDate = new Date(nextUpcomingActivity.schedule_date);
+    const targetDate = safeParseDate(nextUpcomingActivity.schedule_date) || new Date();
     setCalendarDate(new Date(targetDate.getFullYear(), targetDate.getMonth(), 1));
     setSelectedDateKey(formatDateKey(targetDate));
   };
@@ -434,7 +449,7 @@ function Schedule() {
                   NEXT SCHEDULED EVENT
                 </span>
                 <span className="text-amber-100 text-xs font-semibold">
-                  {new Date(nextUpcomingActivity.schedule_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {(safeParseDate(nextUpcomingActivity.schedule_date) || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   {nextUpcomingActivity.schedule_time && ` · ${formatScheduleTime(nextUpcomingActivity.schedule_time)}`}
                 </span>
               </div>

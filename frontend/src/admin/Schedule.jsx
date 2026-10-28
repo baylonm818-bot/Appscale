@@ -6,15 +6,8 @@ import {
   Calendar as CalendarIcon, 
   ChevronLeft, 
   ChevronRight, 
-  Clock, 
-  MapPin, 
-  User, 
   Plus, 
-  CheckCircle2, 
-  XCircle, 
-  Archive,
   Search,
-  Filter,
   Sparkles,
   ArrowRight
 } from 'lucide-react';
@@ -22,9 +15,23 @@ import {
 /* ── Helpers ── */
 const statusLabels = { pending: 'Scheduled', done: 'Completed', cancelled: 'Cancelled', archived: 'Archived', missed: 'Missed' };
 
+const safeParseDate = (dateVal) => {
+  if (!dateVal) return null;
+  // If ISO string like YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss, parse safely
+  const str = String(dateVal).trim();
+  const dateOnly = str.slice(0, 10);
+  const parts = dateOnly.split('-').map(Number);
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 const isUpcoming = (a) => {
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  return a.status === 'pending' && new Date(a.schedule_date) >= today;
+  const d = safeParseDate(a.schedule_date);
+  return a.status === 'pending' && d !== null && d >= today;
 };
 const isMissed = (a) => a.status === 'pending' && !isUpcoming(a);
 const getDisplayStatus = (a) => isMissed(a) ? 'missed' : a.status;
@@ -35,16 +42,6 @@ const STATUS_STYLE = {
   cancelled: 'bg-red-100     text-red-700     ring-1 ring-red-200',
   archived:  'bg-gray-100    text-gray-600    ring-1 ring-gray-200',
   missed:    'bg-amber-100   text-amber-700   ring-1 ring-amber-200',
-};
-
-const TYPE_COLORS = {
-  feeding: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  immunization: 'bg-blue-50 text-blue-700 border-blue-200',
-  deworming: 'bg-purple-50 text-purple-700 border-purple-200',
-  seminar: 'bg-amber-50 text-amber-700 border-amber-200',
-  home_visit: 'bg-teal-50 text-teal-700 border-teal-200',
-  checkup: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-  weighing: 'bg-lime-50 text-lime-700 border-lime-200',
 };
 
 function StatusBadge({ status }) {
@@ -102,9 +99,10 @@ function formatDateKey(dateObj) {
 
 /* ── Activity Row ── */
 function ActivityRow({ activity, isNext, onCancel, onComplete, onArchive }) {
-  const date  = new Date(activity.schedule_date);
+  const date = safeParseDate(activity.schedule_date) || new Date();
   const month = date.toLocaleString('en-US', { month: 'short' });
-  const day   = date.getDate();
+  const day = date.getDate();
+  const year = date.getFullYear();
   const status = getDisplayStatus(activity);
 
   return (
@@ -119,7 +117,7 @@ function ActivityRow({ activity, isNext, onCancel, onComplete, onArchive }) {
           ? 'bg-linear-to-br from-amber-600 to-amber-500 ring-2 ring-amber-300'
           : 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32]'
       }`}>
-        <span className="text-[9px] font-bold uppercase tracking-wider opacity-90">{month} {date.getFullYear()}</span>
+        <span className="text-[9px] font-bold uppercase tracking-wider opacity-90">{month} {year}</span>
         <span className="text-base font-black leading-none">{day}</span>
       </div>
 
@@ -189,7 +187,6 @@ function Schedule() {
   const [activities, setActivities]     = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
   const [search, setSearch]             = useState('');
-  const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState('');
   const [showModal, setShowModal]       = useState(false);
   const [form, setForm]                 = useState(emptyForm);
@@ -203,7 +200,6 @@ function Schedule() {
   const [selectedDateKey, setSelectedDateKey] = useState(() => formatDateKey(new Date()));
 
   const fetchActivities = async () => {
-    setLoading(true);
     try {
       const [schedRes, usersRes] = await Promise.all([
         axiosClient.get('/schedule'),
@@ -212,7 +208,6 @@ function Schedule() {
       setActivities(schedRes.data || []);
       setUsers((usersRes.data || []).filter((u) => u.status === 'active'));
     } catch { setError('Failed to load schedule.'); }
-    finally { setLoading(false); }
   };
 
   useEffect(() => { fetchActivities(); }, []);
@@ -313,17 +308,22 @@ function Schedule() {
 
     const upcoming = activities.filter((a) => {
       if (a.status !== 'pending' || !a.schedule_date) return false;
-      const d = new Date(a.schedule_date);
-      return d >= today;
+      const d = safeParseDate(a.schedule_date);
+      return d !== null && d >= today;
     });
 
     if (upcoming.length === 0) return null;
 
     // Sort by date ascending, then time ascending
     upcoming.sort((a, b) => {
-      const timeA = new Date(`${a.schedule_date.slice(0, 10)}T${a.schedule_time || '00:00'}`).getTime();
-      const timeB = new Date(`${b.schedule_date.slice(0, 10)}T${b.schedule_time || '00:00'}`).getTime();
-      return timeA - timeB;
+      const da = safeParseDate(a.schedule_date) || new Date(0);
+      const db = safeParseDate(b.schedule_date) || new Date(0);
+      const timeDiff = da.getTime() - db.getTime();
+      if (timeDiff !== 0) return timeDiff;
+
+      const timeA = String(a.schedule_time || '00:00');
+      const timeB = String(b.schedule_time || '00:00');
+      return timeA.localeCompare(timeB);
     });
 
     return upcoming[0];
@@ -412,8 +412,8 @@ function Schedule() {
 
   const selectedDateFormatted = useMemo(() => {
     if (!selectedDateKey) return '';
-    const [y, m, d] = selectedDateKey.split('-').map(Number);
-    const dateObj = new Date(y, m - 1, d);
+    const dateObj = safeParseDate(selectedDateKey);
+    if (!dateObj) return selectedDateKey;
     return dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   }, [selectedDateKey]);
 
@@ -431,7 +431,7 @@ function Schedule() {
 
   const handleJumpToNextUpcoming = () => {
     if (!nextUpcomingActivity) return;
-    const targetDate = new Date(nextUpcomingActivity.schedule_date);
+    const targetDate = safeParseDate(nextUpcomingActivity.schedule_date) || new Date();
     setCalendarDate(new Date(targetDate.getFullYear(), targetDate.getMonth(), 1));
     setSelectedDateKey(formatDateKey(targetDate));
   };
@@ -466,7 +466,7 @@ function Schedule() {
                   NEXT SCHEDULED EVENT
                 </span>
                 <span className="text-amber-100 text-xs font-semibold">
-                  {new Date(nextUpcomingActivity.schedule_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {(safeParseDate(nextUpcomingActivity.schedule_date) || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   {nextUpcomingActivity.schedule_time && ` · ${formatScheduleTime(nextUpcomingActivity.schedule_time)}`}
                 </span>
               </div>

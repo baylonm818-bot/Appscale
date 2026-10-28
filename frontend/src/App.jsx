@@ -6,17 +6,18 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/AdminLayout';
 import BHWLayout from './components/BhwLayout';
 
-// Lazy-loaded routes for optimal bundle chunking and faster initial paint
+import Schedule from './admin/Schedule';
+import BHWSchedule from './bhw/Schedule';
+
+// Lazy-loaded routes for secondary modules
 const DownloadApp = lazy(() => import('./pages/DownloadApp'));
 const Dashboard = lazy(() => import('./admin/Dashboard'));
 const UserManagement = lazy(() => import('./admin/UserManagement'));
 const Masterlist = lazy(() => import('./admin/MasterList'));
-const Schedule = lazy(() => import('./admin/Schedule'));
 const Notifications = lazy(() => import('./admin/Notification'));
 const Profile = lazy(() => import('./admin/Profile'));
 
 const BHWDashboard = lazy(() => import('./bhw/Dashboard'));
-const BHWSchedule = lazy(() => import('./bhw/Schedule'));
 const BHWNeedAttention = lazy(() => import('./bhw/NeedAttention'));
 const BHWReferrals = lazy(() => import('./bhw/Referrals'));
 const BHWMedicalRecords = lazy(() => import('./bhw/MedicalRecords'));
