@@ -1072,13 +1072,11 @@ class _AddChildScreenState extends State<AddChildScreen> {
 class _ScreenHeader extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
-  final VoidCallback? onDone;
   final bool showDone;
 
   const _ScreenHeader({
     required this.title,
     required this.onBack,
-    this.onDone,
     this.showDone = true,
   });
 
@@ -1111,7 +1109,7 @@ class _ScreenHeader extends StatelessWidget {
           ),
           if (showDone)
             TextButton(
-              onPressed: onDone ?? onBack,
+              onPressed: onBack,
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
