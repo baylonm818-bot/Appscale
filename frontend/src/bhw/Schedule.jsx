@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { Calendar, Clock, CheckCircle2, Archive, Search, X, ChevronLeft, ChevronRight, Plus, Sparkles, ArrowRight } from 'lucide-react';
 import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 
 const statusLabels = { pending: 'Scheduled', done: 'Completed', cancelled: 'Cancelled', archived: 'Archived', missed: 'Missed' };
 
@@ -46,14 +48,17 @@ function StatusBadge({ status }) {
 }
 
 function SummaryCard({ icon: Icon, label, value, sublabel, isActive, onClick }) {
+  const numVal = typeof value === 'number' ? value : parseInt(value, 10) || 0;
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
+      whileHover={{ y: -3, transition: { duration: 0.18 } }}
+      whileTap={{ scale: 0.98 }}
       className={`w-full text-left rounded-2xl p-5 shadow-sm transition-all duration-200 focus:outline-none cursor-pointer
         ${isActive
           ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white shadow-md'
-          : 'bg-white hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'
+          : 'bg-white hover:shadow-md'
         }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -62,9 +67,11 @@ function SummaryCard({ icon: Icon, label, value, sublabel, isActive, onClick }) 
           <Icon size={18} className={isActive ? 'text-white' : 'text-[#2e7d32]'} />
         </div>
       </div>
-      <p className={`text-4xl font-black mt-3 tracking-tight ${isActive ? 'text-white' : 'text-gray-800'}`}>{value}</p>
+      <p className={`text-4xl font-black mt-3 tracking-tight ${isActive ? 'text-white' : 'text-gray-800'}`}>
+        <CountUp value={numVal} />
+      </p>
       <p className={`text-xs mt-1 font-medium ${isActive ? 'text-white/60' : 'text-gray-400'}`}>{sublabel}</p>
-    </button>
+    </motion.button>
   );
 }
 
@@ -535,7 +542,15 @@ function Schedule() {
           </div>
 
           {/* Calendar Grid Cells with distinct line separators */}
-          <div className="grid grid-cols-7 border-collapse border-b-2 border-gray-200 bg-gray-200 gap-[1.5px]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${currentMonthName}-${currentYear}`}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-7 border-collapse border-b-2 border-gray-200 bg-gray-200 gap-[1.5px]"
+            >
             {calendarCells.map((cell) => {
               const isSelected = cell.dateKey === selectedDateKey;
               const hasActivities = cell.activities.length > 0;
@@ -643,7 +658,8 @@ function Schedule() {
                 </div>
               );
             })}
-          </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* Selected Date Detail Drawer */}
@@ -702,14 +718,25 @@ function Schedule() {
       </div>
 
       {/* ── Centered Add Schedule Modal Popup ── */}
-      {showModal && createPortal(
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden animate-in fade-in duration-200"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
-        >
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col transform transition-all scale-100">
-            {/* Modal header */}
-            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between shrink-0 text-white">
+      <AnimatePresence>
+        {showModal && createPortal(
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+          >
+            <motion.div
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              {/* Modal header */}
+              <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between shrink-0 text-white">
               <div>
                 <h2 className="text-base font-bold">New Activity Schedule</h2>
                 <p className="text-white/80 text-xs mt-0.5">Barangay: {user.barangay || 'Community'}</p>
@@ -826,10 +853,11 @@ function Schedule() {
                 {saving ? 'Saving…' : 'Save Activity'}
               </button>
             </div>
-          </div>
-        </div>,
+          </motion.div>
+        </motion.div>,
         document.body
       )}
+      </AnimatePresence>
 
     </div>
   );

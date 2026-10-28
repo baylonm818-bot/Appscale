@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Users, AlertCircle, CheckCircle, Ruler, Triangle, List, CalendarDays, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { CountUp, ShimmerSkeleton, staggerContainer } from '../components/ui/motion';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -51,6 +52,7 @@ const wordPopVariants = {
 };
 
 function StatCard({ icon: Icon, label, value, sublabel, to, accent }) {
+  const numVal = typeof value === 'number' ? value : parseInt(value, 10) || 0;
   const content = (
     <motion.div
       variants={itemVariants}
@@ -67,7 +69,9 @@ function StatCard({ icon: Icon, label, value, sublabel, to, accent }) {
           <Icon size={18} />
         </div>
       </div>
-      <p className="text-3xl font-black text-gray-800 mt-2 tracking-tight">{value ?? 0}</p>
+      <p className="text-3xl font-black text-gray-800 mt-2 tracking-tight">
+        <CountUp value={numVal} />
+      </p>
       <p className="text-xs font-medium text-gray-400 mt-1">{sublabel}</p>
     </motion.div>
   );
@@ -76,6 +80,7 @@ function StatCard({ icon: Icon, label, value, sublabel, to, accent }) {
 }
 
 function StatusPill({ label, count, tone, icon: Icon }) {
+  const numVal = typeof count === 'number' ? count : parseInt(count, 10) || 0;
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
@@ -87,7 +92,9 @@ function StatusPill({ label, count, tone, icon: Icon }) {
       </div>
       <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{label}</p>
-        <p className="text-xl font-black mt-0.5 leading-none">{count}</p>
+        <p className="text-xl font-black mt-0.5 leading-none">
+          <CountUp value={numVal} />
+        </p>
       </div>
     </motion.div>
   );
@@ -143,18 +150,15 @@ function Dashboard() {
   if (loading && !stats) {
     return (
       <div className="space-y-6">
-        <div className="h-36 rounded-2xl bg-gray-200 animate-pulse" />
+        <ShimmerSkeleton className="h-36 rounded-2xl" />
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-28 rounded-2xl bg-white p-5 shadow-sm border border-gray-100 animate-pulse flex flex-col justify-between">
-              <div className="h-4 bg-gray-200 rounded w-1/2" />
-              <div className="h-7 bg-gray-200 rounded w-1/3" />
-            </div>
+            <ShimmerSkeleton key={i} className="h-28 rounded-2xl" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-72 rounded-2xl bg-white p-6 shadow-sm border border-gray-100 animate-pulse" />
-          <div className="h-72 rounded-2xl bg-white p-6 shadow-sm border border-gray-100 animate-pulse" />
+          <ShimmerSkeleton className="lg:col-span-2 h-72 rounded-2xl" />
+          <ShimmerSkeleton className="h-72 rounded-2xl" />
         </div>
       </div>
     );

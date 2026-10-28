@@ -22,7 +22,8 @@ import {
   Plus,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
 const statusColors = {
@@ -340,15 +341,15 @@ function MedicalRecords() {
         <>
           {childLoading ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              <div className="lg:col-span-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3 animate-pulse">
-                <div className="h-9 bg-gray-200 rounded-xl" />
+              <div className="lg:col-span-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
+                <ShimmerSkeleton className="h-9 rounded-xl w-full" />
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-16 bg-gray-100 rounded-xl" />
+                  <ShimmerSkeleton key={i} className="h-16 rounded-xl w-full" />
                 ))}
               </div>
-              <div className="lg:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4 animate-pulse">
-                <div className="h-8 bg-gray-200 rounded-xl w-1/3" />
-                <div className="h-64 bg-gray-100 rounded-xl" />
+              <div className="lg:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                <ShimmerSkeleton className="h-8 rounded-xl w-1/3" />
+                <ShimmerSkeleton className="h-64 rounded-xl w-full" />
               </div>
             </div>
           ) : childError ? (
@@ -364,7 +365,7 @@ function MedicalRecords() {
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold text-gray-900">Registered Children</p>
                       <span className="text-xs font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                        {filteredChildren.length}
+                        <CountUp value={filteredChildren.length} />
                       </span>
                     </div>
 
@@ -696,15 +697,15 @@ function MedicalRecords() {
         <>
           {motherLoading ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              <div className="lg:col-span-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3 animate-pulse">
-                <div className="h-9 bg-gray-200 rounded-xl" />
+              <div className="lg:col-span-4 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
+                <ShimmerSkeleton className="h-9 rounded-xl w-full" />
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-16 bg-gray-100 rounded-xl" />
+                  <ShimmerSkeleton key={i} className="h-16 rounded-xl w-full" />
                 ))}
               </div>
-              <div className="lg:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4 animate-pulse">
-                <div className="h-8 bg-gray-200 rounded-xl w-1/3" />
-                <div className="h-64 bg-gray-100 rounded-xl" />
+              <div className="lg:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                <ShimmerSkeleton className="h-8 rounded-xl w-1/3" />
+                <ShimmerSkeleton className="h-64 rounded-xl w-full" />
               </div>
             </div>
           ) : motherError ? (
@@ -720,7 +721,7 @@ function MedicalRecords() {
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold text-gray-900">Registered Lactating Mothers</p>
                       <span className="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full">
-                        {filteredMothers.length}
+                        <CountUp value={filteredMothers.length} />
                       </span>
                     </div>
                     <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-100 transition">

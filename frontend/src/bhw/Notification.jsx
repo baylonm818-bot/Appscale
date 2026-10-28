@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import { useQuery } from '@tanstack/react-query';
 import { Bell, Calendar, UserCheck, AlertCircle, FileText, CheckCheck, Clock, ExternalLink, ArrowRight } from "lucide-react";
+import { motion, AnimatePresence } from 'framer-motion';
+import { CountUp, ShimmerSkeleton } from '../components/ui/motion';
 
 function timeAgo(dateString) {
   if (!dateString) return "Just now";
@@ -251,7 +253,7 @@ function Notifications() {
               <span>{tab.label}</span>
               {!isLoading && tab.count !== undefined && (
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${activeTab === tab.key ? 'bg-white/25 text-white' : 'bg-gray-200/80 text-gray-700'}`}>
-                  {tab.count}
+                  <CountUp value={tab.count} />
                 </span>
               )}
             </button>
@@ -263,11 +265,11 @@ function Notifications() {
           {isLoading ? (
             <div className="space-y-3 p-4">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="animate-pulse flex gap-4 items-center px-4 py-3">
-                  <div className="w-10 h-10 rounded-2xl bg-gray-200 shrink-0" />
+                <div key={i} className="flex gap-4 items-center px-4 py-3">
+                  <ShimmerSkeleton className="w-10 h-10 rounded-2xl shrink-0" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-3.5 bg-gray-200 rounded w-2/5" />
-                    <div className="h-3 bg-gray-200 rounded w-4/5" />
+                    <ShimmerSkeleton className="h-3.5 rounded w-2/5" />
+                    <ShimmerSkeleton className="h-3 rounded w-4/5" />
                   </div>
                 </div>
               ))}
@@ -287,8 +289,15 @@ function Notifications() {
               </p>
             </div>
           ) : (
-            filtered.map((notif) => (
-              <NotificationItem key={notif.notification_id} notif={notif} onMarkRead={handleMarkRead} />
+            filtered.map((notif, idx) => (
+              <motion.div
+                key={notif.notification_id}
+                initial={idx < 10 ? { opacity: 0, y: 8 } : false}
+                animate={idx < 10 ? { opacity: 1, y: 0 } : false}
+                transition={idx < 10 ? { duration: 0.22, delay: idx * 0.03 } : undefined}
+              >
+                <NotificationItem notif={notif} onMarkRead={handleMarkRead} />
+              </motion.div>
             ))
           )}
         </div>

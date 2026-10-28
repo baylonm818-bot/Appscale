@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 import {
   Search,
   ClipboardPlus,
@@ -301,13 +303,20 @@ function NeedAttention() {
 
   if (loading) {
     return (
-      <div className="space-y-3 p-6">
-        {[1,2,3].map(i => (
-          <div key={i} className="animate-pulse bg-white rounded-xl p-4">
-            <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
-            <div className="h-3 bg-gray-200 rounded w-2/3" />
+      <div className="space-y-6 bg-gray-50 min-h-screen p-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <ShimmerSkeleton key={i} className="h-28 rounded-2xl" />
+          ))}
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+          <ShimmerSkeleton className="h-10 rounded-xl w-full" />
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <ShimmerSkeleton key={i} className="h-14 rounded-xl w-full" />
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     );
   }
@@ -323,26 +332,46 @@ function NeedAttention() {
 
       {/* ── Summary Counters ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.2 } }}
+          className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 transition-shadow hover:shadow-md"
+        >
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total At-Risk</p>
-          <p className="text-3xl font-black text-gray-800 mt-2">{children.length}</p>
+          <p className="text-3xl font-black text-gray-800 mt-2">
+            <CountUp value={children.length} />
+          </p>
           <p className="text-xs text-gray-400 mt-1">Children in {user.barangay}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-red-100">
+        </motion.div>
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.2 } }}
+          className="bg-white rounded-2xl p-5 shadow-sm border border-red-100 transition-shadow hover:shadow-md"
+        >
           <p className="text-xs font-semibold text-red-500 uppercase tracking-wider">Severe (SAM)</p>
-          <p className="text-3xl font-black text-red-600 mt-2">{samCount}</p>
+          <p className="text-3xl font-black text-red-600 mt-2">
+            <CountUp value={samCount} />
+          </p>
           <p className="text-xs text-red-400 mt-1">Immediate intervention required</p>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-amber-100">
+        </motion.div>
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.2 } }}
+          className="bg-white rounded-2xl p-5 shadow-sm border border-amber-100 transition-shadow hover:shadow-md"
+        >
           <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Moderate (MAM)</p>
-          <p className="text-3xl font-black text-amber-600 mt-2">{mamCount}</p>
+          <p className="text-3xl font-black text-amber-600 mt-2">
+            <CountUp value={mamCount} />
+          </p>
           <p className="text-xs text-amber-500 mt-1">Supplementary feeding priority</p>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-100">
+        </motion.div>
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.2 } }}
+          className="bg-white rounded-2xl p-5 shadow-sm border border-orange-100 transition-shadow hover:shadow-md"
+        >
           <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider">Overdue (&gt;30d)</p>
-          <p className="text-3xl font-black text-orange-600 mt-2">{overdueCount}</p>
+          <p className="text-3xl font-black text-orange-600 mt-2">
+            <CountUp value={overdueCount} />
+          </p>
           <p className="text-xs text-orange-400 mt-1">Needs home visit checkup</p>
-        </div>
+        </motion.div>
       </div>
 
       {/* ── Controls & Table ── */}
@@ -447,12 +476,18 @@ function NeedAttention() {
                   </td>
                 </tr>
               ) : (
-                pagedChildren.map((c) => {
+                pagedChildren.map((c, idx) => {
                   const days = daysSince(c.last_visit);
                   const isOverdue = days == null || days > 30;
 
                   return (
-                    <tr key={c.child_id} className="hover:bg-green-50/40 transition-colors">
+                    <motion.tr
+                      key={c.child_id}
+                      initial={idx < 10 ? { opacity: 0, y: 8 } : false}
+                      animate={idx < 10 ? { opacity: 1, y: 0 } : false}
+                      transition={idx < 10 ? { duration: 0.25, delay: idx * 0.03 } : undefined}
+                      className="hover:bg-green-50/40 transition-colors"
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="shrink-0 w-9 h-9 rounded-full bg-linear-to-br from-amber-400 to-red-500 flex items-center justify-center text-white text-xs font-bold shadow-xs">
@@ -594,7 +629,7 @@ function NeedAttention() {
                           )}
                         </div>
                       </td>
-                    </tr>
+                    </motion.tr>
                   );
                 })
               )}
@@ -632,9 +667,24 @@ function NeedAttention() {
       </div>
 
       {/* ── Log Visit Modal ── */}
-      {visitTarget && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setVisitTarget(null)}>
-            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <AnimatePresence>
+        {visitTarget && createPortal(
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+            onClick={() => setVisitTarget(null)}
+          >
+            <motion.div
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
                 <div>
                   <h3 className="font-bold text-base">Record Health Visit / Service</h3>
@@ -701,10 +751,11 @@ function NeedAttention() {
                   {visitSubmitting ? 'Saving…' : 'Save Service'}
                 </button>
               </div>
-          </div>
-        </div>,
-        document.body
-      )}
+            </motion.div>
+          </motion.div>,
+          document.body
+        )}
+      </AnimatePresence>
 
       {/* ── Toast Notification Banner ── */}
       {toastMessage && (
@@ -727,9 +778,24 @@ function NeedAttention() {
       )}
 
       {/* ── Refer Modal ── */}
-      {referTarget && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setReferTarget(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <AnimatePresence>
+        {referTarget && createPortal(
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+            onClick={() => setReferTarget(null)}
+          >
+            <motion.div
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="bg-linear-to-r from-amber-600 to-orange-600 px-6 py-5 flex items-center justify-between text-white shrink-0">
                 <div>
                   <h3 className="font-bold text-base">Refer Child to Health Facility</h3>
@@ -888,10 +954,11 @@ function NeedAttention() {
                   {referSubmitting ? 'Submitting Referral…' : 'Submit Referral'}
                 </button>
               </div>
-          </div>
-        </div>,
-        document.body
-      )}
+            </motion.div>
+          </motion.div>,
+          document.body
+        )}
+      </AnimatePresence>
 
     </main>
   );

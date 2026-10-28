@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
 import { Search, X, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 
 const severityPriority = { high: 0, medium: 1, low: 2 };
 
@@ -293,10 +295,10 @@ function Referrals() {
   if (loading) {
     return (
       <div className="space-y-6 bg-gray-50 min-h-screen p-6">
-        <div className="h-14 rounded-2xl bg-white p-3 shadow-xs border border-gray-100 animate-pulse" />
+        <ShimmerSkeleton className="h-14 rounded-2xl w-full" />
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 rounded-xl bg-white p-4 shadow-xs border border-gray-100 animate-pulse" />
+            <ShimmerSkeleton key={i} className="h-24 rounded-xl w-full" />
           ))}
         </div>
       </div>
@@ -323,7 +325,7 @@ function Referrals() {
                 : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
             }`}
           >
-            All <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>{allCount}</span>
+            All <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}><CountUp value={allCount} /></span>
           </button>
           <button
             type="button"
@@ -334,7 +336,7 @@ function Referrals() {
                 : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
             }`}
           >
-            Pending <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Pending' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'}`}>{pendingCount}</span>
+            Pending <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Pending' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'}`}><CountUp value={pendingCount} /></span>
           </button>
           <button
             type="button"
@@ -345,7 +347,7 @@ function Referrals() {
                 : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
             }`}
           >
-            Received <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Received' ? 'bg-white/20 text-white' : 'bg-sky-100 text-sky-800'}`}>{receivedCount}</span>
+            Received <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Received' ? 'bg-white/20 text-white' : 'bg-sky-100 text-sky-800'}`}><CountUp value={receivedCount} /></span>
           </button>
           <button
             type="button"
@@ -356,7 +358,7 @@ function Referrals() {
                 : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
             }`}
           >
-            Ongoing <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Ongoing' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'}`}>{ongoingCount}</span>
+            Ongoing <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Ongoing' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'}`}><CountUp value={ongoingCount} /></span>
           </button>
           <button
             type="button"
@@ -367,7 +369,7 @@ function Referrals() {
                 : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
             }`}
           >
-            Completed <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Completed' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>{completedCount}</span>
+            Completed <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Completed' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}><CountUp value={completedCount} /></span>
           </button>
           <button
             type="button"
@@ -378,7 +380,7 @@ function Referrals() {
                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
             }`}
           >
-            Archived <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Archived' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>{archivedCount}</span>
+            Archived <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Archived' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}><CountUp value={archivedCount} /></span>
           </button>
           {statusFilter === 'Completed' && completedCount > 0 && (
             <button
@@ -471,7 +473,7 @@ function Referrals() {
         {filteredReferrals.length === 0 ? (
           <div className="p-12 text-center text-gray-400 text-xs">No referrals found matching the selected filters.</div>
         ) : (
-          filteredReferrals.map((r) => {
+          filteredReferrals.map((r, idx) => {
             const isMother = isMotherReferral(r);
             const typeBadgeText = isMother ? 'LACTATING MOTHER' : 'CHILD';
             const typeLabel = isMother ? 'MOTHER HEALTH REFERRAL' : 'CHILD HEALTH REFERRAL';
@@ -498,9 +500,13 @@ function Referrals() {
             const benFullName = `${r.beneficiary_first_name || ''} ${r.beneficiary_last_name || ''}`.trim();
 
             return (
-              <div
+              <motion.div
                 key={r.referral_id}
-                className="p-4 rounded-xl border border-gray-100/90 hover:border-gray-200 hover:shadow-md transition-all duration-200 bg-white space-y-2.5 hover:-translate-y-0.5 animate-in fade-in"
+                initial={idx < 10 ? { opacity: 0, y: 10 } : false}
+                animate={idx < 10 ? { opacity: 1, y: 0 } : false}
+                transition={idx < 10 ? { duration: 0.25, delay: idx * 0.03 } : undefined}
+                whileHover={{ y: -2, transition: { duration: 0.15 } }}
+                className="p-4 rounded-xl border border-gray-100/90 hover:border-gray-200 hover:shadow-md transition-all duration-200 bg-white space-y-2.5"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
@@ -564,143 +570,175 @@ function Referrals() {
                     )}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })
         )}
       </div>
 
-      {actionTarget && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setActionTarget(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
-              <div>
-                <h3 className="font-bold text-base">Update Referral Status</h3>
-                <p className="text-xs text-white/80 mt-0.5">Beneficiary: {(actionTarget.beneficiary_first_name || '') + ' ' + (actionTarget.beneficiary_last_name || '')}</p>
-              </div>
-              <button onClick={() => setActionTarget(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white"><X size={16} /></button>
-            </div>
-
-            <div className="p-6 space-y-3.5 overflow-y-auto flex-1">
-              {actionError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{actionError}</div>}
-
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Referral Status *</label>
-                <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] font-semibold">
-                  <option value="Pending">Pending</option>
-                  <option value="Received">Received (Confirmed Receipt)</option>
-                  <option value="Ongoing">Ongoing (In Progress)</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              {newStatus === 'Ongoing' && (
+      <AnimatePresence>
+        {actionTarget && createPortal(
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+            onClick={() => setActionTarget(null)}
+          >
+            <motion.div
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      Services Provided
-                    </label>
-                    {selectedServices.length > 0 && (
-                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        {selectedServices.length} selected
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5 rounded-xl border border-gray-200 bg-slate-50/60 p-2.5">
-                    {serviceOptions.map((s) => {
-                      const isChecked = selectedServices.includes(s.value);
-                      return (
-                        <div
-                          key={s.value}
-                          onClick={() => toggleService(s.value)}
-                          className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition text-xs select-none ${
-                            isChecked
-                              ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-semibold'
-                              : 'bg-white text-gray-700 border border-slate-200 hover:bg-gray-50'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggleService(s.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-[#2e7d32] cursor-pointer shrink-0"
-                          />
-                          <span className="flex-1 cursor-pointer">{s.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block mt-3">
-                    Service Date
-                  </label>
-                  <input
-                    type="date"
-                    value={serviceDate}
-                    onChange={(e) => setServiceDate(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#2e7d32] bg-white"
-                  />
+                  <h3 className="font-bold text-base">Update Referral Status</h3>
+                  <p className="text-xs text-white/80 mt-0.5">Beneficiary: {(actionTarget.beneficiary_first_name || '') + ' ' + (actionTarget.beneficiary_last_name || '')}</p>
                 </div>
-              )}
-
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Response Notes</label>
-                <textarea rows={3} placeholder="Optional notes" value={responseNotes} onChange={(e) => setResponseNotes(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] resize-none" />
+                <button onClick={() => setActionTarget(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white"><X size={16} /></button>
               </div>
-            </div>
 
-            <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-2 sticky bottom-0">
-              <button type="button" onClick={() => setActionTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">Cancel</button>
-              <button type="button" disabled={actionSubmitting} onClick={submitStatusUpdate} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-60">{actionSubmitting ? 'Saving…' : 'Save'}</button>
-            </div>
-          </div>
-        </div>, document.body
-      )}
+              <div className="p-6 space-y-3.5 overflow-y-auto flex-1">
+                {actionError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{actionError}</div>}
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Referral Status *</label>
+                  <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] font-semibold">
+                    <option value="Pending">Pending</option>
+                    <option value="Received">Received (Confirmed Receipt)</option>
+                    <option value="Ongoing">Ongoing (In Progress)</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+
+                {newStatus === 'Ongoing' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Services Provided
+                      </label>
+                      {selectedServices.length > 0 && (
+                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          {selectedServices.length} selected
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5 rounded-xl border border-gray-200 bg-slate-50/60 p-2.5">
+                      {serviceOptions.map((s) => {
+                        const isChecked = selectedServices.includes(s.value);
+                        return (
+                          <div
+                            key={s.value}
+                            onClick={() => toggleService(s.value)}
+                            className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition text-xs select-none ${
+                              isChecked
+                                ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-semibold'
+                                : 'bg-white text-gray-700 border border-slate-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleService(s.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-[#2e7d32] cursor-pointer shrink-0"
+                            />
+                            <span className="flex-1 cursor-pointer">{s.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block mt-3">
+                      Service Date
+                    </label>
+                    <input
+                      type="date"
+                      value={serviceDate}
+                      onChange={(e) => setServiceDate(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#2e7d32] bg-white"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Response Notes</label>
+                  <textarea rows={3} placeholder="Optional notes" value={responseNotes} onChange={(e) => setResponseNotes(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] resize-none" />
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-2 sticky bottom-0">
+                <button type="button" onClick={() => setActionTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">Cancel</button>
+                <button type="button" disabled={actionSubmitting} onClick={submitStatusUpdate} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-60">{actionSubmitting ? 'Saving…' : 'Save'}</button>
+              </div>
+            </motion.div>
+          </motion.div>, document.body
+        )}
+      </AnimatePresence>
 
       {/* Confirmation Modal for Archiving / Unarchiving */}
-      {archiveConfirm && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4" onClick={() => setArchiveConfirm(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-base text-gray-900">
-                {archiveConfirm.isUnarchive ? 'Unarchive Referral' : 'Archive Referral'}
-              </h3>
-              <button onClick={() => setArchiveConfirm(null)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p-5 text-sm text-gray-600">
-              <p>
-                Are you sure you want to {archiveConfirm.isUnarchive ? 'unarchive' : 'archive'} {archiveConfirm.type === 'batch' ? archiveConfirm.name : `referral for ${archiveConfirm.name}`}?
-              </p>
-              {!archiveConfirm.isUnarchive && (
-                <p className="text-xs text-gray-400 mt-2">
-                  Archived referrals can be reviewed anytime under the Archived tab.
+      <AnimatePresence>
+        {archiveConfirm && createPortal(
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4"
+            onClick={() => setArchiveConfirm(null)}
+          >
+            <motion.div
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="font-bold text-base text-gray-900">
+                  {archiveConfirm.isUnarchive ? 'Unarchive Referral' : 'Archive Referral'}
+                </h3>
+                <button onClick={() => setArchiveConfirm(null)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="p-5 text-sm text-gray-600">
+                <p>
+                  Are you sure you want to {archiveConfirm.isUnarchive ? 'unarchive' : 'archive'} {archiveConfirm.type === 'batch' ? archiveConfirm.name : `referral for ${archiveConfirm.name}`}?
                 </p>
-              )}
-            </div>
-            <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex gap-2.5 justify-end">
-              <button
-                type="button"
-                onClick={() => setArchiveConfirm(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmArchiveExecution}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-xs"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>, document.body
-      )}
+                {!archiveConfirm.isUnarchive && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Archived referrals can be reviewed anytime under the Archived tab.
+                  </p>
+                )}
+              </div>
+              <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex gap-2.5 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setArchiveConfirm(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmArchiveExecution}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-xs"
+                >
+                  Confirm
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>, document.body
+        )}
+      </AnimatePresence>
 
       {/* Styled feedback toast notification */}
       {toastMessage && createPortal(

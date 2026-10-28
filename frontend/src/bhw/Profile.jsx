@@ -3,6 +3,8 @@ import axiosClient from '../api/axiosClient';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import { useAuth } from '../components/AuthContext';
 import { Camera, Lock, User, ShieldCheck, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShimmerSkeleton } from '../components/ui/motion';
 import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
 function ProfileInfoRow({ label, value, name, onSave }) {
@@ -316,17 +318,16 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 animate-pulse">
-          <div className="h-28 bg-gray-200" />
-          <div className="px-6 pb-6 space-y-4">
-            <div className="w-24 h-24 rounded-full bg-gray-300 -mt-12 border-4 border-white" />
-            <div className="h-5 bg-gray-200 rounded w-1/4" />
-            <div className="h-3 bg-gray-200 rounded w-1/3" />
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 p-6 space-y-4">
+          <ShimmerSkeleton className="h-28 rounded-xl w-full" />
+          <div className="space-y-2">
+            <ShimmerSkeleton className="h-6 rounded-lg w-1/4" />
+            <ShimmerSkeleton className="h-4 rounded-lg w-1/3" />
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-96 rounded-2xl bg-white p-6 shadow-sm border border-gray-100 animate-pulse" />
-          <div className="h-96 rounded-2xl bg-white p-6 shadow-sm border border-gray-100 animate-pulse" />
+          <ShimmerSkeleton className="lg:col-span-2 h-96 rounded-2xl" />
+          <ShimmerSkeleton className="h-96 rounded-2xl" />
         </div>
       </div>
     );
@@ -403,22 +404,41 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
       </div>
 
       {/* ── Tab Navigation ── */}
-      <div className="bg-white rounded-2xl shadow-sm p-1.5 flex gap-1 border border-gray-100 overflow-x-auto">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setActiveTab(key)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex-1 justify-center
-              ${activeTab === key
-                ? 'bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white shadow-xs'
-                : 'text-gray-500 hover:bg-gray-50'
-              }`}>
-            <Icon size={15} />
-            {label}
-          </button>
-        ))}
+      <div className="bg-white rounded-2xl shadow-sm p-1.5 flex gap-1 border border-gray-100 overflow-x-auto relative">
+        {TABS.map(({ key, label, icon: Icon }) => {
+          const isActive = activeTab === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors flex-1 justify-center z-10 cursor-pointer ${
+                isActive ? 'text-white' : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              {isActive && (
+                <motion.span
+                  layoutId="bhwProfileTabIndicator"
+                  className="absolute inset-0 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] rounded-xl shadow-xs -z-10"
+                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                />
+              )}
+              <Icon size={15} />
+              <span>{label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Tab Content ── */}
-      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
 
         {/* PROFILE INFO */}
         {activeTab === 'profile' && (
@@ -514,6 +534,8 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
           </>
         )}
 
+          </motion.div>
+        </AnimatePresence>
       </div>
 
     </div>

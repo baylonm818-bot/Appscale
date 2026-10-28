@@ -6,6 +6,7 @@ import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from './AuthContext';
 import RouteErrorBoundary from './RouteErrorBoundary';
+import { modalVariants, backdropVariants } from './ui/motion';
 import {
   LayoutDashboard,
   AlertCircle,
@@ -271,13 +272,20 @@ function BHWLayout() {
                 onClick={() => {
                   if (window.innerWidth < 768) setIsSidebarOpen(false);
                 }}
-                className={`app-sidebar-link ${isActive ? 'is-active' : ''} flex items-center gap-3 px-3.5 py-2.5 mx-2.5 rounded-xl text-sm transition-all duration-150 ${
+                className={`relative app-sidebar-link ${isActive ? 'is-active text-white' : ''} flex items-center gap-3 px-3.5 py-2.5 mx-2.5 rounded-xl text-sm transition-all duration-150 ${
                   !isSidebarOpen ? 'justify-center mx-1.5 px-2' : ''
                 }`}
                 title={!isSidebarOpen ? item.name : undefined}
               >
-                <Icon size={19} className="shrink-0" />
-                {isSidebarOpen && <span className="truncate">{item.name}</span>}
+                {isActive && (
+                  <motion.span
+                    layoutId="bhwSidebarActiveIndicator"
+                    className="absolute inset-0 rounded-xl bg-white/20 border border-white/25 shadow-sm -z-0"
+                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  />
+                )}
+                <Icon size={19} className="shrink-0 relative z-10" />
+                {isSidebarOpen && <span className="truncate relative z-10">{item.name}</span>}
               </Link>
             );
           })}
@@ -498,40 +506,54 @@ function BHWLayout() {
       </div>
 
       {/* ── Logout Confirmation Modal ── */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-hidden">
-          <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 w-full max-w-sm mx-auto my-auto p-6 max-h-[90vh] flex flex-col overflow-y-auto">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                <LogOut size={18} className="text-red-600" />
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-hidden"
+          >
+            <motion.div
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white rounded-2xl shadow-2xl shadow-black/20 w-full max-w-sm mx-auto my-auto p-6 max-h-[90vh] flex flex-col overflow-y-auto"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                  <LogOut size={18} className="text-red-600" />
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900 text-base">Log Out</p>
+                  <p className="text-xs text-gray-400">BHW Portal</p>
+                </div>
               </div>
-              <div>
-                <p className="font-bold text-gray-900 text-base">Log Out</p>
-                <p className="text-xs text-gray-400">BHW Portal</p>
+              <p className="text-sm text-gray-600 mb-5">
+                Are you sure you want to log out? You will need to sign in again to access the portal.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={doLogout}
+                  className="px-5 py-2 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition"
+                >
+                  Log Out
+                </button>
               </div>
-            </div>
-            <p className="text-sm text-gray-600 mb-5">
-              Are you sure you want to log out? You will need to sign in again to access the portal.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={() => setShowLogoutConfirm(false)}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={doLogout}
-                className="px-5 py-2 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition"
-              >
-                Log Out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
