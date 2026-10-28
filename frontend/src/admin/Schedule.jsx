@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
+import { motion, AnimatePresence } from 'framer-motion';
 import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
+import { CountUp, modalVariants, backdropVariants } from '../components/ui/motion';
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -55,13 +57,15 @@ function StatusBadge({ status }) {
 /* ── Summary Card ── */
 function SummaryCard({ icon, label, value, sublabel, isActive, onClick }) {
   return (
-    <button
+    <motion.button
       type="button"
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={`w-full text-left rounded-2xl p-5 shadow-sm transition-all duration-200 focus:outline-none cursor-pointer
         ${isActive
           ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] shadow-md'
-          : 'bg-white hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'
+          : 'bg-white hover:shadow-md'
         }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -70,9 +74,11 @@ function SummaryCard({ icon, label, value, sublabel, isActive, onClick }) {
           <div className={isActive ? 'text-white' : 'text-green-700'}>{icon}</div>
         </div>
       </div>
-      <p className={`text-4xl font-black mt-3 tracking-tight ${isActive ? 'text-white' : 'text-gray-800'}`}>{value}</p>
+      <p className={`text-4xl font-black mt-3 tracking-tight ${isActive ? 'text-white' : 'text-gray-800'}`}>
+        {typeof value === 'number' ? <CountUp value={value} duration={0.7} /> : value}
+      </p>
       <p className={`text-xs mt-1 font-medium ${isActive ? 'text-white/60' : 'text-gray-400'}`}>{sublabel}</p>
-    </button>
+    </motion.button>
   );
 }
 
@@ -567,7 +573,15 @@ function Schedule() {
           </div>
 
           {/* Calendar Grid Cells with strong border-2 grid lines */}
-          <div className="grid grid-cols-7 border-collapse border-b-2 border-gray-200 bg-gray-200 gap-[1.5px]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${currentMonthName}-${currentYear}`}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-7 border-collapse border-b-2 border-gray-200 bg-gray-200 gap-[1.5px]"
+            >
             {calendarCells.map((cell) => {
               const isSelected = cell.dateKey === selectedDateKey;
               const hasActivities = cell.activities.length > 0;
@@ -678,11 +692,18 @@ function Schedule() {
                 </div>
               );
             })}
-          </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* ── Selected Day Activities Detailed Drawer / Panel ── */}
-        <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden">
+        <motion.div
+          key={selectedDateKey}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden"
+        >
           <div className="px-6 py-4 bg-linear-to-r from-gray-50 via-white to-gray-50 border-b-2 border-gray-200 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-green-100 border border-green-300 text-[#1b5e20] flex items-center justify-center shadow-xs">
@@ -734,17 +755,31 @@ function Schedule() {
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {/* ── Add Schedule Modal ── */}
-      {showModal && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      {createPortal(
+        <AnimatePresence>
+          {showModal && (
+            <motion.div
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+            >
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              >
 
-            {/* Modal header */}
-            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
+                {/* Modal header */}
+                <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
               <div>
                 <h2 className="text-base font-bold text-white">New Schedule Activity</h2>
                 <p className="text-white/70 text-xs mt-0.5">Fill in the activity details below</p>
@@ -904,10 +939,12 @@ function Schedule() {
                 {saving ? 'Creating…' : 'Create Activity'}
               </button>
             </div>
-          </div>
-        </div>,
-        document.body
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>,
+    document.body
+  )}
     </div>
   );
 }

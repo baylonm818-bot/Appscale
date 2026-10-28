@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Baby, Heart, X, MapPin, ChevronDown, ChevronLeft, ChevronRight, Filter, Check } from 'lucide-react';
+import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 
 /* ── Custom Popover Select (always drops DOWN with clean scrollbar) ── */
 function CustomSelect({ value, onChange, options, placeholder, className = '' }) {
@@ -328,14 +330,17 @@ function Masterlist() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs animate-pulse" />
+            <div key={i} className="h-24 bg-white rounded-2xl p-5 border border-gray-100 shadow-2xs flex flex-col justify-between">
+              <ShimmerSkeleton className="h-4 w-1/2 rounded-md" />
+              <ShimmerSkeleton className="h-7 w-1/3 rounded-lg" />
+            </div>
           ))}
         </div>
         <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-2xs space-y-4">
-          <div className="h-10 bg-gray-100 rounded-xl animate-pulse" />
-          <div className="h-64 bg-gray-50 rounded-xl animate-pulse" />
+          <ShimmerSkeleton className="h-10 w-full rounded-xl" />
+          <ShimmerSkeleton className="h-96 w-full rounded-xl" />
         </div>
       </div>
     );
@@ -363,9 +368,11 @@ function Masterlist() {
     <div className="space-y-6">
       {/* ── Summary Stat Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div
+        <motion.div
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => { setTypeFilter('child'); setStatusFilter('all'); }}
-          className={`p-5 rounded-2xl transition cursor-pointer border shadow-2xs ${
+          className={`p-5 rounded-2xl transition-shadow cursor-pointer border shadow-2xs ${
             typeFilter === 'child' && statusFilter === 'all'
               ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white border-transparent'
               : 'bg-white text-gray-800 border-gray-100 hover:border-gray-200 hover:shadow-xs'
@@ -379,15 +386,19 @@ function Masterlist() {
               <Baby size={18} />
             </div>
           </div>
-          <p className="text-3xl font-black mt-2 tracking-tight">{stats?.totalChildren ?? children.length}</p>
+          <p className="text-3xl font-black mt-2 tracking-tight">
+            <CountUp value={stats?.totalChildren ?? children.length} duration={0.7} />
+          </p>
           <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'child' && statusFilter === 'all' ? 'text-white/70' : 'text-gray-400'}`}>
             Registered in municipality
           </p>
-        </div>
+        </motion.div>
 
-        <div
+        <motion.div
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => { setTypeFilter('mother'); setStatusFilter('all'); }}
-          className={`p-5 rounded-2xl transition cursor-pointer border shadow-2xs ${
+          className={`p-5 rounded-2xl transition-shadow cursor-pointer border shadow-2xs ${
             typeFilter === 'mother' && statusFilter === 'all'
               ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white border-transparent'
               : 'bg-white text-gray-800 border-gray-100 hover:border-gray-200 hover:shadow-xs'
@@ -401,15 +412,19 @@ function Masterlist() {
               <Heart size={18} />
             </div>
           </div>
-          <p className="text-3xl font-black mt-2 tracking-tight">{stats?.totalMothers ?? mothers.length}</p>
+          <p className="text-3xl font-black mt-2 tracking-tight">
+            <CountUp value={stats?.totalMothers ?? mothers.length} duration={0.7} />
+          </p>
           <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'mother' && statusFilter === 'all' ? 'text-white/70' : 'text-gray-400'}`}>
             Maternal health registry
           </p>
-        </div>
+        </motion.div>
 
-        <div
+        <motion.div
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => { setTypeFilter('child'); setStatusFilter('normal'); }}
-          className={`p-5 rounded-2xl transition cursor-pointer border shadow-2xs ${
+          className={`p-5 rounded-2xl transition-shadow cursor-pointer border shadow-2xs ${
             typeFilter === 'child' && statusFilter === 'normal'
               ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white border-transparent'
               : 'bg-white text-gray-800 border-gray-100 hover:border-gray-200 hover:shadow-xs'
@@ -424,16 +439,18 @@ function Masterlist() {
             </div>
           </div>
           <p className="text-3xl font-black mt-2 tracking-tight">
-            {children.filter((c) => normalizeStatusKey(c.overall_status) === 'normal').length}
+            <CountUp value={children.filter((c) => normalizeStatusKey(c.overall_status) === 'normal').length} duration={0.7} />
           </p>
           <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'child' && statusFilter === 'normal' ? 'text-white/70' : 'text-gray-400'}`}>
             Healthy nutritional status
           </p>
-        </div>
+        </motion.div>
 
-        <div
+        <motion.div
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => { setTypeFilter('child'); setStatusFilter('underweight'); }}
-          className={`p-5 rounded-2xl transition cursor-pointer border shadow-2xs ${
+          className={`p-5 rounded-2xl transition-shadow cursor-pointer border shadow-2xs ${
             typeFilter === 'child' && statusFilter === 'underweight'
               ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white border-transparent'
               : 'bg-white text-gray-800 border-gray-100 hover:border-gray-200 hover:shadow-xs'
@@ -448,12 +465,12 @@ function Masterlist() {
             </div>
           </div>
           <p className="text-3xl font-black mt-2 tracking-tight">
-            {children.filter((c) => normalizeStatusKey(c.overall_status) === 'underweight').length}
+            <CountUp value={children.filter((c) => normalizeStatusKey(c.overall_status) === 'underweight').length} duration={0.7} />
           </p>
           <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'child' && statusFilter === 'underweight' ? 'text-white/70' : 'text-gray-400'}`}>
             Requires supplementary feeding
           </p>
-        </div>
+        </motion.div>
       </div>
 
       {/* ── Main Table Card ── */}
@@ -584,9 +601,12 @@ function Masterlist() {
                   </td>
                 </tr>
               ) : (
-                paginatedRecords.map((item) => (
-                  <tr
+                paginatedRecords.map((item, idx) => (
+                  <motion.tr
                     key={item.id}
+                    initial={idx < 10 ? { opacity: 0, y: 6 } : false}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={idx < 10 ? { duration: 0.22, delay: idx * 0.03 } : undefined}
                     className="hover:bg-green-50/40 transition-colors h-14"
                   >
                     {/* Name (with Sex below) */}
@@ -636,7 +656,7 @@ function Masterlist() {
                         View
                       </button>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>
@@ -676,17 +696,27 @@ function Masterlist() {
       </div>
 
       {/* ── View-Only Detail Modal ── */}
-      {selectedPerson && createPortal(
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
-          onClick={(e) => { if (e.target === e.currentTarget) setSelectedPerson(null); }}
-        >
-          <div
-            className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
+      {createPortal(
+        <AnimatePresence>
+          {selectedPerson && (
+            <motion.div
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+              onClick={(e) => { if (e.target === e.currentTarget) setSelectedPerson(null); }}
+            >
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-base shrink-0">
                   {(selectedPerson.first_name || '?').charAt(0).toUpperCase()}
@@ -798,10 +828,12 @@ function Masterlist() {
                 Close
               </button>
             </div>
-          </div>
-        </div>,
-        document.body
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>,
+    document.body
+  )}
     </div>
   );
 }

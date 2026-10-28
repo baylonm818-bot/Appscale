@@ -4,6 +4,7 @@ import axiosClient from '../api/axiosClient';
 import { motion } from 'framer-motion';
 import { Users, Baby, Heart, MapPin, Calendar, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { CountUp, ShimmerSkeleton } from '../components/ui/motion';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -94,7 +95,8 @@ function StatCard({ icon: Icon, label, value, sublabel, to }) {
   const content = (
     <motion.div
       variants={itemVariants}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+      whileTap={{ scale: 0.98 }}
       className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100/80 hover:shadow-md transition-shadow duration-200 group h-full"
     >
       <div className="flex items-start justify-between gap-3">
@@ -103,7 +105,9 @@ function StatCard({ icon: Icon, label, value, sublabel, to }) {
           <Icon size={18} />
         </div>
       </div>
-      <p className="text-3xl font-black text-gray-800 mt-2 tracking-tight">{value ?? '—'}</p>
+      <p className="text-3xl font-black text-gray-800 mt-2 tracking-tight">
+        {typeof value === 'number' ? <CountUp value={value} duration={0.8} /> : (value ?? '—')}
+      </p>
       <p className="text-xs font-medium text-gray-400 mt-1">{sublabel}</p>
     </motion.div>
   );
@@ -160,18 +164,18 @@ function Dashboard() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="h-36 rounded-2xl bg-gray-200 animate-pulse" />
+        <ShimmerSkeleton className="h-36 rounded-2xl w-full" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 rounded-2xl bg-white p-5 shadow-sm border border-gray-100 animate-pulse flex flex-col justify-between">
-              <div className="h-4 bg-gray-200 rounded w-1/2" />
-              <div className="h-7 bg-gray-200 rounded w-1/3" />
+            <div key={i} className="h-28 rounded-2xl bg-white p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
+              <ShimmerSkeleton className="h-4 w-1/2 rounded-md" />
+              <ShimmerSkeleton className="h-8 w-1/3 rounded-lg" />
             </div>
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-72 rounded-2xl bg-white p-5 shadow-sm border border-gray-100 animate-pulse" />
-          <div className="h-72 rounded-2xl bg-white p-5 shadow-sm border border-gray-100 animate-pulse" />
+          <ShimmerSkeleton className="lg:col-span-2 h-72 rounded-2xl" />
+          <ShimmerSkeleton className="h-72 rounded-2xl" />
         </div>
       </div>
     );
@@ -443,7 +447,15 @@ function Dashboard() {
                         cursor={{ fill: 'rgba(0, 0, 0, 0.04)', radius: 6 }}
                         offset={12}
                       />
-                      <Bar dataKey="cases" fill="#2e7d32" radius={[6, 6, 0, 0]} barSize={36} />
+                      <Bar
+                        dataKey="cases"
+                        fill="#2e7d32"
+                        radius={[6, 6, 0, 0]}
+                        barSize={36}
+                        isAnimationActive={true}
+                        animationDuration={900}
+                        animationEasing="ease-out"
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

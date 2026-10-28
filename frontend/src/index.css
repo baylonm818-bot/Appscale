@@ -200,10 +200,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .app-sidebar-link.is-active {
   color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.18) !important;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
   font-weight: 700;
 }
 
@@ -622,6 +618,12 @@ button, a {
 
 .animate-orb-spin {
   animation: appscale-orb-spin 22s linear infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────

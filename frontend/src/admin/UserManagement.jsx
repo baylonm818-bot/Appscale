@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import axiosClient from '../api/axiosClient';
 import { Users, Archive, Plus, Search, Shield, Lock, Unlock, X, ChevronDown } from 'lucide-react';
 import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
+import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants, itemFadeUp, staggerContainer } from '../components/ui/motion';
 
 const GASAN_BARANGAYS = [
   'Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang',
@@ -74,24 +76,28 @@ function BarangayCustomDropdown({ value, onChange, barangays }) {
 
 function StatCard({ icon: Icon, label, value, sublabel, isActive, onClick }) {
   return (
-    <button
+    <motion.button
+      whileHover={{ y: -2, transition: { duration: 0.18 } }}
+      whileTap={{ scale: 0.98 }}
       type="button"
       onClick={onClick}
-      className={`w-full text-left rounded-2xl p-5 shadow-sm transition-all duration-200 focus:outline-none cursor-pointer
+      className={`w-full text-left rounded-2xl p-5 shadow-sm transition-colors duration-200 focus:outline-none cursor-pointer
         ${isActive
           ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white shadow-md'
-          : 'bg-white hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'
+          : 'bg-white hover:shadow-md'
         }`}
     >
       <div className="flex items-start justify-between gap-3">
         <p className={`text-sm font-medium leading-tight ${isActive ? 'text-white/80' : 'text-gray-500'}`}>{label}</p>
-        <div className={`shrink-0 rounded-xl p-2.5 ${isActive ? 'bg-white/20' : 'bg-green-50'}`}>
+        <div className={`shrink-0 rounded-xl p-2.5 transition-colors ${isActive ? 'bg-white/20' : 'bg-green-50'}`}>
           <Icon size={18} className={isActive ? 'text-white' : 'text-[#2e7d32]'} />
         </div>
       </div>
-      <p className={`text-4xl font-black mt-3 tracking-tight ${isActive ? 'text-white' : 'text-gray-800'}`}>{value ?? 0}</p>
+      <p className={`text-4xl font-black mt-3 tracking-tight ${isActive ? 'text-white' : 'text-gray-800'}`}>
+        <CountUp value={value ?? 0} />
+      </p>
       <p className={`text-xs mt-1 font-medium ${isActive ? 'text-white/60' : 'text-gray-400'}`}>{sublabel}</p>
-    </button>
+    </motion.button>
   );
 }
 
@@ -318,20 +324,16 @@ function UserManagement() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="h-36 rounded-2xl bg-gray-200 animate-pulse" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 rounded-2xl bg-white p-5 shadow-sm border border-gray-100 animate-pulse flex flex-col justify-between">
-              <div className="h-4 bg-gray-200 rounded w-1/2" />
-              <div className="h-7 bg-gray-200 rounded w-1/3" />
-            </div>
+            <ShimmerSkeleton key={i} className="h-34 rounded-2xl border border-gray-100 shadow-sm" />
           ))}
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
-          <div className="h-10 bg-gray-200 rounded-xl animate-pulse" />
+          <ShimmerSkeleton className="h-10 rounded-xl" />
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
+              <ShimmerSkeleton key={i} className="h-14 rounded-xl" />
             ))}
           </div>
         </div>
@@ -367,7 +369,12 @@ function UserManagement() {
     <div className="space-y-6">
 
       {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div
+        variants={staggerContainer(0.06)}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+      >
         <StatCard
           icon={Users}
           label="Total Users"
@@ -400,7 +407,7 @@ function UserManagement() {
           isActive={statusFilter === 'locked'}
           onClick={() => { setStatusFilter(statusFilter === 'locked' ? 'all' : 'locked'); setActiveTab('all'); setShowArchive(false); }}
         />
-      </div>
+      </motion.div>
 
       {/* ── Main Panel ── */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -473,8 +480,14 @@ function UserManagement() {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((u) => (
-                  <tr key={u.user_id} className="hover:bg-green-50/40 transition-colors group">
+                filteredUsers.map((u, idx) => (
+                  <motion.tr
+                    key={u.user_id}
+                    initial={idx < 10 ? { opacity: 0, y: 6 } : false}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={idx < 10 ? { duration: 0.22, delay: idx * 0.03 } : undefined}
+                    className="hover:bg-green-50/40 transition-colors group"
+                  >
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="shrink-0 w-9 h-9 rounded-full bg-linear-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xs font-bold shadow-xs">
@@ -547,7 +560,7 @@ function UserManagement() {
                         )}
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>
@@ -557,31 +570,43 @@ function UserManagement() {
       </div>
 
       {/* ── User Modal ── */}
-      {showModal && createPortal(
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
-        >
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[88vh] flex flex-col">
-
-            {/* Header */}
-            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-base font-bold text-white">
-                  {editingUser ? (viewOnly ? 'User Account Profile' : 'Edit User Account') : `Add New ${form.role.toUpperCase()}`}
-                </h2>
-                <p className="text-white/70 text-xs mt-0.5">
-                  {editingUser ? 'Account & Barangay assignment details' : 'Fill in the credentials to register an account'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition"
+      {createPortal(
+        <AnimatePresence>
+          {showModal && (
+            <motion.div
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+            >
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[88vh] flex flex-col"
               >
-                <X size={16} />
-              </button>
-            </div>
+
+                {/* Header */}
+                <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
+                  <div>
+                    <h2 className="text-base font-bold text-white">
+                      {editingUser ? (viewOnly ? 'User Account Profile' : 'Edit User Account') : `Add New ${form.role.toUpperCase()}`}
+                    </h2>
+                    <p className="text-white/70 text-xs mt-0.5">
+                      {editingUser ? 'Account & Barangay assignment details' : 'Fill in the credentials to register an account'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
 
             {/* Form */}
             <div className="overflow-y-auto flex-1 px-6 py-5">
@@ -782,127 +807,157 @@ function UserManagement() {
                 </button>
               )}
             </div>
-          </div>
-        </div>,
-        document.body
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>,
+    document.body
+  )}
 
       {/* ── Status Change Confirmation Modal (Are you sure?) ── */}
-      {statusConfirm && createPortal(
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
-          onClick={(e) => { if (e.target === e.currentTarget) setStatusConfirm(null); }}
-        >
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[85vh] flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                statusConfirm.action === 'lock' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-700'
-              }`}>
-                {statusConfirm.action === 'lock' ? <Lock size={22} /> : <Unlock size={22} />}
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-900">
-                  {statusConfirm.action === 'lock' ? 'Deactivate User Account' : 'Activate User Account'}
-                </h3>
-                <p className="text-xs text-gray-500">
-                  Account status management
+      {createPortal(
+        <AnimatePresence>
+          {statusConfirm && (
+            <motion.div
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+              onClick={(e) => { if (e.target === e.currentTarget) setStatusConfirm(null); }}
+            >
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[85vh] flex flex-col"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                    statusConfirm.action === 'lock' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-700'
+                  }`}>
+                    {statusConfirm.action === 'lock' ? <Lock size={22} /> : <Unlock size={22} />}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">
+                      {statusConfirm.action === 'lock' ? 'Deactivate User Account' : 'Activate User Account'}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Account status management
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-600 mb-5 leading-relaxed">
+                  Are you sure you want to <strong className="text-gray-900">{statusConfirm.action === 'lock' ? 'deactivate' : 'activate'}</strong> the account of{' '}
+                  <strong className="text-gray-900">{statusConfirm.user.first_name} {statusConfirm.user.last_name}</strong>{' '}
+                  ({(statusConfirm.user.role || '').toUpperCase()})?
                 </p>
-              </div>
-            </div>
 
-            <p className="text-sm text-gray-600 mb-5 leading-relaxed">
-              Are you sure you want to <strong className="text-gray-900">{statusConfirm.action === 'lock' ? 'deactivate' : 'activate'}</strong> the account of{' '}
-              <strong className="text-gray-900">{statusConfirm.user.first_name} {statusConfirm.user.last_name}</strong>{' '}
-              ({(statusConfirm.user.role || '').toUpperCase()})?
-            </p>
+                {statusConfirm.action === 'lock' ? (
+                  <div className="mb-6 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
+                    <span className="shrink-0 text-base">⚠️</span>
+                    <span>The user account will be deactivated and prevented from logging into AppScale until reactivated by an administrator.</span>
+                  </div>
+                ) : (
+                  <div className="mb-6 p-3 bg-green-50 rounded-xl border border-green-200 text-xs text-green-800 flex items-start gap-2">
+                    <span className="shrink-0 text-base">✓</span>
+                    <span>The user account will be activated and allowed to log into AppScale.</span>
+                  </div>
+                )}
 
-            {statusConfirm.action === 'lock' ? (
-              <div className="mb-6 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
-                <span className="shrink-0 text-base">⚠️</span>
-                <span>The user account will be deactivated and prevented from logging into AppScale until reactivated by an administrator.</span>
-              </div>
-            ) : (
-              <div className="mb-6 p-3 bg-green-50 rounded-xl border border-green-200 text-xs text-green-800 flex items-start gap-2">
-                <span className="shrink-0 text-base">✓</span>
-                <span>The user account will be activated and allowed to log into AppScale.</span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setStatusConfirm(null)}
-                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const targetUser = statusConfirm.user;
-                  setStatusConfirm(null);
-                  await toggleStatus(targetUser);
-                }}
-                className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl transition shadow-sm ${
-                  statusConfirm.action === 'lock'
-                    ? 'bg-amber-600 hover:bg-amber-700'
-                    : 'bg-green-700 hover:bg-green-800'
-                }`}
-              >
-                Yes, {statusConfirm.action === 'lock' ? 'Deactivate Account' : 'Activate Account'}
-              </button>
-            </div>
-          </div>
-        </div>,
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStatusConfirm(null)}
+                    className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const targetUser = statusConfirm.user;
+                      setStatusConfirm(null);
+                      await toggleStatus(targetUser);
+                    }}
+                    className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl transition shadow-sm ${
+                      statusConfirm.action === 'lock'
+                        ? 'bg-amber-600 hover:bg-amber-700'
+                        : 'bg-green-700 hover:bg-green-800'
+                    }`}
+                  >
+                    Yes, {statusConfirm.action === 'lock' ? 'Deactivate Account' : 'Activate Account'}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
         document.body
       )}
 
       {/* ── Archive Confirmation Modal ── */}
-      {archiveConfirm && createPortal(
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-9999 p-4 overflow-hidden"
-          onClick={(e) => { if (e.target === e.currentTarget) setArchiveConfirm(null); }}
-        >
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[85vh] flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                <Archive size={22} />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-900">Archive User Account</h3>
-                <p className="text-xs text-gray-500">Permanent account removal</p>
-              </div>
-            </div>
-
-            <p className="text-sm text-gray-600 mb-2 leading-relaxed">
-              Are you sure you want to archive the account of{' '}
-              <strong className="text-gray-900">{archiveConfirm.first_name} {archiveConfirm.last_name}</strong>{' '}
-              ({(archiveConfirm.role || '').toUpperCase()})?
-            </p>
-
-            <div className="mb-6 p-3 bg-red-50 rounded-xl border border-red-200 text-xs text-red-800 flex items-start gap-2">
-              <span className="shrink-0 text-base">⚠️</span>
-              <span>This user will no longer be able to log in to AppScale. You can restore archived accounts later from the Archives tab.</span>
-            </div>
-
-            <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setArchiveConfirm(null)}
-                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition cursor-pointer"
+      {createPortal(
+        <AnimatePresence>
+          {archiveConfirm && (
+            <motion.div
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-9999 p-4 overflow-hidden"
+              onClick={(e) => { if (e.target === e.currentTarget) setArchiveConfirm(null); }}
+            >
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 overflow-hidden max-h-[85vh] flex flex-col"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={doArchive}
-                className="px-5 py-2.5 text-sm font-bold text-white rounded-xl transition shadow-sm bg-red-600 hover:bg-red-700 cursor-pointer"
-              >
-                Yes, Archive Account
-              </button>
-            </div>
-          </div>
-        </div>,
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                    <Archive size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">Archive User Account</h3>
+                    <p className="text-xs text-gray-500">Permanent account removal</p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-600 mb-2 leading-relaxed">
+                  Are you sure you want to archive the account of{' '}
+                  <strong className="text-gray-900">{archiveConfirm.first_name} {archiveConfirm.last_name}</strong>{' '}
+                  ({(archiveConfirm.role || '').toUpperCase()})?
+                </p>
+
+                <div className="mb-6 p-3 bg-red-50 rounded-xl border border-red-200 text-xs text-red-800 flex items-start gap-2">
+                  <span className="shrink-0 text-base">⚠️</span>
+                  <span>This user will no longer be able to log in to AppScale. You can restore archived accounts later from the Archives tab.</span>
+                </div>
+
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setArchiveConfirm(null)}
+                    className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={doArchive}
+                    className="px-5 py-2.5 text-sm font-bold text-white rounded-xl transition shadow-sm bg-red-600 hover:bg-red-700 cursor-pointer"
+                  >
+                    Yes, Archive Account
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
         document.body
       )}
 

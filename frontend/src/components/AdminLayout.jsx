@@ -223,13 +223,20 @@ function AdminLayout() {
                 onClick={() => {
                   if (window.innerWidth < 768) setIsSidebarOpen(false);
                 }}
-                className={`app-sidebar-link ${isActive ? 'is-active' : ''} flex items-center gap-3 px-3.5 py-2.5 mx-2.5 rounded-xl text-sm transition-all duration-150 ${
+                className={`relative app-sidebar-link ${isActive ? 'is-active text-white' : ''} flex items-center gap-3 px-3.5 py-2.5 mx-2.5 rounded-xl text-sm transition-all duration-150 ${
                   !isSidebarOpen ? 'justify-center mx-1.5 px-2' : ''
                 }`}
                 title={!isSidebarOpen ? item.name : undefined}
               >
-                <Icon size={19} className="shrink-0" />
-                {isSidebarOpen && <span className="truncate">{item.name}</span>}
+                {isActive && (
+                  <motion.span
+                    layoutId="adminSidebarActiveIndicator"
+                    className="absolute inset-0 rounded-xl bg-white/20 border border-white/25 shadow-sm -z-0"
+                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  />
+                )}
+                <Icon size={19} className="shrink-0 relative z-10" />
+                {isSidebarOpen && <span className="truncate relative z-10">{item.name}</span>}
               </Link>
             );
           })}

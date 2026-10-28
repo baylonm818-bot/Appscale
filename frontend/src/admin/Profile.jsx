@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axiosClient from '../api/axiosClient';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import { useAuth } from '../components/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Lock, Bell, ShieldCheck, User, ChevronRight } from 'lucide-react';
 import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
@@ -485,22 +486,41 @@ function Profile() {
       </div>
 
       {/* ── Tab nav ── */}
-      <div className="bg-white rounded-2xl shadow-sm p-1.5 flex gap-1 overflow-x-auto">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setActiveTab(key)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex-1 justify-center
-              ${activeTab === key
-                ? 'bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white shadow-sm'
-                : 'text-gray-500 hover:bg-gray-50'
-              }`}>
-            <Icon size={15} />
-            {label}
-          </button>
-        ))}
+      <div className="bg-white rounded-2xl shadow-sm p-1.5 flex gap-1 overflow-x-auto relative">
+        {TABS.map(({ key, label, icon: Icon }) => {
+          const isActive = activeTab === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors flex-1 justify-center z-10 cursor-pointer ${
+                isActive ? 'text-white' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {isActive && (
+                <motion.span
+                  layoutId="adminSettingsTabIndicator"
+                  className="absolute inset-0 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] rounded-xl shadow-sm -z-10"
+                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                />
+              )}
+              <Icon size={15} />
+              <span>{label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Tab content ── */}
-      <div className="bg-white rounded-2xl shadow-sm p-6">
+      <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
 
         {/* PROFILE INFO */}
         {activeTab === 'profile' && (
@@ -623,6 +643,8 @@ function Profile() {
             </div>
           </>
         )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
