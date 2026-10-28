@@ -297,39 +297,42 @@ class ReferralRepository {
         });
         final resolvedName = refObj.resolvedBeneficiaryName;
 
-        // Trigger notification if status updated by RHU/BHW
+        // Trigger notification if status updated by RHU/BHW.
+        // addDeduped prevents duplicates when syncing repeatedly (D1).
+        // Use serverUpdatedAt as the event time, not sync time (D2).
+        final eventTime = serverUpdatedAt?.toUtc() ?? DateTime.now().toUtc();
         if (previousStatus != effectiveStatus) {
           if (effectiveStatus == 'Completed') {
-            await NotificationRepository().add(
+            await NotificationRepository().addDeduped(
               AppNotification(
                 id: NotificationRepository.generateId(),
                 title: 'Referral Completed',
                 message: 'Referral completed for $resolvedName.',
                 type: 'referral_completed',
                 referralId: matchedKey,
-                timestamp: DateTime.now().toUtc(),
+                timestamp: eventTime,
               ),
             );
           } else if (effectiveStatus == 'Ongoing') {
-            await NotificationRepository().add(
+            await NotificationRepository().addDeduped(
               AppNotification(
                 id: NotificationRepository.generateId(),
                 title: 'Referral In Progress',
                 message: 'Referral in progress for $resolvedName.',
                 type: 'referral_in_progress',
                 referralId: matchedKey,
-                timestamp: DateTime.now().toUtc(),
+                timestamp: eventTime,
               ),
             );
           } else if (effectiveStatus == 'Cancelled') {
-            await NotificationRepository().add(
+            await NotificationRepository().addDeduped(
               AppNotification(
                 id: NotificationRepository.generateId(),
                 title: 'Referral Cancelled',
                 message: 'Referral cancelled for $resolvedName.',
                 type: 'referral_cancelled',
                 referralId: matchedKey,
-                timestamp: DateTime.now().toUtc(),
+                timestamp: eventTime,
               ),
             );
           }
@@ -375,25 +378,25 @@ class ReferralRepository {
         await _box.put(serverId, newRecord);
 
         if (serverStatus == 'Completed') {
-          await NotificationRepository().add(
+          await NotificationRepository().addDeduped(
             AppNotification(
               id: NotificationRepository.generateId(),
               title: 'Referral Completed',
               message: 'Referral completed for $newResolvedName.',
               type: 'referral_completed',
               referralId: serverId,
-              timestamp: DateTime.now().toUtc(),
+              timestamp: serverCreatedAt.toUtc(),
             ),
           );
         } else if (serverStatus == 'Ongoing') {
-          await NotificationRepository().add(
+          await NotificationRepository().addDeduped(
             AppNotification(
               id: NotificationRepository.generateId(),
               title: 'Referral In Progress',
               message: 'Referral in progress for $newResolvedName.',
               type: 'referral_in_progress',
               referralId: serverId,
-              timestamp: DateTime.now().toUtc(),
+              timestamp: serverCreatedAt.toUtc(),
             ),
           );
         }
@@ -421,39 +424,40 @@ class ReferralRepository {
     );
     await _box.put(updated.id, updated.toMap()..['_syncStatus'] = 'synced');
 
-    // Dispatch notification to mobile user
+    // Dispatch notification to mobile user (addDeduped prevents duplicates – D1).
     final resolvedName = updated.resolvedBeneficiaryName;
+    final eventTime = (updated.updatedAt ?? DateTime.now()).toUtc();
     if (normStatus == 'Completed') {
-      await NotificationRepository().add(
+      await NotificationRepository().addDeduped(
         AppNotification(
           id: NotificationRepository.generateId(),
           title: 'Referral Completed',
           message: 'Referral completed for $resolvedName.',
           type: 'referral_completed',
           referralId: updated.id,
-          timestamp: DateTime.now().toUtc(),
+          timestamp: eventTime,
         ),
       );
     } else if (normStatus == 'Ongoing' || normStatus == 'In Progress') {
-      await NotificationRepository().add(
+      await NotificationRepository().addDeduped(
         AppNotification(
           id: NotificationRepository.generateId(),
           title: 'Referral In Progress',
           message: 'Referral in progress for $resolvedName.',
           type: 'referral_in_progress',
           referralId: updated.id,
-          timestamp: DateTime.now().toUtc(),
+          timestamp: eventTime,
         ),
       );
     } else if (normStatus == 'Cancelled') {
-      await NotificationRepository().add(
+      await NotificationRepository().addDeduped(
         AppNotification(
           id: NotificationRepository.generateId(),
           title: 'Referral Cancelled',
           message: 'Referral cancelled for $resolvedName.',
           type: 'referral_cancelled',
           referralId: updated.id,
-          timestamp: DateTime.now().toUtc(),
+          timestamp: eventTime,
         ),
       );
     }

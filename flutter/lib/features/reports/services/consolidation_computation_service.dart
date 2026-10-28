@@ -103,59 +103,68 @@ class ConsolidationComputationService {
       final monthStart = DateTime(year, m, 1);
       final monthEnd = DateTime(year, m + 1, 0, 23, 59, 59);
 
+      // Per-month counters (reset each iteration so columns are independent)
+      int mNormalOld = 0, mUwOld = 0, mSuwOld = 0;
+      int mNormalNew = 0, mUwNew = 0, mSuwNew = 0;
+      int mNotWeighedOld = 0, mNotWeighedNew = 0;
+      int mOverAgeOld = 0, mOverAgeNew = 0;
+      int mMovedOutOld = 0, mMovedOutNew = 0;
+      int mDeceasedOld = 0, mDeceasedNew = 0;
+
       for (final child in children) {
-        // 1. Child not born yet in month m (e.g. child born Aug 2026 must not appear before Aug)
-        if (child.birthDate.isAfter(monthEnd)) {
-          continue;
-        }
+        // 1. Child not yet born in month m
+        if (child.birthDate.isAfter(monthEnd)) continue;
 
-        // 2. Child inactive check (transferred, deceased, graduated)
-        bool isInactiveThisMonth = false;
+        // 2. Child inactive (transferred/deceased/graduated) — count in correct row
         if (!child.isActive) {
-          if (child.inactiveDate == null || !child.inactiveDate!.isAfter(monthEnd)) {
-            isInactiveThisMonth = true;
+          final inactDate = child.inactiveDate;
+          if (inactDate != null && !inactDate.isAfter(monthEnd)) {
+            final wasAlreadyInactivePriorToMonth = inactDate.isBefore(monthStart);
+            if (child.inactiveReason == 'Transferred') {
+              mMovedOutNew++;
+              if (wasAlreadyInactivePriorToMonth) mMovedOutOld++;
+            } else if (child.inactiveReason == 'Deceased') {
+              mDeceasedNew++;
+              if (wasAlreadyInactivePriorToMonth) mDeceasedOld++;
+            } else {
+              // Graduated / aged-out handled below
+            }
+            continue;
           }
         }
 
-        if (isInactiveThisMonth) {
-          final wasInactiveBeforeMonth = child.inactiveDate != null && child.inactiveDate!.isBefore(monthStart);
-          if (child.inactiveReason == 'Transferred') {
-            rowMovedOut[newIdx]++;
-            if (wasInactiveBeforeMonth) rowMovedOut[oldIdx]++;
-          } else if (child.inactiveReason == 'Deceased') {
-            rowDeceased[newIdx]++;
-            if (wasInactiveBeforeMonth) rowDeceased[oldIdx]++;
+        // 3. Sobra sa Edad: age at END of month >= 24 months
+        //    (DOH counts child as 0-23 if they are still under 24 at any point
+        //     in the month; we use monthEnd for the boundary.)
+        final ageAtMonthEnd = child.ageInMonthsAt(monthEnd);
+        if (ageAtMonthEnd >= 24) {
+          // Only mark Sobra sa Edad if child was >= 24 for the whole month
+          final ageAtMonthStart = child.ageInMonthsAt(monthStart);
+          if (ageAtMonthStart >= 24) {
+            mOverAgeNew++;
+            mOverAgeOld++;
           } else {
-            rowOverAge[newIdx]++;
-            if (wasInactiveBeforeMonth) rowOverAge[oldIdx]++;
+            // Turned 24 mid-month: still participates in NEW, aged-out in OLD
+            mOverAgeOld++;
+            // Falls through to NEW classification below
           }
-          continue;
+          if (ageAtMonthStart >= 24) continue;
         }
 
-        // 3. Check if child is 24 months or older in month m (Sobra sa Edad)
-        final ageAtMonth = child.ageInMonthsAt(monthStart);
-        if (ageAtMonth >= 24) {
-          rowOverAge[newIdx]++;
-          rowOverAge[oldIdx]++;
-          continue;
-        }
-
-        // 5. Active child (0-23 months): use only VALID, plausible measurements
-        final validMeasurements = _measurementRepo
+        // 4. Valid measurements sorted newest-first
+        final validMs = _measurementRepo
             .getForChild(child.id)
-            .where((mRec) => mRec.isPlausible)
-            .toList();
+            .where((r) => r.isPlausible)
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
 
-        final wasBornBeforeMonth = child.birthDate.isBefore(monthStart);
+        final wasBornBeforeMonthStart = child.birthDate.isBefore(monthStart);
 
-        // Fill OLD column (previous measurement status before this month)
-        if (wasBornBeforeMonth) {
-          final prevMs = validMeasurements
-              .where((mRec) => mRec.date.isBefore(monthStart))
-              .toList();
-
+        // --- OLD column: latest valid measurement BEFORE monthStart ---
+        if (wasBornBeforeMonthStart) {
+          final prevMs = validMs.where((r) => r.date.isBefore(monthStart)).toList();
           if (prevMs.isNotEmpty) {
-            final pRec = prevMs.first;
+            final pRec = prevMs.first; // sorted desc → first = latest
             final pAge = child.ageInMonthsAt(pRec.date);
             if (pAge <= 23) {
               final pStatus = GrowthClassifier.classifyWeightForAge(
@@ -164,56 +173,75 @@ class ConsolidationComputationService {
                 gender: child.gender,
               );
               if (pStatus == 'Severely Underweight') {
-                rowSuw[oldIdx]++;
+                mSuwOld++;
               } else if (pStatus == 'Underweight') {
-                rowUw[oldIdx]++;
+                mUwOld++;
               } else {
-                rowNormal[oldIdx]++;
+                mNormalOld++;
               }
             } else {
-              rowOverAge[oldIdx]++;
+              mOverAgeOld++;
             }
           } else {
-            // Child existed prior to this month but was not weighed
-            rowNotWeighed[oldIdx]++;
+            mNotWeighedOld++;
           }
         }
 
-        // Fill NEW column (this month's measurement status)
-        final thisMonthMs = validMeasurements
-            .where((mRec) => mRec.date.year == year && mRec.date.month == m)
-            .toList();
-
-        if (thisMonthMs.isNotEmpty) {
-          final mRec = thisMonthMs.first;
-          final ageAtMeasurement = child.ageInMonthsAt(mRec.date);
-          if (ageAtMeasurement <= 23) {
-            final wfa = GrowthClassifier.classifyWeightForAge(
-              weightKg: mRec.weightKg,
-              ageMonths: ageAtMeasurement,
-              gender: child.gender,
-            );
-            if (wfa == 'Severely Underweight') {
-              rowSuw[newIdx]++;
-            } else if (wfa == 'Underweight') {
-              rowUw[newIdx]++;
+        // --- NEW column: latest valid measurement ON or BEFORE end of month M,
+        //     but only classified as "weighed" if the measurement is IN month M.
+        //     A child weighed in a prior month but not this month is Hindi natimbang. ---
+        final latestOnOrBeforeEnd = validMs.where((r) => !r.date.isAfter(monthEnd)).toList();
+        if (latestOnOrBeforeEnd.isNotEmpty) {
+          final mRec = latestOnOrBeforeEnd.first;
+          final isWeighedThisMonth = mRec.date.year == year && mRec.date.month == m;
+          if (isWeighedThisMonth) {
+            final ageAtMeas = child.ageInMonthsAt(mRec.date);
+            if (ageAtMeas <= 23) {
+              final wfa = GrowthClassifier.classifyWeightForAge(
+                weightKg: mRec.weightKg,
+                ageMonths: ageAtMeas,
+                gender: child.gender,
+              );
+              if (wfa == 'Severely Underweight') {
+                mSuwNew++;
+              } else if (wfa == 'Underweight') {
+                mUwNew++;
+              } else {
+                mNormalNew++;
+              }
             } else {
-              rowNormal[newIdx]++;
+              mOverAgeNew++;
             }
           } else {
-            rowOverAge[newIdx]++;
+            // Has an older measurement but none this month → Hindi natimbang
+            mNotWeighedNew++;
           }
         } else {
-          // Unweighed in this month
-          rowNotWeighed[newIdx]++;
+          // Never weighed at all up to this month
+          mNotWeighedNew++;
         }
       }
 
-      rowSubTotal[oldIdx] = rowNormal[oldIdx] + rowUw[oldIdx] + rowSuw[oldIdx];
-      rowSubTotal[newIdx] = rowNormal[newIdx] + rowUw[newIdx] + rowSuw[newIdx];
+      // Write per-month results into the flat 24-element arrays
+      rowNormal[oldIdx] = mNormalOld;
+      rowNormal[newIdx] = mNormalNew;
+      rowUw[oldIdx] = mUwOld;
+      rowUw[newIdx] = mUwNew;
+      rowSuw[oldIdx] = mSuwOld;
+      rowSuw[newIdx] = mSuwNew;
+      rowNotWeighed[oldIdx] = mNotWeighedOld;
+      rowNotWeighed[newIdx] = mNotWeighedNew;
+      rowOverAge[oldIdx] = mOverAgeOld;
+      rowOverAge[newIdx] = mOverAgeNew;
+      rowMovedOut[oldIdx] = mMovedOutOld;
+      rowMovedOut[newIdx] = mMovedOutNew;
+      rowDeceased[oldIdx] = mDeceasedOld;
+      rowDeceased[newIdx] = mDeceasedNew;
 
-      rowGrandTotal[oldIdx] = rowSubTotal[oldIdx] + rowNotWeighed[oldIdx] + rowOverAge[oldIdx] + rowMovedOut[oldIdx] + rowDeceased[oldIdx];
-      rowGrandTotal[newIdx] = rowSubTotal[newIdx] + rowNotWeighed[newIdx] + rowOverAge[newIdx] + rowMovedOut[newIdx] + rowDeceased[newIdx];
+      rowSubTotal[oldIdx] = mNormalOld + mUwOld + mSuwOld;
+      rowSubTotal[newIdx] = mNormalNew + mUwNew + mSuwNew;
+      rowGrandTotal[oldIdx] = rowSubTotal[oldIdx] + mNotWeighedOld + mOverAgeOld + mMovedOutOld + mDeceasedOld;
+      rowGrandTotal[newIdx] = rowSubTotal[newIdx] + mNotWeighedNew + mOverAgeNew + mMovedOutNew + mDeceasedNew;
     }
 
     return ConsolidationMatrixData(

@@ -1,4 +1,4 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
+
 import 'package:flutter/material.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../../core/theme/app_colors.dart';
@@ -68,7 +68,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   );
   late final _addressController = TextEditingController(
     text: widget.existingChild?.address ??
-        (widget.prefillAddress.isNotEmpty ? widget.prefillAddress : 'Purok 1'),
+        (widget.prefillAddress.isNotEmpty ? widget.prefillAddress : ''),
   );
   late final _guardianNameController = TextEditingController(
     text: widget.existingChild?.guardian.fullName ?? widget.prefillGuardianName,
@@ -229,8 +229,13 @@ class _AddChildScreenState extends State<AddChildScreen> {
     String? relationshipErr;
     String? guardianContactErr;
 
-    if (_fullNameController.text.trim().isEmpty) {
+    final fullNameTrimmed = _fullNameController.text.trim();
+    if (fullNameTrimmed.isEmpty) {
       fullNameErr = 'Full name is required';
+    } else if (fullNameTrimmed.length < 2) {
+      fullNameErr = 'Name must be at least 2 characters';
+    } else if (!RegExp(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s\-\.']+$").hasMatch(fullNameTrimmed)) {
+      fullNameErr = "Name may only contain letters, spaces, hyphens, periods and apostrophes";
     }
     if (_birthDate == null) {
       birthDateErr = 'Birth date is required';
@@ -252,8 +257,13 @@ class _AddChildScreenState extends State<AddChildScreen> {
     if (_addressController.text.trim().isEmpty) {
       addressErr = 'Purok address is required';
     }
-    if (_guardianNameController.text.trim().isEmpty) {
+    final guardianNameTrimmed = _guardianNameController.text.trim();
+    if (guardianNameTrimmed.isEmpty) {
       guardianNameErr = 'Guardian name is required';
+    } else if (guardianNameTrimmed.length < 2) {
+      guardianNameErr = 'Name must be at least 2 characters';
+    } else if (!RegExp(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s\-\.']+$").hasMatch(guardianNameTrimmed)) {
+      guardianNameErr = "Name may only contain letters, spaces, hyphens, periods and apostrophes";
     }
     if (_relationship == null || _relationship!.trim().isEmpty) {
       relationshipErr = 'Please select a relationship';
@@ -487,37 +497,26 @@ class _AddChildScreenState extends State<AddChildScreen> {
       return;
     }
 
-    // Check connectivity for appropriate message
-    bool online = false;
-    try {
-      final connectivityResult = await Connectivity().checkConnectivity();
-      online = connectivityResult.any((r) => r != ConnectivityResult.none);
-    } catch (_) {
-      online = false;
-    }
-
-    final message = widget.isEditMode
-        ? 'Child profile updated successfully.'
-        : (online
-            ? 'Child added: ${child.fullName}'
-            : 'Saved. Will sync when online.');
-
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.primaryGreen,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-      ),
-    );
 
     if (widget.isEditMode) {
+      // Edit mode: show snackbar then pop
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Child profile updated successfully.'),
+          backgroundColor: AppColors.primaryGreen,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 3),
+        ),
+      );
       setState(() => _isSaving = false);
       Navigator.pop(context, child);
       return;
     }
+
+    // Add mode: stop spinner, show single dialog confirmation
+    setState(() => _isSaving = false);
 
     // Refresh sequence number for subsequent saves
     _sequenceNo = _childRepo.generateSequenceNo(barangayCode: _currentBarangayCode);
@@ -594,7 +593,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       _linkedMother = savedMother;
       _guardianIsMonitoredMother = savedMother != null;
     } else {
-      _addressController.text = 'Purok 1';
+      _addressController.clear();
       _guardianNameController.clear();
       _guardianContactController.clear();
       _relationship = null;
@@ -639,8 +638,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                     ? 'Edit Child Profile'
                     : 'Add Child Profile',
                 onBack: _handleLeave,
-                onDone: _handleSave,
-                showDone: !widget.isEditMode,
+                showDone: false,
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -752,7 +750,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                                 'Purok 5',
                                 'Purok 6',
                                 'Purok 7',
-                              ].contains(norm) ? norm : 'Purok 1';
+                              ].contains(norm) ? norm : null;
                             }(),
                             options: const [
                               'Purok 1',

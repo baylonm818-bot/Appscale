@@ -24,6 +24,21 @@ class NotificationRepository {
     AppDataBus.notifyChanged();
   }
 
+  /// Adds a notification only if no existing notification matches
+  /// [referralId] + [type] (prevents duplicate referral status notifications).
+  /// Uses [eventTimestamp] as the notification time so it reflects when
+  /// the referral event actually happened, not when the sync ran.
+  Future<void> addDeduped(AppNotification notification) async {
+    if (notification.referralId != null) {
+      final existing = getAll().any((n) =>
+          n.referralId == notification.referralId &&
+          n.type == notification.type);
+      if (existing) return; // Already notified for this referral + status
+    }
+    await _box.put(notification.id, notification.toMap());
+    AppDataBus.notifyChanged();
+  }
+
   Future<void> markAsRead(String id) async {
     final raw = _box.get(id);
     if (raw != null) {
