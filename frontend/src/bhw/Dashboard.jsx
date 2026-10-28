@@ -1,12 +1,37 @@
 import { Link } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import { Users, AlertCircle, CheckCircle, Ruler, Triangle, List, CalendarDays, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] },
+  },
+};
+
 function StatCard({ icon: Icon, label, value, sublabel, to, accent }) {
   const content = (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 group h-full"
+    >
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-medium text-gray-500">{label}</p>
         <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-xs ${
@@ -19,15 +44,19 @@ function StatCard({ icon: Icon, label, value, sublabel, to, accent }) {
       </div>
       <p className="text-3xl font-black text-gray-800 mt-2 tracking-tight">{value ?? 0}</p>
       <p className="text-xs font-medium text-gray-400 mt-1">{sublabel}</p>
-    </div>
+    </motion.div>
   );
 
-  return to ? <Link to={to} className="block">{content}</Link> : content;
+  return to ? <Link to={to} className="block h-full">{content}</Link> : content;
 }
 
 function StatusPill({ label, count, tone, icon: Icon }) {
   return (
-    <div className={`flex items-center gap-3 p-3.5 rounded-xl border transition ${tone}`}>
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className={`flex items-center gap-3 p-3.5 rounded-xl border transition ${tone}`}
+    >
       <div className="shrink-0 p-2 rounded-lg bg-white shadow-xs">
         <Icon size={16} />
       </div>
@@ -35,7 +64,7 @@ function StatusPill({ label, count, tone, icon: Icon }) {
         <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{label}</p>
         <p className="text-xl font-black mt-0.5 leading-none">{count}</p>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -118,10 +147,18 @@ function Dashboard() {
   const s = stats || {};
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
 
       {/* ── Welcome Banner ── */}
-      <div className="relative rounded-2xl overflow-hidden shadow-sm bg-linear-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-600 p-6 sm:p-8 text-white">
+      <motion.div
+        variants={itemVariants}
+        className="relative rounded-2xl overflow-hidden shadow-sm bg-linear-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-600 p-6 sm:p-8 text-white"
+      >
         <div className="relative z-10 max-w-2xl">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-emerald-100 backdrop-blur-xs mb-3">
             <CheckCircle2 size={13} /> {user.role ? user.role.toUpperCase() : 'BHW'} Monitoring Portal
@@ -133,10 +170,10 @@ function Dashboard() {
             Barangay {user.barangay || 'Assignment'} · Child health, growth records, and malnutrition intervention monitoring.
           </p>
         </div>
-      </div>
+      </motion.div>
 
       {/* ── 5 Stat Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           icon={Users}
           label="Total Children"
@@ -175,10 +212,10 @@ function Dashboard() {
           to="/bhw/referrals?status=Pending"
           accent="amber"
         />
-      </div>
+      </motion.div>
 
       {/* ── Nutrition Status + Upcoming Activities ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Nutrition Status Grid */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-2 flex flex-col justify-between">
@@ -251,11 +288,13 @@ function Dashboard() {
                   const day = d.getDate();
 
                   return (
-                    <div
+                    <motion.div
+                      whileHover={{ x: 3 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                       key={act.schedule_id}
-                      className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50/70 border border-gray-100 hover:bg-green-50/40 transition"
+                      className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50/70 border border-gray-100 hover:bg-green-50/40 transition cursor-pointer"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0 shadow-xs">
                         <span className="text-[9px] font-bold uppercase opacity-80">{month}</span>
                         <span className="text-sm font-black leading-none">{day}</span>
                       </div>
@@ -265,7 +304,7 @@ function Dashboard() {
                           {act.schedule_type?.replace('_', ' ')} {act.venue && `· ${act.venue}`}
                         </p>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -281,10 +320,10 @@ function Dashboard() {
           </Link>
         </div>
 
-      </div>
+      </motion.div>
 
       {/* ── Monthly Monitoring Trend Line Chart ── */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <motion.div variants={itemVariants} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-bold text-gray-900 text-base">Monthly Health Visits & Monitoring</h3>
@@ -312,10 +351,9 @@ function Dashboard() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </motion.div>
 
-
-    </div>
+    </motion.div>
   );
 }
 

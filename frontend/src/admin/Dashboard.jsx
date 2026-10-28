@@ -1,8 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
+import { motion } from 'framer-motion';
 import { Users, Baby, Heart, MapPin, Calendar, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1.0] },
+  },
+};
 
 const statusColors = {
   normal: 'bg-emerald-500',
@@ -46,7 +67,11 @@ function formatScheduleTime(timeStr) {
 
 function StatCard({ icon: Icon, label, value, sublabel, to }) {
   const content = (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100/80 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100/80 hover:shadow-md transition-shadow duration-200 group h-full"
+    >
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-medium text-gray-500">{label}</p>
         <div className="shrink-0 w-10 h-10 rounded-xl bg-green-50 text-[#2e7d32] flex items-center justify-center group-hover:bg-linear-to-br group-hover:from-[#1b5e20] group-hover:to-[#2e7d32] group-hover:text-white transition-all shadow-xs">
@@ -55,10 +80,10 @@ function StatCard({ icon: Icon, label, value, sublabel, to }) {
       </div>
       <p className="text-3xl font-black text-gray-800 mt-2 tracking-tight">{value ?? '—'}</p>
       <p className="text-xs font-medium text-gray-400 mt-1">{sublabel}</p>
-    </div>
+    </motion.div>
   );
 
-  return to ? <Link to={to} className="block">{content}</Link> : content;
+  return to ? <Link to={to} className="block h-full">{content}</Link> : content;
 }
 
 function CustomBarTooltip({ active, payload, label }) {
@@ -141,10 +166,18 @@ function Dashboard() {
   const overviewData = stats.malnutritionByBarangay || [];
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
 
       {/* ── Welcome Banner ── */}
-      <div className="relative rounded-2xl overflow-hidden shadow-sm bg-linear-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-600 p-6 sm:p-8 text-white">
+      <motion.div
+        variants={itemVariants}
+        className="relative rounded-2xl overflow-hidden shadow-sm bg-linear-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-600 p-6 sm:p-8 text-white"
+      >
         <div className="relative z-10 max-w-2xl">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-emerald-100 backdrop-blur-xs mb-3">
             <CheckCircle2 size={13} /> Official Nutrition Portal
@@ -156,14 +189,14 @@ function Dashboard() {
             Municipality of {user.municipality || 'Gasan'} · Real-time nutrition and health monitoring overview across all {stats.totalBarangays || 'active'} barangays.
           </p>
         </div>
-      </div>
+      </motion.div>
 
       {/* ── 4 Stat Cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={Users}
           label="Total Health Workers"
-            value={stats.totalUsers}
+          value={stats.totalUsers}
           sublabel="Active BHW & BNS staff"
           to="/admin/users"
         />
@@ -188,10 +221,10 @@ function Dashboard() {
           sublabel="Active municipality coverage"
           to="/admin/masterlist"
         />
-      </div>
+      </motion.div>
 
       {/* ── Main Graphs Section ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Municipal Nutrition Trend Distribution */}
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
@@ -219,9 +252,11 @@ function Dashboard() {
                       </span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${statusColors[key] || 'bg-green-500'}`}
-                        style={{ width: `${Math.max(barWidthPercent, num > 0 ? 3 : 0)}%` }}
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(barWidthPercent, num > 0 ? 3 : 0)}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                        className={`h-full rounded-full ${statusColors[key] || 'bg-green-500'}`}
                       />
                     </div>
                   </div>
@@ -262,9 +297,11 @@ function Dashboard() {
                   const day = d.getDate();
 
                   return (
-                    <div
+                    <motion.div
+                      whileHover={{ x: 3 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                       key={act.schedule_id}
-                      className="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50/70 border border-gray-100 hover:bg-green-50/40 hover:border-green-200 transition-all"
+                      className="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50/70 border border-gray-100 hover:bg-green-50/40 hover:border-green-200 transition-all cursor-pointer"
                     >
                       <div className="w-14 h-14 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex flex-col items-center justify-center shrink-0 shadow-xs text-center p-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-100 leading-tight">{month}</span>
@@ -289,7 +326,7 @@ function Dashboard() {
                           </p>
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })
               ) : (
@@ -310,10 +347,10 @@ function Dashboard() {
           </div>
         </div>
 
-      </div>
+      </motion.div>
 
       {/* ── Malnutrition Cases by Barangay (Full Width) ── */}
-      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
+      <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between">
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
             <div>
@@ -394,9 +431,9 @@ function Dashboard() {
             Plan Feeding / Visit <ArrowRight size={12} />
           </Link>
         </div>
-      </div>
+      </motion.div>
 
-    </div>
+    </motion.div>
   );
 }
 
