@@ -106,7 +106,7 @@ function StatCard({ icon: Icon, label, value, sublabel, to }) {
         </div>
       </div>
       <p className="text-3xl font-black text-gray-800 mt-2 tracking-tight">
-        {typeof value === 'number' ? <CountUp value={value} duration={0.8} /> : (value ?? '—')}
+        {typeof value === 'number' ? <CountUp value={value} /> : (value ?? '—')}
       </p>
       <p className="text-xs font-medium text-gray-400 mt-1">{sublabel}</p>
     </motion.div>

@@ -75,7 +75,7 @@ function SummaryCard({ icon, label, value, sublabel, isActive, onClick }) {
         </div>
       </div>
       <p className={`text-4xl font-black mt-3 tracking-tight ${isActive ? 'text-white' : 'text-gray-800'}`}>
-        {typeof value === 'number' ? <CountUp value={value} duration={0.7} /> : value}
+        {typeof value === 'number' ? <CountUp value={value} /> : value}
       </p>
       <p className={`text-xs mt-1 font-medium ${isActive ? 'text-white/60' : 'text-gray-400'}`}>{sublabel}</p>
     </motion.button>

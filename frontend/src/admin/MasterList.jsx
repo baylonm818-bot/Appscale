@@ -387,7 +387,7 @@ function Masterlist() {
             </div>
           </div>
           <p className="text-3xl font-black mt-2 tracking-tight">
-            <CountUp value={stats?.totalChildren ?? children.length} duration={0.7} />
+            <CountUp value={stats?.totalChildren ?? children.length} />
           </p>
           <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'child' && statusFilter === 'all' ? 'text-white/70' : 'text-gray-400'}`}>
             Registered in municipality
@@ -413,7 +413,7 @@ function Masterlist() {
             </div>
           </div>
           <p className="text-3xl font-black mt-2 tracking-tight">
-            <CountUp value={stats?.totalMothers ?? mothers.length} duration={0.7} />
+            <CountUp value={stats?.totalMothers ?? mothers.length} />
           </p>
           <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'mother' && statusFilter === 'all' ? 'text-white/70' : 'text-gray-400'}`}>
             Maternal health registry
@@ -439,7 +439,7 @@ function Masterlist() {
             </div>
           </div>
           <p className="text-3xl font-black mt-2 tracking-tight">
-            <CountUp value={children.filter((c) => normalizeStatusKey(c.overall_status) === 'normal').length} duration={0.7} />
+            <CountUp value={children.filter((c) => normalizeStatusKey(c.overall_status) === 'normal').length} />
           </p>
           <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'child' && statusFilter === 'normal' ? 'text-white/70' : 'text-gray-400'}`}>
             Healthy nutritional status
@@ -465,7 +465,7 @@ function Masterlist() {
             </div>
           </div>
           <p className="text-3xl font-black mt-2 tracking-tight">
-            <CountUp value={children.filter((c) => normalizeStatusKey(c.overall_status) === 'underweight').length} duration={0.7} />
+            <CountUp value={children.filter((c) => normalizeStatusKey(c.overall_status) === 'underweight').length} />
           </p>
           <p className={`text-[11px] font-medium mt-1 ${typeFilter === 'child' && statusFilter === 'underweight' ? 'text-white/70' : 'text-gray-400'}`}>
             Requires supplementary feeding

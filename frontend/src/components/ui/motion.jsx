@@ -76,11 +76,14 @@ export const backdropVariants = {
  * Animated number count-up component
  * Runs once when the component enters viewport or renders with data
  */
-export function CountUp({ value = 0, duration = 750, className = '' }) {
+export function CountUp({ value = 0, duration = 700, className = '' }) {
   const shouldReduceMotion = useReducedMotion();
   const target = typeof value === 'number' ? value : parseInt(String(value).replace(/[^0-9.-]/g, ''), 10) || 0;
   const [displayValue, setDisplayValue] = useState(() => (shouldReduceMotion ? target : 0));
   const hasAnimatedRef = useRef(false);
+
+  // Normalize duration: if passed in seconds (e.g. 0.7 or 0.8), convert to milliseconds (700 or 800)
+  const durationMs = duration <= 10 ? duration * 1000 : duration;
 
   useEffect(() => {
     if (shouldReduceMotion) {
@@ -99,8 +102,8 @@ export function CountUp({ value = 0, duration = 750, className = '' }) {
 
     const step = (timestamp) => {
       if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      // Ease-out cubic
+      const progress = Math.min((timestamp - startTimestamp) / durationMs, 1);
+      // Ease-out cubic: smooth deceleration
       const eased = 1 - Math.pow(1 - progress, 3);
       setDisplayValue(Math.round(eased * target));
 
@@ -113,7 +116,7 @@ export function CountUp({ value = 0, duration = 750, className = '' }) {
 
     animationFrameId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [target, duration, shouldReduceMotion]);
+  }, [target, durationMs, shouldReduceMotion]);
 
   return <span className={className}>{displayValue}</span>;
 }
