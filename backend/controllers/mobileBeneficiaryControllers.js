@@ -2034,3 +2034,85 @@ exports.getMobileMotherServices = async (req, res) => {
     return res.status(500).json({ message: 'Server error.' });
   }
 };
+
+// ── Step 8: Time-bound Sync Session Gate ─────────────────────────────────────
+// Data syncs only when the user finishes (window opened and then closed) or day ends.
+
+async function isSyncAllowed(userId) {
+  if (!userId) return true; // fallback for unauthenticated queries
+  try {
+    const [[session]] = await pool.query(
+      `SELECT session_id, window_open, opened_at, closed_at
+       FROM sync_sessions
+       WHERE user_id = ?
+       ORDER BY session_id DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    // If no record ever exists, create one with window_open = true (permissive initial run)
+    if (!session) {
+      await pool.query(
+        `INSERT INTO sync_sessions (user_id, window_open, opened_at)
+         VALUES (?, TRUE, NOW())`,
+        [userId]
+      );
+      return true;
+    }
+
+    return Boolean(session.window_open);
+  } catch (err) {
+    // If table does not exist yet, don't crash
+    return true;
+  }
+}
+
+exports.openSyncSession = async (req, res) => {
+  const userId = req.user?.user_id;
+  if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+  try {
+    await pool.query(
+      `INSERT INTO sync_sessions (user_id, window_open, opened_at)
+       VALUES (?, TRUE, NOW())`,
+      [userId]
+    );
+    return res.status(200).json({ message: 'Sync window opened successfully.', window_open: true });
+  } catch (err) {
+    console.error('Open sync session error:', err);
+    return res.status(500).json({ message: 'Failed to open sync window.' });
+  }
+};
+
+exports.closeSyncSession = async (req, res) => {
+  const userId = req.user?.user_id;
+  if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+  try {
+    await pool.query(
+      `UPDATE sync_sessions
+       SET window_open = FALSE, closed_at = NOW()
+       WHERE user_id = ? AND window_open = TRUE`,
+      [userId]
+    );
+    return res.status(200).json({ message: 'Sync window closed. Activity completed for today.', window_open: false });
+  } catch (err) {
+    console.error('Close sync session error:', err);
+    return res.status(500).json({ message: 'Failed to close sync window.' });
+  }
+};
+
+exports.getSyncSessionStatus = async (req, res) => {
+  const userId = req.user?.user_id;
+  if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+  try {
+    const allowed = await isSyncAllowed(userId);
+    return res.status(200).json({ user_id: userId, window_open: allowed });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to check sync session.' });
+  }
+};
+
+// Export helper for route middleware
+exports.isSyncAllowed = isSyncAllowed;

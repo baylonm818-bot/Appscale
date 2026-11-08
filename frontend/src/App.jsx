@@ -12,6 +12,11 @@ import UserManagement from './admin/UserManagement';
 import Masterlist from './admin/MasterList';
 import Notifications from './admin/Notification';
 import Profile from './admin/Profile';
+// Step 7: Admin-only signatory settings
+import Signatories from './admin/Signatories';
+// Step 9: Admin-only system logs
+import SystemLogs from './admin/SystemLogs';
+
 
 import BHWSchedule from './bhw/Schedule';
 import BHWProfile from './bhw/Profile';
@@ -110,12 +115,17 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="users" element={<UserManagement />} />
-            <Route path="masterlist" element={<Masterlist />} />
-            <Route path="schedule" element={<Schedule />} />
+            <Route path="dashboard"     element={<Dashboard />} />
+            <Route path="users"         element={<UserManagement />} />
+            <Route path="masterlist"    element={<Masterlist />} />
+            <Route path="schedule"      element={<Schedule />} />
             <Route path="notifications" element={<Notifications />} />
-            <Route path="profile" element={<Profile />} />
+            <Route path="profile"       element={<Profile />} />
+            {/* Step 7: Report signatories settings */}
+            <Route path="signatories"   element={<Signatories />} />
+            {/* Step 9: System activity logs */}
+            <Route path="system-logs"   element={<SystemLogs />} />
+
           </Route>
 
           <Route

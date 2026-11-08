@@ -28,6 +28,10 @@ const {
   getMobileChildServices,
   recordMotherService,
   getMobileMotherServices,
+  openSyncSession,
+  closeSyncSession,
+  getSyncSessionStatus,
+  isSyncAllowed,
 } = require('../controllers/mobileBeneficiaryControllers');
 const { transferBeneficiary, getBarangays, checkDuplicate } = require('../controllers/masterlistControllers');
 
@@ -67,11 +71,35 @@ router.get('/child-services', getMobileChildServices);
 router.post('/mother-services', recordMotherService);
 router.get('/mother-services', getMobileMotherServices);
 
+// Step 8: Time-based and time-bound sync gate middleware
+// Checks whether sync session is open for the requesting user
+const requireOpenSyncSession = async (req, res, next) => {
+  const userId = req.user?.user_id;
+  if (!userId) return next();
+  try {
+    const allowed = await isSyncAllowed(userId);
+    if (!allowed) {
+      return res.status(423).json({
+        message: 'Sync window is closed. Synchronization is only allowed when an active work session is opened or at scheduled sync hours.',
+        sync_window_open: false,
+      });
+    }
+    next();
+  } catch (e) {
+    next();
+  }
+};
+
+// Sync session control routes
+router.post('/sync/session/open', openSyncSession);
+router.post('/sync/session/close', closeSyncSession);
+router.get('/sync/session/status', getSyncSessionStatus);
+
 router.get('/children', getMobileChildren);
 router.get('/mothers', getMobileMothers);
 router.get('/schedules', getMobileSchedules);
 router.get('/nutrition-records', getMobileNutritionRecords);
-router.get('/sync', getMobileSync);
+router.get('/sync', requireOpenSyncSession, getMobileSync);
 router.get('/barangays', getBarangays);
 router.get('/check-duplicate', checkDuplicate);
 

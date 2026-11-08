@@ -11,6 +11,10 @@ const scheduleRoutes = require('./routes/scheduleRoutes')
 const profileRoutes = require('./routes/profileRoutes')
 const notificationRoutes = require('./routes/notificationRoutes');
 
+// Step 7: Report signatories (admin-only PUT, all-roles GET)
+const reportRoutes = require('./routes/reportRoutes');
+// Step 9: System activity logs (admin-only)
+const adminLogRoutes = require('./routes/adminLogRoutes');
 
 const bhwDashboardRoutes = require('./routes/bhwDashboardRoutes');
 const bhwScheduleRoutes = require('./routes/bhwScheduleRoutes');
@@ -20,6 +24,7 @@ const bhwMedicalRecordsRoutes = require('./routes/bhwMedicalRecordsRoutes');
 const bhwNotificationRoutes = require('./routes/bhwNotificationRoutes');
 const bhwProfileRoutes = require('./routes/bhwProfileRoutes');
 const mobileBeneficiaryRoutes = require('./routes/mobileBeneficiaryRoutes');
+
 
 const app = express();
 const { ensureMedicalRecordTables } = require('./utils/medicalSchema');
@@ -110,6 +115,10 @@ app.use('/api/schedule', scheduleRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/notifications', notificationRoutes);
 
+// Step 7: Report signatories
+app.use('/api/reports', reportRoutes);
+// Step 9: System activity logs (admin-only)
+app.use('/api/admin', adminLogRoutes);
 
 app.use('/api/bhw', bhwDashboardRoutes);
 app.use('/api/bhw/schedule' , bhwScheduleRoutes);
@@ -162,6 +171,37 @@ const HOST = process.env.HOST || '0.0.0.0';
     } catch (error) {
         console.error('Medical record schema initialization failed:', error && error.message ? error.message : error);
     }
+
+    // Step 2: Daily age-out — sets children >= 59 months to inactive & fires graduation notifications
+    try {
+        const { startAgeOutCron } = require('./scripts/M002_child_graduation_cron');
+        startAgeOutCron(require('./config/db'));
+        console.log('Child age-out cron started.');
+    } catch (ageOutErr) {
+        console.warn('Age-out cron setup warning:', ageOutErr && ageOutErr.message);
+    }
+
+    // Step 8: Midnight reset cron — closes all active sync windows at the end of each day
+    try {
+        const dbPool = require('./config/db');
+        const closeExpiredSyncWindows = async () => {
+            try {
+                const [res] = await dbPool.query(
+                    `UPDATE sync_sessions SET window_open = FALSE, closed_at = NOW() WHERE window_open = TRUE`
+                );
+                if (res.affectedRows > 0) {
+                    console.log(`[Sync Gate] End-of-day: closed ${res.affectedRows} open sync window(s).`);
+                }
+            } catch (e) {
+                // Ignore if table not yet created
+            }
+        };
+        // Run once every 24 hours
+        setInterval(closeExpiredSyncWindows, 24 * 60 * 60 * 1000);
+    } catch (syncGateErr) {
+        console.warn('Sync gate reset cron setup warning:', syncGateErr && syncGateErr.message);
+    }
+
 
     // Daily retention cleanup for accounts deactivated >= 3 years
     try {

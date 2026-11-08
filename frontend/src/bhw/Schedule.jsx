@@ -96,7 +96,7 @@ function formatDateKey(dateObj) {
   return `${y}-${m}-${d}`;
 }
 
-function ActivityRow({ activity, isNext, onComplete, onArchive }) {
+function ActivityRow({ activity, isNext, onComplete, onArchive, onAudit }) {
   const date = safeParseDate(activity.schedule_date) || new Date();
   const month = date.toLocaleString('en-US', { month: 'short' });
   const day = date.getDate();
@@ -138,9 +138,24 @@ function ActivityRow({ activity, isNext, onComplete, onArchive }) {
           {activity.facilitator && ` · ${activity.facilitator}`}
           {activity.schedule_time && ` · ${formatScheduleTime(activity.schedule_time)}`}
         </p>
+        {activity.audit_completed_at && (
+          <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+            Audit completed on {new Date(activity.audit_completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            {activity.audit_completion_notes && ` — "${activity.audit_completion_notes.slice(0, 50)}${activity.audit_completion_notes.length > 50 ? '…' : ''}"`}
+          </p>
+        )}
       </div>
 
-      <div className="flex gap-2 shrink-0">
+      <div className="flex gap-2 shrink-0 flex-wrap">
+        {!activity.audit_completed_at && (
+          <button
+            onClick={() => onAudit(activity)}
+            className="px-3 py-1.5 text-xs font-bold border border-blue-300 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition shadow-xs cursor-pointer"
+          >
+            Submit Audit
+          </button>
+        )}
         {(activity.status === 'cancelled' || activity.status === 'done') && (
           <button
             onClick={() => onArchive(activity.schedule_id)}
@@ -175,6 +190,40 @@ function Schedule() {
   const [formError, setFormError] = useState('');
   const [schedErrors, setSchedErrors] = useState({});
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+
+  // Audit state
+  const [auditActivity, setAuditActivity] = useState(null);
+  const [auditNotes, setAuditNotes] = useState('');
+  const [auditSubmitting, setAuditSubmitting] = useState(false);
+  const [auditError, setAuditError] = useState('');
+
+  const handleOpenAudit = (act) => {
+    setAuditActivity(act);
+    setAuditNotes('');
+    setAuditError('');
+  };
+
+  const handleSubmitAudit = async (e) => {
+    e.preventDefault();
+    if (!auditNotes.trim()) {
+      setAuditError('Please describe the activity carried out (e.g. attendance, summary of tasks completed).');
+      return;
+    }
+    setAuditSubmitting(true);
+    setAuditError('');
+    try {
+      await axiosClient.post(`/bhw/schedule/${auditActivity.schedule_id}/audit`, {
+        audit_completion_notes: auditNotes.trim(),
+      });
+      setAuditActivity(null);
+      setAuditNotes('');
+      fetchActivities();
+    } catch (err) {
+      setAuditError(err?.response?.data?.message || 'Failed to submit audit.');
+    } finally {
+      setAuditSubmitting(false);
+    }
+  };
 
   // Calendar State
   const [calendarDate, setCalendarDate] = useState(() => new Date());
@@ -221,6 +270,7 @@ function Schedule() {
     const errs = {};
     if (!form.title?.trim()) errs.title = 'This field is required';
     if (!form.schedule_date) errs.schedule_date = 'This field is required';
+    if (!form.venue?.trim()) errs.venue = 'Venue is required';
 
     if (Object.keys(errs).length > 0) {
       setSchedErrors(errs);
@@ -710,6 +760,7 @@ function Schedule() {
                   isNext={nextUpcomingActivity && activity.schedule_id === nextUpcomingActivity.schedule_id}
                   onComplete={(id) => updateStatus(id, 'done')}
                   onArchive={(id) => updateStatus(id, 'archived')}
+                  onAudit={handleOpenAudit}
                 />
               ))}
             </div>
@@ -822,15 +873,21 @@ function Schedule() {
                 </div>
 
                 <div>
-                  <FormLabel label="Venue / Location" />
+                  <FormLabel label="Venue / Location" required />
                   <input
                     name="venue"
                     type="text"
                     placeholder="e.g. Barangay Health Center Hall"
                     value={form.venue}
-                    onChange={(e) => setForm({ ...form, venue: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                    onChange={(e) => {
+                      setForm({ ...form, venue: e.target.value });
+                      if (schedErrors.venue) setSchedErrors((prev) => ({ ...prev, venue: '' }));
+                    }}
+                    className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
+                      schedErrors.venue ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
+                    }`}
                   />
+                  {schedErrors.venue && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.venue}</p>}
                 </div>
               </form>
             </div>
@@ -857,6 +914,89 @@ function Schedule() {
         </motion.div>,
         document.body
       )}
+      </AnimatePresence>
+
+      {/* ── Audit Submission Modal ── */}
+      <AnimatePresence>
+        {auditActivity && createPortal(
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+            onClick={(e) => { if (e.target === e.currentTarget) setAuditActivity(null); }}
+          >
+            <motion.div
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="bg-linear-to-r from-blue-600 to-blue-700 px-6 py-5 flex items-center justify-between text-white shrink-0">
+                <div>
+                  <h2 className="text-base font-bold">Activity Audit Verification</h2>
+                  <p className="text-white/80 text-xs mt-0.5">Submit verification of carried-out activity</p>
+                </div>
+                <button
+                  onClick={() => setAuditActivity(null)}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitAudit} className="p-6 space-y-4 overflow-y-auto flex-1">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs space-y-1">
+                  <p className="font-bold text-blue-900">{auditActivity.title}</p>
+                  <p className="text-blue-700">
+                    {auditActivity.schedule_date ? new Date(auditActivity.schedule_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                    {auditActivity.venue ? ` · ${auditActivity.venue}` : ''}
+                  </p>
+                </div>
+
+                {auditError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl p-3">
+                    {auditError}
+                  </div>
+                )}
+
+                <div>
+                  <FormLabel label="Audit / Accomplishment Notes" required />
+                  <textarea
+                    rows={4}
+                    value={auditNotes}
+                    onChange={(e) => setAuditNotes(e.target.value)}
+                    placeholder="Describe how the activity was conducted (e.g. Total beneficiaries attended, supplies distributed, issues encountered, completion summary)..."
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600 resize-none"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    This verifies that you actively performed the scheduled task in your barangay.
+                  </p>
+                </div>
+
+                <div className="border-t border-gray-100 pt-4 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAuditActivity(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 border border-gray-200 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={auditSubmitting}
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-xs disabled:opacity-60 cursor-pointer"
+                  >
+                    {auditSubmitting ? 'Submitting…' : 'Submit Verification'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>,
+          document.body
+        )}
       </AnimatePresence>
 
     </div>

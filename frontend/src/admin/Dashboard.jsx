@@ -130,6 +130,9 @@ function CustomBarTooltip({ active, payload, label }) {
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
+  const [feedingStats, setFeedingStats] = useState(null);  // Step 10
+  const [yearStats, setYearStats] = useState(null);         // Step 10
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear()); // Step 10
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState('3M');
@@ -139,8 +142,11 @@ function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await axiosClient.get(`/dashboard/admin/stats?range=${timeRange}`);
-        const data = response.data || {};
+        const [statsRes, feedingRes] = await Promise.all([
+          axiosClient.get(`/dashboard/admin/stats?range=${timeRange}`),
+          axiosClient.get('/dashboard/admin/feeding-stats'),
+        ]);
+        const data = statsRes.data || {};
         setStats({
           totalUsers: data.totalUsers || 0,
           totalChildren: data.totalChildren || 0,
@@ -151,6 +157,7 @@ function Dashboard() {
           malnutritionOverviewFallback: !!data.malnutritionOverviewFallback,
           upcomingActivities: data.upcomingActivities || [],
         });
+        setFeedingStats(feedingRes.data || null);
       } catch (err) {
         console.error('Dashboard fetch error:', err);
         setError('Failed to load dashboard statistics.');
@@ -160,6 +167,14 @@ function Dashboard() {
     };
     fetchStats();
   }, [timeRange]);
+
+  // Step 10: fetch per-year nutrition view when selectedYear changes
+  useEffect(() => {
+    axiosClient.get(`/dashboard/admin/nutrition-by-year?year=${selectedYear}`)
+      .then((res) => setYearStats(res.data || null))
+      .catch(() => setYearStats(null));
+  }, [selectedYear]);
+
 
   if (loading) {
     return (
@@ -477,6 +492,101 @@ function Dashboard() {
           <Link to="/admin/schedule" className="font-semibold text-[#2e7d32] hover:underline inline-flex items-center gap-1">
             Plan Feeding / Visit <ArrowRight size={12} />
           </Link>
+        </div>
+      </motion.div>
+
+      {/* ── Step 10: Feeding Program Stats ── */}
+      {feedingStats && (
+        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <h3 className="font-bold text-gray-900 text-base mb-1">Feeding Program Overview</h3>
+          <p className="text-xs text-gray-400 mb-5">Children in the municipal supplementary feeding program</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Legend 1: Enrolled */}
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-emerald-50 border border-emerald-100 p-5 text-center">
+              <span className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 mb-3">
+                <Baby size={20} />
+              </span>
+              <p className="text-3xl font-black text-emerald-700">
+                <CountUp value={feedingStats.enrolled} />
+              </p>
+              <p className="text-xs font-semibold text-emerald-600 mt-1">Enrolled</p>
+              <p className="text-[11px] text-emerald-400 mt-0.5">Currently in feeding program</p>
+            </div>
+            {/* Legend 2: Reached Normal Within Feeding Schedule */}
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-blue-50 border border-blue-100 p-5 text-center">
+              <span className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 mb-3">
+                <CheckCircle2 size={20} />
+              </span>
+              <p className="text-3xl font-black text-blue-700">
+                <CountUp value={feedingStats.reached_normal_in_feeding} />
+              </p>
+              <p className="text-xs font-semibold text-blue-600 mt-1">Reached Normal</p>
+              <p className="text-[11px] text-blue-400 mt-0.5">Within the feeding schedule</p>
+            </div>
+            {/* Legend 3: Achieved Normal in Barangay */}
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-teal-50 border border-teal-100 p-5 text-center">
+              <span className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 mb-3">
+                <MapPin size={20} />
+              </span>
+              <p className="text-3xl font-black text-teal-700">
+                <CountUp value={feedingStats.achieved_normal_in_barangay} />
+              </p>
+              <p className="text-xs font-semibold text-teal-600 mt-1">Normal in Barangay</p>
+              <p className="text-[11px] text-teal-400 mt-0.5">Achieved normal nutritional status</p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Step 10: Per-Year Nutritional Status Chart ── */}
+      <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div>
+            <h3 className="font-bold text-gray-900 text-base">Nutritional Status by Year</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Monthly breakdown of nutrition records for the selected year</p>
+          </div>
+          {/* Year picker */}
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="text-xs font-semibold border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 text-gray-700 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+          >
+            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((yr) => (
+              <option key={yr} value={yr}>{yr}</option>
+            ))}
+          </select>
+        </div>
+        {yearStats ? (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={yearStats.months.map((m) => ({
+              name: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m.month - 1],
+              Normal: m.normal,
+              MAM: m.mam,
+              SAM: m.sam,
+              Underweight: m.underweight,
+              Stunted: m.stunted,
+            }))} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} />
+              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10 }} />
+              <Bar dataKey="Normal" fill="#10b981" radius={[4,4,0,0]} />
+              <Bar dataKey="MAM" fill="#f59e0b" radius={[4,4,0,0]} />
+              <Bar dataKey="SAM" fill="#ef4444" radius={[4,4,0,0]} />
+              <Bar dataKey="Underweight" fill="#f97316" radius={[4,4,0,0]} />
+              <Bar dataKey="Stunted" fill="#8b5cf6" radius={[4,4,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-[220px] flex items-center justify-center text-gray-400 text-sm">Loading chart…</div>
+        )}
+        <div className="flex flex-wrap gap-3 mt-4 text-[11px] font-medium text-gray-500">
+          {[['Normal','#10b981'],['MAM','#f59e0b'],['SAM','#ef4444'],['Underweight','#f97316'],['Stunted','#8b5cf6']].map(([label, color]) => (
+            <span key={label} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: color }} />
+              {label}
+            </span>
+          ))}
         </div>
       </motion.div>
 

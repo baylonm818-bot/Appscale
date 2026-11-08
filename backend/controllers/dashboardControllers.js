@@ -307,3 +307,121 @@ exports.getAdminNeedAttention = async (req, res) => {
     return res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };
+
+
+// ── Step 10: Feeding program stats (Admin dashboard) ─────────────────────────
+// GET /api/dashboard/feeding-stats
+//   Returns:
+//     enrolled            — children currently in an active feeding_program
+//     reached_normal_in_feeding — enrolled children who achieved normal status
+//                                 before the program ended
+//     achieved_normal_in_barangay — all active children per barangay with
+//                                   normal nutritional status
+exports.getFeedingStats = async (req, res) => {
+  try {
+    // 1. Total enrolled (active feeding program)
+    const [[{ enrolled }]] = await pool.query(`
+      SELECT COUNT(DISTINCT child_id) AS enrolled
+      FROM feeding_programs
+      WHERE status = 'active'
+    `);
+
+    // 2. Reached normal within the feeding schedule window
+    // = enrolled children whose latest nutrition record (during the program) = 'normal'
+    const [[{ reached_normal_in_feeding }]] = await pool.query(`
+      SELECT COUNT(DISTINCT fp.child_id) AS reached_normal_in_feeding
+      FROM feeding_programs fp
+      JOIN (
+        SELECT nr.child_id, nr.overall_status
+        FROM nutrition_records nr
+        INNER JOIN (
+          SELECT child_id, MAX(record_date) AS latest_date
+          FROM nutrition_records
+          GROUP BY child_id
+        ) ld ON nr.child_id = ld.child_id AND nr.record_date = ld.latest_date
+      ) latest_nr ON latest_nr.child_id = fp.child_id
+      WHERE fp.status = 'active'
+        AND LOWER(TRIM(latest_nr.overall_status)) = 'normal'
+    `);
+
+    // 3. Per-barangay: children with normal status (regardless of feeding enrollment)
+    const [barangay_normal_counts] = await pool.query(`
+      SELECT c.barangay,
+             COUNT(DISTINCT c.child_id) AS total_children,
+             SUM(CASE WHEN LOWER(TRIM(nr.overall_status)) = 'normal' THEN 1 ELSE 0 END) AS normal_count
+      FROM children c
+      LEFT JOIN (
+        SELECT nr1.child_id, nr1.overall_status
+        FROM nutrition_records nr1
+        INNER JOIN (
+          SELECT child_id, MAX(record_date) AS latest_date
+          FROM nutrition_records
+          GROUP BY child_id
+        ) ld ON nr1.child_id = ld.child_id AND nr1.record_date = ld.latest_date
+      ) nr ON nr.child_id = c.child_id
+      WHERE c.status = 'active'
+        AND c.barangay IS NOT NULL
+        AND LOWER(c.barangay) NOT LIKE '%test%'
+      GROUP BY c.barangay
+      ORDER BY c.barangay ASC
+    `);
+
+    const achieved_normal_in_barangay = barangay_normal_counts.reduce(
+      (sum, row) => sum + Number(row.normal_count || 0), 0
+    );
+
+    return res.status(200).json({
+      enrolled:                   Number(enrolled || 0),
+      reached_normal_in_feeding:  Number(reached_normal_in_feeding || 0),
+      achieved_normal_in_barangay: Number(achieved_normal_in_barangay || 0),
+      barangay_breakdown: barangay_normal_counts,
+    });
+  } catch (err) {
+    console.error('Get feeding stats error:', err);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+// ── Step 10: Per-year nutritional status view ─────────────────────────────────
+// GET /api/dashboard/nutrition-by-year?year=2026
+exports.getNutritionByYear = async (req, res) => {
+  try {
+    const year = parseInt(req.query.year || new Date().getFullYear(), 10);
+
+    const [rows] = await pool.query(`
+      SELECT
+        MONTH(nr.record_date) AS month,
+        SUM(CASE WHEN LOWER(TRIM(nr.overall_status)) = 'normal'  THEN 1 ELSE 0 END) AS normal,
+        SUM(CASE WHEN nr.overall_status IN ('MAM','mam')          THEN 1 ELSE 0 END) AS mam,
+        SUM(CASE WHEN nr.overall_status IN ('SAM','sam')          THEN 1 ELSE 0 END) AS sam,
+        SUM(CASE WHEN nr.weight_status IN ('underweight')         THEN 1 ELSE 0 END) AS underweight,
+        SUM(CASE WHEN nr.weight_status IN ('severely_underweight','severly_underweight') THEN 1 ELSE 0 END) AS severely_underweight,
+        SUM(CASE WHEN nr.height_status = 'stunted'                THEN 1 ELSE 0 END) AS stunted,
+        SUM(CASE WHEN nr.height_status IN ('severely_stunted','severly_stunted') THEN 1 ELSE 0 END) AS severely_stunted,
+        COUNT(*) AS total_records
+      FROM nutrition_records nr
+      JOIN children c ON c.child_id = nr.child_id
+      WHERE YEAR(nr.record_date) = ?
+        AND c.status = 'active'
+        AND LOWER(c.barangay) NOT LIKE '%test%'
+        AND LOWER(c.first_name) NOT LIKE '%test%'
+      GROUP BY MONTH(nr.record_date)
+      ORDER BY month ASC
+    `, [year]);
+
+    // Fill missing months with zeros
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const found = rows.find((r) => Number(r.month) === i + 1);
+      return found || {
+        month: i + 1, normal: 0, mam: 0, sam: 0,
+        underweight: 0, severely_underweight: 0,
+        stunted: 0, severely_stunted: 0, total_records: 0,
+      };
+    });
+
+    return res.status(200).json({ year, months });
+  } catch (err) {
+    console.error('Get nutrition by year error:', err);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};

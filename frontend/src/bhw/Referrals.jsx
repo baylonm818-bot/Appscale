@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
-import { Search, X, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Search, X, CheckCircle2, Clock, AlertCircle, Plus, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 
@@ -72,6 +72,77 @@ function Referrals() {
   const [serviceDate, setServiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [actionSubmitting, setActionSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
+
+  // Refer Mother state
+  const [showReferMotherModal, setShowReferMotherModal] = useState(false);
+  const [mothersList, setMothersList] = useState([]);
+  const [loadingMothers, setLoadingMothers] = useState(false);
+  const [selectedMotherId, setSelectedMotherId] = useState('');
+  const [motherFacility, setMotherFacility] = useState('Rural Health Unit (RHU)');
+  const [motherUrgency, setMotherUrgency] = useState('Routine');
+  const [motherReason, setMotherReason] = useState('');
+  const [motherNotes, setMotherNotes] = useState('');
+  const [motherSubmitting, setMotherSubmitting] = useState(false);
+  const [motherError, setMotherError] = useState('');
+
+  const handleOpenReferMother = async () => {
+    setShowReferMotherModal(true);
+    setSelectedMotherId('');
+    setMotherReason('');
+    setMotherNotes('');
+    setMotherError('');
+    setLoadingMothers(true);
+    try {
+      const res = await axiosClient.get('/masterlist/mothers');
+      setMothersList(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setMothersList([]);
+    } finally {
+      setLoadingMothers(false);
+    }
+  };
+
+  const handleSubmitMotherReferral = async (e) => {
+    e.preventDefault();
+    if (!selectedMotherId) {
+      setMotherError('Please select a mother to refer.');
+      return;
+    }
+    if (!motherReason.trim()) {
+      setMotherError('Please provide a reason for the referral.');
+      return;
+    }
+
+    setMotherSubmitting(true);
+    setMotherError('');
+    const targetMom = mothersList.find((m) => String(m.mother_id) === String(selectedMotherId));
+    const momName = targetMom ? `${targetMom.first_name} ${targetMom.last_name}` : 'Mother';
+
+    try {
+      await axiosClient.post('/bhw/referrals', {
+        mother_id: Number(selectedMotherId),
+        beneficiary_name: momName,
+        beneficiary_type: 'mother',
+        referral_type: 'mother',
+        barangay: targetMom?.barangay || user.barangay,
+        facility: motherFacility,
+        severity: motherUrgency === 'Urgent' ? 'high' : 'medium',
+        urgency: motherUrgency,
+        reason: motherReason.trim(),
+        notes: motherNotes.trim() || `Referred by ${user.first_name || 'BHW'} for maternal consultation.`,
+        referred_by: user.user_id,
+      });
+
+      setShowReferMotherModal(false);
+      setToastMessage({ text: `Referral submitted for ${momName}.`, type: 'success' });
+      await refetch();
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
+    } catch (err) {
+      setMotherError(err.response?.data?.message || 'Failed to submit mother referral.');
+    } finally {
+      setMotherSubmitting(false);
+    }
+  };
 
   const { data, isLoading, error: queryError, refetch } = useQuery({
     queryKey: ['referrals', user.barangay || ''],
@@ -466,6 +537,15 @@ function Referrals() {
               <option value="severity">Severity (High first)</option>
             </select>
           </div>
+
+          <button
+            type="button"
+            onClick={handleOpenReferMother}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-linear-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800 transition shadow-xs cursor-pointer ml-auto"
+          >
+            <Heart size={14} />
+            <span>Refer Mother</span>
+          </button>
         </div>
       </div>
 
@@ -737,6 +817,145 @@ function Referrals() {
               </div>
             </motion.div>
           </motion.div>, document.body
+        )}
+      </AnimatePresence>
+
+      {/* ── Refer Mother Modal ── */}
+      <AnimatePresence>
+        {showReferMotherModal && createPortal(
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowReferMotherModal(false); }}
+          >
+            <motion.div
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="bg-linear-to-r from-purple-600 to-purple-700 px-6 py-5 flex items-center justify-between text-white shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <Heart size={20} />
+                  <div>
+                    <h2 className="text-base font-bold">New Maternal Health Referral</h2>
+                    <p className="text-white/80 text-xs mt-0.5">Refer a registered mother to RHU or hospital</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReferMotherModal(false)}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitMotherReferral} className="p-6 space-y-4 overflow-y-auto flex-1">
+                {motherError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl p-3">
+                    {motherError}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Select Mother <span className="text-red-500">*</span>
+                  </label>
+                  {loadingMothers ? (
+                    <p className="text-xs text-gray-400 py-2">Loading mothers registry…</p>
+                  ) : (
+                    <select
+                      value={selectedMotherId}
+                      onChange={(e) => setSelectedMotherId(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 bg-white focus:outline-none focus:border-purple-600"
+                    >
+                      <option value="">Choose a mother…</option>
+                      {mothersList.map((m) => (
+                        <option key={m.mother_id} value={m.mother_id}>
+                          {m.first_name} {m.last_name} ({m.barangay || 'Unknown'}) — {m.contact_number || 'No contact'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Target Facility</label>
+                    <select
+                      value={motherFacility}
+                      onChange={(e) => setMotherFacility(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 bg-white focus:outline-none focus:border-purple-600"
+                    >
+                      <option value="Rural Health Unit (RHU)">Rural Health Unit (RHU)</option>
+                      <option value="District Hospital">District Hospital</option>
+                      <option value="Provincial Hospital">Provincial Hospital</option>
+                      <option value="Barangay Health Station">Barangay Health Station</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Urgency</label>
+                    <select
+                      value={motherUrgency}
+                      onChange={(e) => setMotherUrgency(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 bg-white focus:outline-none focus:border-purple-600"
+                    >
+                      <option value="Routine">Routine / Normal</option>
+                      <option value="Urgent">Urgent / Immediate Attention</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Reason for Referral <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={motherReason}
+                    onChange={(e) => setMotherReason(e.target.value)}
+                    placeholder="e.g. Prenatal high blood pressure, nutritional deficiency, postpartum follow-up"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Clinical Notes / Symptoms</label>
+                  <textarea
+                    rows={3}
+                    value={motherNotes}
+                    onChange={(e) => setMotherNotes(e.target.value)}
+                    placeholder="Optional details, observations, symptoms, or instructions for the receiving health unit…"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 focus:outline-none focus:border-purple-600 resize-none"
+                  />
+                </div>
+
+                <div className="border-t border-gray-100 pt-4 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowReferMotherModal(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 border border-gray-200 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={motherSubmitting}
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-linear-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800 transition shadow-xs disabled:opacity-60 cursor-pointer"
+                  >
+                    {motherSubmitting ? 'Submitting…' : 'Submit Referral'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>,
+          document.body
         )}
       </AnimatePresence>
 

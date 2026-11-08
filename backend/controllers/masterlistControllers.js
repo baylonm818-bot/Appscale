@@ -1,5 +1,21 @@
 const pool = require('../config/db');
 const { canAccessMasterlistItem, canTransferBeneficiary } = require('../utils/roleAccess');
+const { logAction } = require('../utils/systemLog');
+
+// ── Common disability options (Step 1) ──────────────────────────────────────
+const COMMON_DISABILITIES = [
+  'None',
+  'Visual Impairment',
+  'Hearing Impairment',
+  'Physical / Mobility Impairment',
+  'Intellectual Disability',
+  'Speech / Language Disorder',
+  'Autism Spectrum Disorder',
+  'Cerebral Palsy',
+  'Down Syndrome',
+  'Multiple Disabilities',
+  'Others',
+];
 
 exports.getMasterlistStats = async (req, res) => {
   try {
@@ -38,13 +54,13 @@ exports.getChildren = async (req, res) => {
 
     const [children] = await pool.query(
       `SELECT
-         c.child_id, c.first_name, c.last_name, c.sex, c.age_in_months,
+         c.child_id, c.first_name, c.middle_initial, c.last_name, c.sex, c.age_in_months,
+         c.birth_date, c.guardian_name, c.guardian_contact, c.disability, c.barangay, c.status,
          CASE
            WHEN c.age_in_months <= 11 THEN '0-11'
            WHEN c.age_in_months <= 23 THEN '12-23'
            ELSE '24-59'
          END AS age_group,
-         c.guardian_name, c.barangay, c.status,
          nr.weight_kg, nr.height_cm,
          CASE
            WHEN nr.overall_status IN ('SAM', 'sam') THEN 'SAM'
@@ -413,3 +429,263 @@ exports.checkDuplicate = async (req, res) => {
   }
 };
 
+// ── Step 1: Expose disability options ────────────────────────────────────────
+exports.getDisabilityOptions = async (_req, res) => {
+  return res.status(200).json(COMMON_DISABILITIES);
+};
+
+// ── Steps 1 & 9: Create a child record with validation ───────────────────────
+exports.createChild = async (req, res) => {
+  const {
+    first_name, middle_initial, last_name, sex, birth_date,
+    barangay, purok, municipality,
+    guardian_name, guardian_contact,
+    disability, mother_id,
+  } = req.body;
+
+  // Required field validation (Step 1)
+  const missing = [];
+  if (!first_name || !first_name.trim()) missing.push('first_name');
+  if (!last_name  || !last_name.trim())  missing.push('last_name');
+  if (!sex)                              missing.push('sex');
+  if (!birth_date)                       missing.push('birth_date');
+  if (!barangay   || !barangay.trim())   missing.push('barangay');
+  if (!guardian_contact || !guardian_contact.trim()) missing.push('guardian_contact');
+
+  if (missing.length > 0) {
+    return res.status(400).json({
+      message: `Missing required fields: ${missing.join(', ')}`,
+      missing,
+    });
+  }
+
+  try {
+    const ageInMonths = Math.max(0, Math.floor(
+      (Date.now() - new Date(birth_date).getTime()) / (1000 * 60 * 60 * 24 * 30.4375)
+    ));
+
+    const [result] = await pool.query(
+      `INSERT INTO children
+         (first_name, middle_initial, last_name, sex, birth_date, age_in_months,
+          barangay, purok, municipality, guardian_name, guardian_contact,
+          disability, mother_id, encoded_by, status, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', NOW(), NOW())`,
+      [
+        first_name.trim(), middle_initial || null, last_name.trim(), sex, birth_date,
+        ageInMonths,
+        barangay.trim(), purok || null, municipality || 'Gasan',
+        guardian_name || null, guardian_contact.trim(),
+        disability || 'None', mother_id || null, req.user?.user_id || null,
+      ]
+    );
+
+    await logAction(pool, req, 'CREATE_CHILD', 'child', result.insertId, {
+      name: `${first_name} ${last_name}`, barangay,
+    });
+
+    return res.status(201).json({ message: 'Child record created.', child_id: result.insertId });
+  } catch (err) {
+    console.error('Create child error:', err);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+// ── Steps 1 & 9: Update a child record with validation ───────────────────────
+exports.updateChild = async (req, res) => {
+  const { id } = req.params;
+  const {
+    first_name, middle_initial, last_name, sex, birth_date,
+    barangay, purok, municipality,
+    guardian_name, guardian_contact, disability,
+  } = req.body;
+
+  const missing = [];
+  if (!guardian_contact || !guardian_contact.trim()) missing.push('guardian_contact');
+  if (!birth_date)                                   missing.push('birth_date');
+
+  if (missing.length > 0) {
+    return res.status(400).json({
+      message: `Missing required fields: ${missing.join(', ')}`,
+      missing,
+    });
+  }
+
+  try {
+    const [[existing]] = await pool.query(
+      `SELECT * FROM children WHERE child_id = ?`, [id]
+    );
+    if (!existing) {
+      return res.status(404).json({ message: 'Child not found.' });
+    }
+
+    const ageInMonths = Math.max(0, Math.floor(
+      (Date.now() - new Date(birth_date || existing.birth_date).getTime()) /
+      (1000 * 60 * 60 * 24 * 30.4375)
+    ));
+
+    await pool.query(
+      `UPDATE children SET
+         first_name = ?, middle_initial = ?, last_name = ?, sex = ?,
+         birth_date = ?, age_in_months = ?,
+         barangay = ?, purok = ?, municipality = ?,
+         guardian_name = ?, guardian_contact = ?,
+         disability = ?, updated_at = NOW()
+       WHERE child_id = ?`,
+      [
+        (first_name || existing.first_name).trim(),
+        middle_initial !== undefined ? middle_initial : existing.middle_initial,
+        (last_name || existing.last_name).trim(),
+        sex || existing.sex,
+        birth_date || existing.birth_date,
+        ageInMonths,
+        (barangay || existing.barangay).trim(),
+        purok !== undefined ? purok : existing.purok,
+        municipality || existing.municipality || 'Gasan',
+        guardian_name !== undefined ? guardian_name : existing.guardian_name,
+        guardian_contact.trim(),
+        disability !== undefined ? disability : existing.disability,
+        id,
+      ]
+    );
+
+    await logAction(pool, req, 'UPDATE_CHILD', 'child', Number(id), {
+      before: { name: `${existing.first_name} ${existing.last_name}` },
+      after:  { guardian_contact, disability },
+    });
+
+    return res.status(200).json({ message: 'Child record updated.' });
+  } catch (err) {
+    console.error('Update child error:', err);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+// ── Step 4: Feeding history + effectiveness for a child ──────────────────────
+exports.getChildFeedingHistory = async (req, res) => {
+  const { id } = req.params;
+  try {
+    // All feeding programs for this child
+    const [programs] = await pool.query(
+      `SELECT fp.feeding_id, fp.status AS program_status, fp.start_date, fp.end_date
+       FROM feeding_programs fp
+       WHERE fp.child_id = ?
+       ORDER BY fp.start_date DESC`,
+      [id]
+    );
+
+    // For each program get attendance + meals
+    const history = [];
+    for (const prog of programs) {
+      const [attendance] = await pool.query(
+        `SELECT fa.attendance_id, fa.feeding_date, fa.status, fa.remarks
+         FROM feeding_attendance fa
+         WHERE fa.feeding_id = ?
+         ORDER BY fa.feeding_date DESC`,
+        [prog.feeding_id]
+      );
+
+      for (const att of attendance) {
+        const [meals] = await pool.query(
+          `SELECT meal_id, meal_description, calories, notes
+           FROM feeding_meals
+           WHERE attendance_id = ?`,
+          [att.attendance_id]
+        );
+        att.meals = meals;
+      }
+
+      // Effectiveness: compare first vs latest nutrition record during the program window
+      let effectiveness = null;
+      if (prog.start_date) {
+        const [[first]] = await pool.query(
+          `SELECT overall_status, weight_kg, height_cm, record_date
+           FROM nutrition_records
+           WHERE child_id = ?
+             AND record_date >= ?
+           ORDER BY record_date ASC
+           LIMIT 1`,
+          [id, prog.start_date]
+        );
+        const endBound = prog.end_date || new Date().toISOString().slice(0, 10);
+        const [[latest]] = await pool.query(
+          `SELECT overall_status, weight_kg, height_cm, record_date
+           FROM nutrition_records
+           WHERE child_id = ?
+             AND record_date <= ?
+           ORDER BY record_date DESC
+           LIMIT 1`,
+          [id, endBound]
+        );
+        if (first && latest && first.record_date !== latest.record_date) {
+          effectiveness = { before: first, after: latest };
+        }
+      }
+
+      history.push({ ...prog, attendance, effectiveness });
+    }
+
+    return res.status(200).json(history);
+  } catch (err) {
+    console.error('Get feeding history error:', err);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+// ── Step 4: Add a meal to an attendance record ───────────────────────────────
+exports.addFeedingMeal = async (req, res) => {
+  const { attendance_id } = req.params;
+  const { meal_description, calories, notes } = req.body;
+
+  if (!meal_description || !meal_description.trim()) {
+    return res.status(400).json({ message: 'meal_description is required.' });
+  }
+
+  try {
+    const [[att]] = await pool.query(
+      `SELECT fa.attendance_id, fa.feeding_id, fp.child_id
+       FROM feeding_attendance fa
+       JOIN feeding_programs fp ON fa.feeding_id = fp.feeding_id
+       WHERE fa.attendance_id = ?`,
+      [attendance_id]
+    );
+    if (!att) {
+      return res.status(404).json({ message: 'Attendance record not found.' });
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO feeding_meals (attendance_id, meal_description, calories, notes, created_at)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [attendance_id, meal_description.trim().slice(0, 255), calories || null, notes || null]
+    );
+
+    await logAction(pool, req, 'ADD_FEEDING_MEAL', 'child', att.child_id, {
+      meal_id: result.insertId, meal_description,
+    });
+
+    return res.status(201).json({ message: 'Meal recorded.', meal_id: result.insertId });
+  } catch (err) {
+    console.error('Add feeding meal error:', err);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+// ── Step 5: Absence history for a child ─────────────────────────────────────
+exports.getChildAbsences = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [absences] = await pool.query(
+      `SELECT fa.attendance_id, fa.feeding_date, fa.status, fa.remarks,
+              fp.feeding_id, fp.start_date AS program_start
+       FROM feeding_attendance fa
+       JOIN feeding_programs fp ON fa.feeding_id = fp.feeding_id
+       WHERE fp.child_id = ?
+         AND fa.status = 'absent'
+       ORDER BY fa.feeding_date DESC`,
+      [id]
+    );
+    return res.status(200).json(absences);
+  } catch (err) {
+    console.error('Get absence history error:', err);
+    return res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};

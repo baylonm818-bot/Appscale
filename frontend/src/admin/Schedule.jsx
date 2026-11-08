@@ -152,6 +152,13 @@ function ActivityRow({ activity, isNext, onCancel, onComplete, onArchive }) {
           {activity.facilitator && ` · ${activity.facilitator}`}
           {activity.schedule_time && ` · ${formatScheduleTime(activity.schedule_time)}`}
         </p>
+        {activity.audit_completed_at && (
+          <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+            Audit submitted {new Date(activity.audit_completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            {activity.audit_completion_notes && ` — "${activity.audit_completion_notes.slice(0, 60)}${activity.audit_completion_notes.length > 60 ? '…' : ''}"`}
+          </p>
+        )}
       </div>
 
       {/* Actions */}
@@ -186,6 +193,7 @@ const emptyForm = {
   title: '', schedule_type: 'feeding', schedule_date: '', schedule_time: '',
   venue: '', barangay: 'All Barangays', assigned_to: '', target_role: '',
   recipient_type: 'all', facilitator: '', notes: '',
+  participant_ids: [],
 };
 
 /* ══════════════════════════════════════════════════════════ */
@@ -245,10 +253,22 @@ function Schedule() {
     }
   };
 
+  const handleParticipantToggle = (userId) => {
+    setForm((prev) => {
+      const ids = prev.participant_ids || [];
+      return {
+        ...prev,
+        participant_ids: ids.includes(userId)
+          ? ids.filter((id) => id !== userId)
+          : [...ids, userId],
+      };
+    });
+  };
+
   const handleRecipientChange = (e) => {
     setForm({ ...form, recipient_type: e.target.value,
       barangay: e.target.value === 'all' ? 'All Barangays' : '',
-      assigned_to: '', target_role: '' });
+      assigned_to: '', target_role: '', participant_ids: [] });
     setSchedErrors((prev) => ({ ...prev, barangay: '', target_role: '', assigned_to: '' }));
   };
 
@@ -269,6 +289,7 @@ function Schedule() {
     const errs = {};
     if (!form.title?.trim()) errs.title = 'This field is required';
     if (!form.schedule_date) errs.schedule_date = 'This field is required';
+    if (!form.venue?.trim()) errs.venue = 'Venue is required';
     if (form.recipient_type === 'barangay' && !form.barangay) errs.barangay = 'This field is required';
     if (form.recipient_type === 'role' && !form.target_role) errs.target_role = 'This field is required';
     if (form.recipient_type === 'user' && !form.assigned_to) errs.assigned_to = 'This field is required';
@@ -916,14 +937,44 @@ function Schedule() {
                 )}
 
                 <div>
-                  <FormLabel label="Venue" />
-                  <input name="venue" placeholder="e.g. Barangay Hall" value={form.venue} onChange={handleChange} className={fieldCls} />
+                  <FormLabel label="Venue" required />
+                  <input name="venue" placeholder="e.g. Barangay Hall" value={form.venue} onChange={handleChange} className={`${fieldCls} ${schedErrors.venue ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`} />
+                  {schedErrors.venue && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.venue}</p>}
                 </div>
 
                 <div>
                   <FormLabel label="Facilitator" />
                   <input name="facilitator" placeholder="e.g. Dr. Santos" value={form.facilitator} onChange={handleChange} className={fieldCls} />
                 </div>
+
+                {/* Multi-participant checkboxes (optional additional assignees) */}
+                {users.length > 0 && (
+                  <div>
+                    <FormLabel label="Additional Participants (optional)" />
+                    <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100 bg-gray-50">
+                      {users.map((u) => {
+                        const uid = String(u.user_id);
+                        const checked = (form.participant_ids || []).includes(uid);
+                        return (
+                          <label key={uid} className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-green-50 transition ${checked ? 'bg-emerald-50' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => handleParticipantToggle(uid)}
+                              className="accent-emerald-700 w-4 h-4 shrink-0"
+                            />
+                            <span className="text-xs font-medium text-gray-700 truncate">
+                              {u.first_name} {u.last_name} <span className="text-gray-400 uppercase">({u.role})</span> — {u.barangay}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {(form.participant_ids || []).length > 0 && (
+                      <p className="text-xs text-emerald-700 font-semibold mt-1">{form.participant_ids.length} participant(s) selected</p>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <FormLabel label="Notes" />

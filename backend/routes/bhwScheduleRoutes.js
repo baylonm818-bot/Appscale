@@ -6,6 +6,7 @@ const {
   createBhwSchedule,
   markScheduleDone,
   updateBhwScheduleStatus,
+  submitBhwScheduleAudit,
 } = require('../controllers/bhwScheduleControllers');
 
 // BHW/BNS only
@@ -15,5 +16,7 @@ router.get('/', getBhwSchedules);
 router.post('/', createBhwSchedule);
 router.patch('/:id/done', markScheduleDone);
 router.patch('/:id/status', updateBhwScheduleStatus);
+// Step 6: audit submission
+router.post('/:id/audit', submitBhwScheduleAudit);
 
 module.exports = router;

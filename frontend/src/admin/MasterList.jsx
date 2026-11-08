@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Baby, Heart, X, MapPin, ChevronDown, ChevronLeft, ChevronRight, Filter, Check } from 'lucide-react';
+import { Search, Baby, Heart, X, MapPin, ChevronDown, ChevronLeft, ChevronRight, Filter, Check, Utensils, AlertCircle } from 'lucide-react';
 import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 
 /* ── Custom Popover Select (always drops DOWN with clean scrollbar) ── */
@@ -213,6 +213,38 @@ function Masterlist() {
 
   // View Modal state (view-only)
   const [selectedPerson, setSelectedPerson] = useState(null);
+  const [feedingHistoryChild, setFeedingHistoryChild] = useState(null);
+  const [feedingHistory, setFeedingHistory] = useState([]);
+  const [feedingHistoryLoading, setFeedingHistoryLoading] = useState(false);
+  const [absenceChild, setAbsenceChild] = useState(null);
+  const [absences, setAbsences] = useState([]);
+  const [absencesLoading, setAbsencesLoading] = useState(false);
+
+  const handleOpenFeedingHistory = async (child) => {
+    setFeedingHistoryChild(child);
+    setFeedingHistoryLoading(true);
+    try {
+      const res = await axiosClient.get(`/masterlist/children/${child.child_id}/feeding-history`);
+      setFeedingHistory(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setFeedingHistory([]);
+    } finally {
+      setFeedingHistoryLoading(false);
+    }
+  };
+
+  const handleOpenAbsences = async (child) => {
+    setAbsenceChild(child);
+    setAbsencesLoading(true);
+    try {
+      const res = await axiosClient.get(`/masterlist/children/${child.child_id}/absences`);
+      setAbsences(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setAbsences([]);
+    } finally {
+      setAbsencesLoading(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -756,6 +788,28 @@ function Masterlist() {
                     <p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedPerson.displaySex}</p>
                   </div>
                   <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Birthday</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                      {selectedPerson.birth_date ? new Date(selectedPerson.birth_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+                    </p>
+                  </div>
+                  <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Guardian Contact</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedPerson.guardian_contact || '—'}</p>
+                  </div>
+                  <div className="pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Disability / Special Needs</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                      {selectedPerson.disability && selectedPerson.disability !== 'None' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                          {selectedPerson.disability}
+                        </span>
+                      ) : (
+                        'None'
+                      )}
+                    </p>
+                  </div>
+                  <div className="pt-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Guardian</p>
                     <p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedPerson.guardian_name || '—'}</p>
                   </div>
@@ -776,6 +830,28 @@ function Masterlist() {
                   <div className="pt-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Nutritional Status</p>
                     <StatusBadge status={selectedPerson.displayStatus} />
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100 flex flex-col gap-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Program Records</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFeedingHistory(selectedPerson)}
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition cursor-pointer"
+                      >
+                        <Utensils size={13} />
+                        Feeding History
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAbsences(selectedPerson)}
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-xl bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition cursor-pointer"
+                      >
+                        <AlertCircle size={13} />
+                        Absence Log
+                      </button>
+                    </div>
                   </div>
                 </>
               ) : (
@@ -834,6 +910,209 @@ function Masterlist() {
     </AnimatePresence>,
     document.body
   )}
+
+      {/* ── Feeding History Modal ── */}
+      {createPortal(
+        <AnimatePresence>
+          {feedingHistoryChild && (
+            <motion.div
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-10000 p-4 overflow-hidden"
+              onClick={(e) => { if (e.target === e.currentTarget) setFeedingHistoryChild(null); }}
+            >
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between text-white shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Utensils size={18} />
+                    <h3 className="font-bold text-base">Feeding Program History</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFeedingHistoryChild(null)}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="px-6 py-4 border-b border-gray-100 bg-emerald-50/50 shrink-0">
+                  <p className="text-xs font-bold text-gray-800">{feedingHistoryChild.first_name} {feedingHistoryChild.last_name}</p>
+                  <p className="text-[11px] text-gray-500">Tracking food history and nutritional status effectiveness</p>
+                </div>
+
+                <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                  {feedingHistoryLoading ? (
+                    <p className="text-xs text-gray-500 text-center py-8">Loading feeding records…</p>
+                  ) : feedingHistory.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic text-center py-8">No feeding program records found for this child.</p>
+                  ) : (
+                    feedingHistory.map((prog) => (
+                      <div key={prog.feeding_id} className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-800">{prog.program_name || 'Feeding Program'}</span>
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                            {prog.status || 'Active'}
+                          </span>
+                        </div>
+
+                        {/* Effectiveness comparison */}
+                        {prog.effectiveness && (
+                          <div className="bg-white rounded-lg p-3 border border-emerald-200 space-y-1.5">
+                            <p className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">Nutritional Effectiveness</p>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <p className="text-[10px] text-gray-400">Before ({prog.effectiveness.before.record_date?.slice(0, 10)})</p>
+                                <p className="font-semibold text-gray-700 capitalize">{prog.effectiveness.before.overall_status?.replace('_', ' ') || 'Normal'}</p>
+                                <p className="text-[11px] text-gray-500">{prog.effectiveness.before.weight_kg}kg · {prog.effectiveness.before.height_cm}cm</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-400">After ({prog.effectiveness.after.record_date?.slice(0, 10)})</p>
+                                <p className="font-semibold text-emerald-700 capitalize">{prog.effectiveness.after.overall_status?.replace('_', ' ') || 'Normal'}</p>
+                                <p className="text-[11px] text-gray-500">{prog.effectiveness.after.weight_kg}kg · {prog.effectiveness.after.height_cm}cm</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Attendance + Meals */}
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-600 mb-1.5">Meals &amp; Food History ({prog.attendance?.length || 0} sessions)</p>
+                          {(!prog.attendance || prog.attendance.length === 0) ? (
+                            <p className="text-[11px] text-gray-400 italic">No attendance records yet.</p>
+                          ) : (
+                            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                              {prog.attendance.map((att) => (
+                                <div key={att.attendance_id} className="bg-white p-2.5 rounded-lg border border-gray-200 text-xs flex flex-col gap-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-semibold text-gray-800">{att.feeding_date ? new Date(att.feeding_date).toLocaleDateString() : '—'}</span>
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${att.status === 'present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                      {att.status?.toUpperCase()}
+                                    </span>
+                                  </div>
+                                  {att.meals && att.meals.length > 0 ? (
+                                    <div className="text-[11px] text-gray-600">
+                                      <span className="font-medium">Ate: </span>
+                                      {att.meals.map((m) => m.meal_description).join(', ')}
+                                    </div>
+                                  ) : (
+                                    <p className="text-[10px] text-gray-400 italic">No meal item logged for this session</p>
+                                  )}
+                                  {att.remarks && <p className="text-[10px] text-gray-500 italic">Remarks: {att.remarks}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 flex justify-end shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setFeedingHistoryChild(null)}
+                    className="px-4 py-2 text-xs font-semibold rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* ── Absence History Modal ── */}
+      {createPortal(
+        <AnimatePresence>
+          {absenceChild && (
+            <motion.div
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-10000 p-4 overflow-hidden"
+              onClick={(e) => { if (e.target === e.currentTarget) setAbsenceChild(null); }}
+            >
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[80vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="bg-linear-to-r from-amber-600 to-amber-700 px-6 py-4 flex items-center justify-between text-white shrink-0">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle size={18} />
+                    <h3 className="font-bold text-base">Absence Log</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAbsenceChild(null)}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="px-6 py-4 border-b border-gray-100 bg-amber-50/50 shrink-0">
+                  <p className="text-xs font-bold text-gray-800">{absenceChild.first_name} {absenceChild.last_name}</p>
+                  <p className="text-[11px] text-gray-500">History of absences with recorded reasons</p>
+                </div>
+
+                <div className="p-6 overflow-y-auto flex-1 space-y-2">
+                  {absencesLoading ? (
+                    <p className="text-xs text-gray-500 text-center py-8">Loading absence log…</p>
+                  ) : absences.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic text-center py-8">No recorded absences for this child. Perfect attendance! 🎉</p>
+                  ) : (
+                    absences.map((ab) => (
+                      <div key={ab.attendance_id} className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-gray-800">
+                            {ab.feeding_date ? new Date(ab.feeding_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 uppercase">
+                            Absent
+                          </span>
+                        </div>
+                        <p className="text-gray-700 font-medium">
+                          <span className="text-gray-400 font-normal">Remarks: </span>
+                          {ab.remarks || 'No reason provided'}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 flex justify-end shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setAbsenceChild(null)}
+                    className="px-4 py-2 text-xs font-semibold rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

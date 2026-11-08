@@ -16,6 +16,8 @@ import {
   LogOut,
   Menu,
   X,
+  Shield,
+  PenLine,
 } from 'lucide-react';
 
 const menuItems = [
@@ -23,6 +25,8 @@ const menuItems = [
   { name: 'User Management', path: '/admin/users', icon: Users },
   { name: 'Master List', path: '/admin/masterlist', icon: ClipboardList },
   { name: 'Schedule', path: '/admin/schedule', icon: Calendar },
+  { name: 'System Logs', path: '/admin/system-logs', icon: Shield },
+  { name: 'Signatories', path: '/admin/signatories', icon: PenLine },
   { name: 'Settings', path: '/admin/profile', icon: UserCircle },
 ];
 
@@ -172,6 +176,18 @@ function AdminLayout() {
       <div className="mb-1 px-4">
         <h2 className="text-xl font-bold text-gray-800">Settings & Profile</h2>
         <p className="text-xs text-gray-400">Manage account information, security, and preferences</p>
+      </div>
+    ),
+    '/admin/system-logs': (
+      <div className="mb-1 px-4">
+        <h2 className="text-xl font-bold text-gray-800">System Logs</h2>
+        <p className="text-xs text-gray-400">Audit trail of all BNS and BHW activities</p>
+      </div>
+    ),
+    '/admin/signatories': (
+      <div className="mb-1 px-4">
+        <h2 className="text-xl font-bold text-gray-800">Report Signatories</h2>
+        <p className="text-xs text-gray-400">Configure who signs official municipality reports</p>
       </div>
     ),
   };
