@@ -103,10 +103,25 @@ class _AddChildScreenState extends State<AddChildScreen> {
   String? _relationshipError;
   String? _guardianContactError;
 
+  static const List<String> commonDisabilities = [
+    'Visual Impairment',
+    'Hearing Impairment',
+    'Speech and Language Impairment',
+    'Mobility / Physical Disability',
+    'Intellectual Disability',
+    'Autism Spectrum Disorder',
+    'Down Syndrome',
+    'Cerebral Palsy',
+    'Learning Disability',
+    'Multiple Disabilities',
+    'Other',
+  ];
+
   DateTime? _birthDate;
   String? _gender;
   bool _belongsToIpGroup = false;
   bool _hasDisability = false;
+  String? _selectedDisabilityType;
   String? _relationship;
   DateTime? _guardianBirthDate;
   bool _guardianIsMonitoredMother = false;
@@ -117,6 +132,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
   late String _sequenceNo =
       widget.existingChild?.sequenceNo ??
       _childRepo.generateSequenceNo(barangayCode: _currentBarangayCode);
+
+  String get _effectiveDisability {
+    if (!_hasDisability) return '';
+    if (_selectedDisabilityType == 'Other') {
+      return _disabilityController.text.trim();
+    }
+    return _selectedDisabilityType ?? _disabilityController.text.trim();
+  }
 
   @override
   void initState() {
@@ -130,6 +153,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
           existing.disability.toLowerCase() != 'none specified' &&
           existing.disability.toLowerCase() != 'none' &&
           existing.disability.toLowerCase() != 'no';
+      if (_hasDisability) {
+        final existingDis = existing.disability.trim();
+        if (commonDisabilities.contains(existingDis)) {
+          _selectedDisabilityType = existingDis;
+        } else {
+          _selectedDisabilityType = 'Other';
+        }
+      }
       _relationship = existing.guardian.relationship;
       _guardianBirthDate = existing.guardian.birthDate;
       if (existing.guardian.linkedMotherId != null) {
@@ -271,7 +302,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
     final rawContact = _guardianContactController.text.trim();
     final sanitizedGuardianContact = AppUserIdentity.sanitizeMobileNumber(rawContact);
-    if (rawContact.isNotEmpty && !AppUserIdentity.isValidPhilippineContactNumber(rawContact)) {
+    if (rawContact.isEmpty) {
+      guardianContactErr = 'Contact number is required';
+    } else if (!AppUserIdentity.isValidPhilippineContactNumber(rawContact)) {
       guardianContactErr = 'Contact number must be 11 digits (e.g. 09123456789)';
     }
 
@@ -420,9 +453,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
       address: _addressController.text.trim(),
       barangay: _currentBarangay,
       belongsToIpGroup: _belongsToIpGroup,
-      disability: (!_hasDisability || _disabilityController.text.trim().isEmpty)
+      disability: (!_hasDisability || _effectiveDisability.isEmpty)
           ? 'None specified'
-          : _disabilityController.text.trim(),
+          : _effectiveDisability,
       guardian: Guardian(
         fullName: _guardianNameController.text.trim(),
         relationship: _relationship!,
@@ -785,18 +818,41 @@ class _AddChildScreenState extends State<AddChildScreen> {
                               setState(() {
                                 _hasDisability = v;
                                 if (!v) {
+                                  _selectedDisabilityType = null;
                                   _disabilityController.clear();
                                 }
                               });
                             },
                           ),
                           if (_hasDisability) ...[
-                            AppTextField(
-                              label: 'Specify Disability *',
-                              hint: 'e.g. Visual impairment, Cerebral palsy, etc.',
-                              icon: Icons.accessibility_new_outlined,
-                              controller: _disabilityController,
+                            AppDropdownField(
+                              label: 'Common Disabilities',
+                              isRequired: true,
+                              hint: 'Select disability',
+                              value: _selectedDisabilityType,
+                              options: commonDisabilities,
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedDisabilityType = val;
+                                  if (val != 'Other' && val != null) {
+                                    _disabilityController.text = val;
+                                  } else if (val == 'Other') {
+                                    if (commonDisabilities.contains(_disabilityController.text)) {
+                                      _disabilityController.clear();
+                                    }
+                                  }
+                                });
+                              },
                             ),
+                            if (_selectedDisabilityType == 'Other') ...[
+                              const SizedBox(height: AppSpacing.sm),
+                              AppTextField(
+                                label: 'Specify Disability *',
+                                hint: 'e.g. Specific condition, syndrome, etc.',
+                                icon: Icons.accessibility_new_outlined,
+                                controller: _disabilityController,
+                              ),
+                            ],
                           ],
                         ],
                       ),
@@ -851,6 +907,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                                 child: AppTextField(
                                   key: _guardianContactKey,
                                   label: 'Contact no.',
+                                  isRequired: true,
                                   hint: '09XXXXXXXXX',
                                   icon: Icons.call_outlined,
                                   controller: _guardianContactController,

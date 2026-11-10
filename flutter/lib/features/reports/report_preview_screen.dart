@@ -25,7 +25,6 @@ import '../../data/local/app_data_bus.dart';
 import '../../features/masterlist/utils/child_status_meta.dart';
 import '../../shared/utils/app_page_route.dart';
 import 'sync_status_screen.dart';
-import 'report_signatories_screen.dart';
 
 class ReportPreviewScreen extends StatefulWidget {
   final ReportTypeInfo reportType;
@@ -602,37 +601,6 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                               style: AppTextStyles.h2.copyWith(
                                 color: Colors.white,
                                 fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          InkWell(
-                            onTap: () async {
-                              await Navigator.push(
-                                context,
-                                appPageRoute(const ReportSignatoriesScreen()),
-                              );
-                              setState(() {});
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(Icons.draw_outlined, color: Colors.white, size: 15),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Signatories',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
                           ),

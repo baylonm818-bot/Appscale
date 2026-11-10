@@ -111,6 +111,19 @@ exports.createBhwSchedule = async (req, res) => {
       } catch (_) {}
     }
 
+    if (Array.isArray(req.body?.participant_ids) && req.body.participant_ids.length > 0) {
+      for (const pid of req.body.participant_ids) {
+        if (pid && Number(pid) !== Number(user?.user_id)) {
+          try {
+            await pool.query(
+              `INSERT IGNORE INTO schedule_participants (schedule_id, user_id, role) VALUES (?, ?, 'participant')`,
+              [result.insertId, pid]
+            );
+          } catch (_) {}
+        }
+      }
+    }
+
     await logAction(pool, req, 'CREATE_SCHEDULE_BHW', 'schedule', result.insertId, {
       title, venue, barangay: targetBarangay,
     });

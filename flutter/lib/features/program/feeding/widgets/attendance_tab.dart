@@ -8,6 +8,7 @@ import '../../../../data/local/feeding_enrollment_repository.dart';
 import '../../../../data/local/feeding_suggestion_service.dart';
 import '../../../../data/local/hive_boxes.dart';
 import '../../../../data/local/meal_plan_repository.dart';
+import '../../../../data/local/measurement_repository.dart';
 import '../../../../data/models/child.dart';
 import '../../../../shared/utils/app_pickers.dart';
 import '../../../../shared/widgets/app_button.dart';
@@ -31,16 +32,23 @@ class _AttendanceTabState extends State<AttendanceTab> {
 
   DateTime _selectedDate = DateTime.now();
   Map<String, String?> _draftStatuses = {};
+  Map<String, String> _draftRemarks = {};
+  late final TextEditingController _foodServedController;
   final Set<String> _withdrawingIds = {};
 
   @override
   void initState() {
     super.initState();
+    _foodServedController = TextEditingController(
+      text: FeedingAttendanceRepository().getFoodServedForDate(_currentBarangay, _selectedDate),
+    );
+    _draftRemarks = FeedingAttendanceRepository().getRemarksForDate(_currentBarangay, _selectedDate);
     AppDataBus.version.addListener(_onDataChanged);
   }
 
   @override
   void dispose() {
+    _foodServedController.dispose();
     AppDataBus.version.removeListener(_onDataChanged);
     super.dispose();
   }
@@ -72,6 +80,8 @@ class _AttendanceTabState extends State<AttendanceTab> {
       setState(() {
         _selectedDate = picked;
         _draftStatuses = {};
+        _draftRemarks = FeedingAttendanceRepository().getRemarksForDate(_currentBarangay, picked);
+        _foodServedController.text = FeedingAttendanceRepository().getFoodServedForDate(_currentBarangay, picked);
       });
     }
   }
@@ -187,7 +197,6 @@ class _AttendanceTabState extends State<AttendanceTab> {
     // Counts must reflect ONLY marked enrolled children
     final presentCount = enrolled.where((c) => statuses[c.id] == 'Present').length;
     final absentCount = enrolled.where((c) => statuses[c.id] == 'Absent').length;
-    final excusedCount = enrolled.where((c) => statuses[c.id] == 'Excused').length;
 
     final mealPlan = MealPlanRepository().getActiveForDate(
       _currentBarangay,
@@ -268,24 +277,43 @@ class _AttendanceTabState extends State<AttendanceTab> {
               ),
             ),
           ),
-          if (mealPlan != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.lightGreenBg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                'Meal for this day: ${mealPlan.itemsSummary}',
-                style: AppTextStyles.body.copyWith(
-                  fontSize: 12,
-                  color: AppColors.darkGreen,
-                ),
-              ),
+          // Food Served on this date
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
             ),
-          ],
+            child: Row(
+              children: [
+                const Icon(Icons.restaurant_menu, size: 16, color: AppColors.primaryGreen),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _foodServedController,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      hintText: mealPlan != null
+                          ? 'Meal: ${mealPlan.itemsSummary}'
+                          : 'Record food served today (e.g. Nutri-soup, Porridge)',
+                      hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkGreen,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: AppSpacing.md),
+
+          // Count boxes: strictly Present and Absent
           Row(
             children: [
               Expanded(
@@ -306,9 +334,9 @@ class _AttendanceTabState extends State<AttendanceTab> {
               const SizedBox(width: 8),
               Expanded(
                 child: _CountBox(
-                  value: '$excusedCount',
-                  label: 'Excused',
-                  color: AppColors.statAmber,
+                  value: '${enrolled.length}',
+                  label: 'Enrolled',
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
@@ -324,6 +352,11 @@ class _AttendanceTabState extends State<AttendanceTab> {
               (c) {
                 final isPending = _enrollmentRepo.isPendingSync(c.id);
                 final isWithdrawing = _withdrawingIds.contains(c.id);
+                final savedRemarks = FeedingAttendanceRepository()
+                    .getRemarksForDate(_currentBarangay, _selectedDate);
+                final childRemark = _draftRemarks[c.id] ?? savedRemarks[c.id];
+                final currentStatus = statuses[c.id];
+
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
@@ -387,9 +420,46 @@ class _AttendanceTabState extends State<AttendanceTab> {
                             onSelected: (val) {
                               if (val == 'withdraw') {
                                 _confirmWithdraw(c);
+                              } else if (val == 'absence_history') {
+                                _showAbsenceHistorySheet(context, c);
+                              } else if (val == 'food_history') {
+                                _showFoodHistorySheet(context, c);
+                              } else if (val == 'effectiveness') {
+                                _showEffectivenessSheet(context, c);
                               }
                             },
                             itemBuilder: (ctx) => [
+                              const PopupMenuItem(
+                                value: 'absence_history',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.event_busy, size: 16, color: AppColors.statRed),
+                                    SizedBox(width: 8),
+                                    Text('Absence History', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'food_history',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.restaurant, size: 16, color: AppColors.primaryGreen),
+                                    SizedBox(width: 8),
+                                    Text('Food History', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'effectiveness',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.trending_up, size: 16, color: Color(0xFF1565C0)),
+                                    SizedBox(width: 8),
+                                    Text('Feeding Effectiveness', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuDivider(),
                               const PopupMenuItem(
                                 value: 'withdraw',
                                 child: Row(
@@ -416,6 +486,8 @@ class _AttendanceTabState extends State<AttendanceTab> {
                         ],
                       ),
                       const SizedBox(height: 8),
+
+                      // Present & Absent Status Chips
                       Row(
                         children: [
                           Expanded(
@@ -424,28 +496,59 @@ class _AttendanceTabState extends State<AttendanceTab> {
                               c.id,
                               statuses,
                               AppColors.primaryGreen,
+                              onTap: () {
+                                setState(() {
+                                  _draftStatuses = {...statuses, c.id: 'Present'};
+                                  _draftRemarks.remove(c.id);
+                                });
+                              },
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: _statusChip(
                               'Absent',
                               c.id,
                               statuses,
                               AppColors.statRed,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: _statusChip(
-                              'Excused',
-                              c.id,
-                              statuses,
-                              AppColors.statAmber,
+                              onTap: () {
+                                _promptAbsentRemark(c.id, c.fullName, statuses);
+                              },
                             ),
                           ),
                         ],
                       ),
+
+                      // Remark note when Absent
+                      if (currentStatus == 'Absent' && childRemark != null && childRemark.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () => _promptAbsentRemark(c.id, c.fullName, statuses),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.statRed.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppColors.statRed.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.info_outline, size: 12, color: AppColors.statRed),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    'Reason: $childRemark',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.statRed, fontWeight: FontWeight.w600),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Icon(Icons.edit, size: 11, color: AppColors.statRed),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 );
@@ -492,10 +595,12 @@ class _AttendanceTabState extends State<AttendanceTab> {
                   _currentBarangay,
                   _selectedDate,
                   enrolledStatuses,
+                  remarks: _draftRemarks,
+                  foodServed: _foodServedController.text.trim(),
                 );
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Attendance saved successfully')),
+                  const SnackBar(content: Text('Attendance & food history saved successfully')),
                 );
               },
             ),
@@ -505,16 +610,577 @@ class _AttendanceTabState extends State<AttendanceTab> {
     );
   }
 
+  Future<void> _promptAbsentRemark(
+    String childId,
+    String childName,
+    Map<String, String?> statuses,
+  ) async {
+    final existingRemarks = FeedingAttendanceRepository()
+        .getRemarksForDate(_currentBarangay, _selectedDate);
+    final currentRemark = _draftRemarks[childId] ?? existingRemarks[childId] ?? '';
+    final controller = TextEditingController(text: currentRemark);
+    String selectedReason = 'Sick / Not feeling well';
+    final commonReasons = [
+      'Sick / Not feeling well',
+      'Family emergency / Travel',
+      'Weather / Heavy rain',
+      'Caregiver unavailable',
+      'Other reason',
+    ];
+    if (currentRemark.isNotEmpty && commonReasons.contains(currentRemark)) {
+      selectedReason = currentRemark;
+    } else if (currentRemark.isNotEmpty) {
+      selectedReason = 'Other reason';
+    }
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDlgState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Reason for Absence ($childName)',
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Please specify reason for absence:',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                initialValue: selectedReason,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                items: commonReasons
+                    .map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 13))))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setDlgState(() {
+                      selectedReason = val;
+                      if (val != 'Other reason') {
+                        controller.text = val;
+                      } else {
+                        controller.clear();
+                      }
+                    });
+                  }
+                },
+              ),
+              if (selectedReason == 'Other reason') ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Enter specific reason...',
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.statRed),
+              onPressed: () {
+                final remarkText = selectedReason == 'Other reason'
+                    ? controller.text.trim()
+                    : selectedReason;
+                Navigator.pop(ctx, remarkText.isNotEmpty ? remarkText : 'Absent');
+              },
+              child: const Text('Mark Absent'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _draftStatuses = {...statuses, childId: 'Absent'};
+        _draftRemarks[childId] = result;
+      });
+    }
+  }
+
+  void _showAbsenceHistorySheet(BuildContext context, Child child) {
+    final history = FeedingAttendanceRepository()
+        .getAbsenceHistoryForChild(_currentBarangay, child.id);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        maxChildSize: 0.85,
+        minChildSize: 0.35,
+        expand: false,
+        builder: (_, scrollCtrl) => Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.statRed.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.event_busy, color: AppColors.statRed, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Absence History', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                        Text(child.fullName, style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.statRed.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${history.length} Absences',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.statRed),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Expanded(
+                child: history.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'Perfect Attendance! No absences recorded.',
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        ),
+                      )
+                    : ListView.separated(
+                        controller: scrollCtrl,
+                        itemCount: history.length,
+                        separatorBuilder: (_, index) => const SizedBox(height: 8),
+                        itemBuilder: (_, idx) {
+                          final item = history[idx];
+                          final d = item['date'] as DateTime;
+                          final remark = item['remark'] as String;
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.calendar_today, size: 14, color: AppColors.statRed),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        'Reason: $remark',
+                                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFoodHistorySheet(BuildContext context, Child child) {
+    final history = FeedingAttendanceRepository()
+        .getFoodHistoryForChild(_currentBarangay, child.id);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        maxChildSize: 0.85,
+        minChildSize: 0.35,
+        expand: false,
+        builder: (_, scrollCtrl) => Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.restaurant_menu, color: AppColors.primaryGreen, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Food Intake History', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                        Text(child.fullName, style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${history.length} Feedings',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Expanded(
+                child: history.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No feeding records yet.',
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        ),
+                      )
+                    : ListView.separated(
+                        controller: scrollCtrl,
+                        itemCount: history.length,
+                        separatorBuilder: (_, index) => const SizedBox(height: 8),
+                        itemBuilder: (_, idx) {
+                          final item = history[idx];
+                          final d = item['date'] as DateTime;
+                          final food = item['food'] as String;
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.check_circle, size: 15, color: AppColors.primaryGreen),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        'Food Eaten: $food',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.darkGreen,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEffectivenessSheet(BuildContext context, Child child) {
+    final measList = MeasurementRepository().getForChild(child.id);
+    final baseline = measList.isNotEmpty ? measList.last : null;
+    final latest = measList.isNotEmpty ? measList.first : null;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.65,
+        maxChildSize: 0.90,
+        minChildSize: 0.40,
+        expand: false,
+        builder: (_, scrollCtrl) => Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.trending_up, color: AppColors.primaryGreen, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Feeding Effectiveness', style: AppTextStyles.h2.copyWith(fontSize: 16)),
+                        Text('${child.fullName} · Before vs After', style: AppTextStyles.body.copyWith(fontSize: 12, color: AppColors.textMuted)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Expanded(
+                child: (baseline == null || latest == null)
+                    ? const Center(
+                        child: Text(
+                          'No anthropometric measurements recorded yet to compare effectiveness.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        ),
+                      )
+                    : ListView(
+                        controller: scrollCtrl,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.amber.shade200),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'BEFORE (Baseline)',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${baseline.weightKg.toStringAsFixed(1)} kg',
+                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        '${baseline.heightCm.toStringAsFixed(1)} cm',
+                                        style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'WFA: ${baseline.weightForAgeStatus}',
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                      Text(
+                                        'Wasting: ${baseline.effectiveWastingStatus}',
+                                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.green.shade200),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'AFTER (Latest)',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${latest.weightKg.toStringAsFixed(1)} kg',
+                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.darkGreen),
+                                      ),
+                                      Text(
+                                        '${latest.heightCm.toStringAsFixed(1)} cm',
+                                        style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'WFA: ${latest.weightForAgeStatus}',
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.darkGreen),
+                                      ),
+                                      Text(
+                                        'Wasting: ${latest.effectiveWastingStatus}',
+                                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Net Progress / Improvement:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    Column(
+                                      children: [
+                                        Text(
+                                          '${(latest.weightKg - baseline.weightKg) >= 0 ? "+" : ""}${(latest.weightKg - baseline.weightKg).toStringAsFixed(2)} kg',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: (latest.weightKg - baseline.weightKg) >= 0 ? AppColors.primaryGreen : AppColors.statRed,
+                                          ),
+                                        ),
+                                        const Text('Weight Gained', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                                      ],
+                                    ),
+                                    Column(
+                                      children: [
+                                        Text(
+                                          '${(latest.heightCm - baseline.heightCm) >= 0 ? "+" : ""}${(latest.heightCm - baseline.heightCm).toStringAsFixed(1)} cm',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primaryGreen,
+                                          ),
+                                        ),
+                                        const Text('Height Growth', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _statusChip(
     String label,
     String childId,
     Map<String, String?> statuses,
-    Color color,
-  ) {
+    Color color, {
+    VoidCallback? onTap,
+  }) {
     final selected = statuses[childId] == label;
     return InkWell(
-      onTap: () =>
-          setState(() => _draftStatuses = {...statuses, childId: label}),
+      onTap: onTap ??
+          () => setState(() => _draftStatuses = {...statuses, childId: label}),
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),

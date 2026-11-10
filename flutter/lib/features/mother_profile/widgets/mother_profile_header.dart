@@ -82,10 +82,8 @@ class MotherProfileHeader extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               if (mother.isActive && !mother.isTransferPending) ...[
                 _AddVisitButton(onPressed: onAddVisitPressed),
-                if (referralStatus.showReferButton) ...[
-                  const SizedBox(width: 6),
-                  _ReferralButton(onPressed: onReferralPressed),
-                ],
+                const SizedBox(width: 6),
+                _ReferralButton(onPressed: onReferralPressed),
                 const SizedBox(width: 6),
               ],
               _OverflowMenu(
@@ -93,6 +91,7 @@ class MotherProfileHeader extends StatelessWidget {
                 isTransferPending: mother.isTransferPending,
                 onEditPressed: onEditPressed,
                 onStatusActionPressed: onStatusActionPressed,
+                onReferralPressed: onReferralPressed,
               ),
             ],
           ),
@@ -191,12 +190,14 @@ class _OverflowMenu extends StatelessWidget {
   final bool isTransferPending;
   final VoidCallback onEditPressed;
   final VoidCallback onStatusActionPressed;
+  final VoidCallback onReferralPressed;
 
   const _OverflowMenu({
     required this.isActive,
     this.isTransferPending = false,
     required this.onEditPressed,
     required this.onStatusActionPressed,
+    required this.onReferralPressed,
   });
 
   @override
@@ -214,9 +215,10 @@ class _OverflowMenu extends StatelessWidget {
       onSelected: (value) {
         if (value == 'edit') onEditPressed();
         if (value == 'status') onStatusActionPressed();
+        if (value == 'refer') onReferralPressed();
       },
       itemBuilder: (context) => [
-        if (!isTransferPending)
+        if (!isTransferPending) ...[
           const PopupMenuItem(
             value: 'edit',
             child: Row(
@@ -231,6 +233,21 @@ class _OverflowMenu extends StatelessWidget {
               ],
             ),
           ),
+          const PopupMenuItem(
+            value: 'refer',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.assignment_turned_in_outlined,
+                  size: 18,
+                  color: AppColors.statOrange,
+                ),
+                SizedBox(width: 10),
+                Text('Refer Mother to BHW'),
+              ],
+            ),
+          ),
+        ],
         PopupMenuItem(
           value: 'status',
           child: Row(

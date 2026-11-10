@@ -11,12 +11,33 @@ class FeedingAttendanceRepository {
   String _key(String barangay, DateTime date) =>
       '$barangay|${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
+  String _remarksKey(String barangay, DateTime date) =>
+      '${_key(barangay, date)}|remarks';
+
+  String _foodKey(String barangay, DateTime date) =>
+      '${_key(barangay, date)}|food';
+
+  String _childFoodKey(String barangay, DateTime date) =>
+      '${_key(barangay, date)}|child_food';
+
   Future<void> saveForDate(
     String barangay,
     DateTime date,
-    Map<String, String> statuses,
-  ) async {
+    Map<String, String> statuses, {
+    Map<String, String>? remarks,
+    String? foodServed,
+    Map<String, String>? childFood,
+  }) async {
     await _box.put(_key(barangay, date), statuses);
+    if (remarks != null) {
+      await _box.put(_remarksKey(barangay, date), remarks);
+    }
+    if (foodServed != null) {
+      await _box.put(_foodKey(barangay, date), foodServed);
+    }
+    if (childFood != null) {
+      await _box.put(_childFoodKey(barangay, date), childFood);
+    }
     AppDataBus.notifyChanged();
 
     try {
@@ -24,13 +45,83 @@ class FeedingAttendanceRepository {
         barangay: barangay,
         date: date,
         statuses: statuses,
+        remarks: remarks ?? getRemarksForDate(barangay, date),
+        foodServed: foodServed ?? getFoodServedForDate(barangay, date),
       );
     } catch (_) {}
   }
 
+  Map<String, String> getRemarksForDate(String barangay, DateTime date) {
+    final raw = _box.get(_remarksKey(barangay, date)) as Map?;
+    if (raw == null) return {};
+    return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
+  }
+
+  String getFoodServedForDate(String barangay, DateTime date) {
+    final raw = _box.get(_foodKey(barangay, date));
+    return raw?.toString() ?? '';
+  }
+
+  Map<String, String> getChildFoodForDate(String barangay, DateTime date) {
+    final raw = _box.get(_childFoodKey(barangay, date)) as Map?;
+    if (raw == null) return {};
+    return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
+  }
+
+  /// Absence history per child
+  List<Map<String, dynamic>> getAbsenceHistoryForChild(
+    String barangay,
+    String childId,
+  ) {
+    final loggedDates = getLoggedDates(barangay);
+    loggedDates.sort((a, b) => b.compareTo(a));
+    final history = <Map<String, dynamic>>[];
+
+    for (final d in loggedDates) {
+      final statuses = getForDate(barangay, d);
+      if (statuses[childId] == 'Absent') {
+        final remarks = getRemarksForDate(barangay, d);
+        history.add({
+          'date': d,
+          'remark': remarks[childId] ?? 'No reason stated',
+        });
+      }
+    }
+    return history;
+  }
+
+  /// Food history per child (what they ate across feeding sessions)
+  List<Map<String, dynamic>> getFoodHistoryForChild(
+    String barangay,
+    String childId,
+  ) {
+    final loggedDates = getLoggedDates(barangay);
+    loggedDates.sort((a, b) => b.compareTo(a));
+    final history = <Map<String, dynamic>>[];
+
+    for (final d in loggedDates) {
+      final statuses = getForDate(barangay, d);
+      if (statuses[childId] == 'Present') {
+        final childFood = getChildFoodForDate(barangay, d);
+        final defaultFood = getFoodServedForDate(barangay, d);
+        final foodAte = childFood[childId] ??
+            (defaultFood.isNotEmpty ? defaultFood : 'Supplemental Nutritious Meal');
+        history.add({
+          'date': d,
+          'food': foodAte,
+        });
+      }
+    }
+    return history;
+  }
+
   Future<void> syncPending() async {
     for (final key in _box.keys) {
-      final parts = key.toString().split('|');
+      final keyStr = key.toString();
+      if (keyStr.contains('|remarks') || keyStr.contains('|food') || keyStr.contains('|child_food')) {
+        continue;
+      }
+      final parts = keyStr.split('|');
       if (parts.length == 2) {
         final barangay = parts[0];
         final date = DateTime.tryParse(parts[1]);
@@ -42,6 +133,8 @@ class FeedingAttendanceRepository {
                 barangay: barangay,
                 date: date,
                 statuses: statuses,
+                remarks: getRemarksForDate(barangay, date),
+                foodServed: getFoodServedForDate(barangay, date),
               );
             } catch (_) {}
           }

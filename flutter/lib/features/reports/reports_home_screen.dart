@@ -7,7 +7,6 @@ import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_dropdown_field.dart';
 import '../../shared/widgets/form_section_card.dart';
 import 'report_preview_screen.dart';
-import 'report_signatories_screen.dart';
 import 'report_types.dart';
 import 'sync_status_screen.dart';
 
@@ -238,31 +237,6 @@ class _ReportsHomeScreenState extends State<ReportsHomeScreen> {
                   onPressed: () => Navigator.push(
                     context,
                     appPageRoute(ReportPreviewScreen(reportType: _selectedReport)),
-                  ),
-                ),
-                
-                const SizedBox(height: 12),
-                
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      appPageRoute(const ReportSignatoriesScreen()),
-                    ),
-                    icon: const Icon(Icons.draw_outlined, size: 20),
-                    label: const Text(
-                      'Edit Signatories',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.darkGreen,
-                      side: const BorderSide(color: AppColors.primaryGreen),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
                   ),
                 ),
                 const SizedBox(height: 100),

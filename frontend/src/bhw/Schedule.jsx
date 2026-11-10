@@ -177,10 +177,20 @@ function ActivityRow({ activity, isNext, onComplete, onArchive, onAudit }) {
   );
 }
 
-const emptyForm = { title: '', schedule_type: 'feeding', schedule_date: '', schedule_time: '', venue: '', facilitator: '', notes: '' };
+const emptyForm = {
+  title: '',
+  schedule_type: 'feeding',
+  schedule_date: '',
+  schedule_time: '',
+  venue: '',
+  facilitator: '',
+  notes: '',
+  participant_ids: [],
+};
 
 function Schedule() {
   const [activities, setActivities] = useState([]);
+  const [users, setUsers] = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
@@ -231,13 +241,40 @@ function Schedule() {
 
   const fetchActivities = async () => {
     try {
-      const response = await axiosClient.get('/bhw/schedule', {
-        params: { barangay: user.barangay, user_id: user.user_id, role: user.role },
-      });
-      setActivities(response.data || []);
+      const [schedRes, usersRes] = await Promise.allSettled([
+        axiosClient.get('/bhw/schedule', {
+          params: { barangay: user.barangay, user_id: user.user_id, role: user.role },
+        }),
+        axiosClient.get('/users'),
+      ]);
+
+      if (schedRes.status === 'fulfilled' && schedRes.value?.data) {
+        setActivities(Array.isArray(schedRes.value.data) ? schedRes.value.data : []);
+      } else {
+        setActivities([]);
+      }
+
+      if (usersRes.status === 'fulfilled' && usersRes.value?.data) {
+        const uList = Array.isArray(usersRes.value.data) ? usersRes.value.data : [];
+        setUsers(
+          uList.filter((u) => {
+            if (!u || u.status !== 'active') return false;
+            // Match same barangay or all
+            return !user.barangay || u.barangay === user.barangay;
+          })
+        );
+      }
     } catch {
       setError('Failed to load schedule.');
     }
+  };
+
+  const handleParticipantToggle = (id) => {
+    setForm((prev) => {
+      const current = prev.participant_ids || [];
+      const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+      return { ...prev, participant_ids: next };
+    });
   };
 
   useEffect(() => {
@@ -706,7 +743,7 @@ function Schedule() {
                       handleOpenAddForDate(cell.dateKey);
                     }}
                     title={`Add activity on ${cell.dateKey}`}
-                    className="absolute bottom-2 right-2 w-6 h-6 rounded-lg bg-white border-2 border-green-600 text-[#1b5e20] hover:bg-[#1b5e20] hover:text-white shadow-sm opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
+                    className="absolute bottom-2 right-2 w-6 h-6 rounded-lg bg-white border border-green-600 text-[#1b5e20] hover:bg-[#1b5e20] hover:text-white shadow-2xs opacity-70 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
                   >
                     <Plus size={14} />
                   </button>
@@ -774,238 +811,297 @@ function Schedule() {
       </div>
 
       {/* ── Centered Add Schedule Modal Popup ── */}
-      <AnimatePresence>
-        {showModal && createPortal(
-          <motion.div
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
-          >
+      {createPortal(
+        <AnimatePresence>
+          {showModal && (
             <motion.div
-              variants={modalVariants}
+              variants={backdropVariants}
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-hidden"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
             >
-              {/* Modal header */}
-              <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between shrink-0 text-white">
-              <div>
-                <h2 className="text-base font-bold">New Activity Schedule</h2>
-                <p className="text-white/80 text-xs mt-0.5">Barangay: {user.barangay || 'Community'}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition"
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
               >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal form */}
-            <form onSubmit={handleSubmit} noValidate className="flex-1 flex flex-col overflow-hidden">
-              {/* Modal body */}
-              <div className="overflow-y-auto flex-1 px-6 py-5">
-                {formError && (
-                  <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3 font-medium">
-                    {formError}
-                  </div>
-                )}
-                <div className="space-y-4">
-                  <FormRequiredNote />
-
+                {/* Modal header */}
+                <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between shrink-0 text-white">
                   <div>
-                    <FormLabel label="Activity Title" required />
-                    <input
-                      name="title"
-                      type="text"
-                      placeholder="e.g. Supplemental Feeding Session"
-                      value={form.title}
-                      onChange={(e) => {
-                        setForm({ ...form, title: e.target.value });
-                        if (schedErrors.title) setSchedErrors((prev) => ({ ...prev, title: '' }));
-                      }}
-                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
-                        schedErrors.title ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100'
-                      }`}
-                    />
-                    {schedErrors.title && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.title}</p>}
+                    <h2 className="text-base font-bold">New Activity Schedule</h2>
+                    <p className="text-white/80 text-xs mt-0.5">Barangay: {user.barangay || 'Community'}</p>
                   </div>
-
-                  <div>
-                    <FormLabel label="Activity Type" />
-                    <select
-                      value={form.schedule_type}
-                      onChange={(e) => setForm({ ...form, schedule_type: e.target.value })}
-                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
-                    >
-                      <option value="feeding">Feeding Program</option>
-                      <option value="weighing">Operation Timbang / Weighing</option>
-                      <option value="home_visit">Home Visit</option>
-                      <option value="immunization">Immunization / Checkup</option>
-                      <option value="checkup">General Health Consultation</option>
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <FormLabel label="Date" required />
-                      <input
-                        name="schedule_date"
-                        type="date"
-                        value={form.schedule_date}
-                        onChange={(e) => {
-                          setForm({ ...form, schedule_date: e.target.value });
-                          if (schedErrors.schedule_date) setSchedErrors((prev) => ({ ...prev, schedule_date: '' }));
-                        }}
-                        className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
-                          schedErrors.schedule_date ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
-                        }`}
-                      />
-                      {schedErrors.schedule_date && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.schedule_date}</p>}
-                    </div>
-                    <div>
-                      <FormLabel label="Time" />
-                      <input
-                        name="schedule_time"
-                        type="time"
-                        value={form.schedule_time}
-                        onChange={(e) => setForm({ ...form, schedule_time: e.target.value })}
-                        className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <FormLabel label="Venue / Location" required />
-                    <input
-                      name="venue"
-                      type="text"
-                      placeholder="e.g. Barangay Health Center Hall"
-                      value={form.venue}
-                      onChange={(e) => {
-                        setForm({ ...form, venue: e.target.value });
-                        if (schedErrors.venue) setSchedErrors((prev) => ({ ...prev, venue: '' }));
-                      }}
-                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
-                        schedErrors.venue ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
-                      }`}
-                    />
-                    {schedErrors.venue && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.venue}</p>}
-                  </div>
-                </div>
-              </div>
-
-              {/* Modal footer */}
-              <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/70 flex justify-end gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200/60 border border-gray-200 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-5 py-2.5 rounded-xl text-sm font-bold bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white hover:from-[#154a1a] hover:to-[#256427] transition shadow-xs disabled:opacity-60 cursor-pointer"
-                >
-                  {saving ? 'Saving…' : 'Save Activity'}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </motion.div>,
-        document.body
-      )}
-      </AnimatePresence>
-
-      {/* ── Audit Submission Modal ── */}
-      <AnimatePresence>
-        {auditActivity && createPortal(
-          <motion.div
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
-            onClick={(e) => { if (e.target === e.currentTarget) setAuditActivity(null); }}
-          >
-            <motion.div
-              variants={modalVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
-            >
-              <div className="bg-linear-to-r from-blue-600 to-blue-700 px-6 py-5 flex items-center justify-between text-white shrink-0">
-                <div>
-                  <h2 className="text-base font-bold">Activity Audit Verification</h2>
-                  <p className="text-white/80 text-xs mt-0.5">Submit verification of carried-out activity</p>
-                </div>
-                <button
-                  onClick={() => setAuditActivity(null)}
-                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmitAudit} className="p-6 space-y-4 overflow-y-auto flex-1">
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs space-y-1">
-                  <p className="font-bold text-blue-900">{auditActivity.title}</p>
-                  <p className="text-blue-700">
-                    {auditActivity.schedule_date ? new Date(auditActivity.schedule_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
-                    {auditActivity.venue ? ` · ${auditActivity.venue}` : ''}
-                  </p>
-                </div>
-
-                {auditError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl p-3">
-                    {auditError}
-                  </div>
-                )}
-
-                <div>
-                  <FormLabel label="Audit / Accomplishment Notes" required />
-                  <textarea
-                    rows={4}
-                    value={auditNotes}
-                    onChange={(e) => setAuditNotes(e.target.value)}
-                    placeholder="Describe how the activity was conducted (e.g. Total beneficiaries attended, supplies distributed, issues encountered, completion summary)..."
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600 resize-none"
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    This verifies that you actively performed the scheduled task in your barangay.
-                  </p>
-                </div>
-
-                <div className="border-t border-gray-100 pt-4 flex justify-end gap-3">
                   <button
                     type="button"
-                    onClick={() => setAuditActivity(null)}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 border border-gray-200 transition cursor-pointer"
+                    onClick={() => setShowModal(false)}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={auditSubmitting}
-                    className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-xs disabled:opacity-60 cursor-pointer"
-                  >
-                    {auditSubmitting ? 'Submitting…' : 'Submit Verification'}
+                    <X size={18} />
                   </button>
                 </div>
-              </form>
+
+                {/* Modal form */}
+                <form onSubmit={handleSubmit} noValidate className="flex-1 flex flex-col overflow-hidden">
+                  {/* Modal body */}
+                  <div className="overflow-y-auto flex-1 px-6 py-5">
+                    {formError && (
+                      <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3 font-medium">
+                        {formError}
+                      </div>
+                    )}
+                    <div className="space-y-4">
+                      <FormRequiredNote />
+
+                      <div>
+                        <FormLabel label="Activity Title" required />
+                        <input
+                          name="title"
+                          type="text"
+                          placeholder="e.g. Supplemental Feeding Session"
+                          value={form.title}
+                          onChange={(e) => {
+                            setForm({ ...form, title: e.target.value });
+                            if (schedErrors.title) setSchedErrors((prev) => ({ ...prev, title: '' }));
+                          }}
+                          className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
+                            schedErrors.title ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100'
+                          }`}
+                        />
+                        {schedErrors.title && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.title}</p>}
+                      </div>
+
+                      <div>
+                        <FormLabel label="Activity Type" />
+                        <select
+                          value={form.schedule_type}
+                          onChange={(e) => setForm({ ...form, schedule_type: e.target.value })}
+                          className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                        >
+                          <option value="feeding">Feeding Program</option>
+                          <option value="weighing">Operation Timbang / Weighing</option>
+                          <option value="home_visit">Home Visit</option>
+                          <option value="immunization">Immunization / Checkup</option>
+                          <option value="checkup">General Health Consultation</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <FormLabel label="Date" required />
+                          <input
+                            name="schedule_date"
+                            type="date"
+                            value={form.schedule_date}
+                            onChange={(e) => {
+                              setForm({ ...form, schedule_date: e.target.value });
+                              if (schedErrors.schedule_date) setSchedErrors((prev) => ({ ...prev, schedule_date: '' }));
+                            }}
+                            className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
+                              schedErrors.schedule_date ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
+                            }`}
+                          />
+                          {schedErrors.schedule_date && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.schedule_date}</p>}
+                        </div>
+                        <div>
+                          <FormLabel label="Time" />
+                          <input
+                            name="schedule_time"
+                            type="time"
+                            value={form.schedule_time}
+                            onChange={(e) => setForm({ ...form, schedule_time: e.target.value })}
+                            className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <FormLabel label="Venue / Location" required />
+                        <input
+                          name="venue"
+                          type="text"
+                          placeholder="e.g. Barangay Health Center Hall"
+                          value={form.venue}
+                          onChange={(e) => {
+                            setForm({ ...form, venue: e.target.value });
+                            if (schedErrors.venue) setSchedErrors((prev) => ({ ...prev, venue: '' }));
+                          }}
+                          className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
+                            schedErrors.venue ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
+                          }`}
+                        />
+                        {schedErrors.venue && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.venue}</p>}
+                      </div>
+
+                      <div>
+                        <FormLabel label="Facilitator" />
+                        <input
+                          name="facilitator"
+                          type="text"
+                          placeholder="e.g. BHW Leader, Nurse, or Doctor"
+                          value={form.facilitator}
+                          onChange={(e) => setForm({ ...form, facilitator: e.target.value })}
+                          className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                        />
+                      </div>
+
+                      {/* Multi-participant selection */}
+                      {users.length > 0 && (
+                        <div>
+                          <FormLabel label="Participants / Co-workers (Optional)" />
+                          <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100 bg-gray-50">
+                            {users.map((u) => {
+                              const uid = String(u.user_id);
+                              const checked = (form.participant_ids || []).includes(uid);
+                              return (
+                                <label key={uid} className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-green-50 transition ${checked ? 'bg-emerald-50' : ''}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => handleParticipantToggle(uid)}
+                                    className="accent-emerald-700 w-4 h-4 shrink-0 cursor-pointer"
+                                  />
+                                  <span className="text-xs font-medium text-gray-700 truncate">
+                                    {u.first_name} {u.last_name} <span className="text-gray-400 uppercase">({u.role})</span> — {u.barangay}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          {(form.participant_ids || []).length > 0 && (
+                            <p className="text-xs text-emerald-700 font-semibold mt-1">
+                              {form.participant_ids.length} participant(s) selected
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <div>
+                        <FormLabel label="Notes" />
+                        <textarea
+                          name="notes"
+                          rows={2}
+                          placeholder="Optional notes or instructions…"
+                          value={form.notes}
+                          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                          className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] resize-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Modal footer */}
+                  <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/70 flex justify-end gap-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200/60 border border-gray-200 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="px-5 py-2.5 rounded-xl text-sm font-bold bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white hover:from-[#154a1a] hover:to-[#256427] transition shadow-xs disabled:opacity-60 cursor-pointer"
+                    >
+                      {saving ? 'Saving…' : 'Save Activity'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
             </motion.div>
-          </motion.div>,
-          document.body
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* ── Audit Submission Modal ── */}
+      {createPortal(
+        <AnimatePresence>
+          {auditActivity && (
+            <motion.div
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-hidden"
+              onClick={(e) => { if (e.target === e.currentTarget) setAuditActivity(null); }}
+            >
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              >
+                <div className="bg-linear-to-r from-blue-600 to-blue-700 px-6 py-5 flex items-center justify-between text-white shrink-0">
+                  <div>
+                    <h2 className="text-base font-bold">Activity Audit Verification</h2>
+                    <p className="text-white/80 text-xs mt-0.5">Submit verification of carried-out activity</p>
+                  </div>
+                  <button
+                    onClick={() => setAuditActivity(null)}
+                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmitAudit} className="p-6 space-y-4 overflow-y-auto flex-1">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs space-y-1">
+                    <p className="font-bold text-blue-900">{auditActivity.title}</p>
+                    <p className="text-blue-700">
+                      {auditActivity.schedule_date ? new Date(auditActivity.schedule_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                      {auditActivity.venue ? ` · ${auditActivity.venue}` : ''}
+                    </p>
+                  </div>
+
+                  {auditError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl p-3">
+                      {auditError}
+                    </div>
+                  )}
+
+                  <div>
+                    <FormLabel label="Audit / Accomplishment Notes" required />
+                    <textarea
+                      rows={4}
+                      value={auditNotes}
+                      onChange={(e) => setAuditNotes(e.target.value)}
+                      placeholder="Describe how the activity was conducted (e.g. Total beneficiaries attended, supplies distributed, issues encountered, completion summary)..."
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600 resize-none"
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      This verifies that you actively performed the scheduled task in your barangay.
+                    </p>
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-4 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setAuditActivity(null)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 border border-gray-200 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={auditSubmitting}
+                      className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-xs disabled:opacity-60 cursor-pointer"
+                    >
+                      {auditSubmitting ? 'Submitting…' : 'Submit Verification'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
     </div>
   );

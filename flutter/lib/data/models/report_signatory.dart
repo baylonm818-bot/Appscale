@@ -26,6 +26,32 @@ class ReportSignatory {
     this.barangayLogoPath = '',
   });
 
+  ReportSignatory copyWith({
+    String? barangay,
+    String? bnsName,
+    String? punongBarangayName,
+    String? mnaoAdminAideName,
+    String? dnpcName,
+    String? bnsPosition,
+    String? punongBarangayPosition,
+    String? mnaoAdminAidePosition,
+    String? dnpcPosition,
+    String? barangayLogoPath,
+  }) {
+    return ReportSignatory(
+      barangay: barangay ?? this.barangay,
+      bnsName: bnsName ?? this.bnsName,
+      punongBarangayName: punongBarangayName ?? this.punongBarangayName,
+      mnaoAdminAideName: mnaoAdminAideName ?? this.mnaoAdminAideName,
+      dnpcName: dnpcName ?? this.dnpcName,
+      bnsPosition: bnsPosition ?? this.bnsPosition,
+      punongBarangayPosition: punongBarangayPosition ?? this.punongBarangayPosition,
+      mnaoAdminAidePosition: mnaoAdminAidePosition ?? this.mnaoAdminAidePosition,
+      dnpcPosition: dnpcPosition ?? this.dnpcPosition,
+      barangayLogoPath: barangayLogoPath ?? this.barangayLogoPath,
+    );
+  }
+
   Map<String, dynamic> toMap() => {
     'barangay': barangay,
     'bnsName': bnsName,

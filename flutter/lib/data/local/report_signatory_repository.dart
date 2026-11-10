@@ -46,6 +46,13 @@ class ReportSignatoryRepository {
         authUser?['username']?.toString() ??
         '';
 
+    final adminConfigured = get(barangay);
+    if (adminConfigured != null) {
+      return adminConfigured.copyWith(
+        bnsName: bnsName.isNotEmpty ? bnsName : adminConfigured.bnsName,
+      );
+    }
+
     final remembered = getRemembered(userId);
     if (remembered != null) {
       return ReportSignatory(
