@@ -27,8 +27,16 @@ async function createScheduleStatusNotification(scheduleId, statusOverride) {
 // BHW/BNS: Get schedules for their barangay (from admin + their own)
 exports.getBhwSchedules = async (req, res) => {
   const user = req.user;
+  let barangay = (user?.barangay || req.query?.barangay || '').trim();
 
-  if (!user?.barangay) {
+  if (!barangay && user?.user_id) {
+    try {
+      const [[dbUser]] = await pool.query('SELECT barangay FROM users WHERE user_id = ?', [user.user_id]);
+      if (dbUser?.barangay) barangay = dbUser.barangay.trim();
+    } catch (_) {}
+  }
+
+  if (!barangay) {
     return res.status(400).json({ message: 'Barangay is required.' });
   }
 
@@ -36,16 +44,17 @@ exports.getBhwSchedules = async (req, res) => {
     const [schedules] = await pool.query(
       `SELECT schedule_id, title, schedule_type, schedule_date, schedule_time,
               venue, barangay, assigned_to, target_role, facilitator, notes, status,
-              created_by
+              created_by, audit_completion_notes, audit_completed_at, audit_completed_by
        FROM schedules
        WHERE status != 'archived'
          AND (
-           barangay = ?
-           OR barangay = 'All Barangays'
+           LOWER(TRIM(barangay)) = LOWER(TRIM(?))
+           OR LOWER(TRIM(barangay)) = 'all barangays'
            OR barangay IS NULL
+           OR barangay = ''
          )
        ORDER BY schedule_date ASC`,
-      [user.barangay]
+      [barangay]
     );
 
     const allowedSchedules = schedules.filter((schedule) => canAccessSchedule(user, schedule));
@@ -56,9 +65,9 @@ exports.getBhwSchedules = async (req, res) => {
   }
 };
 
-// BHW/BNS: Create a schedule (visible to same barangay only)
+// BHW/BNS: Create a schedule (visible to same barangay)
 exports.createBhwSchedule = async (req, res) => {
-  const { title, schedule_type, schedule_date, schedule_time, venue, facilitator, notes } = req.body;
+  const { title, schedule_type, schedule_date, schedule_time, venue, facilitator, notes, target_role } = req.body;
   const user = req.user;
 
   // Venue is required
@@ -75,12 +84,21 @@ exports.createBhwSchedule = async (req, res) => {
     });
   }
 
-  const targetBarangay = (user?.barangay || req.body?.barangay || '').trim();
+  let targetBarangay = (user?.barangay || req.body?.barangay || '').trim();
+  if (!targetBarangay && user?.user_id) {
+    try {
+      const [[dbUser]] = await pool.query('SELECT barangay FROM users WHERE user_id = ?', [user.user_id]);
+      if (dbUser?.barangay) targetBarangay = dbUser.barangay.trim();
+    } catch (_) {}
+  }
+
   if (!targetBarangay) {
     return res.status(400).json({ message: 'Your account has no barangay assigned.' });
   }
 
   const cleanTime = schedule_time && String(schedule_time).trim() ? String(schedule_time).trim() : null;
+  // If target_role is explicitly provided, use it; otherwise null so ALL barangay health workers (BHW and BNS) can see it
+  const cleanTargetRole = target_role && String(target_role).trim() ? String(target_role).trim().toLowerCase() : null;
 
   try {
     const [result] = await pool.query(
@@ -94,19 +112,21 @@ exports.createBhwSchedule = async (req, res) => {
         cleanTime,
         String(venue).trim(),
         targetBarangay,
-        user?.role === 'bhw' ? 'bns' : 'bhw',
+        cleanTargetRole,
         facilitator ? String(facilitator).trim() : null,
         notes ? String(notes).trim() : null,
         user?.user_id || null,
       ]
     );
 
+    const scheduleId = result.insertId;
+
     // Record creator into schedule_participants if table exists
     if (user?.user_id) {
       try {
         await pool.query(
           `INSERT IGNORE INTO schedule_participants (schedule_id, user_id, role) VALUES (?, ?, ?)`,
-          [result.insertId, user.user_id, user.role || 'bhw']
+          [scheduleId, user.user_id, user.role || 'bhw']
         );
       } catch (_) {}
     }
@@ -117,18 +137,37 @@ exports.createBhwSchedule = async (req, res) => {
           try {
             await pool.query(
               `INSERT IGNORE INTO schedule_participants (schedule_id, user_id, role) VALUES (?, ?, 'participant')`,
-              [result.insertId, pid]
+              [scheduleId, pid]
             );
           } catch (_) {}
         }
       }
     }
 
-    await logAction(pool, req, 'CREATE_SCHEDULE_BHW', 'schedule', result.insertId, {
+    // Schedule notification for barangay staff
+    try {
+      const formattedDate = new Date(schedule_date).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+      });
+      await pool.query(
+        `INSERT INTO notifications (title, message, type, is_read, related_id, recipient_role, barangay, created_at)
+         VALUES (?, ?, 'schedule', FALSE, ?, 'all', ?, NOW())`,
+        [
+          `New Schedule: ${String(title).trim()}`,
+          `${String(schedule_type).toUpperCase()} on ${formattedDate} at ${String(venue).trim()} (${targetBarangay}).`,
+          scheduleId,
+          targetBarangay,
+        ]
+      );
+    } catch (notifErr) {
+      console.warn('BHW schedule notification warning:', notifErr && notifErr.message);
+    }
+
+    await logAction(pool, req, 'CREATE_SCHEDULE_BHW', 'schedule', scheduleId, {
       title, venue, barangay: targetBarangay,
     });
 
-    return res.status(201).json({ message: 'Schedule created successfully.', schedule_id: result.insertId });
+    return res.status(201).json({ message: 'Schedule created successfully.', schedule_id: scheduleId });
   } catch (error) {
     console.error('Create BHW schedule error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
+import { useAuth } from '../components/AuthContext';
 import { Calendar, Clock, CheckCircle2, Archive, Search, X, ChevronLeft, ChevronRight, Plus, Sparkles, ArrowRight } from 'lucide-react';
 import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -198,8 +199,16 @@ function Schedule() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
-  const [schedErrors, setSchedErrors] = useState({});
-  const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+  const authCtx = useAuth();
+  const authUser = authCtx?.user;
+  const storedUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+  const user = authUser || storedUser;
 
   // Audit state
   const [auditActivity, setAuditActivity] = useState(null);
@@ -557,14 +566,14 @@ function Schedule() {
           />
         </div>
 
-        {/* Add Activity */}
+        {/* Add Schedule */}
         <button
           type="button"
           onClick={() => handleOpenAddForDate(selectedDateKey)}
           className="flex items-center justify-center gap-2 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-sm shrink-0 cursor-pointer"
         >
           <Plus size={18} />
-          <span>Add Activity</span>
+          <span>Add Schedule</span>
         </button>
       </div>
 
@@ -651,7 +660,11 @@ function Schedule() {
               return (
                 <div
                   key={cell.dateKey}
-                  onClick={() => setSelectedDateKey(cell.dateKey)}
+                  onClick={() => {
+                    setSelectedDateKey(cell.dateKey);
+                    handleOpenAddForDate(cell.dateKey);
+                  }}
+                  title={`Click to add schedule for ${cell.dateKey}`}
                   className={`min-h-[105px] sm:min-h-[130px] p-2 sm:p-2.5 transition-all cursor-pointer flex flex-col justify-between group relative ${
                     !cell.isCurrentMonth
                       ? 'bg-gray-50 text-gray-400 opacity-60'
@@ -706,6 +719,10 @@ function Schedule() {
                       return (
                         <div
                           key={act.schedule_id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedDateKey(cell.dateKey);
+                          }}
                           title={`${act.title} (${formatScheduleTime(act.schedule_time) || 'All day'}) - ${isNext ? 'NEXT UPCOMING' : (statusLabels[status] || status)}`}
                           className={`text-[11px] font-bold px-2 py-1 rounded-lg truncate border-2 flex items-center gap-1.5 transition ${
                             isNext
@@ -740,12 +757,14 @@ function Schedule() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
+                      setSelectedDateKey(cell.dateKey);
                       handleOpenAddForDate(cell.dateKey);
                     }}
-                    title={`Add activity on ${cell.dateKey}`}
-                    className="absolute bottom-2 right-2 w-6 h-6 rounded-lg bg-white border border-green-600 text-[#1b5e20] hover:bg-[#1b5e20] hover:text-white shadow-2xs opacity-70 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
+                    title={`Add schedule on ${cell.dateKey}`}
+                    className="absolute bottom-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-emerald-50 hover:bg-[#1b5e20] text-[#1b5e20] hover:text-white border border-emerald-300 hover:border-emerald-700 text-[10px] font-black shadow-2xs transition-all cursor-pointer"
                   >
-                    <Plus size={14} />
+                    <Plus size={12} />
+                    <span className="hidden sm:inline">Add</span>
                   </button>
                 </div>
               );
@@ -819,7 +838,8 @@ function Schedule() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+              style={{ zIndex: 9999 }}
               onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
             >
               <motion.div
@@ -1027,7 +1047,8 @@ function Schedule() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+              style={{ zIndex: 9999 }}
               onClick={(e) => { if (e.target === e.currentTarget) setAuditActivity(null); }}
             >
               <motion.div
