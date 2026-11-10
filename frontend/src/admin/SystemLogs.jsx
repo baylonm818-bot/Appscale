@@ -49,6 +49,7 @@ export default function SystemLogs() {
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const params = new URLSearchParams({ page, limit: 50 });
       if (roleFilter) params.append('role', roleFilter);

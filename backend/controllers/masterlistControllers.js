@@ -52,10 +52,16 @@ exports.getChildren = async (req, res) => {
     const whereClause = role === 'admin' ? '1=1' : 'LOWER(TRIM(c.barangay)) = LOWER(TRIM(?))';
     const params = role === 'admin' ? [] : [barangay];
 
+    const [[{ hasDisability }]] = await pool.query(
+      `SELECT COUNT(*) AS hasDisability FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'children' AND COLUMN_NAME = 'disability'`
+    );
+    const disabilityCol = Number(hasDisability) > 0 ? 'c.disability' : 'NULL AS disability';
+
     const [children] = await pool.query(
       `SELECT
          c.child_id, c.first_name, c.middle_initial, c.last_name, c.sex, c.age_in_months,
-         c.birth_date, c.guardian_name, c.guardian_contact, c.disability, c.barangay, c.status,
+         c.birth_date, c.guardian_name, c.guardian_contact, ${disabilityCol}, c.barangay, c.status,
          CASE
            WHEN c.age_in_months <= 11 THEN '0-11'
            WHEN c.age_in_months <= 23 THEN '12-23'

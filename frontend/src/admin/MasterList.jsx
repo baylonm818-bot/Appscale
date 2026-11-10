@@ -250,14 +250,27 @@ function Masterlist() {
     (async () => {
       try {
         const [statsRes, childrenRes, mothersRes] = await Promise.all([
-          axiosClient.get('/masterlist/stats'),
-          axiosClient.get('/masterlist/children'),
-          axiosClient.get('/masterlist/mothers'),
+          axiosClient.get('/masterlist/stats').catch((e) => {
+            console.warn('Masterlist stats error:', e);
+            return { data: {} };
+          }),
+          axiosClient.get('/masterlist/children').catch((e) => {
+            console.warn('Masterlist children error:', e);
+            return { data: [] };
+          }),
+          axiosClient.get('/masterlist/mothers').catch((e) => {
+            console.warn('Masterlist mothers error:', e);
+            return { data: [] };
+          }),
         ]);
-        setStats(statsRes.data || {});
-        setChildren(childrenRes.data || []);
-        setMothers(mothersRes.data || []);
-      } catch {
+        setStats(statsRes?.data || {});
+        setChildren(childrenRes?.data || []);
+        setMothers(mothersRes?.data || []);
+        if (!childrenRes?.data && !mothersRes?.data) {
+          setError('Failed to load masterlist data.');
+        }
+      } catch (err) {
+        console.error('Masterlist load error:', err);
         setError('Failed to load masterlist data.');
       } finally {
         setLoading(false);

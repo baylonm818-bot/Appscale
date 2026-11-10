@@ -166,6 +166,13 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 (async () => {
     try {
+        const { ensureAppSchema } = require('./utils/ensureSchema');
+        await ensureAppSchema(require('./config/db'));
+    } catch (schemaErr) {
+        console.warn('App schema initialization warning:', schemaErr && schemaErr.message);
+    }
+
+    try {
         await ensureMedicalRecordTables(require('./config/db'));
         console.log('Medical record schema checks completed successfully.');
     } catch (error) {

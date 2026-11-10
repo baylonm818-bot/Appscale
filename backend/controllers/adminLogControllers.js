@@ -42,7 +42,16 @@ exports.getSystemLogs = async (req, res) => {
       params.push(`${to} 23:59:59`);
     }
 
-    const whereSQL = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const [[{ tblCnt }]] = await pool.query(
+      `SELECT COUNT(*) AS tblCnt FROM INFORMATION_SCHEMA.TABLES
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_logs'`
+    );
+    if (Number(tblCnt) === 0) {
+      return res.status(200).json({
+        logs: [],
+        pagination: { total: 0, page, limit, totalPages: 0 },
+      });
+    }
 
     const [[{ total }]] = await pool.query(
       `SELECT COUNT(*) AS total FROM system_logs ${whereSQL}`,

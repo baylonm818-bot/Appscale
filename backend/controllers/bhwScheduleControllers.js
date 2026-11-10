@@ -61,12 +61,12 @@ exports.createBhwSchedule = async (req, res) => {
   const { title, schedule_type, schedule_date, schedule_time, venue, facilitator, notes } = req.body;
   const user = req.user;
 
-  // Step 6: venue is required
+  // Venue is required
   const missing = [];
-  if (!title || !title.trim())   missing.push('title');
-  if (!schedule_type)            missing.push('schedule_type');
-  if (!schedule_date)            missing.push('schedule_date');
-  if (!venue || !venue.trim())   missing.push('venue');
+  if (!title || !String(title).trim())   missing.push('title');
+  if (!schedule_type)                    missing.push('schedule_type');
+  if (!schedule_date)                    missing.push('schedule_date');
+  if (!venue || !String(venue).trim())   missing.push('venue');
 
   if (missing.length > 0) {
     return res.status(400).json({
@@ -75,32 +75,46 @@ exports.createBhwSchedule = async (req, res) => {
     });
   }
 
-  if (!user?.barangay) {
+  const targetBarangay = (user?.barangay || req.body?.barangay || '').trim();
+  if (!targetBarangay) {
     return res.status(400).json({ message: 'Your account has no barangay assigned.' });
   }
 
+  const cleanTime = schedule_time && String(schedule_time).trim() ? String(schedule_time).trim() : null;
+
   try {
     const [result] = await pool.query(
-
       `INSERT INTO schedules
        (title, schedule_type, schedule_date, schedule_time, venue, barangay, assigned_to, target_role, facilitator, notes, status, created_by)
        VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 'pending', ?)`,
       [
-        title,
-        schedule_type,
+        String(title).trim(),
+        String(schedule_type).trim(),
         schedule_date,
-        schedule_time || null,
-        venue.trim(),
-        user.barangay,
-        user.role === 'bhw' ? 'bns' : 'bhw',
-        facilitator || null,
-        notes || null,
-        user.user_id,
+        cleanTime,
+        String(venue).trim(),
+        targetBarangay,
+        user?.role === 'bhw' ? 'bns' : 'bhw',
+        facilitator ? String(facilitator).trim() : null,
+        notes ? String(notes).trim() : null,
+        user?.user_id || null,
       ]
     );
+
+    // Record creator into schedule_participants if table exists
+    if (user?.user_id) {
+      try {
+        await pool.query(
+          `INSERT IGNORE INTO schedule_participants (schedule_id, user_id, role) VALUES (?, ?, ?)`,
+          [result.insertId, user.user_id, user.role || 'bhw']
+        );
+      } catch (_) {}
+    }
+
     await logAction(pool, req, 'CREATE_SCHEDULE_BHW', 'schedule', result.insertId, {
-      title, venue, barangay: user.barangay,
+      title, venue, barangay: targetBarangay,
     });
+
     return res.status(201).json({ message: 'Schedule created successfully.', schedule_id: result.insertId });
   } catch (error) {
     console.error('Create BHW schedule error:', error);

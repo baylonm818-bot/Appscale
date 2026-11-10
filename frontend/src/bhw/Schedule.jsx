@@ -177,7 +177,7 @@ function ActivityRow({ activity, isNext, onComplete, onArchive, onAudit }) {
   );
 }
 
-const emptyForm = { title: '', schedule_type: 'weighing', schedule_date: '', schedule_time: '', venue: '', facilitator: '', notes: '' };
+const emptyForm = { title: '', schedule_type: 'feeding', schedule_date: '', schedule_time: '', venue: '', facilitator: '', notes: '' };
 
 function Schedule() {
   const [activities, setActivities] = useState([]);
@@ -288,8 +288,13 @@ function Schedule() {
     setSchedErrors({});
     setSaving(true);
     try {
-      await axiosClient.post('/bhw/schedule', form);
-      setShowModal(false); setForm(emptyForm); fetchActivities();
+      await axiosClient.post('/bhw/schedule', {
+        ...form,
+        barangay: user.barangay,
+      });
+      setShowModal(false);
+      setForm(emptyForm);
+      fetchActivities();
     } catch (err) {
       setFormError(err?.response?.data?.message || 'Failed to save schedule.');
     } finally { setSaving(false); }
@@ -801,115 +806,118 @@ function Schedule() {
               </button>
             </div>
 
-            {/* Modal body */}
-            <div className="overflow-y-auto flex-1 px-6 py-5">
-              {formError && (
-                <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3 font-medium">
-                  {formError}
-                </div>
-              )}
-              <form id="bhwSchedForm" onSubmit={handleSubmit} noValidate className="space-y-4">
-                <FormRequiredNote />
+            {/* Modal form */}
+            <form onSubmit={handleSubmit} noValidate className="flex-1 flex flex-col overflow-hidden">
+              {/* Modal body */}
+              <div className="overflow-y-auto flex-1 px-6 py-5">
+                {formError && (
+                  <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3 font-medium">
+                    {formError}
+                  </div>
+                )}
+                <div className="space-y-4">
+                  <FormRequiredNote />
 
-                <div>
-                  <FormLabel label="Activity Title" required />
-                  <input
-                    name="title"
-                    type="text"
-                    placeholder="e.g. Supplemental Feeding Session"
-                    value={form.title}
-                    onChange={(e) => {
-                      setForm({ ...form, title: e.target.value });
-                      if (schedErrors.title) setSchedErrors((prev) => ({ ...prev, title: '' }));
-                    }}
-                    className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
-                      schedErrors.title ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100'
-                    }`}
-                  />
-                  {schedErrors.title && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.title}</p>}
-                </div>
-
-                <div>
-                  <FormLabel label="Activity Type" />
-                  <select
-                    value={form.schedule_type}
-                    onChange={(e) => setForm({ ...form, schedule_type: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
-                  >
-                    <option value="feeding">Feeding Program</option>
-                    <option value="home_visit">Home Visit</option>
-                    <option value="immunization">Immunization / Checkup</option>
-                    <option value="checkup">General Health Consultation</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <FormLabel label="Date" required />
+                    <FormLabel label="Activity Title" required />
                     <input
-                      name="schedule_date"
-                      type="date"
-                      value={form.schedule_date}
+                      name="title"
+                      type="text"
+                      placeholder="e.g. Supplemental Feeding Session"
+                      value={form.title}
                       onChange={(e) => {
-                        setForm({ ...form, schedule_date: e.target.value });
-                        if (schedErrors.schedule_date) setSchedErrors((prev) => ({ ...prev, schedule_date: '' }));
+                        setForm({ ...form, title: e.target.value });
+                        if (schedErrors.title) setSchedErrors((prev) => ({ ...prev, title: '' }));
                       }}
                       className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
-                        schedErrors.schedule_date ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
+                        schedErrors.title ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100'
                       }`}
                     />
-                    {schedErrors.schedule_date && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.schedule_date}</p>}
+                    {schedErrors.title && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.title}</p>}
                   </div>
+
                   <div>
-                    <FormLabel label="Time" />
-                    <input
-                      name="schedule_time"
-                      type="time"
-                      value={form.schedule_time}
-                      onChange={(e) => setForm({ ...form, schedule_time: e.target.value })}
+                    <FormLabel label="Activity Type" />
+                    <select
+                      value={form.schedule_type}
+                      onChange={(e) => setForm({ ...form, schedule_type: e.target.value })}
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                    >
+                      <option value="feeding">Feeding Program</option>
+                      <option value="weighing">Operation Timbang / Weighing</option>
+                      <option value="home_visit">Home Visit</option>
+                      <option value="immunization">Immunization / Checkup</option>
+                      <option value="checkup">General Health Consultation</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <FormLabel label="Date" required />
+                      <input
+                        name="schedule_date"
+                        type="date"
+                        value={form.schedule_date}
+                        onChange={(e) => {
+                          setForm({ ...form, schedule_date: e.target.value });
+                          if (schedErrors.schedule_date) setSchedErrors((prev) => ({ ...prev, schedule_date: '' }));
+                        }}
+                        className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
+                          schedErrors.schedule_date ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
+                        }`}
+                      />
+                      {schedErrors.schedule_date && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.schedule_date}</p>}
+                    </div>
+                    <div>
+                      <FormLabel label="Time" />
+                      <input
+                        name="schedule_time"
+                        type="time"
+                        value={form.schedule_time}
+                        onChange={(e) => setForm({ ...form, schedule_time: e.target.value })}
+                        className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <FormLabel label="Venue / Location" required />
+                    <input
+                      name="venue"
+                      type="text"
+                      placeholder="e.g. Barangay Health Center Hall"
+                      value={form.venue}
+                      onChange={(e) => {
+                        setForm({ ...form, venue: e.target.value });
+                        if (schedErrors.venue) setSchedErrors((prev) => ({ ...prev, venue: '' }));
+                      }}
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
+                        schedErrors.venue ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
+                      }`}
                     />
+                    {schedErrors.venue && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.venue}</p>}
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <FormLabel label="Venue / Location" required />
-                  <input
-                    name="venue"
-                    type="text"
-                    placeholder="e.g. Barangay Health Center Hall"
-                    value={form.venue}
-                    onChange={(e) => {
-                      setForm({ ...form, venue: e.target.value });
-                      if (schedErrors.venue) setSchedErrors((prev) => ({ ...prev, venue: '' }));
-                    }}
-                    className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
-                      schedErrors.venue ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
-                    }`}
-                  />
-                  {schedErrors.venue && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.venue}</p>}
-                </div>
-              </form>
-            </div>
-
-            {/* Modal footer */}
-            <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/70 flex justify-end gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200/60 border border-gray-200 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                form="bhwSchedForm"
-                disabled={saving}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white hover:from-[#154a1a] hover:to-[#256427] transition shadow-xs disabled:opacity-60"
-              >
-                {saving ? 'Saving…' : 'Save Activity'}
-              </button>
-            </div>
+              {/* Modal footer */}
+              <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/70 flex justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200/60 border border-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-5 py-2.5 rounded-xl text-sm font-bold bg-linear-to-r from-[#1b5e20] to-[#2e7d32] text-white hover:from-[#154a1a] hover:to-[#256427] transition shadow-xs disabled:opacity-60 cursor-pointer"
+                >
+                  {saving ? 'Saving…' : 'Save Activity'}
+                </button>
+              </div>
+            </form>
           </motion.div>
         </motion.div>,
         document.body
