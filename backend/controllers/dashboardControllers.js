@@ -319,30 +319,41 @@ exports.getAdminNeedAttention = async (req, res) => {
 //                                   normal nutritional status
 exports.getFeedingStats = async (req, res) => {
   try {
-    // 1. Total enrolled (active feeding program)
-    const [[{ enrolled }]] = await pool.query(`
-      SELECT COUNT(DISTINCT child_id) AS enrolled
-      FROM feeding_programs
-      WHERE status = 'active'
-    `);
+    // Check if feeding_programs table exists
+    const [[{ tblCnt }]] = await pool.query(
+      `SELECT COUNT(*) AS tblCnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'feeding_programs'`
+    );
 
-    // 2. Reached normal within the feeding schedule window
-    // = enrolled children whose latest nutrition record (during the program) = 'normal'
-    const [[{ reached_normal_in_feeding }]] = await pool.query(`
-      SELECT COUNT(DISTINCT fp.child_id) AS reached_normal_in_feeding
-      FROM feeding_programs fp
-      JOIN (
-        SELECT nr.child_id, nr.overall_status
-        FROM nutrition_records nr
-        INNER JOIN (
-          SELECT child_id, MAX(record_date) AS latest_date
-          FROM nutrition_records
-          GROUP BY child_id
-        ) ld ON nr.child_id = ld.child_id AND nr.record_date = ld.latest_date
-      ) latest_nr ON latest_nr.child_id = fp.child_id
-      WHERE fp.status = 'active'
-        AND LOWER(TRIM(latest_nr.overall_status)) = 'normal'
-    `);
+    let enrolled = 0;
+    let reached_normal_in_feeding = 0;
+
+    if (Number(tblCnt) > 0) {
+      // 1. Total enrolled (active feeding program)
+      const [[resEnrolled]] = await pool.query(`
+        SELECT COUNT(DISTINCT child_id) AS enrolled
+        FROM feeding_programs
+        WHERE status = 'active'
+      `);
+      enrolled = resEnrolled?.enrolled || 0;
+
+      // 2. Reached normal within the feeding schedule window
+      const [[resReached]] = await pool.query(`
+        SELECT COUNT(DISTINCT fp.child_id) AS reached_normal_in_feeding
+        FROM feeding_programs fp
+        JOIN (
+          SELECT nr.child_id, nr.overall_status
+          FROM nutrition_records nr
+          INNER JOIN (
+            SELECT child_id, MAX(record_date) AS latest_date
+            FROM nutrition_records
+            GROUP BY child_id
+          ) ld ON nr.child_id = ld.child_id AND nr.record_date = ld.latest_date
+        ) latest_nr ON latest_nr.child_id = fp.child_id
+        WHERE fp.status = 'active'
+          AND LOWER(TRIM(latest_nr.overall_status)) = 'normal'
+      `);
+      reached_normal_in_feeding = resReached?.reached_normal_in_feeding || 0;
+    }
 
     // 3. Per-barangay: children with normal status (regardless of feeding enrollment)
     const [barangay_normal_counts] = await pool.query(`

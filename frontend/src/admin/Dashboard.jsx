@@ -140,39 +140,63 @@ function Dashboard() {
   const user = JSON.parse(rawUser);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchStats = async () => {
       try {
         const [statsRes, feedingRes] = await Promise.all([
-          axiosClient.get(`/dashboard/admin/stats?range=${timeRange}`),
-          axiosClient.get('/dashboard/admin/feeding-stats'),
+          axiosClient.get(`/dashboard/admin/stats?range=${timeRange}`).catch((e) => {
+            console.warn('Admin stats error:', e);
+            return null;
+          }),
+          axiosClient.get('/dashboard/admin/feeding-stats').catch((e) => {
+            console.warn('Feeding stats error:', e);
+            return null;
+          }),
         ]);
-        const data = statsRes.data || {};
-        setStats({
-          totalUsers: data.totalUsers || 0,
-          totalChildren: data.totalChildren || 0,
-          totalMothers: data.totalMothers || 0,
-          totalBarangays: data.totalBarangays || 0,
-          nineCategoryTrend: data.nineCategoryTrend || {},
-          malnutritionByBarangay: data.malnutritionByBarangay || [],
-          malnutritionOverviewFallback: !!data.malnutritionOverviewFallback,
-          upcomingActivities: data.upcomingActivities || [],
-        });
-        setFeedingStats(feedingRes.data || null);
+
+        if (!isMounted) return;
+
+        if (statsRes && statsRes.data) {
+          const data = statsRes.data || {};
+          setStats({
+            totalUsers: data.totalUsers || 0,
+            totalChildren: data.totalChildren || 0,
+            totalMothers: data.totalMothers || 0,
+            totalBarangays: data.totalBarangays || 0,
+            nineCategoryTrend: data.nineCategoryTrend || {},
+            malnutritionByBarangay: data.malnutritionByBarangay || [],
+            malnutritionOverviewFallback: !!data.malnutritionOverviewFallback,
+            upcomingActivities: data.upcomingActivities || [],
+          });
+        } else {
+          setError('Failed to load dashboard statistics.');
+        }
+
+        if (feedingRes && feedingRes.data) {
+          setFeedingStats(feedingRes.data);
+        }
       } catch (err) {
         console.error('Dashboard fetch error:', err);
-        setError('Failed to load dashboard statistics.');
+        if (isMounted) setError('Failed to load dashboard statistics.');
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     fetchStats();
+    return () => { isMounted = false; };
   }, [timeRange]);
 
   // Step 10: fetch per-year nutrition view when selectedYear changes
   useEffect(() => {
+    let isMounted = true;
     axiosClient.get(`/dashboard/admin/nutrition-by-year?year=${selectedYear}`)
-      .then((res) => setYearStats(res.data || null))
-      .catch(() => setYearStats(null));
+      .then((res) => {
+        if (isMounted) setYearStats(res.data || null);
+      })
+      .catch(() => {
+        if (isMounted) setYearStats(null);
+      });
+    return () => { isMounted = false; };
   }, [selectedYear]);
 
 
@@ -556,7 +580,7 @@ function Dashboard() {
             ))}
           </select>
         </div>
-        {yearStats ? (
+        {yearStats && Array.isArray(yearStats.months) ? (
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={yearStats.months.map((m) => ({
               name: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m.month - 1],

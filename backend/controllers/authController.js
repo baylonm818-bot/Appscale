@@ -36,6 +36,9 @@ function getTransporter() {
       user: SMTP_USER,
       pass: SMTP_PASS,
     },
+    connectionTimeout: 8000, // 8s connection timeout so it doesn't hang forever
+    greetingTimeout: 8000,
+    socketTimeout: 10000,
   });
 }
 
@@ -82,7 +85,6 @@ exports.checkAccount = async (req, res) => {
     return res.status(200).json({
       exists: true,
       canReset,
-      role: user.role === 'admin' ? 'Program Administrator' : user.role === 'bhw' ? 'Barangay Health Worker (BHW)' : user.role === 'bns' ? 'Barangay Nutrition Scholar (BNS)' : user.role,
       message: canReset ? 'Account verified.' : 'Password reset is not authorized for this account.'
     });
   } catch (error) {

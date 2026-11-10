@@ -487,7 +487,7 @@ function BHWLayout() {
           </div>
         </div>
 
-        <main className="app-main flex-1 overflow-y-auto p-6" style={{ background: 'var(--canvas)' }}>
+        <main className="app-main flex-1 overflow-y-auto p-3.5 sm:p-5" style={{ background: 'var(--canvas)' }}>
           <RouteErrorBoundary>
             <AnimatePresence mode="wait">
               <motion.div

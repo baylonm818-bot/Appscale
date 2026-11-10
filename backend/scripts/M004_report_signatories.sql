@@ -7,6 +7,7 @@ USE `appscale_db`;
 
 CREATE TABLE IF NOT EXISTS `report_signatories` (
   `id`          INT AUTO_INCREMENT PRIMARY KEY,
+  `barangay`    VARCHAR(100) NOT NULL DEFAULT 'All Barangays',
   `position`    VARCHAR(150) NOT NULL COMMENT 'e.g., Municipal Nutrition Action Officer',
   `name`        VARCHAR(150) NOT NULL,
   `sort_order`  INT          NOT NULL DEFAULT 0,
@@ -16,8 +17,8 @@ CREATE TABLE IF NOT EXISTS `report_signatories` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Seed default signatories so the UI is not empty on first load
-INSERT IGNORE INTO `report_signatories` (`position`, `name`, `sort_order`)
+INSERT IGNORE INTO `report_signatories` (`barangay`, `position`, `name`, `sort_order`)
 VALUES
-  ('Municipal Nutrition Action Officer', '', 1),
-  ('Municipal Health Officer',           '', 2),
-  ('Barangay Nutrition Scholar',         '', 3);
+  ('All Barangays', 'Municipal Nutrition Action Officer', '', 1),
+  ('All Barangays', 'Municipal Health Officer',           '', 2),
+  ('All Barangays', 'Barangay Nutrition Scholar',         '', 3);

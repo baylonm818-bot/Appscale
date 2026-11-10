@@ -6,21 +6,44 @@ import { useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 import { motion } from 'framer-motion';
 import { ShimmerSkeleton } from '../components/ui/motion';
-import { Plus, Trash2, Save, PenLine } from 'lucide-react';
+import { Plus, Trash2, Save, PenLine, MapPin } from 'lucide-react';
+
+const GASAN_BARANGAYS = [
+  'All Barangays (Default / Municipal)',
+  'Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang',
+  'Banot', 'Banuyo', 'Bognuyan', 'Cabugao', 'Dawis', 'Dili', 'Libtangin',
+  'Mahunig', 'Mangiliol', 'Masiga', 'Mat. Gasan', 'Pangi', 'Pinggan',
+  'Tabionan', 'Tiguion', 'Brgy. Uno', 'Brgy. Dos', 'Brgy. Tres', 'Tapuyan',
+];
 
 export default function Signatories() {
+  const [selectedBarangay, setSelectedBarangay] = useState('All Barangays (Default / Municipal)');
   const [signatories, setSignatories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const targetBarangay = selectedBarangay.startsWith('All Barangays') ? 'All Barangays' : selectedBarangay;
+
   useEffect(() => {
-    axiosClient.get('/reports/signatories')
-      .then((res) => setSignatories(res.data || []))
-      .catch(() => setError('Failed to load signatories.'))
-      .finally(() => setLoading(false));
-  }, []);
+    let isMounted = true;
+    setLoading(true);
+    setError('');
+
+    axiosClient.get('/reports/signatories', { params: { barangay: targetBarangay } })
+      .then((res) => {
+        if (isMounted) setSignatories(res.data || []);
+      })
+      .catch(() => {
+        if (isMounted) setError('Failed to load signatories.');
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [targetBarangay]);
 
   const updateField = (index, field, value) => {
     setSignatories((prev) =>
@@ -52,14 +75,17 @@ export default function Signatories() {
 
     setSaving(true);
     try {
-      const payload = signatories.map((s, i) => ({
-        position: s.position.trim(),
-        name: (s.name || '').trim(),
-        sort_order: i + 1,
-      }));
+      const payload = {
+        barangay: targetBarangay,
+        signatories: signatories.map((s, i) => ({
+          position: s.position.trim(),
+          name: (s.name || '').trim(),
+          sort_order: i + 1,
+        })),
+      };
       const { data } = await axiosClient.put('/reports/signatories', payload);
       setSignatories(data.signatories || signatories);
-      setSuccess('Signatories updated successfully.');
+      setSuccess(`Signatories for ${targetBarangay} saved successfully.`);
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to save signatories.');
@@ -69,16 +95,43 @@ export default function Signatories() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="space-y-6 max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700">
-          <PenLine size={18} />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700">
+            <PenLine size={18} />
+          </div>
+          <div>
+            <h2 className="text-lg font-black text-gray-900">Report Signatories</h2>
+            <p className="text-xs text-gray-500">Configure report signatories per barangay or municipality-wide.</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-black text-gray-900">Report Signatories</h2>
-          <p className="text-xs text-gray-500">Set who signs printed reports. Only admins can change these.</p>
+
+        {/* Barangay Selector */}
+        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-200 shadow-2xs">
+          <MapPin size={15} className="text-emerald-700 shrink-0" />
+          <div className="text-xs font-semibold text-gray-500 shrink-0">Barangay:</div>
+          <select
+            value={selectedBarangay}
+            onChange={(e) => setSelectedBarangay(e.target.value)}
+            className="text-xs font-bold text-gray-800 bg-transparent border-none outline-none cursor-pointer pr-2"
+          >
+            {GASAN_BARANGAYS.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
         </div>
+      </div>
+
+      {/* Info Banner */}
+      <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 flex items-center justify-between text-xs">
+        <span className="text-emerald-900 font-medium">
+          Currently editing signatories for: <strong className="font-bold text-emerald-950">{targetBarangay}</strong>
+        </span>
+        <span className="text-[11px] text-emerald-700/80">Admin access only</span>
       </div>
 
       {/* Feedback */}
@@ -105,7 +158,7 @@ export default function Signatories() {
             <div className="divide-y divide-gray-100">
               {signatories.length === 0 ? (
                 <div className="px-6 py-10 text-center text-gray-400 text-sm">
-                  No signatories yet. Click &quot;Add Signatory&quot; below.
+                  No signatories configured yet for {targetBarangay}. Click &quot;Add Signatory&quot; below.
                 </div>
               ) : signatories.map((sig, i) => (
                 <div key={i} className="px-5 py-4 flex items-start gap-4">
@@ -121,7 +174,7 @@ export default function Signatories() {
                         type="text"
                         value={sig.position || ''}
                         onChange={(e) => updateField(i, 'position', e.target.value)}
-                        placeholder="e.g., Municipal Nutrition Action Officer"
+                        placeholder="e.g., Barangay Nutrition Scholar"
                         className="w-full px-3 py-2 text-xs font-medium text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                       />
                     </div>
@@ -147,7 +200,7 @@ export default function Signatories() {
               ))}
             </div>
 
-            {/* Add row */}
+            {/* Add row and save actions */}
             <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
               <button
                 onClick={addRow}
@@ -169,7 +222,7 @@ export default function Signatories() {
       </div>
 
       <p className="text-[11px] text-gray-400 text-center">
-        These names and positions will appear on all printed reports generated by the system.
+        These signatories will appear on printed nutritional reports and certificates for {targetBarangay}.
       </p>
     </div>
   );

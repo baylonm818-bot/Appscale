@@ -56,23 +56,25 @@ function StatCard({ icon: Icon, label, value, sublabel, to, accent }) {
   const content = (
     <motion.div
       variants={itemVariants}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 group h-full"
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+      className="bg-white rounded-xl sm:rounded-2xl p-3.5 sm:p-4 shadow-xs border border-gray-100 hover:shadow-md transition-shadow duration-200 group h-full flex flex-col justify-between"
     >
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-gray-500">{label}</p>
-        <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-xs ${
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs sm:text-sm font-medium text-gray-500 leading-tight">{label}</p>
+        <div className={`shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center transition-all shadow-2xs ${
           accent === 'red' ? 'bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white' :
           accent === 'amber' ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white' :
           'bg-green-50 text-[#2e7d32] group-hover:bg-linear-to-r group-hover:from-[#1b5e20] group-hover:to-[#2e7d32] group-hover:text-white'
         }`}>
-          <Icon size={18} />
+          <Icon size={16} />
         </div>
       </div>
-      <p className="text-3xl font-black text-gray-800 mt-2 tracking-tight">
-        <CountUp value={numVal} />
-      </p>
-      <p className="text-xs font-medium text-gray-400 mt-1">{sublabel}</p>
+      <div>
+        <p className="text-2xl sm:text-3xl font-black text-gray-800 mt-1.5 tracking-tight">
+          <CountUp value={numVal} />
+        </p>
+        <p className="text-[11px] font-medium text-gray-400 mt-0.5 line-clamp-1">{sublabel}</p>
+      </div>
     </motion.div>
   );
 
@@ -180,39 +182,39 @@ function Dashboard() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="space-y-6"
+      className="space-y-4 sm:space-y-5"
     >
 
       {/* ── Welcome Banner ── */}
       <motion.div
         variants={itemVariants}
-        className="relative rounded-2xl overflow-hidden shadow-sm bg-linear-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-600 p-6 sm:p-8 text-white"
+        className="relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xs bg-linear-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-600 p-4 sm:p-5 sm:py-6 text-white"
       >
         <div className="relative z-10 max-w-2xl">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-emerald-100 backdrop-blur-xs mb-3 animate-fade-up-1">
-            <CheckCircle2 size={13} /> {user.role ? user.role.toUpperCase() : 'BHW'} Monitoring Portal
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-white/15 text-emerald-100 backdrop-blur-xs mb-2">
+            <CheckCircle2 size={12} /> {user.role ? user.role.toUpperCase() : 'BHW'} Monitoring Portal
           </span>
           <motion.h1
             variants={wordContainerVariants}
             initial="hidden"
             animate="visible"
-            className="text-2xl sm:text-3xl font-black tracking-tight leading-tight"
+            className="text-xl sm:text-2xl font-black tracking-tight leading-tight"
           >
-            <motion.span variants={wordPopVariants} className="inline-block mr-2 text-white">
+            <motion.span variants={wordPopVariants} className="inline-block mr-1.5 text-white">
               Hello,
             </motion.span>
             <motion.span variants={wordPopVariants} className="inline-block text-white">
               {user.first_name || user.username || 'Health Worker'}!
             </motion.span>
           </motion.h1>
-          <p className="text-emerald-100/80 text-sm mt-1.5 leading-relaxed animate-fade-up-2">
+          <p className="text-emerald-100/85 text-xs sm:text-sm mt-1 leading-relaxed">
             Barangay {user.barangay || 'Assignment'} · Child health, growth records, and malnutrition intervention monitoring.
           </p>
         </div>
       </motion.div>
 
       {/* ── 5 Stat Cards ── */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
         <StatCard
           icon={Users}
           label="Total Children"
@@ -254,10 +256,10 @@ function Dashboard() {
       </motion.div>
 
       {/* ── Nutrition Status + Upcoming Activities ── */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
 
         {/* Nutrition Status Grid */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-2 flex flex-col justify-between">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-xs border border-gray-100 lg:col-span-2 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-bold text-gray-900 text-base">Children Nutrition Status</h3>
@@ -307,7 +309,7 @@ function Dashboard() {
         </div>
 
         {/* Upcoming Activities */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-xs border border-gray-100 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-gray-900 text-base">Upcoming Schedule</h3>
@@ -362,7 +364,7 @@ function Dashboard() {
       </motion.div>
 
       {/* ── Monthly Monitoring Trend Line Chart ── */}
-      <motion.div variants={itemVariants} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <motion.div variants={itemVariants} className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-xs border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-bold text-gray-900 text-base">Monthly Health Visits & Monitoring</h3>
