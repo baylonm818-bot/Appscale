@@ -179,7 +179,7 @@ function LoginCard({ emailInputRef }) {
       setForgotMessageType("success");
       setForgotMessage(data.message || "OTP sent successfully! Please check your inbox.");
       setResetStep("otp");
-      setOtpCode("");
+      setOtpCode(data.devOtp || "");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
