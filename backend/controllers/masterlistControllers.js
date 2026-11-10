@@ -354,6 +354,14 @@ exports.transferBeneficiary = async (req, res) => {
 
     await conn.commit();
 
+    await logAction(pool, req, 'TRANSFER_BENEFICIARY', entityType, primaryDbId, {
+      name: beneficiaryFullName,
+      from_barangay: fromBarangay,
+      to_barangay: targetBarangay,
+      summary: `Transferred ${beneficiaryFullName} from ${fromBarangay} to ${targetBarangay}`,
+      reason: reason || 'Beneficiary transferred to new barangay',
+    });
+
     return res.status(200).json({
       success: true,
       message: `Beneficiary successfully transferred to Barangay ${targetBarangay}.`,
@@ -554,9 +562,54 @@ exports.updateChild = async (req, res) => {
       ]
     );
 
+    // Calculate exact differences for audit logging
+    const beforeDiff = {};
+    const afterDiff = {};
+
+    if (first_name && first_name.trim() !== existing.first_name) {
+      beforeDiff.first_name = existing.first_name;
+      afterDiff.first_name = first_name.trim();
+    }
+    if (last_name && last_name.trim() !== existing.last_name) {
+      beforeDiff.last_name = existing.last_name;
+      afterDiff.last_name = last_name.trim();
+    }
+    if (guardian_contact && guardian_contact.trim() !== existing.guardian_contact) {
+      beforeDiff.guardian_contact = existing.guardian_contact;
+      afterDiff.guardian_contact = guardian_contact.trim();
+    }
+    if (disability !== undefined && disability !== existing.disability) {
+      beforeDiff.disability = existing.disability || 'None';
+      afterDiff.disability = disability || 'None';
+    }
+    if (birth_date && birth_date !== existing.birth_date) {
+      beforeDiff.birth_date = existing.birth_date;
+      afterDiff.birth_date = birth_date;
+    }
+    if (barangay && barangay.trim() !== existing.barangay) {
+      beforeDiff.barangay = existing.barangay;
+      afterDiff.barangay = barangay.trim();
+    }
+    if (purok !== undefined && purok !== existing.purok) {
+      beforeDiff.purok = existing.purok;
+      afterDiff.purok = purok;
+    }
+    if (guardian_name !== undefined && guardian_name !== existing.guardian_name) {
+      beforeDiff.guardian_name = existing.guardian_name;
+      afterDiff.guardian_name = guardian_name;
+    }
+
+    const changedKeys = Object.keys(afterDiff);
+    const summary = changedKeys.length > 0
+      ? changedKeys.map((k) => `${k.replace(/_/g, ' ')}: "${beforeDiff[k] ?? '—'}" → "${afterDiff[k]}"`).join('; ')
+      : 'Updated child record';
+
     await logAction(pool, req, 'UPDATE_CHILD', 'child', Number(id), {
-      before: { name: `${existing.first_name} ${existing.last_name}` },
-      after:  { guardian_contact, disability },
+      child_name: `${existing.first_name} ${existing.last_name}`.trim(),
+      barangay: existing.barangay,
+      summary,
+      before: beforeDiff,
+      after: afterDiff,
     });
 
     return res.status(200).json({ message: 'Child record updated.' });
