@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import axiosClient from '../api/axiosClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShimmerSkeleton } from '../components/ui/motion';
-import { Search, X, ChevronLeft, ChevronRight, FileText, MapPin, Activity } from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, MapPin, Activity, Eye, Calendar, User, Clock, CheckCircle } from 'lucide-react';
 
 const GASAN_BARANGAYS = [
   'Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang',
@@ -16,18 +16,18 @@ const GASAN_BARANGAYS = [
 ];
 
 const ACTION_COLORS = {
-  CREATE:  'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  RECORD:  'bg-teal-50    text-teal-700    border border-teal-200',
-  UPDATE:  'bg-blue-50    text-blue-700    border border-blue-200',
-  SUBMIT:  'bg-purple-50  text-purple-700  border border-purple-200',
-  MARK:    'bg-green-50   text-green-700   border border-green-200',
-  DELETE:  'bg-red-50     text-red-700     border border-red-200',
-  default: 'bg-gray-100   text-gray-600    border border-gray-200',
+  CREATE:  'bg-emerald-50 text-emerald-800 border border-emerald-200',
+  RECORD:  'bg-teal-50    text-teal-800    border border-teal-200',
+  UPDATE:  'bg-blue-50    text-blue-800    border border-blue-200',
+  SUBMIT:  'bg-purple-50  text-purple-800  border border-purple-200',
+  MARK:    'bg-green-50   text-green-800   border border-green-200',
+  DELETE:  'bg-red-50     text-red-800     border border-red-200',
+  default: 'bg-gray-100   text-gray-700    border border-gray-200',
 };
 
 function actionColor(action) {
   const upper = String(action || '').toUpperCase();
-  if (upper.startsWith('CREATE')) return ACTION_COLORS.CREATE;
+  if (upper.startsWith('CREATE') || upper.startsWith('REGISTER')) return ACTION_COLORS.CREATE;
   if (upper.startsWith('RECORD')) return ACTION_COLORS.RECORD;
   if (upper.startsWith('UPDATE')) return ACTION_COLORS.UPDATE;
   if (upper.startsWith('SUBMIT')) return ACTION_COLORS.SUBMIT;
@@ -36,12 +36,72 @@ function actionColor(action) {
   return ACTION_COLORS.default;
 }
 
-function formatDate(dt) {
-  if (!dt) return '—';
-  return new Date(dt).toLocaleString('en-PH', {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+function formatActionName(action) {
+  if (!action) return '—';
+  const map = {
+    RECORD_NUTRITION_ASSESSMENT: 'Nutrition Assessment',
+    RECORD_MEDICAL_INTERVENTION: 'Medical Intervention',
+    SUBMIT_REFERRAL: 'Submit Referral',
+    UPDATE_REFERRAL_STATUS: 'Update Referral',
+    CREATE_SCHEDULE: 'Create Schedule',
+    CREATE_SCHEDULE_BHW: 'Create Schedule',
+    MARK_SCHEDULE_DONE: 'Completed Schedule',
+    SUBMIT_SCHEDULE_AUDIT: 'Schedule Audit',
+    RECORD_FEEDING_ATTENDANCE: 'Feeding Attendance',
+    PROVIDE_CHILD_SERVICE: 'Child Health Service',
+    UPDATE_CHILD: 'Update Child Info',
+    REGISTER_CHILD: 'Register Child',
+    CREATE_CHILD: 'Register Child',
+    TRANSFER_BENEFICIARY: 'Transfer Beneficiary',
+    ADD_FEEDING_MEAL: 'Feeding Meal Added',
+    UPDATE_SIGNATORIES: 'Update Signatories',
+  };
+  if (map[action]) return map[action];
+  return String(action)
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatFieldKey(key) {
+  const map = {
+    child_name: 'Child Name',
+    name: 'Full Name',
+    weight_kg: 'Weight (kg)',
+    height_cm: 'Height (cm)',
+    muac_cm: 'MUAC (cm)',
+    overall_status: 'Nutritional Status',
+    beneficiary: 'Beneficiary',
+    title: 'Activity Title',
+    schedule_type: 'Schedule Type',
+    venue: 'Venue / Location',
+    barangay: 'Barangay',
+    attendee_count: 'Number of Attendees',
+    food_served: 'Food Served',
+    food: 'Meal',
+    diagnosis: 'Diagnosis',
+    intervention: 'Intervention',
+    reason: 'Reason / Concern',
+    action_taken: 'Action Taken',
+    notes: 'Notes / Remarks',
+    audit_notes: 'Audit Notes',
+    from_barangay: 'Origin Barangay',
+    to_barangay: 'Destination Barangay',
+    count: 'Count',
+  };
+  if (map[key]) return map[key];
+  return String(key)
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatDateTimeParts(dt) {
+  if (!dt) return { date: '—', time: '' };
+  const d = new Date(dt);
+  return {
+    date: d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }),
+    time: d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: true }),
+  };
 }
 
 function parseDetails(details) {
@@ -56,7 +116,7 @@ function parseDetails(details) {
 
 function formatLogSummary(log) {
   const d = parseDetails(log.details);
-  if (!d) return '—';
+  if (!d) return 'Activity logged in the system.';
 
   if (d.summary) return d.summary;
 
@@ -87,17 +147,17 @@ function formatLogSummary(log) {
       const keys = Object.keys(d.after);
       if (keys.length > 0) {
         return keys
-          .map((k) => `${k.replace(/_/g, ' ')}: "${d.before?.[k] ?? '—'}" → "${d.after[k]}"`)
+          .map((k) => `${formatFieldKey(k)}: "${d.before?.[k] ?? '—'}" → "${d.after[k]}"`)
           .join('; ');
       }
     }
-    return `Updated child ${d.child_name || d.name || ''}`;
+    return `Updated child profile for ${d.child_name || d.name || 'beneficiary'}`;
   }
   if (action === 'TRANSFER_BENEFICIARY') {
     return `Transferred ${d.name || 'beneficiary'}: ${d.from_barangay || '—'} → ${d.to_barangay || '—'}`;
   }
   if (action === 'CREATE_SCHEDULE_BHW' || action === 'CREATE_SCHEDULE') {
-    return `Scheduled: "${d.title || 'Activity'}" (${d.venue || d.barangay || 'Barangay'})`;
+    return `Scheduled: "${d.title || 'Activity'}" (${d.venue || d.barangay || 'Health Center'})`;
   }
   if (action === 'MARK_SCHEDULE_DONE') {
     return `Marked schedule "${d.title || 'Activity'}" as completed`;
@@ -112,10 +172,15 @@ function formatLogSummary(log) {
     return `Updated signatories for ${d.barangay || 'All Barangays'} (${d.count || 0} signatories)`;
   }
 
-  return Object.entries(d)
+  // Safe fallback without raw JSON
+  const entries = Object.entries(d).filter(
+    ([k]) => !['before', 'after', 'summary', 'user_id', 'created_by', 'actor_id'].includes(k)
+  );
+  if (entries.length === 0) return 'Activity logged in the system.';
+  return entries
     .slice(0, 3)
-    .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
-    .join(', ');
+    .map(([k, v]) => `${formatFieldKey(k)}: ${typeof v === 'object' ? Object.values(v).join(', ') : v}`)
+    .join(' • ');
 }
 
 export default function SystemLogs() {
@@ -130,7 +195,7 @@ export default function SystemLogs() {
   const [barangayFilter, setBarangayFilter] = useState('');
   const [page, setPage] = useState(1);
 
-  // Detail drawer
+  // Detail modal
   const [selectedLog, setSelectedLog] = useState(null);
 
   const fetchLogs = useCallback(async () => {
@@ -159,11 +224,22 @@ export default function SystemLogs() {
   const selectedDetails = selectedLog ? parseDetails(selectedLog.details) : null;
   const hasDiff = selectedDetails && selectedDetails.after && typeof selectedDetails.after === 'object' && Object.keys(selectedDetails.after).length > 0;
 
+  // Filter out meta/system keys so only user-facing information displays in the modal
+  const infoEntries = selectedDetails
+    ? Object.entries(selectedDetails).filter(
+        ([k, v]) =>
+          !['summary', 'before', 'after', 'user_id', 'created_by', 'actor_id', 'actor_role'].includes(k) &&
+          v !== null &&
+          v !== undefined &&
+          v !== ''
+      )
+    : [];
+
   return (
     <div className="space-y-4">
       {/* Controls & Filters Bar */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-        <div className="flex-1 flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
           {/* Keyword Search */}
           <div className="relative flex-1">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -221,82 +297,94 @@ export default function SystemLogs() {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => <ShimmerSkeleton key={i} className="h-10 w-full rounded-xl" />)}
+            {[1, 2, 3, 4, 5, 6].map((i) => <ShimmerSkeleton key={i} className="h-12 w-full rounded-xl" />)}
           </div>
         ) : error ? (
           <div className="p-10 text-center text-red-600 text-sm font-semibold">{error}</div>
         ) : (
           <>
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-              <table className="w-full min-w-[950px] text-sm border-collapse">
-                <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
-                  <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    <th className="px-5 py-3.5 whitespace-nowrap">Timestamp</th>
-                    <th className="px-4 py-3.5 whitespace-nowrap">Barangay</th>
-                    <th className="px-4 py-3.5 whitespace-nowrap">Actor / Worker</th>
-                    <th className="px-4 py-3.5 whitespace-nowrap">Role</th>
-                    <th className="px-4 py-3.5 whitespace-nowrap">Action</th>
-                    <th className="px-4 py-3.5 whitespace-nowrap">Entity</th>
-                    <th className="px-4 py-3.5">Changes / Summary</th>
-                    <th className="px-4 py-3.5 text-center whitespace-nowrap">Diff / Details</th>
+            <div className="overflow-x-auto max-h-[620px] overflow-y-auto">
+              <table className="w-full text-sm border-collapse table-auto">
+                <thead className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200">
+                  <tr className="text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+                    <th className="px-4 py-3.5 whitespace-nowrap min-w-[130px] w-[140px]">Date & Time</th>
+                    <th className="px-4 py-3.5 whitespace-nowrap min-w-[120px] w-[130px]">Barangay</th>
+                    <th className="px-4 py-3.5 whitespace-nowrap min-w-[150px] w-[170px]">Worker & Role</th>
+                    <th className="px-4 py-3.5 whitespace-nowrap min-w-[150px] w-[170px]">Action</th>
+                    <th className="px-4 py-3.5 min-w-[320px]">Activity Summary</th>
+                    <th className="px-4 py-3.5 text-center whitespace-nowrap min-w-[90px] w-[100px]">Details</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {logs.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-6 py-16 text-center text-gray-400 text-sm">
+                      <td colSpan={6} className="px-6 py-16 text-center text-gray-400 text-sm font-medium">
                         No activity log entries found for the selected criteria.
                       </td>
                     </tr>
                   ) : logs.map((log) => {
+                    const dtParts = formatDateTimeParts(log.created_at);
                     const summaryText = formatLogSummary(log);
+                    const roleUpper = String(log.actor_role || '').toUpperCase();
                     return (
-                      <tr key={log.log_id} className="hover:bg-green-50/20 transition">
-                        <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
-                          {formatDate(log.created_at)}
-                        </td>
+                      <tr key={log.log_id} className="hover:bg-emerald-50/20 transition-colors">
+                        {/* Date & Time */}
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            <MapPin size={10} className="text-emerald-600 shrink-0" />
+                          <p className="text-xs font-semibold text-gray-800">{dtParts.date}</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5 font-medium">{dtParts.time}</p>
+                        </td>
+
+                        {/* Barangay */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <MapPin size={11} className="text-emerald-600 shrink-0" />
                             {log.barangay || '—'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs font-semibold text-gray-800 whitespace-nowrap">
-                          {log.actor_name || (log.actor_id ? `User #${log.actor_id}` : '—')}
-                        </td>
+
+                        {/* Worker & Role */}
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
-                            String(log.actor_role).toLowerCase() === 'bns' ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : String(log.actor_role).toLowerCase() === 'bhw' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-gray-100 text-gray-600 border border-gray-200'
-                          }`}>
-                            {log.actor_role || '—'}
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <p className="text-xs font-bold text-gray-900 leading-snug">
+                                {log.actor_name || (log.actor_id ? `User #${log.actor_id}` : '—')}
+                              </p>
+                              <span className={`inline-block text-[10px] font-bold px-2 py-0.2 rounded-full uppercase mt-0.5 ${
+                                roleUpper === 'BNS'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  : roleUpper === 'BHW'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-purple-50 text-purple-700 border border-purple-200'
+                              }`}>
+                                {log.actor_role || 'Staff'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Action Badge */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${actionColor(log.action)}`}>
+                            {formatActionName(log.action)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${actionColor(log.action)}`}>
-                            {log.action}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                          {log.entity_type ? `${log.entity_type}${log.entity_id ? ` #${log.entity_id}` : ''}` : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-700 max-w-md font-medium">
-                          <span className="line-clamp-2" title={summaryText}>
+
+                        {/* Activity Summary (Spacious, wraps cleanly, never squished!) */}
+                        <td className="px-4 py-3 text-xs text-gray-700 font-medium min-w-[320px]">
+                          <p className="line-clamp-2 leading-relaxed" title={summaryText}>
                             {summaryText}
-                          </span>
+                          </p>
                         </td>
+
+                        {/* Details Button */}
                         <td className="px-4 py-3 text-center whitespace-nowrap">
-                          {log.details ? (
-                            <button
-                              onClick={() => setSelectedLog(log)}
-                              className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <FileText size={12} /> Inspect
-                            </button>
-                          ) : (
-                            <span className="text-gray-300 text-xs">—</span>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedLog(log)}
+                            className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Eye size={12} /> Details
+                          </button>
                         </td>
                       </tr>
                     );
@@ -308,7 +396,7 @@ export default function SystemLogs() {
             {/* Pagination */}
             {pagination.totalPages > 1 && (
               <div className="px-5 py-3.5 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-                <span>{pagination.total} total entries</span>
+                <span>{pagination.total} total activities recorded</span>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -317,7 +405,7 @@ export default function SystemLogs() {
                   >
                     <ChevronLeft size={13} /> Prev
                   </button>
-                  <span className="px-3 font-semibold">{page} / {pagination.totalPages}</span>
+                  <span className="px-3 font-semibold text-gray-700">{page} / {pagination.totalPages}</span>
                   <button
                     onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
                     disabled={page === pagination.totalPages}
@@ -332,7 +420,7 @@ export default function SystemLogs() {
         )}
       </div>
 
-      {/* Detail Modal */}
+      {/* Clean Human-Readable Detail Modal (Zero JSON!) */}
       <AnimatePresence>
         {selectedLog && (
           <motion.div
@@ -344,52 +432,96 @@ export default function SystemLogs() {
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
             >
+              {/* Header */}
               <div className="bg-gradient-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between text-white shrink-0">
-                <div>
-                  <p className="font-bold text-base">{selectedLog.action}</p>
-                  <p className="text-white/70 text-xs mt-0.5">{formatDate(selectedLog.created_at)}</p>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                    <Activity size={18} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-base leading-snug">{formatActionName(selectedLog.action)}</p>
+                    <p className="text-white/80 text-xs mt-0.5">
+                      {formatDateTimeParts(selectedLog.created_at).date} • {formatDateTimeParts(selectedLog.created_at).time}
+                    </p>
+                  </div>
                 </div>
-                <button onClick={() => setSelectedLog(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => setSelectedLog(null)}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition cursor-pointer text-white"
+                >
                   <X size={15} />
                 </button>
               </div>
 
+              {/* Body */}
               <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
                 {/* Meta Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs bg-gray-50 rounded-xl p-3 border border-gray-100">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50 rounded-xl p-3.5 border border-gray-100">
                   <div>
-                    <p className="font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Barangay</p>
-                    <p className="font-bold text-emerald-900 mt-0.5 truncate">{selectedLog.barangay || '—'}</p>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Barangay</span>
+                    <span className="text-xs font-bold text-emerald-900 mt-0.5 block truncate">
+                      {selectedLog.barangay || '—'}
+                    </span>
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Actor / Worker</p>
-                    <p className="font-bold text-gray-800 mt-0.5 truncate">{selectedLog.actor_name || '—'}</p>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Actor / Worker</span>
+                    <span className="text-xs font-bold text-gray-800 mt-0.5 block truncate">
+                      {selectedLog.actor_name || 'Staff'}
+                    </span>
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Role</p>
-                    <p className="font-bold text-emerald-800 mt-0.5 uppercase">{selectedLog.actor_role || '—'}</p>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Role</span>
+                    <span className="text-xs font-bold text-emerald-700 mt-0.5 uppercase block">
+                      {selectedLog.actor_role || 'Staff'}
+                    </span>
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Target Entity</p>
-                    <p className="font-bold text-gray-800 mt-0.5 truncate">
-                      {selectedLog.entity_type || '—'} {selectedLog.entity_id ? `#${selectedLog.entity_id}` : ''}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-400 uppercase tracking-wider text-[10px]">IP Address</p>
-                    <p className="font-medium text-gray-600 mt-0.5">{selectedLog.ip_address || '—'}</p>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Reference</span>
+                    <span className="text-xs font-bold text-gray-700 mt-0.5 block truncate">
+                      {selectedLog.entity_type ? `${formatFieldKey(selectedLog.entity_type)}${selectedLog.entity_id ? ` #${selectedLog.entity_id}` : ''}` : '—'}
+                    </span>
                   </div>
                 </div>
 
                 {/* Summary Banner */}
-                <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3">
-                  <p className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">Activity Summary</p>
-                  <p className="text-xs text-emerald-950 font-medium mt-1 leading-relaxed">
+                <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-4">
+                  <div className="flex items-center gap-1.5 mb-1 text-emerald-900">
+                    <CheckCircle size={14} className="text-emerald-700 shrink-0" />
+                    <p className="text-xs font-bold uppercase tracking-wider">Activity Summary</p>
+                  </div>
+                  <p className="text-xs text-emerald-950 font-medium leading-relaxed">
                     {formatLogSummary(selectedLog)}
                   </p>
                 </div>
 
-                {/* Side-by-Side Before vs After Table */}
+                {/* Formatted Key-Value Details (Clean cards, NO RAW JSON!) */}
+                {infoEntries.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">
+                      Activity Details
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {infoEntries.map(([key, val]) => {
+                        const displayVal = typeof val === 'object'
+                          ? Object.entries(val).map(([k, v]) => `${formatFieldKey(k)}: ${v}`).join(', ')
+                          : String(val);
+                        return (
+                          <div key={key} className="bg-gray-50/90 border border-gray-200/80 rounded-xl p-3">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                              {formatFieldKey(key)}
+                            </span>
+                            <span className="text-xs font-semibold text-gray-800 mt-0.5 block break-words">
+                              {displayVal}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Before vs After Table (If diff exists) */}
                 {hasDiff && (
                   <div>
                     <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">
@@ -400,18 +532,20 @@ export default function SystemLogs() {
                         <thead className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
                           <tr>
                             <th className="px-3 py-2 text-left">Field</th>
-                            <th className="px-3 py-2 text-left text-red-700 bg-red-50/40">Previous Value (Dati)</th>
-                            <th className="px-3 py-2 text-left text-emerald-800 bg-emerald-50/40">Updated Value (Bago)</th>
+                            <th className="px-3 py-2 text-left text-red-700 bg-red-50/40">Dati (Previous)</th>
+                            <th className="px-3 py-2 text-left text-emerald-800 bg-emerald-50/40">Bago (Updated)</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                           {Object.keys(selectedDetails.after).map((field) => (
                             <tr key={field} className="hover:bg-gray-50">
-                              <td className="px-3 py-2 font-medium text-gray-800 capitalize">{field.replace(/_/g, ' ')}</td>
-                              <td className="px-3 py-2 text-red-600 bg-red-50/20 font-mono">
+                              <td className="px-3 py-2 font-medium text-gray-800 capitalize">
+                                {formatFieldKey(field)}
+                              </td>
+                              <td className="px-3 py-2 text-red-600 bg-red-50/20 font-semibold">
                                 {String(selectedDetails.before?.[field] ?? '—')}
                               </td>
-                              <td className="px-3 py-2 text-emerald-700 bg-emerald-50/20 font-bold font-mono">
+                              <td className="px-3 py-2 text-emerald-700 bg-emerald-50/20 font-bold">
                                 {String(selectedDetails.after[field] ?? '—')}
                               </td>
                             </tr>
@@ -421,24 +555,14 @@ export default function SystemLogs() {
                     </div>
                   </div>
                 )}
-
-                {/* Raw JSON Details (Collapsible) */}
-                {selectedDetails && (
-                  <details className="text-xs text-gray-500 cursor-pointer">
-                    <summary className="font-semibold text-gray-600 hover:text-gray-900 mb-1">
-                      View Raw Payload (JSON)
-                    </summary>
-                    <pre className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-[11px] text-gray-700 overflow-x-auto whitespace-pre-wrap font-mono mt-1">
-                      {JSON.stringify(selectedDetails, null, 2)}
-                    </pre>
-                  </details>
-                )}
               </div>
 
-              <div className="border-t border-gray-100 px-6 py-3 bg-gray-50 flex justify-end shrink-0">
+              {/* Footer */}
+              <div className="border-t border-gray-100 px-6 py-3.5 bg-gray-50 flex justify-end shrink-0">
                 <button
+                  type="button"
                   onClick={() => setSelectedLog(null)}
-                  className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-semibold rounded-xl hover:bg-gray-100 transition cursor-pointer"
+                  className="px-5 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-100 transition cursor-pointer shadow-2xs"
                 >
                   Close
                 </button>

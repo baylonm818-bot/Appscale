@@ -25,24 +25,24 @@ function SummaryCard({ icon: Icon, label, value, sublabel, isActive, onClick }) 
       onClick={onClick}
       whileHover={{ y: -3, transition: { duration: 0.18 } }}
       whileTap={{ scale: 0.98 }}
-      className={`w-full text-left rounded-2xl p-4 sm:p-5 shadow-xs transition-all duration-200 focus:outline-none cursor-pointer border ${
+      className={`w-full text-left rounded-2xl p-5 sm:p-6 shadow-sm transition-all duration-200 focus:outline-none cursor-pointer border ${
         isActive
           ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white shadow-md border-emerald-700'
-          : 'bg-white hover:bg-gray-50/80 border-gray-200/80 hover:shadow-sm text-gray-800'
+          : 'bg-white hover:bg-gray-50/90 border-gray-200/80 hover:shadow-md text-gray-800'
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className={`text-xs sm:text-sm font-semibold leading-tight ${isActive ? 'text-white/85' : 'text-gray-500'}`}>
+      <div className="flex items-start justify-between gap-3">
+        <p className={`text-sm sm:text-base font-bold leading-tight whitespace-nowrap ${isActive ? 'text-white/90' : 'text-gray-600'}`}>
           {label}
         </p>
-        <div className={`shrink-0 rounded-xl p-2 ${isActive ? 'bg-white/20 text-white' : 'bg-green-50 text-[#2e7d32]'}`}>
-          <Icon size={17} />
+        <div className={`shrink-0 rounded-xl p-2.5 ${isActive ? 'bg-white/20 text-white' : 'bg-green-50 text-[#2e7d32]'}`}>
+          <Icon size={19} />
         </div>
       </div>
-      <p className={`text-3xl sm:text-4xl font-black mt-2.5 tracking-tight ${isActive ? 'text-white' : 'text-gray-900'}`}>
+      <p className={`text-3xl sm:text-4xl font-black mt-3 tracking-tight ${isActive ? 'text-white' : 'text-gray-900'}`}>
         <CountUp value={numVal} />
       </p>
-      <p className={`text-[11px] sm:text-xs mt-1 font-medium truncate ${isActive ? 'text-white/70' : 'text-gray-400'}`}>
+      <p className={`text-xs mt-1.5 font-medium truncate ${isActive ? 'text-white/70' : 'text-gray-400'}`}>
         {sublabel}
       </p>
     </motion.button>
@@ -417,7 +417,7 @@ function Referrals() {
       )}
 
       {/* ── Summary Stat Cards (Malalaking box gaya ng Schedule page) ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 lg:gap-5">
         <SummaryCard
           icon={Layers}
           label="All Referrals"
