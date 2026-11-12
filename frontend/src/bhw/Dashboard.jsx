@@ -87,13 +87,13 @@ function StatusPill({ label, count, tone, icon: Icon }) {
     <motion.div
       whileHover={{ scale: 1.02 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className={`flex items-center gap-3 p-3.5 rounded-xl border transition ${tone}`}
+      className={`flex items-center gap-2.5 p-3 rounded-xl border transition ${tone}`}
     >
       <div className="shrink-0 p-2 rounded-lg bg-white shadow-xs">
         <Icon size={16} />
       </div>
       <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{label}</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider opacity-85 whitespace-nowrap">{label}</p>
         <p className="text-xl font-black mt-0.5 leading-none">
           <CountUp value={numVal} />
         </p>
@@ -176,6 +176,11 @@ function Dashboard() {
   }
 
   const s = stats || {};
+  const totalAssessed = (s.normal || 0) + (s.stunted || 0) + (s.wasted || 0) + (s.underweight || 0);
+  const normalPct = totalAssessed > 0 ? Math.round(((s.normal || 0) / totalAssessed) * 100) : 0;
+  const stuntedPct = totalAssessed > 0 ? Math.round(((s.stunted || 0) / totalAssessed) * 100) : 0;
+  const underweightPct = totalAssessed > 0 ? Math.round(((s.underweight || 0) / totalAssessed) * 100) : 0;
+  const wastedPct = totalAssessed > 0 ? Math.round(((s.wasted || 0) / totalAssessed) * 100) : 0;
 
   return (
     <motion.div
@@ -270,9 +275,10 @@ function Dashboard() {
                 View Attention List <ArrowRight size={13} />
               </Link>
             </div>
-            <p className="text-xs text-gray-400 mb-5">Latest recorded health assessments in {user.barangay}</p>
+            <p className="text-xs text-gray-400 mb-4">Latest recorded health assessments in {user.barangay}</p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* 4 Status Pills */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
               <StatusPill
                 icon={CheckCircle}
                 label="Normal"
@@ -298,9 +304,56 @@ function Dashboard() {
                 tone="bg-amber-50 text-amber-800 border-amber-100"
               />
             </div>
+
+            {/* Nutritional Status Distribution Bar */}
+            <div className="mt-4 bg-gray-50/90 rounded-xl p-3.5 border border-gray-100 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-gray-700">Barangay Growth & Nutrition Distribution</span>
+                <span className="font-bold text-emerald-700">{normalPct}% Normal Growth</span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full h-2.5 rounded-full bg-gray-200 overflow-hidden flex">
+                <div style={{ width: `${normalPct}%` }} className="bg-emerald-500 transition-all duration-500" title={`Normal: ${s.normal || 0}`} />
+                <div style={{ width: `${stuntedPct}%` }} className="bg-orange-400 transition-all duration-500" title={`Stunted: ${s.stunted || 0}`} />
+                <div style={{ width: `${underweightPct}%` }} className="bg-amber-400 transition-all duration-500" title={`Underweight: ${s.underweight || 0}`} />
+                <div style={{ width: `${wastedPct}%` }} className="bg-red-500 transition-all duration-500" title={`Wasted: ${s.wasted || 0}`} />
+              </div>
+
+              {/* Legend & Summary */}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-medium text-gray-500 pt-0.5">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />Normal ({normalPct}%)</span>
+                  <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-400 shrink-0" />Stunted ({stuntedPct}%)</span>
+                  <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />Underweight ({underweightPct}%)</span>
+                  {s.wasted > 0 && <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />Wasted ({wastedPct}%)</span>}
+                </div>
+                <span className="text-gray-400 font-normal">
+                  {totalAssessed} total assessments
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Malnutrition Status Summary Callout */}
+            <div className="mt-3 bg-amber-50/60 border border-amber-200/70 rounded-xl p-3 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={15} className="text-amber-700 shrink-0" />
+                <span className="text-amber-950 font-medium">
+                  {s.atRiskChildren > 0
+                    ? `${s.atRiskChildren} children currently identified needing malnutrition intervention & follow-up.`
+                    : 'All recorded children in the barangay are meeting healthy developmental benchmarks.'}
+                </span>
+              </div>
+              <Link
+                to="/bhw/need-attention"
+                className="text-[11px] font-bold text-amber-800 hover:text-amber-950 hover:underline shrink-0 ml-2"
+              >
+                Take Action →
+              </Link>
+            </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between text-xs text-gray-400">
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
             <span>Regular assessments help detect malnutrition early.</span>
             <Link to="/bhw/medical-records" className="font-semibold text-[#2e7d32] hover:underline">
               Browse Records →
