@@ -307,12 +307,12 @@ export default function SystemLogs() {
               <table className="w-full text-sm border-collapse table-auto">
                 <thead className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200">
                   <tr className="text-left text-xs font-bold uppercase tracking-wider text-gray-500">
-                    <th className="px-4 py-3.5 whitespace-nowrap min-w-[130px] w-[140px]">Date & Time</th>
-                    <th className="px-4 py-3.5 whitespace-nowrap min-w-[120px] w-[130px]">Barangay</th>
-                    <th className="px-4 py-3.5 whitespace-nowrap min-w-[150px] w-[170px]">Worker & Role</th>
-                    <th className="px-4 py-3.5 whitespace-nowrap min-w-[150px] w-[170px]">Action</th>
-                    <th className="px-4 py-3.5 min-w-[320px]">Activity Summary</th>
-                    <th className="px-4 py-3.5 text-center whitespace-nowrap min-w-[90px] w-[100px]">Details</th>
+                    <th className="px-3.5 py-3 whitespace-nowrap w-[130px] min-w-[120px]">Date & Time</th>
+                    <th className="px-3 py-3 whitespace-nowrap w-[120px] min-w-[110px]">Barangay</th>
+                    <th className="px-3 py-3 whitespace-nowrap w-[150px] min-w-[130px]">Worker & Role</th>
+                    <th className="px-3 py-3 whitespace-nowrap w-[150px] min-w-[130px]">Action</th>
+                    <th className="px-4 py-3 min-w-[240px]">Activity Summary</th>
+                    <th className="px-3 py-3 text-center whitespace-nowrap w-[100px] min-w-[100px]">Details</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -329,61 +329,60 @@ export default function SystemLogs() {
                     return (
                       <tr key={log.log_id} className="hover:bg-emerald-50/20 transition-colors">
                         {/* Date & Time */}
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <p className="text-xs font-semibold text-gray-800">{dtParts.date}</p>
-                          <p className="text-[11px] text-gray-400 mt-0.5 font-medium">{dtParts.time}</p>
+                        <td className="px-3.5 py-2.5 whitespace-nowrap">
+                          <p className="text-xs font-bold text-gray-800 leading-tight whitespace-nowrap">{dtParts.date}</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5 font-medium whitespace-nowrap">{dtParts.time}</p>
                         </td>
 
                         {/* Barangay */}
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 whitespace-nowrap">
                             <MapPin size={11} className="text-emerald-600 shrink-0" />
                             {log.barangay || '—'}
                           </span>
                         </td>
 
                         {/* Worker & Role */}
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <div>
-                              <p className="text-xs font-bold text-gray-900 leading-snug">
-                                {log.actor_name || (log.actor_id ? `User #${log.actor_id}` : '—')}
-                              </p>
-                              <span className={`inline-block text-[10px] font-bold px-2 py-0.2 rounded-full uppercase mt-0.5 ${
-                                roleUpper === 'BNS'
-                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                  : roleUpper === 'BHW'
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : 'bg-purple-50 text-purple-700 border border-purple-200'
-                              }`}>
-                                {log.actor_role || 'Staff'}
-                              </span>
-                            </div>
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <div>
+                            <p className="text-xs font-bold text-gray-900 leading-snug truncate max-w-[150px]" title={log.actor_name}>
+                              {log.actor_name || (log.actor_id ? `User #${log.actor_id}` : '—')}
+                            </p>
+                            <span className={`inline-block text-[10px] font-bold px-2 py-0.2 rounded-full uppercase mt-0.5 whitespace-nowrap ${
+                              roleUpper === 'BNS'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : roleUpper === 'BHW'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-purple-50 text-purple-700 border border-purple-200'
+                            }`}>
+                              {log.actor_role || 'Staff'}
+                            </span>
                           </div>
                         </td>
 
                         {/* Action Badge */}
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${actionColor(log.action)}`}>
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap inline-block ${actionColor(log.action)}`}>
                             {formatActionName(log.action)}
                           </span>
                         </td>
 
                         {/* Activity Summary (Spacious, wraps cleanly, never squished!) */}
-                        <td className="px-4 py-3 text-xs text-gray-700 font-medium min-w-[320px]">
+                        <td className="px-4 py-2.5 text-xs text-gray-700 font-medium min-w-[240px]">
                           <p className="line-clamp-2 leading-relaxed" title={summaryText}>
                             {summaryText}
                           </p>
                         </td>
 
                         {/* Details Button */}
-                        <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <td className="px-3 py-2.5 text-center whitespace-nowrap w-[100px] min-w-[100px]">
                           <button
                             type="button"
                             onClick={() => setSelectedLog(log)}
-                            className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition shadow-2xs cursor-pointer"
                           >
-                            <Eye size={12} /> Details
+                            <Eye size={13} className="shrink-0 text-emerald-700" />
+                            <span className="whitespace-nowrap">Details</span>
                           </button>
                         </td>
                       </tr>
