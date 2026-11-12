@@ -319,43 +319,132 @@ exports.getAdminNeedAttention = async (req, res) => {
 //                                   normal nutritional status
 exports.getFeedingStats = async (req, res) => {
   try {
-    // Check if feeding_programs table exists
-    const [[{ tblCnt }]] = await pool.query(
-      `SELECT COUNT(*) AS tblCnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'feeding_programs'`
-    );
-
-    let enrolled = 0;
-    let reached_normal_in_feeding = 0;
-
-    if (Number(tblCnt) > 0) {
-      // 1. Total enrolled (active feeding program)
-      const [[resEnrolled]] = await pool.query(`
-        SELECT COUNT(DISTINCT child_id) AS enrolled
-        FROM feeding_programs
-        WHERE status = 'active'
-      `);
-      enrolled = resEnrolled?.enrolled || 0;
-
-      // 2. Reached normal within the feeding schedule window
-      const [[resReached]] = await pool.query(`
-        SELECT COUNT(DISTINCT fp.child_id) AS reached_normal_in_feeding
-        FROM feeding_programs fp
+    // 1. Fetch all distinct active children participating in the feeding program
+    // with their initial and latest nutritional assessment
+    const [childrenInFeeding] = await pool.query(`
+      SELECT
+        c.child_id,
+        CONCAT(c.first_name, ' ', c.last_name) AS full_name,
+        c.barangay,
+        COALESCE(pe.status, 'enrolled') AS enrollment_status,
+        pe.enrolled_at,
+        latest_nr.overall_status AS latest_status,
+        latest_nr.weight_kg AS latest_weight,
+        latest_nr.height_cm AS latest_height,
+        latest_nr.record_date AS latest_date,
+        earliest_nr.overall_status AS initial_status,
+        earliest_nr.weight_kg AS initial_weight,
+        earliest_nr.height_cm AS initial_height,
+        COALESCE(fa_stats.attendance_count, 0) AS attendance_count
+      FROM children c
+      LEFT JOIN (
+        SELECT child_id, MAX(status) AS status, MAX(enrolled_at) AS enrolled_at
+        FROM program_enrollments
+        WHERE program_type = 'feeding'
+        GROUP BY child_id
+      ) pe ON pe.child_id = c.child_id
+      LEFT JOIN (
+        SELECT child_id, COUNT(*) AS attendance_count
+        FROM feeding_attendance
+        GROUP BY child_id
+      ) fa_stats ON fa_stats.child_id = c.child_id
+      LEFT JOIN (
+        SELECT nr1.child_id, nr1.overall_status, nr1.weight_kg, nr1.height_cm, nr1.record_date
+        FROM nutrition_records nr1
         JOIN (
-          SELECT nr.child_id, nr.overall_status
-          FROM nutrition_records nr
-          INNER JOIN (
-            SELECT child_id, MAX(record_date) AS latest_date
-            FROM nutrition_records
-            GROUP BY child_id
-          ) ld ON nr.child_id = ld.child_id AND nr.record_date = ld.latest_date
-        ) latest_nr ON latest_nr.child_id = fp.child_id
-        WHERE fp.status = 'active'
-          AND LOWER(TRIM(latest_nr.overall_status)) = 'normal'
-      `);
-      reached_normal_in_feeding = resReached?.reached_normal_in_feeding || 0;
+          SELECT child_id, MAX(record_date) AS max_date
+          FROM nutrition_records
+          GROUP BY child_id
+        ) m ON nr1.child_id = m.child_id AND nr1.record_date = m.max_date
+      ) latest_nr ON latest_nr.child_id = c.child_id
+      LEFT JOIN (
+        SELECT nr2.child_id, nr2.overall_status, nr2.weight_kg, nr2.height_cm, nr2.record_date
+        FROM nutrition_records nr2
+        JOIN (
+          SELECT child_id, MIN(record_date) AS min_date
+          FROM nutrition_records
+          GROUP BY child_id
+        ) m2 ON nr2.child_id = m2.child_id AND nr2.record_date = m2.min_date
+      ) earliest_nr ON earliest_nr.child_id = c.child_id
+      WHERE (pe.status IS NOT NULL OR fa_stats.attendance_count > 0)
+        AND c.status = 'active'
+        AND c.barangay IS NOT NULL
+        AND LOWER(c.barangay) NOT LIKE '%test%'
+        AND LOWER(c.first_name) NOT LIKE '%test%'
+      ORDER BY c.barangay ASC, c.first_name ASC
+    `);
+
+    // 2. Total feeding attendance logs recorded
+    const [[resAttendance]] = await pool.query(`
+      SELECT COUNT(*) AS total_attendance
+      FROM feeding_attendance fa
+      WHERE LOWER(fa.barangay) NOT LIKE '%test%'
+    `);
+    const total_attendance = resAttendance?.total_attendance || 0;
+
+    // 3. Separate into Normal vs Not Normal
+    const recovered_children = [];
+    const still_malnourished_children = [];
+    let sam_count = 0;
+    let mam_count = 0;
+    let overweight_obese_count = 0;
+
+    for (const child of childrenInFeeding) {
+      const statusLower = String(child.latest_status || '').toLowerCase().trim();
+      if (statusLower === 'normal') {
+        recovered_children.push(child);
+      } else {
+        still_malnourished_children.push(child);
+        if (statusLower === 'sam') sam_count++;
+        else if (statusLower === 'mam') mam_count++;
+        else if (statusLower === 'obese' || statusLower === 'overweight') overweight_obese_count++;
+      }
     }
 
-    // 3. Per-barangay: children with normal status (regardless of feeding enrollment)
+    // 4. Per-barangay aggregated breakdown
+    const barangayMap = {};
+    for (const child of childrenInFeeding) {
+      const b = child.barangay;
+      if (!barangayMap[b]) {
+        barangayMap[b] = {
+          barangay: b,
+          enrolled: 0,
+          reached_normal: 0,
+          not_normal: 0,
+          sam_count: 0,
+          mam_count: 0,
+          attendance_total: 0,
+        };
+      }
+      barangayMap[b].enrolled++;
+
+      const statusLower = String(child.latest_status || '').toLowerCase().trim();
+      if (statusLower === 'normal') {
+        barangayMap[b].reached_normal++;
+      } else {
+        barangayMap[b].not_normal++;
+        if (statusLower === 'sam') barangayMap[b].sam_count++;
+        else if (statusLower === 'mam') barangayMap[b].mam_count++;
+      }
+    }
+
+    // Also get feeding attendance count per barangay for accuracy
+    const [attByBrgy] = await pool.query(`
+      SELECT barangay, COUNT(*) AS sessions
+      FROM feeding_attendance
+      WHERE LOWER(barangay) NOT LIKE '%test%'
+      GROUP BY barangay
+    `);
+    for (const row of attByBrgy) {
+      if (barangayMap[row.barangay]) {
+        barangayMap[row.barangay].attendance_total = Number(row.sessions || 0);
+      }
+    }
+
+    // Convert map to sorted array by enrolled count descending
+    const barangay_ranking = Object.values(barangayMap).sort((a, b) => b.enrolled - a.enrolled);
+
+    // 5. Total active children with normal status municipal-wide (for reference)
     const [barangay_normal_counts] = await pool.query(`
       SELECT c.barangay,
              COUNT(DISTINCT c.child_id) AS total_children,
@@ -382,10 +471,18 @@ exports.getFeedingStats = async (req, res) => {
     );
 
     return res.status(200).json({
-      enrolled:                   Number(enrolled || 0),
-      reached_normal_in_feeding:  Number(reached_normal_in_feeding || 0),
-      achieved_normal_in_barangay: Number(achieved_normal_in_barangay || 0),
-      barangay_breakdown: barangay_normal_counts,
+      enrolled: childrenInFeeding.length,
+      reached_normal_in_feeding: recovered_children.length,
+      still_malnourished: still_malnourished_children.length,
+      sam_count,
+      mam_count,
+      overweight_obese_count,
+      total_attendance,
+      achieved_normal_in_barangay,
+      barangay_ranking,
+      recovered_children,
+      still_malnourished_children,
+      all_feeding_children: childrenInFeeding,
     });
   } catch (err) {
     console.error('Get feeding stats error:', err);

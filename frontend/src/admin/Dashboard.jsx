@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { motion } from 'framer-motion';
-import { Users, Baby, Heart, MapPin, Calendar, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Users, Baby, Heart, MapPin, Calendar, ArrowRight, AlertTriangle, CheckCircle2, Utensils } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { CountUp, ShimmerSkeleton, staggerContainer } from '../components/ui/motion';
 
@@ -136,8 +136,20 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState('3M');
+  const [feedingChildTab, setFeedingChildTab] = useState('all');
   const rawUser = localStorage.getItem('user') || sessionStorage.getItem('user') || '{}';
   const user = JSON.parse(rawUser);
+
+  const displayedFeedingChildren = useMemo(() => {
+    if (!feedingStats) return [];
+    if (feedingChildTab === 'normal') {
+      return feedingStats.recovered_children || [];
+    }
+    if (feedingChildTab === 'not_normal') {
+      return feedingStats.still_malnourished_children || [];
+    }
+    return feedingStats.all_feeding_children || [];
+  }, [feedingStats, feedingChildTab]);
 
   useEffect(() => {
     let isMounted = true;
@@ -519,44 +531,321 @@ function Dashboard() {
         </div>
       </motion.div>
 
-      {/* ── Step 10: Feeding Program Stats ── */}
+      {/* ── Step 10: Enhanced Feeding Program Overview ── */}
       {feedingStats && (
-        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-          <h3 className="font-bold text-gray-900 text-base mb-1">Feeding Program Overview</h3>
-          <p className="text-xs text-gray-400 mb-5">Children in the municipal supplementary feeding program</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Legend 1: Enrolled */}
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-emerald-50 border border-emerald-100 p-5 text-center">
-              <span className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 mb-3">
-                <Baby size={20} />
-              </span>
-              <p className="text-3xl font-black text-emerald-700">
-                <CountUp value={feedingStats.enrolled} />
+        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                  <Utensils size={16} />
+                </div>
+                <h3 className="font-bold text-gray-900 text-base">Feeding Program Overview</h3>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Comprehensive tracking of children enrolled, recovery outcomes, and barangay performance
               </p>
-              <p className="text-xs font-semibold text-emerald-600 mt-1">Enrolled</p>
-              <p className="text-[11px] text-emerald-400 mt-0.5">Currently in feeding program</p>
             </div>
-            {/* Legend 2: Reached Normal Within Feeding Schedule */}
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-blue-50 border border-blue-100 p-5 text-center">
-              <span className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 mb-3">
-                <CheckCircle2 size={20} />
-              </span>
-              <p className="text-3xl font-black text-blue-700">
-                <CountUp value={feedingStats.reached_normal_in_feeding} />
-              </p>
-              <p className="text-xs font-semibold text-blue-600 mt-1">Reached Normal</p>
-              <p className="text-[11px] text-blue-400 mt-0.5">Within the feeding schedule</p>
+            <div className="flex items-center gap-1.5 self-start sm:self-auto bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Feeding Program Data
             </div>
-            {/* Legend 3: Achieved Normal in Barangay */}
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-teal-50 border border-teal-100 p-5 text-center">
-              <span className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 mb-3">
-                <MapPin size={20} />
-              </span>
-              <p className="text-3xl font-black text-teal-700">
-                <CountUp value={feedingStats.achieved_normal_in_barangay} />
+          </div>
+
+          {/* Top 4 Key Metric Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 1. Total Enrolled */}
+            <div className="rounded-2xl bg-emerald-50/70 border border-emerald-100 p-4 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-800">Total in Feeding</span>
+                <span className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+                  <Baby size={16} />
+                </span>
+              </div>
+              <p className="text-3xl font-black text-emerald-800 mt-2">
+                <CountUp value={feedingStats.enrolled || 0} />
               </p>
-              <p className="text-xs font-semibold text-teal-600 mt-1">Normal in Barangay</p>
-              <p className="text-[11px] text-teal-400 mt-0.5">Achieved normal nutritional status</p>
+              <p className="text-[11px] text-emerald-600 font-medium mt-1">Beneficiaries undergoing feeding</p>
+            </div>
+
+            {/* 2. Reached Normal (Recovered) */}
+            <div className="rounded-2xl bg-blue-50/70 border border-blue-100 p-4 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-blue-800">Naging Normal</span>
+                <span className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700">
+                  <CheckCircle2 size={16} />
+                </span>
+              </div>
+              <p className="text-3xl font-black text-blue-800 mt-2">
+                <CountUp value={feedingStats.reached_normal_in_feeding || 0} />
+              </p>
+              <p className="text-[11px] text-blue-600 font-medium mt-1">
+                {feedingStats.enrolled > 0
+                  ? `${Math.round(((feedingStats.reached_normal_in_feeding || 0) / feedingStats.enrolled) * 100)}% recovery rate`
+                  : 'Achieved normal status'}
+              </p>
+            </div>
+
+            {/* 3. Still in Intervention (Not Normal) */}
+            <div className="rounded-2xl bg-amber-50/70 border border-amber-100 p-4 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-900">Hindi Pa Normal</span>
+                <span className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+                  <AlertTriangle size={16} />
+                </span>
+              </div>
+              <p className="text-3xl font-black text-amber-800 mt-2">
+                <CountUp value={feedingStats.still_malnourished || 0} />
+              </p>
+              <p className="text-[11px] text-amber-700 font-medium mt-1">
+                {feedingStats.sam_count || 0} SAM • {feedingStats.mam_count || 0} MAM
+              </p>
+            </div>
+
+            {/* 4. Total Attendance Sessions */}
+            <div className="rounded-2xl bg-purple-50/70 border border-purple-100 p-4 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-900">Feeding Logs</span>
+                <span className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700">
+                  <Utensils size={16} />
+                </span>
+              </div>
+              <p className="text-3xl font-black text-purple-800 mt-2">
+                <CountUp value={feedingStats.total_attendance || 0} />
+              </p>
+              <p className="text-[11px] text-purple-600 font-medium mt-1">Total meal attendances logged</p>
+            </div>
+          </div>
+
+          {/* Visual Outcome Progress Bar */}
+          <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold text-gray-700">
+              <span>Overall Feeding Outcome Breakdown</span>
+              <span className="text-emerald-700">
+                {feedingStats.enrolled > 0
+                  ? `${Math.round(((feedingStats.reached_normal_in_feeding || 0) / feedingStats.enrolled) * 100)}% Normalized`
+                  : '0%'}
+              </span>
+            </div>
+            {/* Multi-segment Bar */}
+            <div className="w-full h-3 rounded-full bg-gray-200 overflow-hidden flex">
+              <div
+                style={{ width: `${feedingStats.enrolled > 0 ? ((feedingStats.reached_normal_in_feeding || 0) / feedingStats.enrolled) * 100 : 0}%` }}
+                className="bg-emerald-500 transition-all duration-500"
+                title={`Normal: ${feedingStats.reached_normal_in_feeding || 0}`}
+              />
+              <div
+                style={{ width: `${feedingStats.enrolled > 0 ? ((feedingStats.mam_count || 0) / feedingStats.enrolled) * 100 : 0}%` }}
+                className="bg-amber-400 transition-all duration-500"
+                title={`MAM: ${feedingStats.mam_count || 0}`}
+              />
+              <div
+                style={{ width: `${feedingStats.enrolled > 0 ? ((feedingStats.sam_count || 0) / feedingStats.enrolled) * 100 : 0}%` }}
+                className="bg-red-500 transition-all duration-500"
+                title={`SAM: ${feedingStats.sam_count || 0}`}
+              />
+              <div
+                style={{ width: `${feedingStats.enrolled > 0 ? ((feedingStats.overweight_obese_count || 0) / feedingStats.enrolled) * 100 : 0}%` }}
+                className="bg-purple-400 transition-all duration-500"
+                title={`Overweight / Obese: ${feedingStats.overweight_obese_count || 0}`}
+              />
+            </div>
+            {/* Legend */}
+            <div className="flex flex-wrap items-center gap-4 text-xs font-medium pt-1 text-gray-600">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                <span>Normal ({feedingStats.reached_normal_in_feeding || 0})</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
+                <span>MAM ({feedingStats.mam_count || 0})</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+                <span>SAM ({feedingStats.sam_count || 0})</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-400 shrink-0" />
+                <span>Overweight / Obese ({feedingStats.overweight_obese_count || 0})</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Barangay Ranking Table (Alin ang may mas maraming bata sa feeding) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                <MapPin size={15} className="text-emerald-700" />
+                Barangay Feeding Distribution & Performance
+              </h4>
+              <span className="text-xs text-gray-400 font-medium">Ranked by enrolled beneficiaries</span>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left">Barangay</th>
+                    <th className="px-3 py-2.5 text-center">Nasa Feeding</th>
+                    <th className="px-3 py-2.5 text-center text-emerald-700 bg-emerald-50/50">Naging Normal</th>
+                    <th className="px-3 py-2.5 text-center text-amber-700 bg-amber-50/50">Hindi Pa Normal</th>
+                    <th className="px-3 py-2.5 text-center text-red-700 bg-red-50/50">Kritikal (SAM)</th>
+                    <th className="px-4 py-2.5 text-right">Attendance Logs</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {feedingStats.barangay_ranking && feedingStats.barangay_ranking.length > 0 ? (
+                    feedingStats.barangay_ranking.map((row, idx) => (
+                      <tr key={row.barangay} className="hover:bg-gray-50/80 transition-colors">
+                        <td className="px-4 py-2.5 font-bold text-gray-900 flex items-center gap-1.5">
+                          {idx === 0 && <span className="text-amber-500 font-black">🥇</span>}
+                          {idx === 1 && <span className="text-gray-400 font-black">🥈</span>}
+                          {idx === 2 && <span className="text-amber-700 font-black">🥉</span>}
+                          Barangay {row.barangay}
+                        </td>
+                        <td className="px-3 py-2.5 text-center font-bold text-gray-800">
+                          <span className="inline-block px-2 py-0.5 rounded-full bg-gray-100">
+                            {row.enrolled}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-center font-bold text-emerald-700 bg-emerald-50/30">
+                          {row.reached_normal}
+                        </td>
+                        <td className="px-3 py-2.5 text-center font-bold text-amber-700 bg-amber-50/30">
+                          {row.not_normal}
+                        </td>
+                        <td className="px-3 py-2.5 text-center font-bold text-red-600 bg-red-50/30">
+                          {row.sam_count > 0 ? (
+                            <span className="inline-block px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">
+                              {row.sam_count}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300">0</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-medium text-gray-600">
+                          {row.attendance_total} logs
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                        No feeding records found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Drilldown List of Children (Alin ang mga naging normal vs hindi naging normal) */}
+          <div className="pt-2 border-t border-gray-100 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-gray-800 text-sm">
+                  Beneficiary Breakdown (Naging Normal vs. Hindi Pa Normal)
+                </h4>
+                <p className="text-xs text-gray-400">View specific children and their current nutritional progress</p>
+              </div>
+
+              {/* Tab Selector */}
+              <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setFeedingChildTab('all')}
+                  className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                    feedingChildTab === 'all'
+                      ? 'bg-white text-gray-800 shadow-2xs font-bold'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  Lahat ({feedingStats.enrolled || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeedingChildTab('normal')}
+                  className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                    feedingChildTab === 'normal'
+                      ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  Naging Normal ({feedingStats.reached_normal_in_feeding || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeedingChildTab('not_normal')}
+                  className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                    feedingChildTab === 'not_normal'
+                      ? 'bg-amber-600 text-white shadow-2xs font-bold'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  Kailangan Pa ng Tulong ({feedingStats.still_malnourished || 0})
+                </button>
+              </div>
+            </div>
+
+            {/* List Table of Children */}
+            <div className="rounded-xl border border-gray-200 overflow-hidden max-h-60 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-200 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left">Pangalan ng Bata</th>
+                    <th className="px-3 py-2.5 text-left">Barangay</th>
+                    <th className="px-3 py-2.5 text-center">Unang Status</th>
+                    <th className="px-3 py-2.5 text-center">Kasalukuyang Status</th>
+                    <th className="px-3 py-2.5 text-center">Timbang & Taas</th>
+                    <th className="px-4 py-2.5 text-right">Attendance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {displayedFeedingChildren.length > 0 ? (
+                    displayedFeedingChildren.map((c) => {
+                      const isNorm = String(c.latest_status || '').toLowerCase() === 'normal';
+                      const isSAM = String(c.latest_status || '').toLowerCase() === 'sam';
+                      return (
+                        <tr key={c.child_id} className="hover:bg-gray-50/70 transition-colors">
+                          <td className="px-4 py-2.5 font-bold text-gray-900">{c.full_name}</td>
+                          <td className="px-3 py-2.5 font-medium text-gray-600">Brgy. {c.barangay}</td>
+                          <td className="px-3 py-2.5 text-center font-medium text-gray-500">
+                            <span className="uppercase px-2 py-0.5 rounded bg-gray-100 text-[10px] font-bold">
+                              {c.initial_status || '—'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <span
+                              className={`uppercase px-2 py-0.5 rounded text-[10px] font-bold ${
+                                isNorm
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : isSAM
+                                  ? 'bg-red-100 text-red-700 animate-pulse'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {c.latest_status || 'Ongoing'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-center font-medium text-gray-700">
+                            {c.latest_weight ? `${c.latest_weight} kg` : '—'} / {c.latest_height ? `${c.latest_height} cm` : '—'}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-medium text-gray-600">
+                            {c.attendance_count || 0} times
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                        Walang batang tumutugma sa napiling kategorya.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </motion.div>
