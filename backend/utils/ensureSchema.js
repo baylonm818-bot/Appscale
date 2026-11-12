@@ -21,7 +21,7 @@ async function ensureAppSchema(pool) {
       console.warn('[Schema] children.disability check warning:', e.message);
     }
 
-    // 2. Ensure `system_logs` table exists
+    // 2. Ensure `system_logs` table exists with `barangay` column
     try {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS \`system_logs\` (
@@ -29,6 +29,7 @@ async function ensureAppSchema(pool) {
           \`actor_id\`    INT NULL,
           \`actor_name\`  VARCHAR(150) NULL,
           \`actor_role\`  VARCHAR(50)  NULL,
+          \`barangay\`    VARCHAR(100) NULL,
           \`action\`      VARCHAR(100) NOT NULL,
           \`entity_type\` VARCHAR(100) NULL,
           \`entity_id\`   INT NULL,
@@ -36,10 +37,33 @@ async function ensureAppSchema(pool) {
           \`ip_address\`  VARCHAR(45) NULL,
           \`created_at\`  DATETIME DEFAULT CURRENT_TIMESTAMP,
           INDEX \`idx_actor_role\` (\`actor_role\`),
+          INDEX \`idx_barangay\` (\`barangay\`),
           INDEX \`idx_action\` (\`action\`),
           INDEX \`idx_created_at\` (\`created_at\`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
+
+      const [[{ cnt: bgyCnt }]] = await pool.query(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_logs' AND COLUMN_NAME = 'barangay'`
+      );
+      if (Number(bgyCnt) === 0) {
+        await pool.query(
+          `ALTER TABLE system_logs ADD COLUMN barangay VARCHAR(100) NULL AFTER actor_role, ADD INDEX idx_barangay (barangay)`
+        );
+        console.log('[Schema] Added column `system_logs.barangay`');
+      }
+
+      // Auto-backfill if empty
+      const [[{ cnt: logCount }]] = await pool.query(`SELECT COUNT(*) AS cnt FROM system_logs`);
+      if (Number(logCount) === 0) {
+        try {
+          const { backfillSystemLogs } = require('../scripts/backfill_system_logs');
+          await backfillSystemLogs();
+        } catch (bErr) {
+          console.warn('[Schema] Auto backfill system_logs warning:', bErr.message);
+        }
+      }
     } catch (e) {
       console.warn('[Schema] system_logs table init warning:', e.message);
     }

@@ -178,8 +178,14 @@ exports.createBhwSchedule = async (req, res) => {
 exports.markScheduleDone = async (req, res) => {
   const { id } = req.params;
   try {
+    const [[sched]] = await pool.query('SELECT title, barangay FROM schedules WHERE schedule_id = ?', [id]);
     await pool.query(`UPDATE schedules SET status = 'done' WHERE schedule_id = ?`, [id]);
     await createScheduleStatusNotification(id, 'done');
+    await logAction(pool, req, 'MARK_SCHEDULE_DONE', 'schedule', Number(id), {
+      summary: `Marked activity schedule "${sched?.title || id}" as completed`,
+      title: sched?.title,
+      barangay: sched?.barangay || req.user?.barangay
+    }, sched?.barangay || req.user?.barangay);
     return res.status(200).json({ message: 'Marked as done.' });
   } catch (error) {
     console.error('Mark schedule done error:', error);
@@ -197,8 +203,15 @@ exports.updateBhwScheduleStatus = async (req, res) => {
   }
 
   try {
+    const [[sched]] = await pool.query('SELECT title, barangay FROM schedules WHERE schedule_id = ?', [id]);
     await pool.query('UPDATE schedules SET status = ? WHERE schedule_id = ?', [status, id]);
     await createScheduleStatusNotification(id, status);
+    await logAction(pool, req, 'UPDATE_SCHEDULE_STATUS', 'schedule', Number(id), {
+      summary: `Updated activity schedule "${sched?.title || id}" status to ${status}`,
+      title: sched?.title,
+      status,
+      barangay: sched?.barangay || req.user?.barangay
+    }, sched?.barangay || req.user?.barangay);
     return res.status(200).json({ message: 'Schedule status updated.' });
   } catch (error) {
     console.error('Update BHW schedule status error:', error);

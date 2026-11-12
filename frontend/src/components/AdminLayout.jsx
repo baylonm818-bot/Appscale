@@ -180,8 +180,8 @@ function AdminLayout() {
     ),
     '/admin/system-logs': (
       <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">System Logs</h2>
-        <p className="text-xs text-gray-400">Audit trail of all BNS and BHW activities</p>
+        <h2 className="text-xl font-bold text-gray-800">System Activity Logs</h2>
+        <p className="text-xs text-gray-400">Audit trail of all changes and activities performed by BNS and BHW workers</p>
       </div>
     ),
     '/admin/signatories': (

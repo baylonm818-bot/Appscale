@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { ensureMedicalRecordTables, buildChildServiceInsert, buildMotherServiceInsert } = require('../utils/medicalSchema');
+const { logAction } = require('../utils/systemLog');
 
 exports.getMedicalRecordsList = async (req, res) => {
   let barangay = req.user?.barangay || req.query.barangay || '';
@@ -304,6 +305,13 @@ exports.createChildMedicalRecord = async (req, res) => {
       [result.insertId, child_id, `${child.first_name} ${child.last_name}`, actionDetails, userId, userName]
     );
 
+    await logAction(pool, req, 'RECORD_MEDICAL_INTERVENTION', 'child_services', result.insertId, {
+      summary: `${actionDetails} for ${child.first_name} ${child.last_name}`,
+      beneficiary: `${child.first_name} ${child.last_name}`,
+      beneficiary_type: 'child',
+      barangay: child.barangay || req.user?.barangay
+    }, child.barangay || req.user?.barangay);
+
     return res.status(201).json({ message: 'Medical intervention recorded successfully.', service_id: result.insertId });
   } catch (error) {
     console.error('Create child medical record error:', error);
@@ -351,6 +359,13 @@ exports.createMotherMedicalRecord = async (req, res) => {
        VALUES ('mother_services', ?, 'mother', ?, ?, 'CREATE', ?, ?, ?, NOW())`,
       [result.insertId, mother_id, `${mother.first_name} ${mother.last_name}`, actionDetails, userId, userName]
     );
+
+    await logAction(pool, req, 'RECORD_MEDICAL_INTERVENTION', 'mother_services', result.insertId, {
+      summary: `${actionDetails} for ${mother.first_name} ${mother.last_name}`,
+      beneficiary: `${mother.first_name} ${mother.last_name}`,
+      beneficiary_type: 'mother',
+      barangay: mother.barangay || req.user?.barangay
+    }, mother.barangay || req.user?.barangay);
 
     return res.status(201).json({ message: 'Medical intervention recorded successfully.', service_id: result.insertId });
   } catch (error) {

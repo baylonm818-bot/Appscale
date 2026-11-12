@@ -3,6 +3,7 @@ const { isDuplicateNutritionRecord } = require('../utils/mobileSyncSafety');
 const { enforceScopedBarangay } = require('../utils/roleAccess');
 const { validateMeasurementPlausibility } = require('../utils/growthRangeValidator');
 const { validateContactNumber } = require('../utils/contactValidation');
+const { logAction } = require('../utils/systemLog');
 
 function splitName(fullName) {
   const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
@@ -763,6 +764,18 @@ exports.syncNutritionRecord = async (req, res) => {
       ]
     );
 
+    try {
+      const childName = child ? `${child.first_name} ${child.last_name}` : `Child #${resolvedChildId}`;
+      await logAction(pool, req, 'RECORD_NUTRITION_ASSESSMENT', 'nutrition_record', result.insertId, {
+        summary: `Recorded nutrition measurement for ${childName}: Weight ${safeWeight}kg, Height ${safeHeight}cm, Status: ${os}`,
+        child_name: childName,
+        weight_kg: safeWeight,
+        height_cm: safeHeight,
+        overall_status: os,
+        barangay: child?.barangay || req.user?.barangay
+      }, child?.barangay || req.user?.barangay);
+    } catch (_logErr) {}
+
     // Auto-notification for SAM/MAM children (ONLY for valid/plausible records)
     const normalizedOverall = String(os || '').toUpperCase();
     if (isPlausible && ['SAM', 'MAM'].includes(normalizedOverall)) {
@@ -1215,6 +1228,14 @@ exports.createMobileSchedule = async (req, res) => {
       [title, schedule_type, schedule_date, schedule_time || null, venue || null,
        resolvedBarangay || null, target_role || 'bhw', notes || null]
     );
+
+    await logAction(pool, req, 'CREATE_SCHEDULE', 'schedule', result.insertId, {
+      summary: `Created activity schedule from mobile: "${title}" (${schedule_type}) at ${venue || 'Barangay'}`,
+      title,
+      schedule_type,
+      venue,
+      barangay: resolvedBarangay || req.user?.barangay
+    }, resolvedBarangay || req.user?.barangay);
 
     return res.status(201).json({ 
       message: 'Schedule created successfully.',
@@ -1837,6 +1858,15 @@ exports.recordFeedingAttendance = async (req, res) => {
         );
       }
     }
+
+    try {
+      await logAction(pool, req, 'RECORD_FEEDING_ATTENDANCE', 'feeding_attendance', null, {
+        summary: `Recorded feeding attendance for ${items.length} beneficiaries in Barangay ${resolvedBarangay || 'community'}`,
+        attendee_count: items.length,
+        barangay: resolvedBarangay || req.user?.barangay
+      }, resolvedBarangay || req.user?.barangay);
+    } catch (_logErr) {}
+
     return res.status(200).json({ message: 'Feeding attendance recorded successfully.' });
   } catch (error) {
     console.error('Record feeding attendance error:', error);

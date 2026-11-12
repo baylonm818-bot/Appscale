@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { logAction } = require('../utils/systemLog');
 
 function normalizeNutritionStatus(value) {
   const raw = String(value ?? '').trim();
@@ -189,6 +190,13 @@ exports.createChildService = async (req, res) => {
           modifierName,
         ]
       );
+
+      await logAction(pool, req, 'PROVIDE_CHILD_SERVICE', 'child_services', result.insertId, {
+        summary: auditDetails,
+        child_name: `${child.first_name} ${child.last_name}`,
+        service_type: selectedConfig.type,
+        barangay: child.barangay || req.user?.barangay
+      }, child.barangay || req.user?.barangay);
     } catch (auditErr) {
       console.warn('Audit trail insert warning (non-fatal):', auditErr.message);
     }

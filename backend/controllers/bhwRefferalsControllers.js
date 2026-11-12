@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { canAccessReferral } = require('../utils/roleAccess');
+const { logAction } = require('../utils/systemLog');
 
 function normalizeIdValue(value) {
   const trimmed = String(value ?? '').trim();
@@ -392,6 +393,15 @@ exports.createReferral = async (req, res) => {
            VALUES ('referral', ?, ?, ?, ?, 'create_referral', ?, ?, ?, NOW())`,
           [result.insertId, benType, benId, targetLabel, auditDetails, referringUserId, referrerName]
         );
+
+        await logAction(pool, req, 'SUBMIT_REFERRAL', 'referral', result.insertId, {
+          summary: `Referred ${targetLabel} to ${facilityName || 'facility'} (${finalSeverity === 'high' ? 'Urgent' : 'Routine'}) — Reason: ${reason}`,
+          beneficiary: targetLabel,
+          beneficiary_type: benType,
+          reason,
+          severity: finalSeverity,
+          barangay: targetBarangay || req.user?.barangay
+        }, targetBarangay || req.user?.barangay);
       } catch (auditErr) {
         console.warn('Non-fatal referral audit trail insert error:', auditErr.message);
       }
@@ -664,6 +674,14 @@ exports.updateReferralStatus = async (req, res) => {
          VALUES ('referral', ?, ?, ?, ?, 'update_status', ?, ?, ?, NOW())`,
         [id, benType, benId, benName, actionDetails, req.user?.user_id || null, modifierName]
       );
+
+      await logAction(pool, req, 'UPDATE_REFERRAL_STATUS', 'referral', Number(id), {
+        summary: actionDetails,
+        beneficiary: benName,
+        beneficiary_type: benType,
+        status: normalizedStatus,
+        barangay: referral.barangay || req.user?.barangay
+      }, referral.barangay || req.user?.barangay);
     } catch (auditErr) {
       console.warn('Non-fatal referral audit trail insert error:', auditErr.message);
     }

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
-import { Search, X, CheckCircle2, Clock, AlertCircle, Plus, Heart } from 'lucide-react';
+import { Search, X, CheckCircle2, CheckCircle, Clock, AlertCircle, Plus, Heart, Layers, RotateCcw, Archive } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 
@@ -16,6 +16,38 @@ const serviceOptions = [
   { value: 'feeding', label: 'Supplementary Feeding' },
   { value: 'checkup', label: 'RHU Medical Consultation' },
 ];
+
+function SummaryCard({ icon: Icon, label, value, sublabel, isActive, onClick }) {
+  const numVal = typeof value === 'number' ? value : parseInt(value, 10) || 0;
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      whileHover={{ y: -3, transition: { duration: 0.18 } }}
+      whileTap={{ scale: 0.98 }}
+      className={`w-full text-left rounded-2xl p-4 sm:p-5 shadow-xs transition-all duration-200 focus:outline-none cursor-pointer border ${
+        isActive
+          ? 'bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white shadow-md border-emerald-700'
+          : 'bg-white hover:bg-gray-50/80 border-gray-200/80 hover:shadow-sm text-gray-800'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className={`text-xs sm:text-sm font-semibold leading-tight ${isActive ? 'text-white/85' : 'text-gray-500'}`}>
+          {label}
+        </p>
+        <div className={`shrink-0 rounded-xl p-2 ${isActive ? 'bg-white/20 text-white' : 'bg-green-50 text-[#2e7d32]'}`}>
+          <Icon size={17} />
+        </div>
+      </div>
+      <p className={`text-3xl sm:text-4xl font-black mt-2.5 tracking-tight ${isActive ? 'text-white' : 'text-gray-900'}`}>
+        <CountUp value={numVal} />
+      </p>
+      <p className={`text-[11px] sm:text-xs mt-1 font-medium truncate ${isActive ? 'text-white/70' : 'text-gray-400'}`}>
+        {sublabel}
+      </p>
+    </motion.button>
+  );
+}
 
 function Referrals() {
   let user = {};
@@ -384,90 +416,62 @@ function Referrals() {
         </div>
       )}
 
-      {/* ── Status Tabs (Single Top Filter Bar: All | Pending | Ongoing | Completed | Archived) ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-xs">
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => handleSelectStatusFilter('all')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
-              statusFilter === 'all'
-                ? 'bg-[#1b5e20] text-white border-[#1b5e20] shadow-xs'
-                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            All <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}><CountUp value={allCount} /></span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSelectStatusFilter('Pending')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
-              statusFilter === 'Pending'
-                ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
-            }`}
-          >
-            Pending <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Pending' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'}`}><CountUp value={pendingCount} /></span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSelectStatusFilter('Received')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
-              statusFilter === 'Received'
-                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
-                : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
-            }`}
-          >
-            Received <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Received' ? 'bg-white/20 text-white' : 'bg-sky-100 text-sky-800'}`}><CountUp value={receivedCount} /></span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSelectStatusFilter('Ongoing')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
-              statusFilter === 'Ongoing'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
-            }`}
-          >
-            Ongoing <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Ongoing' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'}`}><CountUp value={ongoingCount} /></span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSelectStatusFilter('Completed')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
-              statusFilter === 'Completed'
-                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
-            }`}
-          >
-            Completed <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Completed' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}><CountUp value={completedCount} /></span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSelectStatusFilter('Archived')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 border ${
-              statusFilter === 'Archived'
-                ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            Archived <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === 'Archived' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}><CountUp value={archivedCount} /></span>
-          </button>
-          {statusFilter === 'Completed' && completedCount > 0 && (
-            <button
-              type="button"
-              disabled={batchArchiving}
-              onClick={handleBatchArchiveCompleted}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-            >
-              {batchArchiving ? 'Archiving…' : `Archive All Completed (${completedCount})`}
-            </button>
-          )}
-        </div>
+      {/* ── Summary Stat Cards (Malalaking box gaya ng Schedule page) ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+        <SummaryCard
+          icon={Layers}
+          label="All Referrals"
+          value={allCount}
+          sublabel="Total active cases"
+          isActive={statusFilter === 'all'}
+          onClick={() => handleSelectStatusFilter('all')}
+        />
+        <SummaryCard
+          icon={Clock}
+          label="Pending"
+          value={pendingCount}
+          sublabel="Awaiting action"
+          isActive={statusFilter === 'Pending'}
+          onClick={() => handleSelectStatusFilter('Pending')}
+        />
+        <SummaryCard
+          icon={CheckCircle}
+          label="Received"
+          value={receivedCount}
+          sublabel="Acknowledged"
+          isActive={statusFilter === 'Received'}
+          onClick={() => handleSelectStatusFilter('Received')}
+        />
+        <SummaryCard
+          icon={RotateCcw}
+          label="Ongoing"
+          value={ongoingCount}
+          sublabel="In intervention"
+          isActive={statusFilter === 'Ongoing'}
+          onClick={() => handleSelectStatusFilter('Ongoing')}
+        />
+        <SummaryCard
+          icon={CheckCircle2}
+          label="Completed"
+          value={completedCount}
+          sublabel="Resolved cases"
+          isActive={statusFilter === 'Completed'}
+          onClick={() => handleSelectStatusFilter('Completed')}
+        />
+        <SummaryCard
+          icon={Archive}
+          label="Archived"
+          value={archivedCount}
+          sublabel="Past & archived"
+          isActive={statusFilter === 'Archived'}
+          onClick={() => handleSelectStatusFilter('Archived')}
+        />
+      </div>
 
-        {/* Secondary controls: Search, Beneficiary Type, Referrer, & Sort By */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3.5 py-1.5 border border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-100 transition min-w-[240px] flex-1">
+      {/* ── Filter & Search Controls Bar ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-gray-100 shadow-xs">
+        <div className="flex items-center gap-3 flex-wrap flex-1">
+          <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3.5 py-2 border border-gray-200 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-100 transition min-w-[240px] flex-1 max-w-md">
             <Search size={15} className="text-gray-400 shrink-0" />
             <input
               type="text"
@@ -487,7 +491,7 @@ function Referrals() {
             <button
               type="button"
               onClick={() => setTypeFilter('all')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 typeFilter === 'all' ? 'bg-white text-gray-800 shadow-xs font-bold' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
@@ -496,7 +500,7 @@ function Referrals() {
             <button
               type="button"
               onClick={() => setTypeFilter('child')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 typeFilter === 'child' ? 'bg-white text-blue-700 shadow-xs font-bold' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
@@ -505,7 +509,7 @@ function Referrals() {
             <button
               type="button"
               onClick={() => setTypeFilter('mother')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 typeFilter === 'mother' ? 'bg-white text-purple-700 shadow-xs font-bold' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
@@ -518,7 +522,7 @@ function Referrals() {
             <select
               value={referrerRoleFilter}
               onChange={(e) => setReferrerRoleFilter(e.target.value)}
-              className="text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-gray-700 focus:outline-none focus:border-[#2e7d32]"
+              className="text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 text-gray-700 focus:outline-none focus:border-[#2e7d32] cursor-pointer"
             >
               <option value="all">All Referrers</option>
               <option value="BHW">Referred by BHW</option>
@@ -531,17 +535,30 @@ function Referrals() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-gray-700 focus:outline-none focus:border-[#2e7d32]"
+              className="text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 text-gray-700 focus:outline-none focus:border-[#2e7d32] cursor-pointer"
             >
               <option value="date">Date (Newest first)</option>
               <option value="severity">Severity (High first)</option>
             </select>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {statusFilter === 'Completed' && completedCount > 0 && (
+            <button
+              type="button"
+              disabled={batchArchiving}
+              onClick={handleBatchArchiveCompleted}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+            >
+              {batchArchiving ? 'Archiving…' : `Archive All Completed (${completedCount})`}
+            </button>
+          )}
 
           <button
             type="button"
             onClick={handleOpenReferMother}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-linear-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800 transition shadow-xs cursor-pointer ml-auto"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-linear-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800 transition shadow-xs cursor-pointer"
           >
             <Heart size={14} />
             <span>Refer Mother</span>

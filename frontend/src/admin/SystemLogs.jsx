@@ -1,27 +1,38 @@
 /**
- * SystemLogs.jsx — Step 9: Admin-only view of all BNS/BHW activity logs
+ * SystemLogs.jsx — Admin-only view of all BNS/BHW activity logs
  * Route: /admin/system-logs
  */
 import { useState, useEffect, useCallback } from 'react';
 import axiosClient from '../api/axiosClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShimmerSkeleton } from '../components/ui/motion';
-import { Search, X, ChevronLeft, ChevronRight, FileText, Shield } from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, FileText, MapPin, Activity } from 'lucide-react';
+
+const GASAN_BARANGAYS = [
+  'Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang',
+  'Banot', 'Banuyo', 'Bognuyan', 'Cabugao', 'Dawis', 'Dili', 'Libtangin',
+  'Mahunig', 'Mangiliol', 'Masiga', 'Mat. Gasan', 'Pangi', 'Pinggan',
+  'Tabionan', 'Tiguion', 'Brgy. Uno', 'Brgy. Dos', 'Brgy. Tres', 'Tapuyan',
+];
 
 const ACTION_COLORS = {
   CREATE:  'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  UPDATE:  'bg-blue-50   text-blue-700   border border-blue-200',
-  DELETE:  'bg-red-50    text-red-700    border border-red-200',
-  SUBMIT:  'bg-purple-50 text-purple-700 border border-purple-200',
-  default: 'bg-gray-100  text-gray-600   border border-gray-200',
+  RECORD:  'bg-teal-50    text-teal-700    border border-teal-200',
+  UPDATE:  'bg-blue-50    text-blue-700    border border-blue-200',
+  SUBMIT:  'bg-purple-50  text-purple-700  border border-purple-200',
+  MARK:    'bg-green-50   text-green-700   border border-green-200',
+  DELETE:  'bg-red-50     text-red-700     border border-red-200',
+  default: 'bg-gray-100   text-gray-600    border border-gray-200',
 };
 
 function actionColor(action) {
   const upper = String(action || '').toUpperCase();
   if (upper.startsWith('CREATE')) return ACTION_COLORS.CREATE;
+  if (upper.startsWith('RECORD')) return ACTION_COLORS.RECORD;
   if (upper.startsWith('UPDATE')) return ACTION_COLORS.UPDATE;
-  if (upper.startsWith('DELETE')) return ACTION_COLORS.DELETE;
   if (upper.startsWith('SUBMIT')) return ACTION_COLORS.SUBMIT;
+  if (upper.startsWith('MARK'))   return ACTION_COLORS.MARK;
+  if (upper.startsWith('DELETE')) return ACTION_COLORS.DELETE;
   return ACTION_COLORS.default;
 }
 
@@ -50,8 +61,26 @@ function formatLogSummary(log) {
   if (d.summary) return d.summary;
 
   const action = String(log.action || '').toUpperCase();
-  if (action === 'CREATE_CHILD') {
-    return `Registered new child: ${d.name || 'Child'}${d.barangay ? ` (${d.barangay})` : ''}`;
+  if (action === 'CREATE_CHILD' || action === 'REGISTER_CHILD') {
+    return `Registered new child beneficiary: ${d.child_name || d.name || 'Child'}${d.barangay ? ` in Barangay ${d.barangay}` : ''}`;
+  }
+  if (action === 'RECORD_NUTRITION_ASSESSMENT') {
+    return `Recorded nutrition measurement for ${d.child_name || 'child'}: Weight ${d.weight_kg || '—'}kg, Height ${d.height_cm || '—'}cm${d.overall_status ? `, Status: ${d.overall_status}` : ''}`;
+  }
+  if (action === 'RECORD_MEDICAL_INTERVENTION') {
+    return d.summary || `Recorded medical intervention for ${d.beneficiary || 'beneficiary'}`;
+  }
+  if (action === 'SUBMIT_REFERRAL') {
+    return d.summary || `Submitted referral for ${d.beneficiary || 'beneficiary'}`;
+  }
+  if (action === 'UPDATE_REFERRAL_STATUS') {
+    return d.summary || `Updated referral status for ${d.beneficiary || 'beneficiary'}`;
+  }
+  if (action === 'RECORD_FEEDING_ATTENDANCE') {
+    return d.summary || `Logged feeding program attendance${d.barangay ? ` in Barangay ${d.barangay}` : ''}`;
+  }
+  if (action === 'PROVIDE_CHILD_SERVICE') {
+    return d.summary || `Provided health service to ${d.child_name || 'child'}`;
   }
   if (action === 'UPDATE_CHILD') {
     if (d.after && typeof d.after === 'object') {
@@ -69,6 +98,9 @@ function formatLogSummary(log) {
   }
   if (action === 'CREATE_SCHEDULE_BHW' || action === 'CREATE_SCHEDULE') {
     return `Scheduled: "${d.title || 'Activity'}" (${d.venue || d.barangay || 'Barangay'})`;
+  }
+  if (action === 'MARK_SCHEDULE_DONE') {
+    return `Marked schedule "${d.title || 'Activity'}" as completed`;
   }
   if (action === 'SUBMIT_SCHEDULE_AUDIT') {
     return `Submitted activity audit: "${d.notes || d.audit_notes || 'Completed'}"`;
@@ -95,6 +127,7 @@ export default function SystemLogs() {
   // Filters
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [barangayFilter, setBarangayFilter] = useState('');
   const [page, setPage] = useState(1);
 
   // Detail drawer
@@ -105,8 +138,9 @@ export default function SystemLogs() {
     setError('');
     try {
       const params = new URLSearchParams({ page, limit: 50 });
-      if (roleFilter) params.append('role', roleFilter);
-      if (search)     params.append('action', search);
+      if (roleFilter)     params.append('role', roleFilter);
+      if (barangayFilter) params.append('barangay', barangayFilter);
+      if (search)         params.append('action', search);
       const { data } = await axiosClient.get(`/admin/logs?${params.toString()}`);
       setLogs(data.logs || []);
       setPagination(data.pagination || { total: 0, page: 1, limit: 50, totalPages: 1 });
@@ -115,74 +149,91 @@ export default function SystemLogs() {
     } finally {
       setLoading(false);
     }
-  }, [page, roleFilter, search]);
+  }, [page, roleFilter, barangayFilter, search]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
   // Reset to page 1 when filters change
-  useEffect(() => { setPage(1); }, [roleFilter, search]);
+  useEffect(() => { setPage(1); }, [roleFilter, barangayFilter, search]);
 
   const selectedDetails = selectedLog ? parseDetails(selectedLog.details) : null;
   const hasDiff = selectedDetails && selectedDetails.after && typeof selectedDetails.after === 'object' && Object.keys(selectedDetails.after).length > 0;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Shield size={18} className="text-[#2e7d32]" />
-            <h2 className="text-lg font-black text-gray-900">System Activity Logs</h2>
+    <div className="space-y-4">
+      {/* Controls & Filters Bar */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div className="flex-1 flex flex-col sm:flex-row gap-3">
+          {/* Keyword Search */}
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by action, worker, keyword, or barangay…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 text-xs font-medium text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
+                <X size={13} />
+              </button>
+            )}
           </div>
-          <p className="text-xs text-gray-500">Audit trail of all changes and activities performed by BNS and BHW workers.</p>
+
+          {/* Barangay Filter */}
+          <div className="relative">
+            <select
+              value={barangayFilter}
+              onChange={(e) => setBarangayFilter(e.target.value)}
+              className="w-full sm:w-auto text-xs font-semibold border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 text-gray-700 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 min-w-[160px] cursor-pointer"
+            >
+              <option value="">All Barangays</option>
+              {GASAN_BARANGAYS.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Role Filter */}
+          <div className="relative">
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="w-full sm:w-auto text-xs font-semibold border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 text-gray-700 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 min-w-[130px] cursor-pointer"
+            >
+              <option value="">All Roles</option>
+              <option value="bns">BNS only</option>
+              <option value="bhw">BHW only</option>
+              <option value="admin">Admin only</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Counter Badge */}
+        <div className="shrink-0 flex items-center gap-2 text-xs font-medium text-gray-500 self-end md:self-auto">
+          <Activity size={14} className="text-emerald-600" />
+          <span>Showing <strong className="text-gray-800 font-bold">{pagination.total}</strong> recorded activities</span>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs p-4 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search by action or keyword…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-8 py-2 text-xs font-medium text-gray-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X size={13} />
-            </button>
-          )}
-        </div>
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          className="text-xs font-semibold border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 text-gray-700 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 min-w-[140px]"
-        >
-          <option value="">All Roles</option>
-          <option value="bns">BNS only</option>
-          <option value="bhw">BHW only</option>
-          <option value="admin">Admin only</option>
-        </select>
-      </div>
-
-      {/* Table */}
+      {/* Main Table */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
-            {[1,2,3,4,5].map((i) => <ShimmerSkeleton key={i} className="h-10 w-full rounded-xl" />)}
+            {[1, 2, 3, 4, 5, 6].map((i) => <ShimmerSkeleton key={i} className="h-10 w-full rounded-xl" />)}
           </div>
         ) : error ? (
           <div className="p-10 text-center text-red-600 text-sm font-semibold">{error}</div>
         ) : (
           <>
-            <div className="overflow-x-auto max-h-[560px] overflow-y-auto">
-              <table className="w-full min-w-[850px] text-sm border-collapse">
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+              <table className="w-full min-w-[950px] text-sm border-collapse">
                 <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
                   <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     <th className="px-5 py-3.5 whitespace-nowrap">Timestamp</th>
-                    <th className="px-4 py-3.5 whitespace-nowrap">Actor</th>
+                    <th className="px-4 py-3.5 whitespace-nowrap">Barangay</th>
+                    <th className="px-4 py-3.5 whitespace-nowrap">Actor / Worker</th>
                     <th className="px-4 py-3.5 whitespace-nowrap">Role</th>
                     <th className="px-4 py-3.5 whitespace-nowrap">Action</th>
                     <th className="px-4 py-3.5 whitespace-nowrap">Entity</th>
@@ -193,22 +244,34 @@ export default function SystemLogs() {
                 <tbody className="divide-y divide-gray-100">
                   {logs.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-16 text-center text-gray-400 text-sm">
-                        No log entries found.
+                      <td colSpan={8} className="px-6 py-16 text-center text-gray-400 text-sm">
+                        No activity log entries found for the selected criteria.
                       </td>
                     </tr>
                   ) : logs.map((log) => {
                     const summaryText = formatLogSummary(log);
                     return (
-                      <tr key={log.log_id} className="hover:bg-gray-50 transition">
-                        <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">{formatDate(log.created_at)}</td>
-                        <td className="px-4 py-3 text-xs font-semibold text-gray-800 whitespace-nowrap">{log.actor_name || `User #${log.actor_id}` || '—'}</td>
+                      <tr key={log.log_id} className="hover:bg-green-50/20 transition">
+                        <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
+                          {formatDate(log.created_at)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <MapPin size={10} className="text-emerald-600 shrink-0" />
+                            {log.barangay || '—'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs font-semibold text-gray-800 whitespace-nowrap">
+                          {log.actor_name || (log.actor_id ? `User #${log.actor_id}` : '—')}
+                        </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
-                            log.actor_role === 'bns' ? 'bg-blue-50 text-blue-700'
-                            : log.actor_role === 'bhw' ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-gray-100 text-gray-600'
-                          }`}>{log.actor_role || '—'}</span>
+                            String(log.actor_role).toLowerCase() === 'bns' ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                            : String(log.actor_role).toLowerCase() === 'bhw' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-gray-100 text-gray-600 border border-gray-200'
+                          }`}>
+                            {log.actor_role || '—'}
+                          </span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${actionColor(log.action)}`}>
@@ -227,7 +290,7 @@ export default function SystemLogs() {
                           {log.details ? (
                             <button
                               onClick={() => setSelectedLog(log)}
-                              className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
+                              className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
                             >
                               <FileText size={12} /> Inspect
                             </button>
@@ -293,9 +356,13 @@ export default function SystemLogs() {
 
               <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
                 {/* Meta Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-gray-50 rounded-xl p-3 border border-gray-100">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs bg-gray-50 rounded-xl p-3 border border-gray-100">
                   <div>
-                    <p className="font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Actor</p>
+                    <p className="font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Barangay</p>
+                    <p className="font-bold text-emerald-900 mt-0.5 truncate">{selectedLog.barangay || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-400 uppercase tracking-wider text-[10px]">Actor / Worker</p>
                     <p className="font-bold text-gray-800 mt-0.5 truncate">{selectedLog.actor_name || '—'}</p>
                   </div>
                   <div>
