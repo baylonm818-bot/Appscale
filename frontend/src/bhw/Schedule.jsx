@@ -199,6 +199,7 @@ function Schedule() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [schedErrors, setSchedErrors] = useState({});
   const authCtx = useAuth();
   const authUser = authCtx?.user;
   const storedUser = useMemo(() => {
