@@ -19,6 +19,9 @@ class AppTextField extends StatefulWidget {
   final bool isRequired;
   final int? maxLength;
   final String? errorText;
+  final String? warningText;
+  final String? suffixText;
+  final Widget? inlineExtra;
   final TextInputAction? textInputAction;
   final Iterable<String>? autofillHints;
   final ValueChanged<String>? onChanged;
@@ -41,6 +44,9 @@ class AppTextField extends StatefulWidget {
     this.keyboardType,
     this.inputFormatters,
     this.errorText,
+    this.warningText,
+    this.suffixText,
+    this.inlineExtra,
     this.textInputAction,
     this.autofillHints,
     this.onChanged,
@@ -132,19 +138,27 @@ class _AppTextFieldState extends State<AppTextField> {
                     ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   )
-                : null,
+                : (widget.suffixText != null
+                    ? Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Center(
+                          widthFactor: 1.0,
+                          child: Text(
+                            widget.suffixText!,
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      )
+                    : null),
             filled: true,
             fillColor: AppColors.surface,
             contentPadding: const EdgeInsets.symmetric(
               vertical: 14,
               horizontal: 14,
-            ),
-            errorText: widget.errorText,
-            errorMaxLines: 3,
-            errorStyle: const TextStyle(
-              color: AppColors.requiredAsterisk,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
@@ -155,10 +169,10 @@ class _AppTextFieldState extends State<AppTextField> {
               borderSide: BorderSide(
                 color: (widget.hasError || widget.errorText != null)
                     ? AppColors.requiredAsterisk
-                    : widget.hasWarning
+                    : (widget.hasWarning || widget.warningText != null)
                         ? AppColors.statOrange
                         : AppColors.border,
-                width: (widget.hasError || widget.errorText != null || widget.hasWarning) ? 1.4 : 1.0,
+                width: (widget.hasError || widget.errorText != null || widget.hasWarning || widget.warningText != null) ? 1.4 : 1.0,
               ),
             ),
             focusedBorder: OutlineInputBorder(
@@ -166,7 +180,7 @@ class _AppTextFieldState extends State<AppTextField> {
               borderSide: BorderSide(
                 color: (widget.hasError || widget.errorText != null)
                     ? AppColors.requiredAsterisk
-                    : widget.hasWarning
+                    : (widget.hasWarning || widget.warningText != null)
                         ? AppColors.statOrange
                         : AppColors.borderFocused,
                 width: 1.4,
@@ -182,6 +196,44 @@ class _AppTextFieldState extends State<AppTextField> {
             ),
           ),
         ),
+        if (widget.errorText != null || widget.warningText != null) ...[
+          const SizedBox(height: 5),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: Icon(
+                  widget.errorText != null
+                      ? Icons.error_outline
+                      : Icons.warning_amber_rounded,
+                  size: 14,
+                  color: widget.errorText != null
+                      ? AppColors.statRed
+                      : AppColors.statOrange,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  widget.errorText ?? widget.warningText!,
+                  style: TextStyle(
+                    color: widget.errorText != null
+                        ? AppColors.statRed
+                        : const Color(0xFFB25E00),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    height: 1.25,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+        if (widget.inlineExtra != null) ...[
+          const SizedBox(height: 4),
+          widget.inlineExtra!,
+        ],
       ],
     );
   }

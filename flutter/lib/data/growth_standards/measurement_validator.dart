@@ -30,6 +30,28 @@ class ValidationResult {
     if (suggestion != null) return '$message $suggestion';
     return message;
   }
+
+  String? get inlineMessage {
+    if (message == null) return null;
+    String s = message!;
+    // Clean up verbose prefix e.g. "Weight 12.5 kg is " or "Height 85 cm is "
+    s = s.replaceFirst(
+      RegExp(r'^(Weight|Height|MUAC)\s+[0-9.]+\s*(kg|cm)?\s+is\s+', caseSensitive: false),
+      '',
+    );
+    // If it starts with "Height X cm cannot", strip "Height X cm "
+    s = s.replaceFirst(
+      RegExp(r'^(Weight|Height|MUAC)\s+[0-9.]+\s*(kg|cm)?\s+cannot', caseSensitive: false),
+      'Cannot',
+    );
+    // Capitalize first letter
+    if (s.isNotEmpty) {
+      s = s[0].toUpperCase() + s.substring(1);
+    }
+    // Strip trailing verbose parentheses like "(Must be between 2 and 30 kg for children 0–59 months)"
+    s = s.replaceFirst(RegExp(r'\s*\(Must be between.*?\)$'), '');
+    return s.trim();
+  }
 }
 
 class MeasurementValidator {
@@ -173,7 +195,7 @@ class MeasurementValidator {
       if (weight < minPlausibleWeightKg) {
         return ValidationResult(
           severity: ValidationSeverity.error,
-          message: 'Weight $valStr kg is invalid. Must be between 2 and 30 kg for children 0–59 months (Expected ${range.expectedWeightLabel} for $ageLabel).',
+          message: 'Weight $valStr kg is too low for $ageLabel. Expected ${range.expectedWeightLabel}.',
         );
       }
       if (weight > maxPlausibleWeightKg) {
@@ -185,7 +207,7 @@ class MeasurementValidator {
         );
         return ValidationResult(
           severity: ValidationSeverity.error,
-          message: 'Weight $valStr kg is too high for $ageLabel. Expected ${range.expectedWeightLabel}. (Must be between 2 and 30 kg for children 0–59 months)',
+          message: 'Weight $valStr kg is too high for $ageLabel. Expected ${range.expectedWeightLabel}.',
           suggestion: suggestion.suggestion,
           suggestionValue: suggestion.value,
         );
@@ -218,7 +240,7 @@ class MeasurementValidator {
     if (weight < range.softMinWeight) {
       return ValidationResult(
         severity: ValidationSeverity.warning,
-        message: 'Weight $valStr kg is unusually low for $ageLabel. Expected ${range.expectedWeightLabel}.',
+        message: 'Weight $valStr kg is unusually low for $ageLabel. Expected ${range.expectedWeightLabel}. Please double-check.',
       );
     }
     if (weight > range.softMaxWeight) {
@@ -230,7 +252,7 @@ class MeasurementValidator {
       );
       return ValidationResult(
         severity: ValidationSeverity.warning,
-        message: 'Weight $valStr kg is unusually high for $ageLabel. Expected ${range.expectedWeightLabel}.',
+        message: 'Weight $valStr kg is unusually high for $ageLabel. Expected ${range.expectedWeightLabel}. Please double-check.',
         suggestion: suggestion.suggestion,
         suggestionValue: suggestion.value,
       );
@@ -260,7 +282,7 @@ class MeasurementValidator {
       }
       return ValidationResult(
         severity: ValidationSeverity.warning,
-        message: 'Height $valStr cm is slightly lower than previous entry ($previousHeightCm cm). Please verify.',
+        message: 'Height $valStr cm is slightly lower than previous entry ($previousHeightCm cm). Please double-check.',
       );
     }
 
@@ -269,7 +291,7 @@ class MeasurementValidator {
       if (height < minPlausibleHeightCm) {
         return ValidationResult(
           severity: ValidationSeverity.error,
-          message: 'Height $valStr cm is too low for $ageLabel. Expected ${range.expectedHeightLabel}. (Must be between 45 and 125 cm for children 0–59 months)',
+          message: 'Height $valStr cm is too low for $ageLabel. Expected ${range.expectedHeightLabel}.',
         );
       }
       if (height > maxPlausibleHeightCm) {
@@ -281,7 +303,7 @@ class MeasurementValidator {
         );
         return ValidationResult(
           severity: ValidationSeverity.error,
-          message: 'Height $valStr cm is too high for $ageLabel. Expected ${range.expectedHeightLabel}. (Must be between 45 and 125 cm for children 0–59 months)',
+          message: 'Height $valStr cm is too high for $ageLabel. Expected ${range.expectedHeightLabel}.',
           suggestion: suggestion.suggestion,
           suggestionValue: suggestion.value,
         );
@@ -314,7 +336,7 @@ class MeasurementValidator {
     if (height < range.softMinHeight) {
       return ValidationResult(
         severity: ValidationSeverity.warning,
-        message: 'Height $valStr cm is unusually low for $ageLabel. Expected ${range.expectedHeightLabel}.',
+        message: 'Height $valStr cm is unusually low for $ageLabel. Expected ${range.expectedHeightLabel}. Please double-check.',
       );
     }
     if (height > range.softMaxHeight) {
@@ -326,7 +348,7 @@ class MeasurementValidator {
       );
       return ValidationResult(
         severity: ValidationSeverity.warning,
-        message: 'Height $valStr cm is unusually high for $ageLabel. Expected ${range.expectedHeightLabel}.',
+        message: 'Height $valStr cm is unusually high for $ageLabel. Expected ${range.expectedHeightLabel}. Please double-check.',
         suggestion: suggestion.suggestion,
         suggestionValue: suggestion.value,
       );
@@ -347,7 +369,7 @@ class MeasurementValidator {
       if (muac < minPlausibleMuacCm || muac > maxPlausibleMuacCm) {
         return ValidationResult(
           severity: ValidationSeverity.error,
-          message: 'MUAC $valStr cm is outside plausible range (8–20 cm for children 0–59 months).',
+          message: 'MUAC $valStr cm is outside plausible range (8–20 cm).',
         );
       }
     } else if (muac < 7.0 || muac > 30.0) {
@@ -359,19 +381,19 @@ class MeasurementValidator {
     if (muac < 10.5) {
       return ValidationResult(
         severity: ValidationSeverity.warning,
-        message: 'MUAC $valStr cm indicates severe acute wasting (SAM). Please verify measurement.',
+        message: 'MUAC $valStr cm indicates severe acute wasting (SAM). Please double-check.',
       );
     }
     if (muac < 11.5) {
       return ValidationResult(
         severity: ValidationSeverity.warning,
-        message: 'MUAC $valStr cm indicates moderate acute wasting (MAM). Please verify measurement.',
+        message: 'MUAC $valStr cm indicates moderate acute wasting (MAM). Please double-check.',
       );
     }
     if (muac > 22.0) {
       return ValidationResult(
         severity: ValidationSeverity.warning,
-        message: 'MUAC $valStr cm is unusually high for age. Expected 11.5–18.0 cm.',
+        message: 'MUAC $valStr cm is unusually high for age. Expected 11.5–18.0 cm. Please double-check.',
       );
     }
     return const ValidationResult();

@@ -118,6 +118,170 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     _validateHeight();
   }
 
+  void _onWeightChanged(String val) {
+    if (_weightValidation.hasMessage) {
+      final raw = val.trim();
+      if (raw.isEmpty) {
+        setState(() => _weightValidation = const ValidationResult());
+      } else {
+        final w = MeasurementValidator.parseDecimal(raw);
+        if (w != null) {
+          final res = MeasurementValidator.checkWeight(w, _assessmentAgeMonths);
+          if (res.isValid) {
+            setState(() {
+              _weightValidation = const ValidationResult();
+              _plausibilityError = null;
+            });
+          }
+        }
+      }
+    } else if (_plausibilityError != null) {
+      setState(() => _plausibilityError = null);
+    }
+    setState(() {});
+  }
+
+  void _onHeightChanged(String val) {
+    if (_heightValidation.hasMessage) {
+      final raw = val.trim();
+      if (raw.isEmpty) {
+        setState(() => _heightValidation = const ValidationResult());
+      } else {
+        final h = MeasurementValidator.parseDecimal(raw);
+        if (h != null) {
+          final res = MeasurementValidator.checkHeight(
+            h,
+            _assessmentAgeMonths,
+            previousHeightCm: _previousEntry?.heightCm,
+          );
+          if (res.isValid) {
+            setState(() {
+              _heightValidation = const ValidationResult();
+              _plausibilityError = null;
+            });
+          }
+        }
+      }
+    } else if (_plausibilityError != null) {
+      setState(() => _plausibilityError = null);
+    }
+    setState(() {});
+  }
+
+  void _onMuacChanged(String val) {
+    if (_muacValidation.hasMessage) {
+      final raw = val.trim();
+      if (raw.isEmpty) {
+        setState(() => _muacValidation = const ValidationResult());
+      } else {
+        final m = MeasurementValidator.parseDecimal(raw);
+        if (m != null) {
+          final res = MeasurementValidator.checkMuac(m, _assessmentAgeMonths);
+          if (res.isValid) {
+            setState(() => _muacValidation = const ValidationResult());
+          }
+        }
+      }
+    }
+    setState(() {});
+  }
+
+  bool get _hasHardErrors {
+    return _weightValidation.isError ||
+        _heightValidation.isError ||
+        _muacValidation.isError ||
+        _plausibilityError != null;
+  }
+
+  String get _hardErrorSummary {
+    final fields = <String>[];
+    if (_weightValidation.isError) fields.add('Weight');
+    if (_heightValidation.isError) fields.add('Height');
+    if (_muacValidation.isError) fields.add('MUAC');
+    if (_plausibilityError != null) return _plausibilityError!;
+    if (fields.isEmpty) return 'Ayusin ang mga invalid value bago i-save.';
+    return 'Ayusin ang error sa ${fields.join(" at ")} bago i-save.';
+  }
+
+  Widget _buildChildContextInfoRow() {
+    final ageText = 'Age: $_assessmentAgeMonths mos';
+    final lastText = _previousEntry != null
+        ? ' · Last: ${_previousEntry!.weightKg.toStringAsFixed(1)} kg / ${_previousEntry!.heightCm.toStringAsFixed(1)} cm (${_formatMonthYear(_previousEntry!.date)})'
+        : ' · No previous record';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.lightGreenBg.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.primaryGreen.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.info_outline,
+            size: 15,
+            color: AppColors.darkGreen,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '$ageText$lastText',
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.darkGreen,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestionPill(String val, {required bool isWeight}) {
+    final unit = isWeight ? 'kg' : 'cm';
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: InkWell(
+        onTap: () {
+          if (isWeight) {
+            _applyWeightSuggestion(val);
+          } else {
+            _applyHeightSuggestion(val);
+          }
+        },
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: AppColors.lightGreenBg,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check, size: 12, color: AppColors.darkGreen),
+              const SizedBox(width: 4),
+              Text(
+                'Gamitin ang $val $unit',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkGreen,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _validateWeight() {
     final raw = _weightController.text.trim();
     if (raw.isEmpty) {
@@ -359,7 +523,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Hindi karaniwan ang value na ito. Tama ba?',
+                  'Please double-check entries',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -371,21 +535,21 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             children: [
               if (weightRes.isWarning) ...[
                 Text(
-                  '• ${weightRes.fullMessage}',
+                  '• ${weightRes.inlineMessage ?? weightRes.fullMessage}',
                   style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 6),
               ],
               if (heightRes.isWarning) ...[
                 Text(
-                  '• ${heightRes.fullMessage}',
+                  '• ${heightRes.inlineMessage ?? heightRes.fullMessage}',
                   style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 6),
               ],
               if (muacRes.isWarning) ...[
                 Text(
-                  '• ${muacRes.fullMessage}',
+                  '• ${muacRes.inlineMessage ?? muacRes.fullMessage}',
                   style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 6),
@@ -404,10 +568,10 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryGreen,
+                backgroundColor: AppColors.statOrange,
               ),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Yes, save'),
+              child: const Text('Save anyway'),
             ),
           ],
         ),
@@ -693,228 +857,182 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                           value: _monthYear,
                           onChanged: (d) => setState(() => _monthYear = d),
                         ),
+                        const SizedBox(height: AppSpacing.sm),
+                        _buildChildContextInfoRow(),
+                        const SizedBox(height: AppSpacing.sm),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               child: AppTextField(
-                                label: 'Weight (kg) *',
+                                label: 'Weight *',
                                 hint: 'e.g. 12.5',
+                                suffixText: 'kg',
+                                maxLength: 5,
                                 icon: Icons.monitor_weight_outlined,
                                 controller: _weightController,
                                 focusNode: _weightFocusNode,
                                 hasError: _weightValidation.isError,
                                 hasWarning: _weightValidation.isWarning,
-                                errorText: _weightValidation.isError ? _weightValidation.message : null,
-                                onChanged: (_) {
-                                  _validateWeight();
-                                },
+                                errorText: _weightValidation.isError ? _weightValidation.inlineMessage : null,
+                                warningText: _weightValidation.isWarning ? _weightValidation.inlineMessage : null,
+                                inlineExtra: _weightValidation.suggestionValue != null
+                                    ? _buildSuggestionPill(_weightValidation.suggestionValue!, isWeight: true)
+                                    : null,
+                                onChanged: _onWeightChanged,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [
-                                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
                                 ],
                               ),
                             ),
                             const SizedBox(width: AppSpacing.md),
                             Expanded(
                               child: AppTextField(
-                                label: 'Height (cm) *',
-                                hint: 'e.g. 85',
+                                label: 'Height *',
+                                hint: 'e.g. 85.0',
+                                suffixText: 'cm',
+                                maxLength: 5,
                                 icon: Icons.straighten_outlined,
                                 controller: _heightController,
                                 focusNode: _heightFocusNode,
                                 hasError: _heightValidation.isError,
                                 hasWarning: _heightValidation.isWarning,
-                                errorText: _heightValidation.isError ? _heightValidation.message : null,
-                                onChanged: (_) {
-                                  _validateHeight();
-                                },
+                                errorText: _heightValidation.isError ? _heightValidation.inlineMessage : null,
+                                warningText: _heightValidation.isWarning ? _heightValidation.inlineMessage : null,
+                                inlineExtra: _heightValidation.suggestionValue != null
+                                    ? _buildSuggestionPill(_heightValidation.suggestionValue!, isWeight: false)
+                                    : null,
+                                onChanged: _onHeightChanged,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [
-                                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                        if (_weightValidation.hasMessage)
-                          _MeasurementAlertBanner(
-                            result: _weightValidation,
-                            onApplySuggestion: _weightValidation.suggestionValue != null
-                                ? () => _applyWeightSuggestion(_weightValidation.suggestionValue!)
-                                : null,
-                          ),
-                        if (_heightValidation.hasMessage)
-                          _MeasurementAlertBanner(
-                            result: _heightValidation,
-                            onApplySuggestion: _heightValidation.suggestionValue != null
-                                ? () => _applyHeightSuggestion(_heightValidation.suggestionValue!)
-                                : null,
-                          ),
-                        if (_plausibilityError != null)
-                          _MeasurementAlertBanner(
-                            result: ValidationResult(
-                              severity: ValidationSeverity.error,
-                              message: _plausibilityError,
-                            ),
-                          ),
                         if (_isMuacEligible) ...[
+                          const SizedBox(height: AppSpacing.md),
                           AppTextField(
-                            label: 'MUAC (cm) (Optional)',
-                            hint: 'Mid-upper arm circumference (optional)',
-                            icon: Icons.favorite_outline,
+                            label: 'MUAC (Optional)',
+                            hint: 'e.g. 14.5',
+                            suffixText: 'cm',
+                            maxLength: 4,
+                            icon: Icons.straighten_outlined,
                             controller: _muacController,
                             focusNode: _muacFocusNode,
                             hasError: _muacValidation.isError,
                             hasWarning: _muacValidation.isWarning,
-                            errorText: _muacValidation.isError ? _muacValidation.message : null,
-                            onChanged: (_) {
-                              _validateMuac();
-                            },
+                            errorText: _muacValidation.isError ? _muacValidation.inlineMessage : null,
+                            warningText: _muacValidation.isWarning ? _muacValidation.inlineMessage : null,
+                            onChanged: _onMuacChanged,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                              FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
                             ],
                           ),
-                          if (_muacValidation.hasMessage)
-                            _MeasurementAlertBanner(
-                              result: _muacValidation,
-                            ),
+                          const SizedBox(height: 4),
                           Text(
-                            'Supporting measurement, used for wasting screening ages 6–59 months',
+                            'Used for acute malnutrition screening (ages 6–59 months).',
                             style: AppTextStyles.body.copyWith(
                               fontSize: 11,
                               color: AppColors.textMuted,
                             ),
                           ),
-                        ] else
+                        ] else ...[
+                          const SizedBox(height: AppSpacing.md),
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
                               color: AppColors.background,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              'MUAC screening isn\'t applicable under 6 months — not required for this child.',
+                              'MUAC screening is not applicable under 6 months.',
                               style: AppTextStyles.body.copyWith(
                                 fontSize: 11,
                                 color: AppColors.textMuted,
                               ),
                             ),
                           ),
+                        ],
+                        const SizedBox(height: AppSpacing.md),
                         AppYesNoToggle(
                           label: 'Bilateral pitting edema',
                           value: _edema,
                           onChanged: (v) => setState(() => _edema = v),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Check both feet for fluid retention (sign of severe acute malnutrition).',
+                          style: AppTextStyles.body.copyWith(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                       ],
                     ),
-                    if (assessment != null) ...[
+                    if (assessment != null && !assessment.isInvalid) ...[
                       const SizedBox(height: AppSpacing.md),
-                      if (assessment.isInvalid) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: AppColors.statRed.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.statRed),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.warning_amber_rounded,
-                                size: 20,
-                                color: AppColors.statRed,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Invalid Value / Needs re-measurement',
-                                      style: TextStyle(
-                                        color: AppColors.statRed,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      assessment.invalidReason ??
-                                          'Value outside biologically plausible WHO cutoffs. Nutritional status and BMI are not computed.',
-                                      style: const TextStyle(
-                                        color: AppColors.statRed,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFAEEDA),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFEF9F27)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.favorite,
+                                  size: 15,
+                                  color: Color(0xFF633806),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ] else ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFAEEDA),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFEF9F27)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.favorite,
-                                    size: 15,
+                                SizedBox(width: 6),
+                                Text(
+                                  'Auto-computed Nutritional Status (WHO)',
+                                  style: TextStyle(
                                     color: Color(0xFF633806),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Auto-computed Nutritional Status (WHO)',
-                                    style: TextStyle(
-                                      color: const Color(0xFF633806),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                StatusBadge(
+                                  label: 'WFA: ${assessment.weightForAgeStatus}',
+                                  color: ChildStatusMeta.colorFor(
+                                    assessment.weightForAgeStatus,
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 6,
-                                children: [
-                                  StatusBadge(
-                                    label: 'WFA: ${assessment.weightForAgeStatus}',
-                                    color: ChildStatusMeta.colorFor(
-                                      assessment.weightForAgeStatus,
-                                    ),
+                                ),
+                                StatusBadge(
+                                  label: 'HFA: ${assessment.heightForAgeStatus}',
+                                  color: ChildStatusMeta.colorFor(
+                                    assessment.heightForAgeStatus,
                                   ),
-                                  StatusBadge(
-                                    label: 'HFA: ${assessment.heightForAgeStatus}',
-                                    color: ChildStatusMeta.colorFor(
-                                      assessment.heightForAgeStatus,
-                                    ),
+                                ),
+                                StatusBadge(
+                                  label: 'WFH: ${assessment.weightForLengthStatus}',
+                                  color: ChildStatusMeta.colorFor(
+                                    assessment.weightForLengthStatus,
                                   ),
-                                  StatusBadge(
-                                    label: 'WFH: ${assessment.weightForLengthStatus}',
-                                    color: ChildStatusMeta.colorFor(
-                                      assessment.weightForLengthStatus,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ],
 
                     if (_previousEntry != null) ...[
@@ -954,24 +1072,76 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                       ),
                     ],
                     const SizedBox(height: AppSpacing.xl),
-                    AppButton(
-                      label: 'Save Measurement',
-                      onPressed: _handleSave,
-                      isLoading: _isSaving,
-                    ),
-                    const SizedBox(height: 10),
-                    AppOutlinedButton(
-                      label: 'Cancel',
-                      onPressed: _isSaving
-                          ? null
-                          : () => Navigator.pop(context),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
                   ],
                 ),
               ),
             ),
           ],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: 12,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              offset: const Offset(0, -2),
+              blurRadius: 8,
+            ),
+          ],
+          border: const Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_hasHardErrors) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.statRed.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.statRed.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, size: 14, color: AppColors.statRed),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _hardErrorSummary,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.statRed,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              AppButton(
+                label: 'Save Measurement',
+                onPressed: _hasHardErrors ? null : _handleSave,
+                isLoading: _isSaving,
+              ),
+              const SizedBox(height: 6),
+              AppOutlinedButton(
+                label: 'Cancel',
+                onPressed: _isSaving ? null : () => Navigator.pop(context),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1091,94 +1261,6 @@ class _PreviousStat extends StatelessWidget {
             Text(value, style: AppTextStyles.label.copyWith(fontSize: 13)),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _MeasurementAlertBanner extends StatelessWidget {
-  final ValidationResult result;
-  final VoidCallback? onApplySuggestion;
-
-  const _MeasurementAlertBanner({
-    required this.result,
-    this.onApplySuggestion,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (result.isValid || result.message == null) return const SizedBox.shrink();
-
-    final isError = result.isError;
-    final bgColor = isError ? const Color(0xFFFFEBEE) : const Color(0xFFFFF3E0);
-    final borderColor = isError ? AppColors.statRed : AppColors.statOrange;
-    final textColor = isError ? AppColors.statRed : const Color(0xFFB25E00);
-    final iconData = isError ? Icons.error_outline : Icons.warning_amber_rounded;
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor, width: 1.2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(iconData, size: 18, color: textColor),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  result.fullMessage ?? result.message ?? '',
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 1.35,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (result.suggestionValue != null && onApplySuggestion != null) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: InkWell(
-                onTap: onApplySuggestion,
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: borderColor.withValues(alpha: 0.6)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check, size: 14, color: textColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Gamitin ang ${result.suggestionValue}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: textColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }

@@ -238,8 +238,10 @@ class _EditMeasurementDialogState extends State<EditMeasurementDialog> {
                 children: [
                   Expanded(
                     child: AppTextField(
-                      label: 'Weight (kg) *',
+                      label: 'Weight *',
                       hint: 'e.g. 12.5',
+                      suffixText: 'kg',
+                      maxLength: 5,
                       icon: Icons.monitor_weight_outlined,
                       controller: _weightController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -248,8 +250,10 @@ class _EditMeasurementDialogState extends State<EditMeasurementDialog> {
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: AppTextField(
-                      label: 'Height (cm) *',
-                      hint: 'e.g. 85',
+                      label: 'Height *',
+                      hint: 'e.g. 85.0',
+                      suffixText: 'cm',
+                      maxLength: 5,
                       icon: Icons.straighten_outlined,
                       controller: _heightController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -260,9 +264,11 @@ class _EditMeasurementDialogState extends State<EditMeasurementDialog> {
               if (_isMuacEligible) ...[
                 const SizedBox(height: 12),
                 AppTextField(
-                  label: 'MUAC (cm) (Optional)',
+                  label: 'MUAC (Optional)',
                   hint: 'Optional (e.g. 14.5)',
-                  icon: Icons.favorite_outline,
+                  suffixText: 'cm',
+                  maxLength: 4,
+                  icon: Icons.straighten_outlined,
                   controller: _muacController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
