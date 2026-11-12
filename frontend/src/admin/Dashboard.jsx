@@ -136,20 +136,8 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState('3M');
-  const [feedingChildTab, setFeedingChildTab] = useState('all');
   const rawUser = localStorage.getItem('user') || sessionStorage.getItem('user') || '{}';
   const user = JSON.parse(rawUser);
-
-  const displayedFeedingChildren = useMemo(() => {
-    if (!feedingStats) return [];
-    if (feedingChildTab === 'normal') {
-      return feedingStats.recovered_children || [];
-    }
-    if (feedingChildTab === 'not_normal') {
-      return feedingStats.still_malnourished_children || [];
-    }
-    return feedingStats.all_feeding_children || [];
-  }, [feedingStats, feedingChildTab]);
 
   useEffect(() => {
     let isMounted = true;
@@ -571,7 +559,7 @@ function Dashboard() {
             {/* 2. Reached Normal (Recovered) */}
             <div className="rounded-2xl bg-blue-50/70 border border-blue-100 p-4 text-left">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-blue-800">Naging Normal</span>
+                <span className="text-xs font-bold text-blue-800">Reached Normal</span>
                 <span className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700">
                   <CheckCircle2 size={16} />
                 </span>
@@ -589,7 +577,7 @@ function Dashboard() {
             {/* 3. Still in Intervention (Not Normal) */}
             <div className="rounded-2xl bg-amber-50/70 border border-amber-100 p-4 text-left">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900">Hindi Pa Normal</span>
+                <span className="text-xs font-bold text-amber-900">Under Intervention</span>
                 <span className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
                   <AlertTriangle size={16} />
                 </span>
@@ -686,10 +674,10 @@ function Dashboard() {
                 <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-200">
                   <tr>
                     <th className="px-4 py-2.5 text-left">Barangay</th>
-                    <th className="px-3 py-2.5 text-center">Nasa Feeding</th>
-                    <th className="px-3 py-2.5 text-center text-emerald-700 bg-emerald-50/50">Naging Normal</th>
-                    <th className="px-3 py-2.5 text-center text-amber-700 bg-amber-50/50">Hindi Pa Normal</th>
-                    <th className="px-3 py-2.5 text-center text-red-700 bg-red-50/50">Kritikal (SAM)</th>
+                    <th className="px-3 py-2.5 text-center">In Feeding</th>
+                    <th className="px-3 py-2.5 text-center text-emerald-700 bg-emerald-50/50">Reached Normal</th>
+                    <th className="px-3 py-2.5 text-center text-amber-700 bg-amber-50/50">Under Intervention</th>
+                    <th className="px-3 py-2.5 text-center text-red-700 bg-red-50/50">Critical (SAM)</th>
                     <th className="px-4 py-2.5 text-right">Attendance Logs</th>
                   </tr>
                 </thead>
@@ -732,115 +720,6 @@ function Dashboard() {
                     <tr>
                       <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
                         No feeding records found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Drilldown List of Children (Alin ang mga naging normal vs hindi naging normal) */}
-          <div className="pt-2 border-t border-gray-100 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h4 className="font-bold text-gray-800 text-sm">
-                  Beneficiary Breakdown (Naging Normal vs. Hindi Pa Normal)
-                </h4>
-                <p className="text-xs text-gray-400">View specific children and their current nutritional progress</p>
-              </div>
-
-              {/* Tab Selector */}
-              <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setFeedingChildTab('all')}
-                  className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                    feedingChildTab === 'all'
-                      ? 'bg-white text-gray-800 shadow-2xs font-bold'
-                      : 'text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  Lahat ({feedingStats.enrolled || 0})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFeedingChildTab('normal')}
-                  className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                    feedingChildTab === 'normal'
-                      ? 'bg-emerald-600 text-white shadow-2xs font-bold'
-                      : 'text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  Naging Normal ({feedingStats.reached_normal_in_feeding || 0})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFeedingChildTab('not_normal')}
-                  className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                    feedingChildTab === 'not_normal'
-                      ? 'bg-amber-600 text-white shadow-2xs font-bold'
-                      : 'text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  Kailangan Pa ng Tulong ({feedingStats.still_malnourished || 0})
-                </button>
-              </div>
-            </div>
-
-            {/* List Table of Children */}
-            <div className="rounded-xl border border-gray-200 overflow-hidden max-h-60 overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-200 sticky top-0">
-                  <tr>
-                    <th className="px-4 py-2.5 text-left">Pangalan ng Bata</th>
-                    <th className="px-3 py-2.5 text-left">Barangay</th>
-                    <th className="px-3 py-2.5 text-center">Unang Status</th>
-                    <th className="px-3 py-2.5 text-center">Kasalukuyang Status</th>
-                    <th className="px-3 py-2.5 text-center">Timbang & Taas</th>
-                    <th className="px-4 py-2.5 text-right">Attendance</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {displayedFeedingChildren.length > 0 ? (
-                    displayedFeedingChildren.map((c) => {
-                      const isNorm = String(c.latest_status || '').toLowerCase() === 'normal';
-                      const isSAM = String(c.latest_status || '').toLowerCase() === 'sam';
-                      return (
-                        <tr key={c.child_id} className="hover:bg-gray-50/70 transition-colors">
-                          <td className="px-4 py-2.5 font-bold text-gray-900">{c.full_name}</td>
-                          <td className="px-3 py-2.5 font-medium text-gray-600">Brgy. {c.barangay}</td>
-                          <td className="px-3 py-2.5 text-center font-medium text-gray-500">
-                            <span className="uppercase px-2 py-0.5 rounded bg-gray-100 text-[10px] font-bold">
-                              {c.initial_status || '—'}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 text-center">
-                            <span
-                              className={`uppercase px-2 py-0.5 rounded text-[10px] font-bold ${
-                                isNorm
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : isSAM
-                                  ? 'bg-red-100 text-red-700 animate-pulse'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}
-                            >
-                              {c.latest_status || 'Ongoing'}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 text-center font-medium text-gray-700">
-                            {c.latest_weight ? `${c.latest_weight} kg` : '—'} / {c.latest_height ? `${c.latest_height} cm` : '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-medium text-gray-600">
-                            {c.attendance_count || 0} times
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
-                        Walang batang tumutugma sa napiling kategorya.
                       </td>
                     </tr>
                   )}
