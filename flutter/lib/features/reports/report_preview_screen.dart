@@ -43,6 +43,30 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   bool _isExporting = false;
   int _monthlyPartIndex = 0; // 0 = JAN–JUN, 1 = JUL–DEC
 
+  @override
+  void initState() {
+    super.initState();
+    AppDataBus.version.addListener(_onDataChanged);
+    _refreshSignatories();
+  }
+
+  @override
+  void dispose() {
+    AppDataBus.version.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _refreshSignatories() async {
+    try {
+      await ReportSignatoryRepository().fetchAndCacheForBarangay(_currentBarangay);
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
   int get _pendingRecordsCount =>
       _childRepo.pendingCount +
       _measurementRepo.pendingCount +
@@ -799,10 +823,6 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     );
 
     final signatory = _activeSignatory;
-    final sig1 = signatory.bnsName;
-    final sig2 = signatory.punongBarangayName;
-    final sig3 = signatory.mnaoAdminAideName;
-    final sig4 = signatory.dnpcName;
 
     final is2459 = matrix.reportTypeId == 'consolidation_24_59';
 
@@ -884,29 +904,21 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           const SizedBox(height: 16),
           const Divider(color: AppColors.border),
           const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildPreviewSigCol('SUBMITTED BY:', sig1, 'BNS'),
-                const SizedBox(width: 24),
-                _buildPreviewSigCol('NOTED BY:', sig2, 'PUNONG BARANGAY'),
-                const SizedBox(width: 24),
-                _buildPreviewSigCol('APPROVED BY:', sig3, 'ADMIN AIDE IV- MNAO OIC'),
-                const SizedBox(width: 24),
-                _buildPreviewSigCol('APPROVED BY:', sig4, 'DNPC'),
-              ],
-            ),
-          ),
+          _buildSignatoryFooter(signatory),
         ],
       ),
     );
   }
 
-  Widget _buildPreviewSigCol(String title, String name, String position) {
+  Widget _buildPreviewSigCol(
+    String title,
+    String name,
+    String position, {
+    String? dateLine,
+  }) {
+    final isNotSet = name.isEmpty || name == 'Not set';
     return SizedBox(
-      width: 155,
+      width: 160,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -918,7 +930,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               color: AppColors.textMuted,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
@@ -926,11 +938,13 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             ),
             padding: const EdgeInsets.only(bottom: 2),
             child: Text(
-              name.isNotEmpty ? name.toUpperCase() : '',
-              style: const TextStyle(
+              isNotSet ? 'Not set' : name.toUpperCase(),
+              style: TextStyle(
                 fontSize: 10.5,
-                fontWeight: FontWeight.bold,
-                decoration: TextDecoration.underline,
+                fontWeight: isNotSet ? FontWeight.normal : FontWeight.bold,
+                fontStyle: isNotSet ? FontStyle.italic : FontStyle.normal,
+                color: isNotSet ? AppColors.textMuted : AppColors.textPrimary,
+                decoration: isNotSet ? TextDecoration.none : TextDecoration.underline,
                 height: 1.35,
               ),
               textAlign: TextAlign.center,
@@ -940,9 +954,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           ),
           const SizedBox(height: 3),
           Text(
-            position,
-            style: const TextStyle(
+            position.isNotEmpty ? position : 'Not set',
+            style: TextStyle(
               fontSize: 9,
+              fontStyle: position.isEmpty ? FontStyle.italic : FontStyle.normal,
               color: AppColors.textSecondary,
               height: 1.3,
             ),
@@ -950,10 +965,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             softWrap: true,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 2),
-          const Text(
-            'Date: ____________________',
-            style: TextStyle(
+          const SizedBox(height: 3),
+          Text(
+            dateLine ?? 'Date: ____________________',
+            style: const TextStyle(
               fontSize: 8.5,
               color: AppColors.textMuted,
             ),
@@ -1919,24 +1934,24 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   }
 
   Widget _buildSignatoryFooter(ReportSignatory? signatory) {
-    final sig1 = signatory?.bnsName ?? '';
-    final sig2 = signatory?.punongBarangayName ?? '';
-    final sig3 = signatory?.mnaoAdminAideName ?? '';
-    final sig4 = signatory?.dnpcName ?? '';
+    final sig = signatory ?? _activeSignatory;
+    final items = sig.items;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildPreviewSigCol('SUBMITTED BY:', sig1, 'BNS'),
-          const SizedBox(width: 48),
-          _buildPreviewSigCol('NOTED BY:', sig2, 'PUNONG BARANGAY'),
-          const SizedBox(width: 48),
-          _buildPreviewSigCol('APPROVED BY:', sig3, 'ADMIN AIDE IV- MNAO OIC'),
-          const SizedBox(width: 48),
-          _buildPreviewSigCol('APPROVED BY:', sig4, 'DNPC'),
-        ],
+        children: items.map((item) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 28),
+            child: _buildPreviewSigCol(
+              item.roleTitle,
+              item.name,
+              item.position,
+              dateLine: item.dateLine,
+            ),
+          );
+        }).toList(),
       ),
     );
   }

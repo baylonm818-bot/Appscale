@@ -539,15 +539,21 @@ class ReportExcelService {
   }
 
   void _appendSignatoryBlock(xls.Sheet sheet, int startRow, ReportSignatory? signatory) {
-    final sig1 = signatory?.bnsName.isNotEmpty == true ? signatory!.bnsName : '';
-    final sig2 = signatory?.punongBarangayName.isNotEmpty == true ? signatory!.punongBarangayName : '';
-    final sig3 = signatory?.mnaoAdminAideName.isNotEmpty == true ? signatory!.mnaoAdminAideName : '';
-    final sig4 = signatory?.dnpcName.isNotEmpty == true ? signatory!.dnpcName : '';
-
-    final bnsPos = (signatory?.bnsPosition.isNotEmpty ?? false) ? signatory!.bnsPosition : 'BARANGAY NUTRITION SCHOLAR (BNS)';
-    final pbPos = (signatory?.punongBarangayPosition.isNotEmpty ?? false) ? signatory!.punongBarangayPosition : 'PUNONG BARANGAY';
-    final mnaoPos = (signatory?.mnaoAdminAidePosition.isNotEmpty ?? false) ? signatory!.mnaoAdminAidePosition : 'ADMIN AIDE IV- MNAO OIC';
-    final dnpcPos = (signatory?.dnpcPosition.isNotEmpty ?? false) ? signatory!.dnpcPosition : 'DNPC';
+    final items = signatory?.items ?? [];
+    final effectiveItems = items.isNotEmpty
+        ? items
+        : [
+            const SignatoryItem(
+              roleTitle: 'PREPARED BY:',
+              name: 'Not set',
+              position: 'BARANGAY NUTRITION SCHOLAR (BNS)',
+            ),
+            const SignatoryItem(
+              roleTitle: 'APPROVED BY:',
+              name: 'Not set',
+              position: 'MUNICIPAL NUTRITION ACTION OFFICER (MNAO)',
+            ),
+          ];
 
     int r = startRow + 1;
 
@@ -559,33 +565,36 @@ class ReportExcelService {
       }
     }
 
-    setC(0, r, 'SUBMITTED / ACCOMPLISHED BY:', bold: true);
-    setC(4, r, 'NOTED BY:', bold: true);
-    setC(8, r, 'APPROVED BY:', bold: true);
+    // Role headers
+    for (int i = 0; i < effectiveItems.length; i++) {
+      setC(i * 4, r, effectiveItems[i].roleTitle, bold: true);
+    }
     r += 2;
 
-    setC(0, r, '_________________________');
-    setC(4, r, '_________________________');
-    setC(8, r, '_________________________');
-    setC(12, r, '_________________________');
+    // Line
+    for (int i = 0; i < effectiveItems.length; i++) {
+      setC(i * 4, r, '_________________________');
+    }
     r++;
 
-    setC(0, r, sig1, bold: true);
-    setC(4, r, sig2, bold: true);
-    setC(8, r, sig3, bold: true);
-    setC(12, r, sig4, bold: true);
+    // Names
+    for (int i = 0; i < effectiveItems.length; i++) {
+      final isNotSet = effectiveItems[i].name.isEmpty || effectiveItems[i].name == 'Not set';
+      setC(i * 4, r, isNotSet ? 'Not set' : effectiveItems[i].name.toUpperCase(), bold: !isNotSet);
+    }
     r++;
 
-    setC(0, r, bnsPos);
-    setC(4, r, pbPos);
-    setC(8, r, mnaoPos);
-    setC(12, r, dnpcPos);
+    // Positions
+    for (int i = 0; i < effectiveItems.length; i++) {
+      final pos = effectiveItems[i].position.isNotEmpty ? effectiveItems[i].position : 'Not set';
+      setC(i * 4, r, pos);
+    }
     r++;
 
-    setC(0, r, 'Date: ____________________');
-    setC(4, r, 'Date: ____________________');
-    setC(8, r, 'Date: ____________________');
-    setC(12, r, 'Date: ____________________');
+    // Date
+    for (int i = 0; i < effectiveItems.length; i++) {
+      setC(i * 4, r, effectiveItems[i].dateLine);
+    }
   }
 
   Future<File> exportAndShare({
@@ -659,48 +668,7 @@ class ReportExcelService {
       sheet.appendRow([xls.TextCellValue('NO. OF UNDERWEIGHT: $uwCount')]);
     }
 
-    sheet.appendRow([]);
-    sheet.appendRow([]);
-    final sig1 = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
-    final sig2 = (signatory?.punongBarangayName.isNotEmpty ?? false) ? signatory!.punongBarangayName : '';
-    final sig3 = (signatory?.mnaoAdminAideName.isNotEmpty ?? false) ? signatory!.mnaoAdminAideName : '';
-    final sig4 = (signatory?.dnpcName.isNotEmpty ?? false) ? signatory!.dnpcName : '';
-
-    final bnsPos = (signatory?.bnsPosition.isNotEmpty ?? false) ? signatory!.bnsPosition : 'BARANGAY NUTRITION SCHOLAR (BNS)';
-    final pbPos = (signatory?.punongBarangayPosition.isNotEmpty ?? false) ? signatory!.punongBarangayPosition : 'PUNONG BARANGAY';
-    final mnaoPos = (signatory?.mnaoAdminAidePosition.isNotEmpty ?? false) ? signatory!.mnaoAdminAidePosition : 'ADMIN AIDE IV- MNAO OIC';
-    final dnpcPos = (signatory?.dnpcPosition.isNotEmpty ?? false) ? signatory!.dnpcPosition : 'DNPC';
-
-    sheet.appendRow([
-      xls.TextCellValue('SUBMITTED / ACCOMPLISHED BY:'), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue('NOTED BY:'), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue('APPROVED BY:')
-    ]);
-    sheet.appendRow([]);
-    sheet.appendRow([
-      xls.TextCellValue('_________________________'), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue('_________________________'), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue('_________________________'), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue('_________________________')
-    ]);
-    sheet.appendRow([
-      xls.TextCellValue(sig1), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue(sig2), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue(sig3), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue(sig4)
-    ]);
-    sheet.appendRow([
-      xls.TextCellValue(bnsPos), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue(pbPos), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue(mnaoPos), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue(dnpcPos)
-    ]);
-    sheet.appendRow([
-      xls.TextCellValue('Date: ____________________'), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue('Date: ____________________'), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue('Date: ____________________'), xls.TextCellValue(''), xls.TextCellValue(''),
-      xls.TextCellValue('Date: ____________________')
-    ]);
+    _appendSignatoryBlock(sheet, sheet.maxRows + 1, signatory);
 
     final bytes = workbook.encode();
     if (bytes == null) throw Exception('Failed to encode Excel file');

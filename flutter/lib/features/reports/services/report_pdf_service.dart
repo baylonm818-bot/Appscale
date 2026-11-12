@@ -740,29 +740,33 @@ class ReportPdfService {
   }
 
   pw.Widget _buildFourSignatoryBlock(ReportSignatory? s) {
-    final bns = (s?.bnsName.isNotEmpty ?? false) ? s!.bnsName : '';
-    final pb = (s?.punongBarangayName.isNotEmpty ?? false) ? s!.punongBarangayName : '';
-    final mnao = (s?.mnaoAdminAideName.isNotEmpty ?? false) ? s!.mnaoAdminAideName : '';
-    final dnpc = (s?.dnpcName.isNotEmpty ?? false) ? s!.dnpcName : '';
-
-    final bnsPos = (s?.bnsPosition.isNotEmpty ?? false) ? s!.bnsPosition : 'BNS';
-    final pbPos = (s?.punongBarangayPosition.isNotEmpty ?? false) ? s!.punongBarangayPosition : 'PUNONG BARANGAY';
-    final mnaoPos = (s?.mnaoAdminAidePosition.isNotEmpty ?? false) ? s!.mnaoAdminAidePosition : 'ADMIN AIDE IV- MNAO OIC';
-    final dnpcPos = (s?.dnpcPosition.isNotEmpty ?? false) ? s!.dnpcPosition : 'DNPC';
+    final items = s?.items ?? [];
+    final effectiveItems = items.isNotEmpty
+        ? items
+        : [
+            const SignatoryItem(
+              roleTitle: 'PREPARED BY:',
+              name: 'Not set',
+              position: 'Barangay Nutrition Scholar (BNS)',
+            ),
+            const SignatoryItem(
+              roleTitle: 'APPROVED BY:',
+              name: 'Not set',
+              position: 'Municipal Nutrition Action Officer (MNAO)',
+            ),
+          ];
 
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        _sigCol('SUBMITTED BY:', bns, bnsPos),
-        _sigCol('NOTED BY:', pb, pbPos),
-        _sigCol('APPROVED BY:', mnao, mnaoPos),
-        _sigCol('APPROVED BY:', dnpc, dnpcPos),
-      ],
+      children: effectiveItems.map((item) {
+        return _sigCol(item.roleTitle, item.name, item.position, dateLine: item.dateLine);
+      }).toList(),
     );
   }
 
-  pw.Widget _sigCol(String title, String name, String role) {
+  pw.Widget _sigCol(String title, String name, String role, {String? dateLine}) {
+    final isNotSet = name.isEmpty || name == 'Not set';
     return pw.ConstrainedBox(
       constraints: const pw.BoxConstraints(maxWidth: 160),
       child: pw.Column(
@@ -782,10 +786,12 @@ class ReportPdfService {
           pw.Container(
             width: 135,
             child: pw.Text(
-              name.isNotEmpty ? name.toUpperCase() : '',
+              isNotSet ? 'Not set' : name.toUpperCase(),
               style: pw.TextStyle(
                 fontSize: 8,
-                fontWeight: pw.FontWeight.bold,
+                fontWeight: isNotSet ? pw.FontWeight.normal : pw.FontWeight.bold,
+                fontStyle: isNotSet ? pw.FontStyle.italic : pw.FontStyle.normal,
+                color: isNotSet ? PdfColors.grey700 : PdfColors.black,
                 lineSpacing: 1.3,
               ),
               textAlign: pw.TextAlign.center,
@@ -796,8 +802,13 @@ class ReportPdfService {
           pw.Container(
             width: 135,
             child: pw.Text(
-              role,
-              style: const pw.TextStyle(fontSize: 6.5, lineSpacing: 1.3),
+              role.isNotEmpty ? role : 'Not set',
+              style: pw.TextStyle(
+                fontSize: 6.5,
+                fontStyle: role.isEmpty ? pw.FontStyle.italic : pw.FontStyle.normal,
+                color: role.isEmpty ? PdfColors.grey700 : PdfColors.black,
+                lineSpacing: 1.3,
+              ),
               textAlign: pw.TextAlign.center,
             ),
           ),
@@ -805,7 +816,7 @@ class ReportPdfService {
           pw.Container(
             width: 135,
             child: pw.Text(
-              'Date: ____________________',
+              dateLine ?? 'Date: ____________________',
               style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey700),
               textAlign: pw.TextAlign.center,
             ),

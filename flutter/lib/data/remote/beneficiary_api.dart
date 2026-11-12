@@ -792,5 +792,31 @@ class BeneficiaryApi {
     return false;
   }
 
+  static Future<List<dynamic>> fetchSignatories(String barangay) async {
+    try {
+      final settings = SettingsRepository();
+      final token = settings.authToken;
+      final uri = Uri.parse('$_baseUrl/reports/signatories').replace(
+        queryParameters: {
+          'barangay': barangay,
+        },
+      );
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+      final resp = await http
+          .get(uri, headers: headers)
+          .timeout(ApiConstants.requestTimeout);
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        final decoded = jsonDecode(resp.body);
+        if (decoded is List) return decoded;
+      }
+    } catch (e) {
+      debugPrint('[BeneficiaryApi] fetchSignatories error: $e');
+    }
+    return [];
+  }
+
   static String _date(DateTime value) => SafeParser.toDateString(value);
 }
