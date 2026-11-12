@@ -543,8 +543,8 @@ function Referrals() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {statusFilter === 'Completed' && completedCount > 0 && (
+        {statusFilter === 'Completed' && completedCount > 0 && (
+          <div className="flex items-center gap-2">
             <button
               type="button"
               disabled={batchArchiving}
@@ -553,17 +553,8 @@ function Referrals() {
             >
               {batchArchiving ? 'Archiving…' : `Archive All Completed (${completedCount})`}
             </button>
-          )}
-
-          <button
-            type="button"
-            onClick={handleOpenReferMother}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-linear-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800 transition shadow-xs cursor-pointer"
-          >
-            <Heart size={14} />
-            <span>Refer Mother</span>
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="divide-y divide-gray-50 p-4 space-y-3">
