@@ -1,5 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'app_data_bus.dart';
+import 'feeding_session_repository.dart';
 import 'hive_boxes.dart';
 import '../remote/beneficiary_api.dart';
 
@@ -38,6 +39,31 @@ class FeedingAttendanceRepository {
     if (childFood != null) {
       await _box.put(_childFoodKey(barangay, date), childFood);
     }
+
+    // Link to FeedingSession of this day (creates session if not yet present)
+    try {
+      final sessionRepo = FeedingSessionRepository();
+      List<String>? items;
+      if (foodServed != null && foodServed.trim().isNotEmpty) {
+        items = foodServed
+            .split(RegExp(r'[,•\n]+'))
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+      final session = await sessionRepo.getOrCreateForDate(
+        barangay,
+        date,
+        menuItems: items,
+      );
+      final isPastOrToday = !DateTime(date.year, date.month, date.day).isAfter(
+        DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
+      );
+      if (isPastOrToday && session.status != 'Completed') {
+        await sessionRepo.save(session.copyWith(status: 'Completed'));
+      }
+    } catch (_) {}
+
     AppDataBus.notifyChanged();
 
     try {
@@ -151,14 +177,32 @@ class FeedingAttendanceRepository {
 
   List<DateTime> getLoggedDates(String barangay) {
     final prefix = '$barangay|';
-    return _box.keys.where((k) => k.toString().startsWith(prefix)).map((k) {
-      final parts = k.toString().substring(prefix.length).split('-');
-      return DateTime(
-        int.parse(parts[0]),
-        int.parse(parts[1]),
-        int.parse(parts[2]),
-      );
-    }).toList();
+    final dates = <DateTime>[];
+    for (final k in _box.keys) {
+      final s = k.toString();
+      if (!s.startsWith(prefix) ||
+          s.contains('|remarks') ||
+          s.contains('|food') ||
+          s.contains('|child_food')) {
+        continue;
+      }
+      final dateStr = s.substring(prefix.length);
+      final parsed = DateTime.tryParse(dateStr);
+      if (parsed != null) {
+        dates.add(DateTime(parsed.year, parsed.month, parsed.day));
+      } else {
+        final parts = dateStr.split('-');
+        if (parts.length >= 3) {
+          final y = int.tryParse(parts[0]);
+          final m = int.tryParse(parts[1]);
+          final d = int.tryParse(parts[2]);
+          if (y != null && m != null && d != null) {
+            dates.add(DateTime(y, m, d));
+          }
+        }
+      }
+    }
+    return dates.toSet().toList();
   }
 
   double? getAttendanceRate(String barangay) {

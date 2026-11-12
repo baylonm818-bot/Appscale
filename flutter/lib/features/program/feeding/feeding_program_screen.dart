@@ -8,6 +8,7 @@ import 'widgets/feeding_header.dart';
 import 'widgets/feeding_tab_bar.dart';
 import 'widgets/meal_plan_tab.dart';
 import 'widgets/overview_tab.dart';
+import 'widgets/sessions_tab.dart';
 import 'widgets/weighing_tab.dart';
 
 class FeedingProgramScreen extends StatefulWidget {
@@ -76,6 +77,7 @@ class _FeedingProgramScreenState extends State<FeedingProgramScreen> {
                       MealPlanTab(key: ValueKey('meal_plan_$version')),
                       WeighingTab(key: ValueKey('weighing_$version')),
                       AttendanceTab(key: ValueKey('attendance_$version')),
+                      SessionsTab(key: ValueKey('sessions_$version')),
                     ],
                   ),
                 ),

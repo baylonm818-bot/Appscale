@@ -21,6 +21,7 @@ class HiveBoxes {
   static const mealPlans = 'meal_plans_box';
   static const feedingAttendance = 'feeding_attendance_box';
   static const feedingFeedback = 'feeding_feedback_box';
+  static const feedingSessions = 'feeding_sessions_box';
   static const notifications = 'notifications_box';
   static const programSchedule = 'program_schedule_box';
   static const vitaminA = 'vitamin_a_box';
@@ -48,6 +49,7 @@ class HiveBoxes {
       mealPlans,
       feedingAttendance,
       feedingFeedback,
+      feedingSessions,
       notifications,
       programSchedule,
       vitaminA,
