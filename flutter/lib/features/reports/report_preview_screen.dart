@@ -14,6 +14,7 @@ import '../../data/models/report_signatory.dart';
 import 'report_types.dart';
 import '../../shared/utils/barangay_assets.dart';
 import 'services/consolidation_computation_service.dart';
+import 'services/report_data_source_service.dart';
 import 'services/excel_table_data.dart';
 import 'services/report_excel_service.dart';
 import 'services/report_pdf_service.dart';
@@ -254,39 +255,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       File file;
       String targetFileName;
 
-      if (widget.reportType.id == 'lactating_mothers_masterlist') {
-        final motherRepo = MotherRepository();
-        final mothers = motherRepo
-            .getAll()
-            .where((m) => m.barangay == _currentBarangay && m.isActive)
-            .toList();
-        final names = mothers.map((m) => m.fullName).toList();
-        final fileTitle = 'lactating_masterlist_${_period.year}_$_currentBarangay';
-        targetFileName = '$fileTitle.pdf';
-        file = await ReportPdfService().exportLactatingMasterlistPdf(
-          fileTitle: fileTitle,
-          barangay: _currentBarangay,
-          year: _period.year,
-          names: names,
-          signatory: signatory,
-        );
-      } else if (widget.reportType.id == 'children_masterlist') {
-        final childRepo = ChildRepository();
-        final children = childRepo
-            .getByBarangay(_currentBarangay)
-            .where((c) => c.isActive)
-            .toList();
-        final names = children.map((c) => c.fullName).toList();
-        final fileTitle = 'children_masterlist_${_period.year}_$_currentBarangay';
-        targetFileName = '$fileTitle.pdf';
-        file = await ReportPdfService().exportChildrenMasterlistPdf(
-          fileTitle: fileTitle,
-          barangay: _currentBarangay,
-          year: _period.year,
-          names: names,
-          signatory: signatory,
-        );
-      } else if (widget.reportType.id == 'monthly_weight_record') {
+      if (widget.reportType.id == 'monthly_weight_record') {
         final childRepo = ChildRepository();
         final measurementRepo = MeasurementRepository();
         final children = childRepo
@@ -336,11 +305,16 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         );
       } else {
         final data = _buildExcelData(widget.reportType.id);
-        final fileTitle = '${widget.reportType.id}_$_currentBarangay';
+        final fileTitle = '${widget.reportType.id}_${_period.year}_$_currentBarangay';
         targetFileName = '$fileTitle.pdf';
+        final title = widget.reportType.id == 'lactating_mothers_masterlist'
+            ? 'MASTERLIST OF LACTATING MOTHER ${_period.year}'
+            : (widget.reportType.id == 'children_masterlist'
+                ? 'CHILDREN MASTERLIST ${_period.year}'
+                : widget.reportType.title);
         file = await ReportPdfService().exportTableAndShare(
           fileTitle: fileTitle,
-          title: widget.reportType.title,
+          title: title,
           barangay: _currentBarangay,
           headers: data.headers,
           rows: data.rows,
@@ -433,10 +407,15 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         final data = _buildExcelData(widget.reportType.id);
         final fileTitle = '${widget.reportType.id}_${_period.year}_$_currentBarangay';
         targetFileName = '$fileTitle.xlsx';
+        final title = widget.reportType.id == 'lactating_mothers_masterlist'
+            ? 'MASTERLIST OF LACTATING MOTHER ${_period.year}'
+            : (widget.reportType.id == 'children_masterlist'
+                ? 'CHILDREN MASTERLIST ${_period.year}'
+                : widget.reportType.title);
         file = await ReportExcelService().exportIndividualRecordAndShare(
           reportTypeId: widget.reportType.id,
           fileTitle: fileTitle,
-          title: widget.reportType.title,
+          title: title,
           barangay: _currentBarangay,
           year: _period.year,
           data: data,
@@ -466,88 +445,14 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   }
 
   ExcelTableData _buildExcelData(String reportTypeId) {
-    final childRepo = ChildRepository();
-    final measurementRepo = MeasurementRepository();
-
+    final ds = ReportDataSourceService();
     if (reportTypeId == 'opt_plus') {
-      final children = childRepo
-          .getByBarangay(_currentBarangay)
-          .where((c) => c.isActive)
-          .toList();
-      final rows = children.map((c) {
-        final m = measurementRepo.getForChild(c.id);
-        final latest = m.isNotEmpty ? m.first : null;
-        return [
-          c.sequenceNo,
-          c.fullName,
-          c.gender,
-          _fmtDateOnly(c.birthDate),
-          '${c.ageInMonths}',
-          c.belongsToIpGroup ? 'Yes' : 'No',
-          c.disability,
-          latest?.weightKg.toString() ?? '—',
-          latest?.heightCm.toString() ?? '—',
-          latest?.muacCm?.toString() ?? '—',
-          (latest?.bilateralPittingEdema ?? false) ? 'Yes' : 'No',
-          c.nutritionStatus,
-          c.stuntingStatus,
-          c.wastingStatus,
-        ];
-      }).toList();
-      return ExcelTableData(
-        headers: [
-          'Seq No', 'Name', 'Sex', 'DOB', 'Age (mo)', 'IP Group', 'Disability',
-          'Weight (kg)', 'Height (cm)', 'MUAC (cm)', 'Edema', 'Weight Status',
-          'Height Status', 'Wasting Status',
-        ],
-        rows: rows,
-      );
+      return ds.buildOptPlusData(_currentBarangay, _period.year);
     }
-
     if (reportTypeId == 'children_masterlist') {
-      final children = childRepo
-          .getByBarangay(_currentBarangay)
-          .where((c) => c.isActive)
-          .toList();
-      int no = 1;
-      final rows = children
-          .map(
-            (c) => [
-              '${no++}', c.fullName, c.gender, _fmtDateOnly(c.birthDate),
-              '${c.ageInMonths}', c.address.isNotEmpty ? c.address : 'Purok 1',
-              c.guardian.fullName, c.guardian.contactNo, c.nutritionStatus,
-              c.isActive ? 'Active' : 'Inactive',
-            ],
-          )
-          .toList();
-      return ExcelTableData(
-        headers: [
-          'NO.', 'NAME OF CHILD', 'SEX', 'BIRTHDAY', 'AGE (MO)', 'ADDRESS',
-          'GUARDIAN NAME', 'GUARDIAN CONTACT', 'NUTRITIONAL STATUS', 'STATUS',
-        ],
-        rows: rows,
-      );
+      return ds.buildChildrenMasterlistData(_currentBarangay, _period.year);
     }
-
-    final mothers = MotherRepository()
-        .getAll()
-        .where((m) => m.barangay == _currentBarangay && m.isActive)
-        .toList();
-    int no = 1;
-    final rows = mothers
-        .map(
-          (m) => [
-            '${no++}', m.fullName, '${m.age}', m.address.isNotEmpty ? m.address : 'Purok 1',
-            m.contactNo, m.breastfeedingPractice.isNotEmpty ? m.breastfeedingPractice : 'Lactating',
-          ],
-        )
-        .toList();
-    return ExcelTableData(
-      headers: [
-        'NO.', 'NAME OF LACTATING MOTHER', 'AGE', 'ADDRESS', 'CONTACT', 'STATUS',
-      ],
-      rows: rows,
-    );
+    return ds.buildLactatingMothersData(_currentBarangay, _period.year);
   }
 
   @override
@@ -690,6 +595,64 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                                   ],
                                 ),
                               ),
+                            // Missing Data Warning
+                            Builder(
+                              builder: (context) {
+                                final missingData = ReportDataSourceService().checkMissingData(
+                                  widget.reportType.id,
+                                  _currentBarangay,
+                                  _period.year,
+                                );
+                                if (missingData.isEmpty) return const SizedBox.shrink();
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFF8E1),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFFFFCA28)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.warning_amber_rounded,
+                                        color: Color(0xFFF57F17),
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          '${missingData.length} ${missingData.length == 1 ? "record has" : "records have"} missing data or no weighing in ${_period.year}',
+                                          style: const TextStyle(
+                                            color: Color(0xFFE65100),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        style: TextButton.styleFrom(
+                                          visualDensity: VisualDensity.compact,
+                                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                                        ),
+                                        onPressed: () => _showMissingDataDialog(missingData),
+                                        child: const Text(
+                                          'View List',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFFE65100),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
 
                             // Year / period picker
                             if (needsYearPicker) ...[
@@ -871,7 +834,25 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.primaryGreen.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.touch_app_outlined, size: 14, color: AppColors.primaryGreen),
+                SizedBox(width: 5),
+                Text(
+                  'Tip: Pindutin ang anumang numero para makita ang listahan ng mga bata.',
+                  style: TextStyle(fontSize: 10.5, color: AppColors.primaryGreen, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Table(
@@ -888,12 +869,35 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                 ),
                 ...matrix.rows.map(
                   (r) {
-                    final isTotal = r.label.contains('TOTAL');
+                    final isTotal = r.label.contains('TOTAL') || r.label.contains('KABUUAN');
                     return TableRow(
                       decoration: isTotal ? BoxDecoration(color: AppColors.background.withValues(alpha: 0.5)) : null,
                       children: [
                         _cell(r.label, bold: isTotal),
-                        ...r.values.map((v) => _cell(v.toString(), bold: isTotal)),
+                        ...r.values.asMap().entries.map((entry) {
+                          final colIdx = entry.key;
+                          final v = entry.value;
+                          final hasDrilldown = r.cellChildren.isNotEmpty && colIdx < r.cellChildren.length;
+                          final kids = hasDrilldown ? r.cellChildren[colIdx] : <ChildDrilldownItem>[];
+
+                          String colTitle = '';
+                          if (is2459) {
+                            final gIdx = colIdx ~/ 4;
+                            final gLabel = gIdx == 0 ? 'BOYS' : (gIdx == 1 ? 'GIRLS' : 'TOTAL');
+                            final qLabel = colIdx < matrix.subHeaders.length ? matrix.subHeaders[colIdx] : '';
+                            colTitle = '$gLabel — $qLabel';
+                          } else {
+                            final mIdx = colIdx ~/ 2;
+                            final sub = colIdx < matrix.subHeaders.length ? matrix.subHeaders[colIdx] : '';
+                            final month = mIdx < matrix.mainHeaders.length ? matrix.mainHeaders[mIdx] : '';
+                            colTitle = '$month ($sub)';
+                          }
+
+                          return InkWell(
+                            onTap: () => _showCellDrilldown(r.label, colTitle, kids, v),
+                            child: _cell(v.toString(), bold: isTotal, tappable: v > 0),
+                          );
+                        }),
                       ],
                     );
                   },
@@ -2089,16 +2093,270 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     );
   }
 
-  Widget _cell(String text, {bool bold = false}) => Padding(
+  Widget _cell(String text, {bool bold = false, bool tappable = false}) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
     child: Text(
       text,
       style: AppTextStyles.body.copyWith(
         fontSize: 10,
         fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+        color: tappable ? AppColors.darkGreen : (bold ? AppColors.textPrimary : Colors.black87),
+        decoration: tappable ? TextDecoration.underline : TextDecoration.none,
       ),
     ),
   );
+
+  Color _statusBadgeColor(String status) {
+    final s = status.toLowerCase();
+    if (s.contains('severely') || s.contains('sam')) return AppColors.statRed;
+    if (s.contains('underweight') || s.contains('wasted') || s.contains('stunted') || s.contains('mam')) {
+      return AppColors.statOrange;
+    }
+    if (s.contains('normal')) return AppColors.primaryGreen;
+    if (s.contains('overweight') || s.contains('obese')) return Colors.purple;
+    return AppColors.textMuted;
+  }
+
+  void _showCellDrilldown(
+    String rowLabel,
+    String colHeader,
+    List<ChildDrilldownItem> children,
+    int count,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(ctx).size.height * 0.75,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            colHeader.isNotEmpty ? colHeader : 'Breakdown',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$rowLabel ($count)',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.darkGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: children.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.people_outline, size: 48, color: Colors.grey.shade400),
+                            const SizedBox(height: 10),
+                            Text(
+                              count == 0
+                                  ? 'No children recorded for this count.'
+                                  : 'No child details available.',
+                              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: children.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 10),
+                        itemBuilder: (_, idx) {
+                          final c = children[idx];
+                          final dobStr = _fmtDateOnly(c.birthDate);
+                          final wt = c.weightKg != null ? '${c.weightKg!.toStringAsFixed(1)} kg' : '—';
+                          final ht = c.heightCm != null ? '${c.heightCm!.toStringAsFixed(1)} cm' : '—';
+                          final measDateStr = c.dateWeighed != null ? _fmtDateOnly(c.dateWeighed!) : null;
+
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '${idx + 1}. ${c.fullName}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: _statusBadgeColor(c.status).withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: _statusBadgeColor(c.status)),
+                                      ),
+                                      child: Text(
+                                        c.status,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: _statusBadgeColor(c.status),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Text(
+                                      '${c.gender}  ·  Age: ${c.ageMonths} mos.  ·  DOB: $dobStr',
+                                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                                    ),
+                                  ],
+                                ),
+                                if (c.weightKg != null || c.heightCm != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Weight: $wt  ·  Height: $ht${measDateStr != null ? "  (Weighed: $measDateStr)" : ""}',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                                if (c.details.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    c.details,
+                                    style: TextStyle(fontSize: 10.5, fontStyle: FontStyle.italic, color: Colors.grey.shade700),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMissingDataDialog(List<MissingDataRecord> records) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Color(0xFFF57F17), size: 22),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text('Missing Data Warnings', style: TextStyle(fontSize: 15)),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 350,
+            child: ListView.separated(
+              itemCount: records.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (_, idx) {
+                final r = records[idx];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${idx + 1}. ${r.beneficiaryName}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              r.beneficiaryType,
+                              style: TextStyle(fontSize: 10, color: Colors.amber.shade900, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        r.issue,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFD84315)),
+                      ),
+                      Text(
+                        r.details,
+                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Widget _exportButton(
     String label,

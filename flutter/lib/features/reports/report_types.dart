@@ -79,13 +79,13 @@ class ReportTypes {
     id: 'children_masterlist',
     title: 'Children Masterlist',
     category: ReportCategory.masterlist,
-    formats: [ExportFormat.pdf],
+    formats: [ExportFormat.pdf, ExportFormat.excel],
   );
   static const lactatingMothersMasterlist = ReportTypeInfo(
     id: 'lactating_mothers_masterlist',
     title: 'Masterlist of Lactating Mothers',
     category: ReportCategory.masterlist,
-    formats: [ExportFormat.pdf],
+    formats: [ExportFormat.pdf, ExportFormat.excel],
   );
 
   static const consolidationTypes = [
