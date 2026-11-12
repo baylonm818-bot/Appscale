@@ -171,18 +171,21 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                                           s == 'SAM',
                                     )
                                     .join(', '),
-                                onCreate: () => Navigator.push(
-                                  context,
-                                  appPageRoute(
-                                    CreateReferralScreen(
-                                      prefillBeneficiaryType: 'child',
-                                      prefillBeneficiaryId: c.id,
-                                      prefillBeneficiaryName: c.fullName,
-                                      prefillBeneficiarySubtitle:
-                                          '${c.ageLabel} · ${c.formattedAddress}',
+                                onCreate: () async {
+                                  await Navigator.push(
+                                    context,
+                                    appPageRoute(
+                                      CreateReferralScreen(
+                                        prefillBeneficiaryType: 'child',
+                                        prefillBeneficiaryId: c.id,
+                                        prefillBeneficiaryName: c.fullName,
+                                        prefillBeneficiarySubtitle:
+                                            '${c.ageLabel} · ${c.formattedAddress}',
+                                      ),
                                     ),
-                                  ),
-                                ),
+                                  );
+                                  if (mounted) setState(() {});
+                                },
                               ),
                             ),
                             ...mothersNeeding.map(
@@ -190,16 +193,19 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                                 name: m.fullName,
                                 subtitle: m.formattedAddress,
                                 reason: 'At-risk',
-                                onCreate: () => Navigator.push(
-                                  context,
-                                  appPageRoute(
-                                    CreateReferralScreen(
-                                      prefillBeneficiaryType: 'mother',
-                                      prefillBeneficiaryId: m.id,
-                                      prefillBeneficiaryName: m.fullName,
+                                onCreate: () async {
+                                  await Navigator.push(
+                                    context,
+                                    appPageRoute(
+                                      CreateReferralScreen(
+                                        prefillBeneficiaryType: 'mother',
+                                        prefillBeneficiaryId: m.id,
+                                        prefillBeneficiaryName: m.fullName,
+                                      ),
                                     ),
-                                  ),
-                                ),
+                                  );
+                                  if (mounted) setState(() {});
+                                },
                               ),
                             ),
                           ],

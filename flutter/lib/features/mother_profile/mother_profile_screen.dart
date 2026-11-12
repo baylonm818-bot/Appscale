@@ -95,6 +95,9 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
         ),
       ),
     );
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _handleStatusAction(Mother current) async {

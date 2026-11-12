@@ -12,14 +12,18 @@ import '../remote/beneficiary_api.dart';
 
 class ReferralHeaderStatus {
   final bool showReferButton;
+  final Referral? referral;
   final String? chipLabel;
   final Color? chipColor;
 
   const ReferralHeaderStatus({
     required this.showReferButton,
+    this.referral,
     this.chipLabel,
     this.chipColor,
   });
+
+  bool get isReferred => referral != null;
 }
 
 class ReferralRepository {
@@ -500,59 +504,33 @@ class ReferralRepository {
   /// Calculates header button and status chip state for a beneficiary profile:
   ReferralHeaderStatus getReferralHeaderStatus({
     required String beneficiaryId,
-    required bool hasRecords,
-    required bool needsReferralFromRecord,
+    bool hasRecords = true,
+    bool needsReferralFromRecord = false,
     DateTime? recordDate,
   }) {
-    if (!hasRecords) {
-      return const ReferralHeaderStatus(showReferButton: false);
-    }
-
     final latestReferral = getLatestValidForBeneficiary(beneficiaryId);
 
-    if (latestReferral != null && (latestReferral.isPending || latestReferral.isInProgress)) {
-      return const ReferralHeaderStatus(
+    // If there is ANY valid referral in the database for this beneficiary:
+    // ALWAYS hide the Refer button (anuman ang status)!
+    if (latestReferral != null) {
+      return ReferralHeaderStatus(
         showReferButton: false,
-        chipLabel: 'Referred to BHW',
-        chipColor: AppColors.statOrange,
+        referral: latestReferral,
+        chipLabel: latestReferral.isCompleted
+            ? 'Referral completed'
+            : 'Referred to BHW',
+        chipColor: latestReferral.isCompleted
+            ? AppColors.primaryGreen
+            : AppColors.statOrange,
       );
     }
 
-    if (latestReferral != null && latestReferral.isCompleted) {
-      final isNewRecordAfterReferral = recordDate != null &&
-          recordDate.isAfter(latestReferral.createdAt);
-
-      if (isNewRecordAfterReferral) {
-        if (needsReferralFromRecord) {
-          return const ReferralHeaderStatus(
-            showReferButton: true,
-            chipLabel: null,
-          );
-        } else {
-          return const ReferralHeaderStatus(
-            showReferButton: false,
-            chipLabel: null,
-          );
-        }
-      } else {
-        return const ReferralHeaderStatus(
-          showReferButton: false,
-          chipLabel: 'Referral completed',
-          chipColor: AppColors.primaryGreen,
-        );
-      }
-    }
-
-    if (needsReferralFromRecord) {
-      return const ReferralHeaderStatus(
-        showReferButton: true,
-        chipLabel: null,
-      );
-    }
-
+    // No referral in database yet: show button!
     return const ReferralHeaderStatus(
-      showReferButton: false,
+      showReferButton: true,
+      referral: null,
       chipLabel: null,
+      chipColor: null,
     );
   }
 

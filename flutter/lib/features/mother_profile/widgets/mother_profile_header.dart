@@ -7,6 +7,8 @@ import '../../../data/local/referral_repository.dart';
 import '../../../data/models/mother.dart';
 import '../../masterlist/utils/mother_status_meta.dart';
 import '../../masterlist/widgets/status_badge.dart';
+import '../../referrals/widgets/referred_header_badge.dart';
+import '../../referrals/widgets/referral_detail_sheet.dart';
 
 const _kAccent = Color(0xFF1B5E20);
 const _kAccentDark = Color(0xFF2E7D32);
@@ -82,13 +84,25 @@ class MotherProfileHeader extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               if (mother.isActive && !mother.isTransferPending) ...[
                 _AddVisitButton(onPressed: onAddVisitPressed),
-                const SizedBox(width: 6),
-                _ReferralButton(onPressed: onReferralPressed),
+                if (referralStatus.showReferButton) ...[
+                  const SizedBox(width: 6),
+                  _ReferralButton(onPressed: onReferralPressed),
+                ] else if (referralStatus.referral != null) ...[
+                  const SizedBox(width: 6),
+                  ReferredHeaderBadge(
+                    referral: referralStatus.referral!,
+                    onTap: () => ReferralDetailSheet.show(
+                      context,
+                      referral: referralStatus.referral!,
+                    ),
+                  ),
+                ],
                 const SizedBox(width: 6),
               ],
               _OverflowMenu(
                 isActive: mother.isActive,
                 isTransferPending: mother.isTransferPending,
+                referralStatus: referralStatus,
                 onEditPressed: onEditPressed,
                 onStatusActionPressed: onStatusActionPressed,
                 onReferralPressed: onReferralPressed,
@@ -172,10 +186,18 @@ class MotherProfileHeader extends StatelessWidget {
                   onDark: true,
                 ),
               if (referralStatus.chipLabel != null)
-                StatusBadge(
-                  label: referralStatus.chipLabel!,
-                  color: referralStatus.chipColor!,
-                  onDark: true,
+                GestureDetector(
+                  onTap: referralStatus.referral != null
+                      ? () => ReferralDetailSheet.show(
+                            context,
+                            referral: referralStatus.referral!,
+                          )
+                      : null,
+                  child: StatusBadge(
+                    label: referralStatus.chipLabel!,
+                    color: referralStatus.chipColor!,
+                    onDark: true,
+                  ),
                 ),
             ],
           ),
@@ -188,6 +210,7 @@ class MotherProfileHeader extends StatelessWidget {
 class _OverflowMenu extends StatelessWidget {
   final bool isActive;
   final bool isTransferPending;
+  final ReferralHeaderStatus referralStatus;
   final VoidCallback onEditPressed;
   final VoidCallback onStatusActionPressed;
   final VoidCallback onReferralPressed;
@@ -195,6 +218,7 @@ class _OverflowMenu extends StatelessWidget {
   const _OverflowMenu({
     required this.isActive,
     this.isTransferPending = false,
+    required this.referralStatus,
     required this.onEditPressed,
     required this.onStatusActionPressed,
     required this.onReferralPressed,
@@ -216,6 +240,9 @@ class _OverflowMenu extends StatelessWidget {
         if (value == 'edit') onEditPressed();
         if (value == 'status') onStatusActionPressed();
         if (value == 'refer') onReferralPressed();
+        if (value == 'view_referral' && referralStatus.referral != null) {
+          ReferralDetailSheet.show(context, referral: referralStatus.referral!);
+        }
       },
       itemBuilder: (context) => [
         if (!isTransferPending) ...[
@@ -233,20 +260,37 @@ class _OverflowMenu extends StatelessWidget {
               ],
             ),
           ),
-          const PopupMenuItem(
-            value: 'refer',
-            child: Row(
-              children: [
-                Icon(
-                  Icons.assignment_turned_in_outlined,
-                  size: 18,
-                  color: AppColors.statOrange,
-                ),
-                SizedBox(width: 10),
-                Text('Refer Mother to BHW'),
-              ],
+          if (referralStatus.showReferButton) ...[
+            const PopupMenuItem(
+              value: 'refer',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.assignment_turned_in_outlined,
+                    size: 18,
+                    color: AppColors.statOrange,
+                  ),
+                  SizedBox(width: 10),
+                  Text('Refer Mother to BHW'),
+                ],
+              ),
             ),
-          ),
+          ] else if (referralStatus.referral != null) ...[
+            const PopupMenuItem(
+              value: 'view_referral',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.assignment_turned_in,
+                    size: 18,
+                    color: AppColors.primaryGreen,
+                  ),
+                  SizedBox(width: 10),
+                  Text('View Referral Details'),
+                ],
+              ),
+            ),
+          ],
         ],
         PopupMenuItem(
           value: 'status',

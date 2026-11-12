@@ -3,11 +3,14 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/activity_log_repository.dart';
+import '../../data/local/app_data_bus.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/notification_repository.dart';
 import '../../data/local/referral_repository.dart';
 import '../../data/models/app_notification.dart';
 import '../../data/models/referral.dart';
+import '../../data/remote/beneficiary_api.dart';
+import '../../data/remote/referral_api.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../shared/widgets/app_dropdown_field.dart';
 import '../../shared/widgets/app_text_field.dart';
@@ -195,7 +198,55 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
       createdAt: DateTime.now(),
     );
 
+    // Attempt online sync first (Requirement 4: Kapag failed o offline ang pag-send, HUWAG itago ang button. Ipakita ang error at "Retry")
+    ApiResponse? syncRes;
+    try {
+      syncRes = await ReferralApi.submit(referral);
+    } catch (_) {
+      syncRes = const ApiResponse(
+        success: false,
+        statusCode: 0,
+        message: 'Network error: Hindi maipadala ang referral. Pakisuri ang koneksyon.',
+      );
+    }
+
+    final isSuccess = syncRes.success || syncRes.statusCode == 409;
+
+    if (!isSuccess) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      final errorMsg = syncRes.message.isNotEmpty
+          ? syncRes.message
+          : 'Failed to send referral (Offline / Network error). Pakisuri ang koneksyon.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg),
+          backgroundColor: AppColors.statRed,
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: _handleSubmit,
+          ),
+        ),
+      );
+      return; // Do NOT pop and do NOT save as sent referral!
+    }
+
+    // Success: save to local database
     await _referralRepo.add(referral);
+
+    final box = Hive.box(HiveBoxes.referrals);
+    final existing = box.get(referral.id) as Map?;
+    if (existing != null) {
+      final map = Map<String, dynamic>.from(existing);
+      map['_syncStatus'] = 'synced';
+      map['_syncedAt'] = DateTime.now().toIso8601String();
+      if (syncRes.data is Map && (syncRes.data as Map)['referral_id'] != null) {
+        map['server_id'] = (syncRes.data as Map)['referral_id'].toString();
+      }
+      await box.put(referral.id, map);
+    }
 
     // Add local in-app notification so user sees it in the notifications list immediately
     await NotificationRepository().add(
@@ -209,41 +260,25 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
       ),
     );
 
-    bool syncedOnline = false;
-    String? conflictMessage;
-    try {
-      final res = await _referralRepo.syncToWeb(referral);
-      if (res.success) {
-        syncedOnline = true;
-      } else if (res.statusCode == 409) {
-        conflictMessage = res.message;
-      }
-    } catch (_) {
-      // Offline / network failure handled gracefully below
-    }
-
     await _activityRepo.logActivity(
       type: 'referral_created',
       title: 'Referral created for $resolvedName',
     );
 
+    AppDataBus.notifyChanged();
+
     if (!mounted) return;
     setState(() => _isSaving = false);
 
-    if (conflictMessage != null && conflictMessage.isNotEmpty) {
+    if (syncRes.statusCode == 409) {
       AppNotificationUI.showWarning(
         context,
-        conflictMessage,
-      );
-    } else if (syncedOnline) {
-      AppNotificationUI.showSuccess(
-        context,
-        'Referral sent for $resolvedName.',
+        syncRes.message,
       );
     } else {
       AppNotificationUI.showSuccess(
         context,
-        'Referral saved for $resolvedName. Will sync when online.',
+        'Referral sent for $resolvedName.',
       );
     }
 

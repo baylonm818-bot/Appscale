@@ -232,6 +232,9 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
         ),
       ),
     );
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _handleStatusAction(Child current) async {
