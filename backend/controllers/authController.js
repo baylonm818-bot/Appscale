@@ -75,7 +75,45 @@ async function sendOtpEmail(email, otp) {
     </div>
   `;
 
-  // 1. If GOOGLE_SCRIPT_URL is provided, use Google Apps Script Webhook (Port 443 HTTPS - sends to ANY email in the world directly via user's Gmail without domain/IP blocks)
+  // 1. EmailJS Service (Direct Gmail delivery via Port 443 HTTPS - sends to ANY recipient without domain restriction)
+  const emailJsServiceId = process.env.EMAILJS_SERVICE_ID || 'service_lkmosn4';
+  const emailJsTemplateId = process.env.EMAILJS_TEMPLATE_ID || 'template_is2xq1i';
+  const emailJsPublicKey = process.env.EMAILJS_PUBLIC_KEY || 'qWJe83Sr1w9bUPJHe';
+
+  if (emailJsServiceId && emailJsTemplateId && emailJsPublicKey) {
+    try {
+      const emailJsRes = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Origin': 'https://appscale-two.vercel.app',
+        },
+        body: JSON.stringify({
+          service_id: emailJsServiceId,
+          template_id: emailJsTemplateId,
+          user_id: emailJsPublicKey,
+          template_params: {
+            to_email: email,
+            email: email,
+            otp_code: otp,
+            passcode: otp,
+            message: `Your AppScale password reset OTP is: ${otp}. It will expire in 10 minutes.`,
+          },
+        }),
+      });
+
+      if (emailJsRes.ok) {
+        console.log(`[EmailJS] Successfully dispatched OTP directly to ${email}`);
+        return { status: 'success', provider: 'emailjs', recipient: email };
+      }
+      const errText = await emailJsRes.text();
+      console.warn('[EmailJS Warning]', errText);
+    } catch (eJsErr) {
+      console.warn('[EmailJS Error]', eJsErr && eJsErr.message);
+    }
+  }
+
+  // 2. If GOOGLE_SCRIPT_URL is provided, use Google Apps Script Webhook (Port 443 HTTPS - sends to ANY email in the world directly via user's Gmail without domain/IP blocks)
   const scriptUrl = process.env.GOOGLE_SCRIPT_URL || process.env.GOOGLE_APPS_SCRIPT_URL;
   if (scriptUrl && scriptUrl.trim()) {
     try {
