@@ -214,7 +214,8 @@ function LoginCard({ emailInputRef }) {
       setForgotMessage(data.message);
       setResetStep("password");
     } catch (err) {
-      setForgotMessage(err.message);
+      setForgotMessageType("error");
+      setForgotMessage(err.message || "OTP verification failed.");
     } finally {
       setForgotLoading(false);
     }
@@ -226,21 +227,25 @@ function LoginCard({ emailInputRef }) {
     setError("");
 
     if (!forgotEmail.trim() || !otpCode.trim()) {
+      setForgotMessageType("error");
       setForgotMessage("Please enter your email and OTP.");
       return;
     }
 
     if (!newPassword || !confirmPassword) {
+      setForgotMessageType("error");
       setForgotMessage("Please fill in the new password fields.");
       return;
     }
 
     if (newPassword.length < 8) {
+      setForgotMessageType("error");
       setForgotMessage("New password must be at least 8 characters long.");
       return;
     }
 
     if (newPassword !== confirmPassword) {
+      setForgotMessageType("error");
       setForgotMessage("Passwords do not match.");
       return;
     }
@@ -260,7 +265,8 @@ function LoginCard({ emailInputRef }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Password reset failed.");
 
-      setForgotMessage(data.message);
+      setForgotMessageType("success");
+      setForgotMessage(data.message || "Password reset successful! You can now log in.");
       setForgotEmail("");
       setOtpCode("");
       setNewPassword("");
@@ -270,6 +276,7 @@ function LoginCard({ emailInputRef }) {
         setForgotMessage("");
       }, 5000);
     } catch (err) {
+      setForgotMessageType("error");
       setForgotMessage(err.message);
     } finally {
       setForgotLoading(false);
@@ -311,7 +318,7 @@ function LoginCard({ emailInputRef }) {
         </div>
       )}
 
-      {forgotMessage && (
+      {forgotMessage && (!showForgotPassword || forgotMessageType === "error") && (
         <div
           className={`mb-5 rounded-2xl border px-4 py-3 text-sm ${
             forgotMessageType === "error"
