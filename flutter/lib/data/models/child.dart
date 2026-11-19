@@ -104,20 +104,26 @@ class Child {
       withDays = includeDays ?? SettingsRepository().ageFormatDays;
     } catch (_) {}
 
+    if (birthDate.isAfter(ref)) {
+      return withDays ? '0 days' : '0 months';
+    }
+
+    final m = ageInMonthsAt(ref);
     if (!withDays) {
-      final m = ageInMonthsAt(ref);
       return '$m ${m == 1 ? "month" : "months"}';
     }
 
-    DateTime cur = DateTime(birthDate.year, birthDate.month, birthDate.day);
-    int m = 0;
-    while (true) {
-      final nextMonth = DateTime(cur.year, cur.month + 1, cur.day);
-      if (nextMonth.isAfter(ref)) break;
-      cur = nextMonth;
-      m++;
-    }
-    final remainingDays = ref.difference(cur).inDays;
+    // Accurate calculation of completed months date and remaining days
+    final targetMonthYear = birthDate.year + (birthDate.month - 1 + m) ~/ 12;
+    final targetMonth = ((birthDate.month - 1 + m) % 12) + 1;
+    final lastDayOfTargetMonth = DateTime(targetMonthYear, targetMonth + 1, 0).day;
+    final effectiveDay = birthDate.day > lastDayOfTargetMonth ? lastDayOfTargetMonth : birthDate.day;
+    final completedMonthsDate = DateTime(targetMonthYear, targetMonth, effectiveDay);
+    final refDateOnly = DateTime(ref.year, ref.month, ref.day);
+    final remainingDays = refDateOnly.isAfter(completedMonthsDate)
+        ? refDateOnly.difference(completedMonthsDate).inDays
+        : 0;
+
     if (m == 0) {
       return '$remainingDays ${remainingDays == 1 ? "day" : "days"}';
     }
@@ -220,6 +226,14 @@ class Child {
 
   String get formattedAddress => normalizePurok(address);
 
+  /// Address showing both Barangay and Purok (Scope 4 requirement)
+  String get addressWithBarangay {
+    final p = formattedAddress;
+    if (barangay.isEmpty) return p;
+    if (p.isEmpty) return barangay;
+    return '$barangay, $p';
+  }
+
   String get initials {
     final parts = fullName.trim().split(RegExp(r'\s+'));
     if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -308,7 +322,12 @@ class Child {
       belongsToIpGroup: boolVal('belongsToIpGroup', 'belongs_to_ip_group', false),
       disability: strVal('disability', 'disability'),
       guardian: guardian,
-      createdAt: SafeParser.asDateTime(map['createdAt'] ?? map['created_at']) ?? DateTime.now(),
+      createdAt: SafeParser.asDateTime(
+        map['createdAt'] ??
+            map['created_at'] ??
+            map['date_registered'] ??
+            map['registration_date'],
+      ) ?? DateTime.now(),
       nutritionStatus: strVal('nutritionStatus', 'weight_status').isNotEmpty
           ? strVal('nutritionStatus', 'weight_status')
           : 'Not weighed',

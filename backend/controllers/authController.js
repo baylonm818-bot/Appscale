@@ -129,11 +129,10 @@ exports.forgotPassword = async (req, res) => {
       });
     } catch (emailError) {
       console.error('Send reset email error (SMTP issue):', emailError && emailError.message);
-      // Fallback: If SMTP credentials fail (e.g. placeholder your-email@gmail.com),
-      // retain the token so the user can still proceed with password reset.
-      return res.status(200).json({
-        message: `Email could not be delivered (SMTP setup required). Temporary OTP: ${otp}`,
-        devOtp: otp,
+      // Delete token since email delivery failed; never expose OTP in API response
+      passwordResetTokens.delete(normalizedEmail.toLowerCase());
+      return res.status(500).json({
+        message: 'Failed to send OTP to your email. Please check the email server configuration or contact the administrator.',
       });
     }
   } catch (error) {

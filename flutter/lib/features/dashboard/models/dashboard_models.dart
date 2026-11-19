@@ -47,3 +47,25 @@ class UpcomingActivityData {
     required this.statusColor,
   });
 }
+
+class NutritionCounts {
+  final int totalChildren;
+  final int samCases;
+  final int severeCount;
+  final int atRiskCount;
+  final int obeseCount;
+  final int overweightCount;
+  final int normalCount;
+  final int notWeighedCount;
+
+  const NutritionCounts({
+    required this.totalChildren,
+    required this.samCases,
+    required this.severeCount,
+    required this.atRiskCount,
+    required this.obeseCount,
+    required this.overweightCount,
+    required this.normalCount,
+    required this.notWeighedCount,
+  });
+}

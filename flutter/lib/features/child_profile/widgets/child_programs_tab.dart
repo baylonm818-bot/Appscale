@@ -6,8 +6,10 @@ import '../../../data/local/app_data_bus.dart';
 import '../../../data/local/deworming_repository.dart';
 import '../../../data/local/feeding_attendance_repository.dart';
 import '../../../data/local/feeding_enrollment_repository.dart';
+import '../../../data/local/measurement_repository.dart';
 import '../../../data/local/vitamin_a_repository.dart';
 import '../../../data/models/child.dart';
+import '../../../data/models/measurement.dart';
 import '../../../shared/utils/app_page_route.dart';
 import '../../program/deworming/record_deworming_screen.dart';
 import '../../program/feeding/feeding_program_screen.dart';
@@ -702,6 +704,142 @@ class _ChildProgramsTabState extends State<ChildProgramsTab> {
               },
             ),
           ],
+          if (isEnrolled || wasEverEnrolled) ...[
+            const SizedBox(height: 14),
+            _buildFeedingHistoryAndEffectiveness(context, child),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeedingHistoryAndEffectiveness(BuildContext context, Child child) {
+    final foodHistory = FeedingAttendanceRepository()
+        .getFoodHistoryForChild(child.barangay, child.id);
+    final rawMeasurements = MeasurementRepository().getForChildAscending(child.id);
+    final validMeas = rawMeasurements.where((m) => m.isPlausible).toList();
+
+    Measurement? initialMeas = validMeas.isNotEmpty ? validMeas.first : null;
+    Measurement? latestMeas = validMeas.length > 1 ? validMeas.last : initialMeas;
+
+    final weightDiff = (initialMeas != null && latestMeas != null)
+        ? double.parse((latestMeas.weightKg - initialMeas.weightKg).toStringAsFixed(2))
+        : 0.0;
+    final isEffective = (latestMeas?.effectiveWastingStatus == 'Normal' ||
+            latestMeas?.weightForAgeStatus == 'Normal') ||
+        weightDiff > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isEffective ? Icons.trending_up : Icons.trending_flat,
+                    size: 16,
+                    color: isEffective ? AppColors.primaryGreen : AppColors.statOrange,
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Feeding Effectiveness',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isEffective
+                      ? AppColors.primaryGreen.withValues(alpha: 0.12)
+                      : AppColors.statOrange.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  isEffective ? 'Effective / Improving' : 'Monitoring',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isEffective ? AppColors.primaryGreen : AppColors.statOrange,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (initialMeas != null && latestMeas != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Initial: ${initialMeas.weightKg} kg (${initialMeas.effectiveWastingStatus})',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+                Text(
+                  'Latest: ${latestMeas.weightKg} kg (${latestMeas.effectiveWastingStatus})',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Net change: ${weightDiff >= 0 ? "+$weightDiff" : "$weightDiff"} kg',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: weightDiff >= 0 ? AppColors.primaryGreen : AppColors.statRed,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 8),
+          const Text(
+            'Meals Consumed (Feeding History)',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          if (foodHistory.isEmpty)
+            const Text(
+              'No meal sessions logged for this child yet.',
+              style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontStyle: FontStyle.italic),
+            )
+          else
+            Column(
+              children: foodHistory.take(5).map((f) {
+                final d = f['date'] as DateTime;
+                final food = f['food'] as String;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${d.month}/${d.day}/${d.year}: ',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                      ),
+                      Expanded(
+                        child: Text(
+                          food,
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
         ],
       ),
     );

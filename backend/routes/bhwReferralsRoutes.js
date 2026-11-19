@@ -13,8 +13,8 @@ const {
 // BHW/BNS (field workers) and Admin can access referrals
 router.use(roleCheck(['bhw', 'bns', 'admin']));
 
-// BHW and BNS can create referrals; BHW, BNS, and Admin can view and update status
-router.post('/', roleCheck(['bhw', 'bns']), createReferral);
+// BNS creates referrals; BHW, BNS, and Admin can view and update status
+router.post('/', roleCheck(['bns']), createReferral);
 router.get('/', getReferrals);
 router.patch('/archive-completed', archiveCompletedReferrals);
 router.post('/archive-completed', archiveCompletedReferrals);

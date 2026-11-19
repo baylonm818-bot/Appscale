@@ -84,15 +84,16 @@ class StatCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              // 3. Maikling subtext (1 line, ellipsis)
+              // 3. Subtext (wraps up to 2 lines so multi-indicator info is fully readable)
               Text(
                 data.subtitle,
                 style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w500,
+                  height: 1.25,
                   color: Colors.white.withValues(alpha: 0.88),
                 ),
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ],

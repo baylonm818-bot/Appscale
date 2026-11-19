@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/local/child_repository.dart';
+import '../../../data/models/child.dart';
 import '../../../data/local/feeding_enrollment_repository.dart';
 import '../../../data/local/measurement_repository.dart';
 import '../../../data/local/hive_boxes.dart';
@@ -35,34 +36,15 @@ class DashboardRepository {
     final mothersThisMonth = activeMothers
         .where((m) => _isThisMonth(m.createdAt))
         .length;
-    // SAM = Severe Acute Malnutrition (weight-for-length/height < -3SD or bilateral pitting edema).
-    // Severe = Any severe condition: Severely Underweight (WFA), Severely Stunted (HFA), or SAM (WFH).
-    // Both use the child's latest valid measurement from MeasurementRepository.
+
+    // Single shared source of truth for nutrition counts based on latest plausible measurements:
+    // - SAM Cases = children with severe wasting (WFH/WFL SAM or bilateral pitting edema)
+    // - Severe = Any severe condition: Severely Underweight (WFA), Severely Stunted (HFA), or SAM (WFH)
+    // - Uses ONLY each child's latest plausible measurement. Children without measurements count as "Not weighed".
     final measRepo = MeasurementRepository();
-    final samChildren = activeChildren.where((c) {
-      if (c.wastingStatus == 'Needs re-measurement') return false;
-      final m = measRepo.getLatestPlausible(c.id);
-      if (m != null) {
-        return m.effectiveWastingStatus == 'SAM';
-      }
-      final w = c.wastingStatus.trim().toUpperCase();
-      return w == 'SAM' || w == 'SEVERELY WASTED';
-    }).toList();
-
-    final severeChildren = activeChildren.where((c) {
-      final m = measRepo.getLatestPlausible(c.id);
-      if (m != null) {
-        return m.weightForAgeStatus == 'Severely Underweight' ||
-            m.heightForAgeStatus == 'Severely Stunted' ||
-            m.effectiveWastingStatus == 'SAM';
-      }
-      return c.nutritionStatus == 'Severely Underweight' ||
-          c.stuntingStatus == 'Severely Stunted' ||
-          c.wastingStatus.trim().toUpperCase() == 'SAM' ||
-          c.wastingStatus.trim().toUpperCase() == 'SEVERELY WASTED';
-    }).toList();
-
-    final samCases = samChildren.length;
+    final counts = computeNutritionCounts(activeChildren, measRepo);
+    final samCases = counts.samCases;
+    final severeCount = counts.severeCount;
 
     final enrolledCount = FeedingEnrollmentRepository()
         .getEnrolledChildren(_currentBarangay)
@@ -101,9 +83,9 @@ class DashboardRepository {
         label: 'SAM Cases',
         value: '$samCases',
         subtitle: samCases > 0
-            ? '$samCases acute wasting · ${severeChildren.length} severe'
-            : (severeChildren.isNotEmpty
-                ? '${severeChildren.length} severe (no acute SAM)'
+            ? '$samCases acute wasting · $severeCount severe'
+            : (severeCount > 0
+                ? '$severeCount severe (no acute SAM)'
                 : 'No active cases'),
         accentColor: const Color(0xFFC62828), // deep red / terracotta
         icon: Icons.warning_amber_rounded,
@@ -125,47 +107,130 @@ class DashboardRepository {
     return date.year == now.year && date.month == now.month;
   }
 
-  /// Primary Weight-for-Age (WFA) distribution across weighed children.
-  /// Uses the single WHO classification source (ChildOverallStatus)
-  /// so Home chart, list badges, filter chips, and profile chips match 100%.
+  /// Single shared source of truth for nutrition counts across the dashboard.
+  /// Evaluates each active child's latest plausible measurement.
+  /// Children without measurements are strictly counted as "Not weighed".
+  NutritionCounts computeNutritionCounts(
+    List<Child> activeChildren, [
+    MeasurementRepository? repo,
+  ]) {
+    final measRepo = repo ?? MeasurementRepository();
+    int samCases = 0;
+    int severeCount = 0;
+    int atRiskCount = 0;
+    int obeseCount = 0;
+    int overweightCount = 0;
+    int normalCount = 0;
+    int notWeighedCount = 0;
+
+    for (final c in activeChildren) {
+      final m = measRepo.getLatestPlausible(c.id);
+      if (m == null) {
+        // Child with no plausible measurement
+        notWeighedCount++;
+        continue;
+      }
+
+      final isSam = m.effectiveWastingStatus == 'SAM';
+      if (isSam) {
+        samCases++;
+      }
+
+      final isSevere = isSam ||
+          m.heightForAgeStatus == 'Severely Stunted' ||
+          m.weightForAgeStatus == 'Severely Underweight';
+
+      if (isSevere) {
+        severeCount++;
+        continue;
+      }
+
+      final isAtRisk = m.effectiveWastingStatus == 'MAM' ||
+          m.heightForAgeStatus == 'Stunted' ||
+          m.weightForAgeStatus == 'Underweight';
+
+      if (isAtRisk) {
+        atRiskCount++;
+        continue;
+      }
+
+      final isObese = m.effectiveWastingStatus == 'Obese' ||
+          m.customBmiStatus == 'Obese';
+
+      if (isObese) {
+        obeseCount++;
+        continue;
+      }
+
+      final isOverweight = m.effectiveWastingStatus == 'Overweight' ||
+          m.weightForAgeStatus == 'Overweight' ||
+          m.customBmiStatus == 'Overweight';
+
+      if (isOverweight) {
+        overweightCount++;
+        continue;
+      }
+
+      normalCount++;
+    }
+
+    return NutritionCounts(
+      totalChildren: activeChildren.length,
+      samCases: samCases,
+      severeCount: severeCount,
+      atRiskCount: atRiskCount,
+      obeseCount: obeseCount,
+      overweightCount: overweightCount,
+      normalCount: normalCount,
+      notWeighedCount: notWeighedCount,
+    );
+  }
+
+  /// Primary distribution across weighed children using the shared source of truth.
+  /// Label 'Severe (any indicator)' matches the severe count in the SAM Cases card subtitle.
   List<NutritionStatusItem> getNutritionBreakdown() {
     final allChildren = _childRepo
         .getByBarangay(_currentBarangay)
         .where((c) => c.isActive)
         .toList();
 
+    final counts = computeNutritionCounts(allChildren);
+
+    final statusMap = <String, int>{
+      'Normal': counts.normalCount,
+      'At risk': counts.atRiskCount,
+      'Severe (any indicator)': counts.severeCount,
+      'Overweight': counts.overweightCount,
+      'Obese': counts.obeseCount,
+      'Not weighed': counts.notWeighedCount,
+    };
+
     const order = [
       'Normal',
       'At risk',
-      'Severe',
+      'Severe (any indicator)',
       'Overweight',
       'Obese',
-      'Needs re-measurement',
       'Not weighed',
     ];
-    final counts = {for (final s in order) s: 0};
-    for (final c in allChildren) {
-      final overall = ChildOverallStatus.fromChild(c);
-      final label = overall.label;
-      if (counts.containsKey(label)) {
-        counts[label] = counts[label]! + 1;
-      } else {
-        counts['Not weighed'] = counts['Not weighed']! + 1;
-      }
-    }
 
     final total = allChildren.length;
-    // Always include the 5 primary categories (Normal, At risk, Severe, Overweight, Not weighed)
-    // even when 0, plus Obese or Needs re-measurement if present.
-    const coreFive = {'Normal', 'At risk', 'Severe', 'Overweight', 'Not weighed'};
+    const coreCategories = {
+      'Normal',
+      'At risk',
+      'Severe (any indicator)',
+      'Overweight',
+      'Not weighed',
+    };
+
     return order
-        .where((s) => coreFive.contains(s) || (counts[s] ?? 0) > 0)
+        .where((s) => coreCategories.contains(s) || (statusMap[s] ?? 0) > 0)
         .map(
           (s) => NutritionStatusItem(
             label: s,
-            count: counts[s] ?? 0,
+            count: statusMap[s] ?? 0,
             percent: total > 0
-                ? (((counts[s] ?? 0) / total) * 100).clamp(0, 100)
+                ? (((statusMap[s] ?? 0) / total) * 100).clamp(0, 100)
                 : 0,
             color: ChildStatusMeta.colorFor(s),
           ),

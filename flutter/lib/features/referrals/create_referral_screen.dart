@@ -196,6 +196,9 @@ class _CreateReferralScreenState extends State<CreateReferralScreen> {
       notes: _notesController.text.trim(),
       status: 'Pending',
       createdAt: DateTime.now(),
+      referredBy: _settings.authUser?['name']?.toString() ??
+          _settings.authUser?['username']?.toString() ??
+          'BNS',
     );
 
     // Attempt online sync first (Requirement 4: Kapag failed o offline ang pag-send, HUWAG itago ang button. Ipakita ang error at "Retry")

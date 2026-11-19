@@ -18,6 +18,7 @@ class Referral {
   final DateTime? updatedAt;
   final DateTime? archivedAt;
   final dynamic archivedBy;
+  final String? referredBy;
   final List<Map<String, dynamic>> itemsGiven;
 
   const Referral({
@@ -35,8 +36,12 @@ class Referral {
     this.updatedAt,
     this.archivedAt,
     this.archivedBy,
+    this.referredBy,
     this.itemsGiven = const [],
   });
+
+  /// Alias for createdAt representing the referral timestamp in DB.
+  DateTime get referredAt => createdAt;
 
   /// Normalize status values from any source (server, DB, client) to a
   /// consistent title-cased set: Pending, Ongoing, Completed, Cancelled.
@@ -178,6 +183,7 @@ class Referral {
     DateTime? updatedAt,
     DateTime? archivedAt,
     dynamic archivedBy,
+    String? referredBy,
     List<Map<String, dynamic>>? itemsGiven,
   }) => Referral(
     id: id ?? this.id,
@@ -194,6 +200,7 @@ class Referral {
     updatedAt: updatedAt ?? this.updatedAt,
     archivedAt: archivedAt ?? this.archivedAt,
     archivedBy: archivedBy ?? this.archivedBy,
+    referredBy: referredBy ?? this.referredBy,
     itemsGiven: itemsGiven ?? this.itemsGiven,
   );
 
@@ -212,6 +219,7 @@ class Referral {
     if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
     if (archivedAt != null) 'archived_at': archivedAt!.toIso8601String(),
     if (archivedBy != null) 'archived_by': archivedBy,
+    if (referredBy != null) 'referred_by': referredBy,
     'itemsGiven': itemsGiven,
   };
 
@@ -254,6 +262,7 @@ class Referral {
       updatedAt: updatedDt,
       archivedAt: archivedDt,
       archivedBy: map['archived_by'] ?? map['archivedBy'],
+      referredBy: SafeParser.asString(map['referred_by'] ?? map['referredBy'] ?? map['referrer_name']),
       itemsGiven: parsedItems,
     );
   }

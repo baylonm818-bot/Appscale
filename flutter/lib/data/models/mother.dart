@@ -63,6 +63,14 @@ class Mother {
     return int.tryParse(digits);
   }
 
+  /// Address showing both Barangay and Purok (Scope 4 requirement)
+  String get addressWithBarangay {
+    final p = Child.normalizePurok(address);
+    if (barangay.isEmpty) return p;
+    if (p.isEmpty) return barangay;
+    return '$barangay, $p';
+  }
+
   Map<String, dynamic> toMap() => {
     'id': id,
     'fullName': fullName,
@@ -115,7 +123,12 @@ class Mother {
       breastfeedingPractice: strVal('breastfeedingPractice', 'breastfeeding_practice'),
       belongsToIpGroup: SafeParser.asNonNullBool(map['belongsToIpGroup'] ?? map['belongs_to_ip_group'], false),
       disability: strVal('disability', 'disability'),
-      createdAt: SafeParser.asDateTime(map['createdAt'] ?? map['created_at']) ?? DateTime.now(),
+      createdAt: SafeParser.asDateTime(
+        map['createdAt'] ??
+            map['created_at'] ??
+            map['date_registered'] ??
+            map['registration_date'],
+      ) ?? DateTime.now(),
       riskStatus: strVal('riskStatus', 'risk_status').isNotEmpty
           ? strVal('riskStatus', 'risk_status')
           : 'Not visited',

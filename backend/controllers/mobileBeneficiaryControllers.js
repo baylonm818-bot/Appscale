@@ -1105,6 +1105,7 @@ exports.getMobileChildren = async (req, res) => {
          c.child_id, c.external_id, c.first_name, c.middle_initial, c.last_name,
          c.birth_date, c.sex, c.age_in_months, c.age_group, c.barangay, c.purok,
          c.guardian_name, c.guardian_contact, c.mother_id, c.status, c.is_enrolled,
+         c.created_at,
          nr.weight_kg, nr.height_cm, nr.muac_cm, nr.weight_status, nr.height_status,
          nr.overall_status, nr.record_date AS last_visit
        FROM children c
@@ -1151,7 +1152,7 @@ exports.getMobileMothers = async (req, res) => {
       `SELECT
          m.mother_id, m.external_id, m.first_name, m.middle_initial, m.last_name,
          m.birth_date, m.barangay, m.purok, m.contact_number, m.weight_kg, m.height_cm,
-         m.muac_cm, m.bmi, m.bmi_status, m.muac_status, m.status
+         m.muac_cm, m.bmi, m.bmi_status, m.muac_status, m.status, m.created_at
        FROM mothers m
        WHERE ${where}
        ORDER BY m.first_name ASC`,

@@ -7,8 +7,6 @@ import '../../../data/local/referral_repository.dart';
 import '../../../data/models/child.dart';
 import '../../masterlist/widgets/status_badge.dart';
 import '../../../shared/utils/app_date_format.dart';
-import '../../referrals/widgets/referred_header_badge.dart';
-import '../../referrals/widgets/referral_detail_sheet.dart';
 
 class ChildProfileHeader extends StatelessWidget {
   final Child child;
@@ -98,15 +96,6 @@ class ChildProfileHeader extends StatelessWidget {
                 if (referralStatus.showReferButton && onReferralPressed != null) ...[
                   const SizedBox(width: 6),
                   _ReferralButton(onPressed: onReferralPressed!),
-                ] else if (referralStatus.referral != null) ...[
-                  const SizedBox(width: 6),
-                  ReferredHeaderBadge(
-                    referral: referralStatus.referral!,
-                    onTap: () => ReferralDetailSheet.show(
-                      context,
-                      referral: referralStatus.referral!,
-                    ),
-                  ),
                 ],
                 const SizedBox(width: 6),
               ],
@@ -153,7 +142,7 @@ class ChildProfileHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${child.ageLabel} · ${child.formattedAddress}',
+                      '${child.ageLabel} · ${child.addressWithBarangay}',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.85),
                         fontSize: 12,
@@ -229,20 +218,6 @@ class ChildProfileHeader extends StatelessWidget {
                       label: 'Due for weighing',
                       color: AppColors.statOrange,
                       onDark: true,
-                    ),
-                  if (referralStatus.chipLabel != null)
-                    GestureDetector(
-                      onTap: referralStatus.referral != null
-                          ? () => ReferralDetailSheet.show(
-                                context,
-                                referral: referralStatus.referral!,
-                              )
-                          : null,
-                      child: StatusBadge(
-                        label: referralStatus.chipLabel!,
-                        color: referralStatus.chipColor!,
-                        onDark: true,
-                      ),
                     ),
                 ],
               ] else

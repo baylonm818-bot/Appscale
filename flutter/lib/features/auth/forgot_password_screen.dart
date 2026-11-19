@@ -32,10 +32,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await AuthApi.forgotPassword(email: email);
+      final message = await AuthApi.forgotPassword(email: email);
       if (!mounted) return;
       setState(() => _otpRequested = true);
-      _showMessage('OTP sent to your email.');
+      _showMessage(message);
     } catch (error) {
       _showMessage(error.toString().replaceFirst('Exception: ', ''));
     } finally {

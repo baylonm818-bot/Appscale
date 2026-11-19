@@ -102,7 +102,13 @@ class SyncService {
         },
         'createdAt': (c['created_at'] != null && c['created_at'].toString().isNotEmpty)
             ? c['created_at'].toString()
-            : (existing?['createdAt'] ?? DateTime.now().toIso8601String()),
+            : (c['createdAt'] != null && c['createdAt'].toString().isNotEmpty)
+                ? c['createdAt'].toString()
+                : (c['date_registered'] != null && c['date_registered'].toString().isNotEmpty)
+                    ? c['date_registered'].toString()
+                    : (c['registration_date'] != null && c['registration_date'].toString().isNotEmpty)
+                        ? c['registration_date'].toString()
+                        : (existing?['createdAt'] ?? DateTime.now().toIso8601String()),
         'nutritionStatus': _statusOrFallback(c['weight_status'], existing?['nutritionStatus']),
         'stuntingStatus': _statusOrFallback(c['height_status'], existing?['stuntingStatus']),
         'wastingStatus': _statusOrFallback(c['overall_status'], existing?['wastingStatus']),
@@ -209,7 +215,13 @@ class SyncService {
         'inactiveReason': null,
         'createdAt': (m['created_at'] != null && m['created_at'].toString().isNotEmpty)
             ? m['created_at'].toString()
-            : (existing?['createdAt'] ?? DateTime.now().toIso8601String()),
+            : (m['createdAt'] != null && m['createdAt'].toString().isNotEmpty)
+                ? m['createdAt'].toString()
+                : (m['date_registered'] != null && m['date_registered'].toString().isNotEmpty)
+                    ? m['date_registered'].toString()
+                    : (m['registration_date'] != null && m['registration_date'].toString().isNotEmpty)
+                        ? m['registration_date'].toString()
+                        : (existing?['createdAt'] ?? DateTime.now().toIso8601String()),
         '_syncStatus': 'synced',
       });
     }

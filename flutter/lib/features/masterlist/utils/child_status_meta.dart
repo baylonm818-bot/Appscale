@@ -79,6 +79,8 @@ class ChildStatusMeta {
     switch (key) {
       // 1. Severe variants
       case 'severe':
+      case 'severe_(any_indicator)':
+      case 'severe_any_indicator':
       case 'severely_underweight':
       case 'suw':
       case 'severely_stunted':

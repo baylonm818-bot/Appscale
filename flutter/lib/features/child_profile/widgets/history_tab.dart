@@ -4,10 +4,14 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/local/child_repository.dart';
 import '../../../data/local/measurement_repository.dart';
+import '../../../data/local/referral_repository.dart';
 import '../../../data/models/child.dart';
 import '../../../data/models/measurement.dart';
+import '../../../data/models/referral.dart';
 import '../../../shared/utils/app_date_format.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../masterlist/widgets/status_badge.dart';
+import '../../referrals/widgets/referral_detail_sheet.dart';
 import 'edit_measurement_dialog.dart';
 import 'measurement_tile.dart';
 
@@ -83,6 +87,7 @@ class _HistoryTabState extends State<HistoryTab> {
   Widget build(BuildContext context) {
     final rawMeasurements = MeasurementRepository().getForChild(widget.childId);
     final resolvedChild = widget.child ?? ChildRepository().getById(widget.childId);
+    final referrals = ReferralRepository().getForBeneficiary(widget.childId);
 
     final measurements = List<Measurement>.from(rawMeasurements);
     measurements.sort((a, b) => _newestFirst ? b.date.compareTo(a.date) : a.date.compareTo(b.date));
@@ -176,7 +181,157 @@ class _HistoryTabState extends State<HistoryTab> {
               },
             ),
           ],
+          const SizedBox(height: AppSpacing.xl),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Referral History',
+                style: AppTextStyles.h1.copyWith(fontSize: 18),
+              ),
+              if (referrals.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${referrals.length} ${referrals.length == 1 ? "record" : "records"}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryGreen,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (referrals.isEmpty)
+            const EmptyState(
+              icon: Icons.assignment_turned_in_outlined,
+              message: 'No referrals recorded for this child.',
+            )
+          else
+            Column(
+              children: referrals.map((r) => _ReferralHistoryCard(referral: r)).toList(),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReferralHistoryCard extends StatelessWidget {
+  final Referral referral;
+  const _ReferralHistoryCard({required this.referral});
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return AppColors.primaryGreen;
+      case 'in progress':
+      case 'ongoing':
+        return AppColors.statBlue;
+      case 'cancelled':
+        return AppColors.textMuted;
+      case 'pending':
+      default:
+        return AppColors.statOrange;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = _statusColor(referral.statusDisplay);
+    final referredByName = referral.referredBy?.isNotEmpty == true
+        ? referral.referredBy!
+        : 'BNS';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: () => ReferralDetailSheet.show(context, referral: referral),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.assignment_turned_in, size: 16, color: statusColor),
+                      const SizedBox(width: 6),
+                      Text(
+                        AppDateFormat.format(referral.createdAt),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  StatusBadge(
+                    label: referral.statusDisplay,
+                    color: statusColor,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Reason: ${referral.reason}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (referral.facility.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Referred to: ${referral.facility}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 4),
+              Text(
+                'Referred by: $referredByName',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              if (referral.notes.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    referral.notes,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

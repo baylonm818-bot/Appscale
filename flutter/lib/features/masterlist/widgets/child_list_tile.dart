@@ -161,9 +161,9 @@ class ChildListTile extends StatelessWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 2),
-                                  // Line 2: Age · Address
+                                  // Line 2: Age · Address (Barangay + Purok)
                                   Text(
-                                    '${child.ageDisplay} · ${child.formattedAddress}',
+                                    '${child.ageDisplay} · ${child.addressWithBarangay}',
                                     style: AppTextStyles.caption.copyWith(
                                       fontSize: 11.5,
                                       color: AppColors.textMuted,
