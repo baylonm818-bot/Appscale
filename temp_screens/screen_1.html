@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+body { background: #f8fafc; margin: 0; padding: 0; width: 400px; height: 750px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+.phone-frame {
+  width: 380px;
+  height: 720px;
+  background: #ffffff;
+  border-radius: 36px;
+  border: 10px solid #1e293b;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.status-bar {
+  height: 28px;
+  background: #1b5e20;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.app-bar {
+  background: #2e7d32;
+  color: white;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+.app-bar h2 { font-size: 17px; font-weight: 700; flex: 1; }
+.screen-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f8fafc;
+}
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+.form-group { margin-bottom: 12px; }
+.form-label { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
+  color: #1e293b;
+}
+.btn-primary {
+  width: 100%;
+  background: #2e7d32;
+  color: white;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 10px;
+  cursor: pointer;
+}
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.badge-red { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+.badge-green { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.badge-orange { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
+.badge-blue { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+</style>
+  </head>
+  <body>
+    
+    <div class="phone-frame">
+      <div class="status-bar"><span>09:41</span><span>4G 📶 98%</span></div>
+      <div style="background: linear-gradient(135deg, #1b5e20, #2e7d32); padding: 40px 20px 24px; text-align: center; color: white;">
+        <div style="width: 64px; height: 64px; background: white; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 30px;">🌱</div>
+        <h2 style="font-size: 20px; font-weight: 800;">AppScale Field</h2>
+        <p style="font-size: 11px; opacity: 0.9; margin-top: 3px;">Barangay Nutrition Scholar Mobile App</p>
+        <div style="margin-top: 8px;"><span class="badge" style="background: rgba(255,255,255,0.2); color: white;">Municipality of Gasan</span></div>
+      </div>
+      <div class="screen-content" style="padding-top: 20px;">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-size: 13px; font-weight: 700; color: #1e293b;">BNS Offline Sign In</span>
+            <span class="badge badge-green">Hive Offline Ready</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">BNS Username / Email</label>
+            <input class="form-input" type="text" value="bns.cabugao@gasan.gov.ph" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password / 6-Digit PIN</label>
+            <input class="form-input" type="password" value="••••••••" readonly>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin: 8px 0 12px;">
+            <label style="color: #64748b;"><input type="checkbox" checked> Keep logged in</label>
+            <span style="color: #2e7d32; font-weight: 600;">Forgot PIN?</span>
+          </div>
+          <button class="btn-primary">AUTHENTICATE &amp; LOAD HIVE</button>
+        </div>
+        <div style="text-align: center; font-size: 11px; color: #94a3b8; margin-top: 15px;">
+          Local encrypted database active.<br>Syncs automatically when online.
+        </div>
+      </div>
+    </div>
+  </body>
+  </html>

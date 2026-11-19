@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+body { background: #f8fafc; margin: 0; padding: 0; width: 400px; height: 750px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+.phone-frame {
+  width: 380px;
+  height: 720px;
+  background: #ffffff;
+  border-radius: 36px;
+  border: 10px solid #1e293b;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.status-bar {
+  height: 28px;
+  background: #1b5e20;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.app-bar {
+  background: #2e7d32;
+  color: white;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+.app-bar h2 { font-size: 17px; font-weight: 700; flex: 1; }
+.screen-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f8fafc;
+}
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+.form-group { margin-bottom: 12px; }
+.form-label { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
+  color: #1e293b;
+}
+.btn-primary {
+  width: 100%;
+  background: #2e7d32;
+  color: white;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 10px;
+  cursor: pointer;
+}
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.badge-red { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+.badge-green { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.badge-orange { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
+.badge-blue { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+</style>
+  </head>
+  <body>
+    
+    <div class="phone-frame">
+      <div class="status-bar"><span>09:50</span><span>📶 4G 98%</span></div>
+      <div class="app-bar"><span>←</span><h2>Offline-to-Cloud Sync</h2><span>🔄</span></div>
+      <div class="screen-content">
+        <div class="card" style="text-align: center; padding: 20px 14px;">
+          <div style="font-size: 36px; margin-bottom: 6px;">☁️</div>
+          <div style="font-size: 15px; font-weight: 800; color: #1e293b;">Central Cloud Sync</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 3px;">appscale-two.vercel.app</div>
+          <div style="margin-top: 10px;"><span class="badge badge-green">INTERNET CONNECTED</span></div>
+        </div>
+        <div class="card">
+          <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 10px;">Pending Hive Cache Queue</div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 7px;">
+            <span>Anthropometric Assessments:</span>
+            <span style="font-weight: 700; color: #c2410c;">6 records</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 7px;">
+            <span>Supplementary Feeding Attendance:</span>
+            <span style="font-weight: 700; color: #c2410c;">45 records</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 7px;">
+            <span>Emergency Referral:</span>
+            <span style="font-weight: 700; color: #b91c1c;">1 urgent</span>
+          </div>
+          <div style="border-top: 1px solid #f1f5f9; padding-top: 6px; margin-top: 6px; font-size: 10px; color: #64748b;">
+            Last sync: Today at 07:15 AM
+          </div>
+        </div>
+        <button class="btn-primary" style="background: #1b5e20;">SYNC ALL RECORDS NOW</button>
+      </div>
+    </div>
+  </body>
+  </html>

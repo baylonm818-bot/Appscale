@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AppScale User Manual - Web & Mobile</title>
+<style>
+  @page {
+    size: A4;
+    margin: 1.6cm 1.4cm 1.6cm 1.4cm;
+  }
+
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    background-color: #ffffff;
+    line-height: 1.6;
+    font-size: 10pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Cover Page */
+  .cover-page {
+    page-break-after: always;
+    height: 92vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  .cover-logo {
+    width: 160px;
+    height: 160px;
+    object-fit: contain;
+    margin-bottom: 20px;
+  }
+
+  .cover-title {
+    font-size: 32pt;
+    font-weight: 800;
+    color: #065f46;
+    letter-spacing: -1px;
+    margin: 0 0 6px 0;
+    text-transform: uppercase;
+  }
+
+  .cover-subtitle {
+    font-size: 14pt;
+    font-weight: 600;
+    color: #059669;
+    margin: 0 0 16px 0;
+    letter-spacing: 0.5px;
+  }
+
+  .cover-badge {
+    display: inline-block;
+    background: #ecfdf5;
+    color: #047857;
+    border: 1.5px solid #10b981;
+    padding: 6px 18px;
+    border-radius: 9999px;
+    font-size: 10pt;
+    font-weight: 700;
+    margin-bottom: 35px;
+  }
+
+  .cover-desc {
+    max-width: 580px;
+    color: #475569;
+    font-size: 10.5pt;
+    line-height: 1.6;
+    margin-bottom: 40px;
+  }
+
+  .cover-meta {
+    width: 100%;
+    max-width: 500px;
+    border-top: 1.5px solid #e2e8f0;
+    padding-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 9pt;
+    color: #64748b;
+  }
+
+  .cover-meta strong {
+    color: #0f172a;
+  }
+
+  /* Section Dividers and Page Breaks */
+  .page-break {
+    page-break-after: always;
+  }
+
+  /* Typography */
+  h1 {
+    font-size: 18pt;
+    color: #065f46;
+    border-bottom: 2px solid #10b981;
+    padding-bottom: 5px;
+    margin-top: 20pt;
+    margin-bottom: 12pt;
+    page-break-after: avoid;
+  }
+
+  h2 {
+    font-size: 13pt;
+    color: #0f766e;
+    margin-top: 15pt;
+    margin-bottom: 6pt;
+    page-break-after: avoid;
+    border-left: 4px solid #14b8a6;
+    padding-left: 8px;
+  }
+
+  h3 {
+    font-size: 10.5pt;
+    color: #1e293b;
+    margin-top: 12pt;
+    margin-bottom: 5pt;
+    page-break-after: avoid;
+    font-weight: 700;
+  }
+
+  p {
+    margin-top: 0;
+    margin-bottom: 7pt;
+    text-align: justify;
+  }
+
+  /* Table of Contents */
+  .toc {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 25px;
+  }
+
+  .toc-title {
+    font-size: 15pt;
+    font-weight: 800;
+    color: #065f46;
+    margin-bottom: 14px;
+    border-bottom: 2px solid #cbd5e1;
+    padding-bottom: 6px;
+  }
+
+  .toc-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 10pt;
+  }
+
+  .toc-item a {
+    text-decoration: none;
+    color: #1e293b;
+    font-weight: 600;
+  }
+
+  .toc-item .dots {
+    flex-grow: 1;
+    border-bottom: 1px dotted #94a3b8;
+    margin: 0 10px 4px 10px;
+  }
+
+  .toc-item .page-num {
+    font-weight: 700;
+    color: #059669;
+  }
+
+  /* Callouts & Info Boxes */
+  .callout {
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 9.5pt;
+    page-break-inside: avoid;
+  }
+
+  .callout-info {
+    background-color: #f0fdf4;
+    border-left: 4px solid #10b981;
+    color: #065f46;
+  }
+
+  .callout-warning {
+    background-color: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    color: #92400e;
+  }
+
+  .callout-tip {
+    background-color: #f0f9ff;
+    border-left: 4px solid #0284c7;
+    color: #0369a1;
+  }
+
+  .callout-title {
+    font-weight: 700;
+    margin-bottom: 3px;
+    display: block;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px 0;
+    font-size: 9pt;
+    page-break-inside: avoid;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1;
+    padding: 7px 10px;
+    text-align: left;
+  }
+
+  th {
+    background-color: #065f46;
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  tr:nth-child(even) {
+    background-color: #f8fafc;
+  }
+
+  /* Steps and Procedures */
+  .step-container {
+    margin: 12px 0;
+  }
+
+  .step-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+    page-break-inside: avoid;
+  }
+
+  .step-badge {
+    background: #10b981;
+    color: white;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8.5pt;
+    font-weight: bold;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .step-content {
+    flex-grow: 1;
+  }
+
+  .step-content strong {
+    color: #0f172a;
+    display: block;
+    margin-bottom: 1px;
+  }
+
+  /* Badges & Tags */
+  .tag {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .tag-web { background: #e0e7ff; color: #3730a3; }
+  .tag-mobile { background: #fef3c7; color: #92400e; }
+  .tag-both { background: #dcfce7; color: #166534; }
+
+  /* Feature Grid Cards */
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 12px 0;
+    page-break-inside: avoid;
+  }
+
+  .feature-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  .feature-card h4 {
+    margin: 0 0 4px 0;
+    color: #065f46;
+    font-size: 10pt;
+  }
+
+  .feature-card p {
+    margin: 0;
+    font-size: 8.5pt;
+    color: #475569;
+  }
+
+  ul, ol {
+    margin-top: 3px;
+    margin-bottom: 8px;
+    padding-left: 20px;
+  }
+
+  li {
+    margin-bottom: 3px;
+  }
+
+  .badge-status {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 8pt;
+    font-weight: 600;
+  }
+  .status-normal { background: #dcfce7; color: #15803d; }
+  .status-warning { background: #fef9c3; color: #854d0e; }
+  .status-danger { background: #fee2e2; color: #b91c1c; }
+
+  .footer-note {
+    text-align: center;
+    font-size: 8.5pt;
+    color: #94a3b8;
+    margin-top: 25px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= COVER PAGE ================= -->
+<div class="cover-page">
+  <img src="frontend/public/logo1.png" class="cover-logo" alt="AppScale Logo">
+  <div class="cover-title">AppScale</div>
+  <div class="cover-subtitle">Barangay Child Nutrition & Health Information System</div>
+  <div class="cover-badge">Comprehensive User Manual & Operating Guide</div>
+  <p class="cover-desc">
+    An end-to-end operational manual designed for Barangay Nutrition Scholars (BNS), 
+    Barangay Health Workers (BHW), City/Municipal Administrators, and Community Beneficiaries. 
+    Covers the Complete Web Management Portal and the Mobile Field Application.
+  </p>
+  <div class="cover-meta">
+    <div><strong>Platforms Covered:</strong> Web Portal & Mobile App</div>
+    <div><strong>System Release:</strong> Version 3.0</div>
+    <div><strong>Document Edition:</strong> November 2026</div>
+  </div>
+</div>
+
+<!-- ================= TABLE OF CONTENTS ================= -->
+<div class="page-break">
+  <div class="toc">
+    <div class="toc-title">Table of Contents</div>
+    <div class="toc-item"><a href="#sec-overview">1. System Overview & Architecture</a><span class="dots"></span><span class="page-num">Section 1</span></div>
+    <div class="toc-item"><a href="#sec-roles">2. User Roles & Access Hierarchy</a><span class="dots"></span><span class="page-num">Section 2</span></div>
+    <div class="toc-item"><a href="#sec-auth">3. Authentication, Security & Account Policies</a><span class="dots"></span><span class="page-num">Section 3</span></div>
+    <div class="toc-item"><a href="#sec-web-admin">4. Web Portal: Administrator Module Guide</a><span class="dots"></span><span class="page-num">Section 4</span></div>
+    <div class="toc-item"><a href="#sec-web-bhw">5. Web Portal: Barangay Health Worker (BHW) Guide</a><span class="dots"></span><span class="page-num">Section 5</span></div>
+    <div class="toc-item"><a href="#sec-mobile">6. Mobile Field Application: BNS & Field Worker Guide</a><span class="dots"></span><span class="page-num">Section 6</span></div>
+    <div class="toc-item"><a href="#sec-offline-sync">7. Offline Mode & Data Synchronization Protocol</a><span class="dots"></span><span class="page-num">Section 7</span></div>
+    <div class="toc-item"><a href="#sec-reports">8. Reports, Forms & WHO Growth Classification</a><span class="dots"></span><span class="page-num">Section 8</span></div>
+    <div class="toc-item"><a href="#sec-troubleshooting">9. Troubleshooting, Security & FAQs</a><span class="dots"></span><span class="page-num">Section 9</span></div>
+  </div>
+
+  <div id="sec-overview">
+    <h1>1. System Overview & Architecture</h1>
+    <p>
+      <strong>AppScale</strong> is a specialized, dual-platform digital health management system specifically tailored for Philippine barangay local health units, primary health centers, and community nutrition offices. The platform modernizes community nutrition monitoring, child growth tracking (Operation Timbang Plus / OPT+), maternal care counseling, supplementary feeding programs, micronutrient distribution (Vitamin A & Deworming), and clinical referral pathways.
+    </p>
+
+    <div class="callout callout-info">
+      <span class="callout-title">Core System Mission:</span>
+      AppScale eliminates paper-bound record delays and transcription errors by providing field workers (BNS/BHW) with an offline-first mobile tool, while furnishing local health officials and administrators with centralized web analytics, automated WHO standard z-score evaluations, and regulatory report generation.
+    </div>
+
+    <div class="card-grid">
+      <div class="feature-card">
+        <h4>🌐 Web Management Portal</h4>
+        <p>Accessible via modern browsers (Chrome, Edge, Firefox). Serves as the central command hub for Municipal Administrators and Barangay Health Workers to manage accounts, generate masterlists, review schedules, and track macro health statistics.</p>
+      </div>
+      <div class="feature-card">
+        <h4>📱 Mobile Field Application</h4>
+        <p>Built with Flutter & Hive offline storage. Empowers BNS and BHW workers to record child growth measurements, feeding attendance, deworming, and maternal visits in remote puroks without active cellular connectivity.</p>
+      </div>
+    </div>
+
+    <h3>Key Architecture Components</h3>
+    <ul>
+      <li><strong>Frontend Web:</strong> React (Vite), Tailwind CSS, Recharts for analytics, Lucide Icons, Responsive Layouts.</li>
+      <li><strong>Mobile Application:</strong> Flutter with Hive NoSQL embedded local database, offline queueing engine, and background auto-sync.</li>
+      <li><strong>Backend API Server:</strong> Node.js, Express 5, RESTful JSON API, JWT Token Verification, Express Rate Limiting, Helmet security headers.</li>
+      <li><strong>Database Layer:</strong> MySQL / Cloud database holding centralized records, child growth histories, audit logs, and account profiles.</li>
+      <li><strong>Standards Compliance:</strong> Incorporates World Health Organization (WHO) Growth Standards for Weight-for-Age (WFA), Length/Height-for-Age (HFA), and Weight-for-Length/Height (WFL/H).</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ================= USER ROLES & ACCESS ================= -->
+<div class="page-break">
+  <div id="sec-roles">
+    <h1>2. User Roles & Access Hierarchy</h1>
+    <p>
+      To safeguard sensitive patient health data and ensure accountability under the Philippine Data Privacy Act of 2012, AppScale enforces strict Role-Based Access Control (RBAC).
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Role</th>
+          <th>Platform</th>
+          <th>Primary Responsibilities</th>
+          <th>Access Level</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Super / System Admin</strong></td>
+          <td><span class="tag tag-web">Web Portal</span></td>
+          <td>System supervision, BHW account provisioning, system-wide masterlist oversight, comprehensive audit log monitoring, official signatory configurations.</td>
+          <td>Global Administrative</td>
+        </tr>
+        <tr>
+          <td><strong>Barangay Health Worker (BHW)</strong></td>
+          <td><span class="tag tag-web">Web</span> + <span class="tag tag-mobile">Mobile</span></td>
+          <td>Barangay-level beneficiary records management, scheduling checkups, filing referrals to rural health units (RHU), reviewing flagged malnutrition cases.</td>
+          <td>Barangay Specific</td>
+        </tr>
+        <tr>
+          <td><strong>Barangay Nutrition Scholar (BNS)</strong></td>
+          <td><span class="tag tag-mobile">Mobile App</span></td>
+          <td>Field weight & height measurement entry, feeding program attendance, meal planning, maternal counseling, Vitamin A & Deworming field logs.</td>
+          <td>Field & Purok Level</td>
+        </tr>
+        <tr>
+          <td><strong>Beneficiary / Caregiver</strong></td>
+          <td><span class="tag tag-mobile">Mobile App</span></td>
+          <td>Personal child health card access, immunization & deworming schedules, nutrition status tracking, notification alerts from health workers.</td>
+          <td>Personal Record Only</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-warning">
+      <span class="callout-title">Account Creation Policy:</span>
+      Public self-registration is strictly disabled for Admin, BHW, and BNS roles. All healthcare staff accounts must be provisioned and authorized by the Municipal/Barangay Administrator to prevent unauthorized access to community medical records.
+    </div>
+  </div>
+
+  <div id="sec-auth">
+    <h1>3. Authentication, Security & Account Policies</h1>
+    <p>
+      AppScale implements multi-layer authentication security to prevent unauthorized access and defend against credential stuffing:
+    </p>
+
+    <h3>1. Login Credentials & Session Lifespan</h3>
+    <ul>
+      <li><strong>Identifier:</strong> Official Registered Email Address.</li>
+      <li><strong>Password:</strong> Strong alphanumeric password required (minimum 8 characters).</li>
+      <li><strong>JWT Session:</strong> Generates secure JSON Web Tokens stored in browser memory/encrypted local store, automatically refreshed during active use and invalidated upon logout.</li>
+    </ul>
+
+    <h3>2. Account Lockout & Brute-Force Defense</h3>
+    <div class="step-container">
+      <div class="step-item">
+        <div class="step-badge">1</div>
+        <div class="step-content">
+          <strong>Per-Account Failed Attempt Tracking</strong>
+          Failed login attempts are tracked per account identifier (email) rather than public IP to prevent network-wide lockout in community centers.
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">2</div>
+        <div class="step-content">
+          <strong>Lockout Threshold (5 Failed Attempts)</strong>
+          If an incorrect password is submitted 5 consecutive times, the account is locked for <strong>15 to 30 minutes</strong>.
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">3</div>
+        <div class="step-content">
+          <strong>Emergency Administrative Unlock</strong>
+          Barangay Admins maintain the authority to unlock verified staff accounts via the User Management panel or backend unlock scripts.
+        </div>
+      </div>
+    </div>
+
+    <h3>3. Password Recovery via One-Time PIN (OTP)</h3>
+    <p>Users who forget their password can reset it independently via verified email:</p>
+    <ol>
+      <li>Click <strong>"Forgot Password?"</strong> on the login screen.</li>
+      <li>Input the registered email address and submit.</li>
+      <li>A 6-digit verification OTP is dispatched to the inbox (valid for 15 minutes).</li>
+      <li>Enter the OTP and supply a new secure password. Brute-force OTP guessing is limited to 10 attempts per 15-minute window.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ================= WEB PORTAL: ADMIN ================= -->
+<div class="page-break">
+  <div id="sec-web-admin">
+    <h1>4. Web Portal: Administrator Module Guide</h1>
+    <p>
+      The Administrator Web Portal provides municipal and city health supervisors with end-to-end command over barangay healthcare operations. Below is a detailed walkthrough of each module.
+    </p>
+
+    <h2>4.1. Admin Dashboard (/admin/dashboard)</h2>
+    <p>
+      The primary landing screen after administrator login. Offers a bird's-eye view of community health indicators across all enrolled barangays:
+    </p>
+    <ul>
+      <li><strong>Top Summary Metric Cards:</strong> Total Enrolled Beneficiaries (Children & Mothers), Active BHWs/BNSs on duty, Pending Referrals, and Total Scheduled Checkups for the current month.</li>
+      <li><strong>Nutrition Analytics Chart:</strong> Visual breakdown of nutritional classifications across puroks (Normal, Underweight, Severely Underweight, Overweight, Stunted, Wasted).</li>
+      <li><strong>Barangay Distribution Breakdown:</strong> Comparative performance metrics indicating data completion rates per barangay.</li>
+      <li><strong>Recent System Activity Feed:</strong> Live stream of latest measurements submitted by mobile field workers.</li>
+    </ul>
+
+    <h2>4.2. User Management (/admin/bhw-management)</h2>
+    <p>
+      The administrative hub for managing health personnel accounts across all barangays.
+    </p>
+    <div class="step-container">
+      <div class="step-item">
+        <div class="step-badge">1</div>
+        <div class="step-content">
+          <strong>Adding a New Health Worker (BHW / BNS):</strong>
+          Click the <em>"+ Add New Worker"</em> button. Provide full name, assigned barangay, designated role (BHW or BNS), contact phone number, and official email. The system generates an account activation invite.
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">2</div>
+        <div class="step-content">
+          <strong>Editing Staff Details:</strong>
+          Locate the staff member using search or barangay filters. Click <em>"Edit"</em> to update contact details, reassign assigned purok zones, or update role permissions.
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">3</div>
+        <div class="step-content">
+          <strong>Deactivating or Unlocking Accounts:</strong>
+          In the event of worker resignation or 5 failed login attempts, admins can toggle account status between <em>Active</em>, <em>Deactivated</em>, or click <em>"Unlock Account"</em>.
+        </div>
+      </div>
+    </div>
+
+    <h2>4.3. Masterlist Management (/admin/masterlist)</h2>
+    <p>
+      Centralized repository of all registered children and mothers across the entire jurisdiction:
+    </p>
+    <ul>
+      <li><strong>Dynamic Filtering:</strong> Filter by Barangay, Purok, Age Group (0-5 mos, 6-23 mos, 24-59 mos), Gender, and Nutritional Status.</li>
+      <li><strong>Search Bar:</strong> Instant fuzzy search by Child's Full Name, Mother's Name, or unique Beneficiary Identification Number.</li>
+      <li><strong>Export Functionality:</strong> Export filtered or complete masterlists directly into <strong>Microsoft Excel (.xlsx)</strong> or official standard Department of Health (DOH) tabular templates.</li>
+      <li><strong>Record Audit:</strong> Click on any child or mother entry to inspect full longitudinal growth records, past measurements, and referral notes.</li>
+    </ul>
+
+    <h2>4.4. Signatories Configuration (/admin/signatories)</h2>
+    <p>
+      Ensures that all generated nutritional reports and Operation Timbang Plus documents carry legitimate official endorsements:
+    </p>
+    <ul>
+      <li>Configure names, titles, and professional designations for the <strong>Barangay Captain</strong>, <strong>Barangay Nutrition Scholar</strong>, <strong>Midwife</strong>, and <strong>City/Municipal Health Officer (MHO)</strong>.</li>
+      <li>Upload scanned authorized signatures for automated inclusion on exported PDF certificates and official summary sheets.</li>
+    </ul>
+
+    <h2>4.5. System Audit Logs (/admin/logs)</h2>
+    <p>
+      Provides a non-repudiable audit trail of every interaction within the AppScale ecosystem:
+    </p>
+    <ul>
+      <li><strong>Tracked Actions:</strong> User logins/logouts, record creation, measurement edits, beneficiary deactivations, data synchronization events, and export downloads.</li>
+      <li><strong>Audit Details:</strong> Timestamp, Actor Name, User Role, Originating IP Address, Action Category, and Record Reference ID.</li>
+      <li><strong>Filter & Search:</strong> Search by staff name or filter by date range to conduct compliance audits.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ================= WEB PORTAL: BHW ================= -->
+<div class="page-break">
+  <div id="sec-web-bhw">
+    <h1>5. Web Portal: Barangay Health Worker (BHW) Guide</h1>
+    <p>
+      The BHW Web Module is customized for day-to-day barangay health center operations, patient monitoring, and referral processing.
+    </p>
+
+    <h2>5.1. BHW Dashboard (/bhw/dashboard)</h2>
+    <p>Displays actionable priorities specifically within the worker's assigned barangay:</p>
+    <ul>
+      <li><strong>Need Attention Alert Banner:</strong> Highlights children diagnosed with Severe Acute Malnutrition (SAM) or Moderate Acute Malnutrition (MAM) who require urgent home visits.</li>
+      <li><strong>Scheduled Appointments for Today:</strong> Direct list of children scheduled for weighing, Vitamin A supplementation, or immunizations.</li>
+      <li><strong>Quick Action Links:</strong> Immediate shortcuts to record a new patient, schedule a clinic session, or issue an emergency referral.</li>
+    </ul>
+
+    <h2>5.2. Medical Records (/bhw/medical-records)</h2>
+    <p>Full health lifecycle management for registered beneficiaries:</p>
+    <div class="step-container">
+      <div class="step-item">
+        <div class="step-badge">1</div>
+        <div class="step-content">
+          <strong>Registering a Child Beneficiary:</strong>
+          Input child's full name, sex, date of birth, gestational age, birth weight, birth length, mother/guardian name, mobile contact, and purok address.
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">2</div>
+        <div class="step-content">
+          <strong>Recording Longitudinal Measurements:</strong>
+          Log exact weight (kg) and height/length (cm). Select measurement posture (Recumbent for under 24 months, Standing for 24 months and older). The system instantly calculates and plots WHO z-scores.
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">3</div>
+        <div class="step-content">
+          <strong>Tracking Maternal Profiles:</strong>
+          Record expectant and lactating mothers, pregnancy term, expected date of confinement (EDC), prenatal checkup dates, and micronutrient supplementation history.
+        </div>
+      </div>
+    </div>
+
+    <h2>5.3. Need Attention Module (/bhw/need-attention)</h2>
+    <p>
+      An intelligent triage dashboard that automatically filters and surfaces high-risk beneficiaries:
+    </p>
+    <ul>
+      <li><strong>Severe Acute Malnutrition (SAM):</strong> Weight-for-length/height z-score &lt; -3 SD or presence of bilateral pitting edema. Marked with red urgent badges.</li>
+      <li><strong>Stunting & Severe Wasting:</strong> Beneficiaries failing to gain weight over two consecutive measurement cycles.</li>
+      <li><strong>Overdue Follow-ups:</strong> Patients who missed scheduled supplementary feeding or weighing sessions.</li>
+      <li><strong>Action Items:</strong> BHWs can directly trigger home visit requests, assign supplemental food rations, or file medical referrals.</li>
+    </ul>
+
+    <h2>5.4. Referrals Management (/bhw/referrals)</h2>
+    <p>Connects community beneficiaries with higher-level healthcare providers (RHUs, District Hospitals):</p>
+    <ol>
+      <li>Select the beneficiary requiring clinical escalation.</li>
+      <li>Select Destination Facility (e.g., Municipal Health Center, Provincial Hospital).</li>
+      <li>Specify Primary Reason for Referral (e.g., Severe Malnutrition, Prolonged Fever, Complicated Diarrhea).</li>
+      <li>Attach clinical summary, latest vitals, and nutritional history.</li>
+      <li>Track Referral Status: Pending &rarr; Accepted &rarr; Completed / Discharged with feedback notes from attending physicians.</li>
+    </ol>
+
+    <h2>5.5. Schedules & Appointment Calendar (/bhw/schedules)</h2>
+    <p>
+      Organize barangay health events such as Operation Timbang Plus days, Vitamin A distribution drives, and mother-counseling seminars. Supports SMS/push notification dispatches to registered parents.
+    </p>
+  </div>
+</div>
+
+<!-- ================= MOBILE FIELD APP ================= -->
+<div class="page-break">
+  <div id="sec-mobile">
+    <h1>6. Mobile Field Application: BNS & Field Worker Guide</h1>
+    <p>
+      The <strong>AppScale Mobile Field App</strong> is built with Flutter to provide a native, high-performance experience on mobile devices (smartphones and tablets). It is engineered for offline operation during field visits in puroks without cell towers.
+    </p>
+
+    <h2>6.1. Mobile Application Navigation & Layout</h2>
+    <p>The mobile application organizes field workflows into 4 persistent bottom navigation tabs and a quick-action center:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Tab / Screen</th>
+          <th>Icon</th>
+          <th>Core Field Capabilities</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1. Dashboard</strong></td>
+          <td>Home</td>
+          <td>Barangay nutrition overview, daily weighing quota, sync status indicator, upcoming feeding sessions, urgent referral alerts.</td>
+        </tr>
+        <tr>
+          <td><strong>2. Masterlist</strong></td>
+          <td>List / People</td>
+          <td>Searchable offline directory of children and mothers, filtering by purok and status, quick-view health status cards.</td>
+        </tr>
+        <tr>
+          <td><strong>3. Quick Add (+)</strong></td>
+          <td>Center Plus</td>
+          <td>Global floating action button to rapidly enroll a new child, record weight/height, or log an urgent referral.</td>
+        </tr>
+        <tr>
+          <td><strong>4. Programs</strong></td>
+          <td>Calendar / Apple</td>
+          <td>Feeding program attendance, meal plan updates, Vitamin A administration, and biannual deworming records.</td>
+        </tr>
+        <tr>
+          <td><strong>5. Reports</strong></td>
+          <td>File / Chart</td>
+          <td>Generate consolidated Operation Timbang Plus reports, export to Excel, and inspect offline sync queues.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>6.2. Step-by-Step Field Procedures</h2>
+
+    <h3>Procedure A: Conducting an Operation Timbang Plus (OPT+) Weighing Session</h3>
+    <div class="step-container">
+      <div class="step-item">
+        <div class="step-badge">1</div>
+        <div class="step-content">
+          <strong>Locate Child Profile:</strong>
+          Open the <strong>Masterlist</strong> tab. Search by child's first or last name or scan the family ID. Tap to open the <em>Child Profile Screen</em>.
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">2</div>
+        <div class="step-content">
+          <strong>Enter Anthropometric Measurements:</strong>
+          Tap <em>"+ Record Measurement"</em>. Enter Weight to the nearest 0.1 kg and Length/Height to the nearest 0.1 cm. Select whether measured lying down (recumbent) or standing up.
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">3</div>
+        <div class="step-content">
+          <strong>Instant Z-Score Evaluation:</strong>
+          The app's embedded WHO engine instantly computes:
+          <ul>
+            <li><strong>WFA:</strong> Weight-for-Age (Underweight / Normal / Overweight)</li>
+            <li><strong>HFA:</strong> Height-for-Age (Stunted / Normal / Tall)</li>
+            <li><strong>WFL/H:</strong> Weight-for-Length/Height (Wasted / Normal / Overweight / Obese)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">4</div>
+        <div class="step-content">
+          <strong>Automatic Urgent Referral Prompt:</strong>
+          If the child is classified as Severely Wasted or presents bilateral pitting edema, the app triggers an immediate red pop-up offering one-tap creation of an <strong>Urgent Clinical Referral</strong>.
+        </div>
+      </div>
+    </div>
+
+    <h3>Procedure B: Supplementary Feeding Program Management</h3>
+    <ul>
+      <li><strong>Session Scheduling:</strong> Navigate to <em>Programs &rarr; Feeding Program</em>. Set program cycle (e.g., 120-Day Feeding Cycle), target purok, and target beneficiaries.</li>
+      <li><strong>Daily Attendance Logging:</strong> Tap today's session date. Mark enrolled children as <em>Present</em>, <em>Absent</em>, or <em>Excused</em>. Record food ration consumed.</li>
+      <li><strong>Meal Planning & Recipes:</strong> View and update weekly meal recipes ensuring balanced caloric and micronutrient distribution.</li>
+      <li><strong>Periodic Re-Weighing:</strong> Conduct mandatory day-30, day-60, day-90, and day-120 re-weighing inside the feeding module to measure nutritional recovery rates.</li>
+    </ul>
+
+    <h3>Procedure C: Micronutrient Supplementation & Deworming</h3>
+    <ul>
+      <li><strong>Vitamin A Tracking:</strong> Log biannual Vitamin A capsule administration (100,000 IU for 6-11 months; 200,000 IU for 12-59 months) with dosage dates.</li>
+      <li><strong>Biannual Deworming:</strong> Log age-appropriate deworming tablets (Albendazole / Mebendazole) during National Deworming Month campaigns.</li>
+      <li><strong>Lactating & Pregnant Mothers Counseling:</strong> Record infant feeding counseling sessions (exclusive breastfeeding 0-6 mos, complementary feeding 6+ mos).</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ================= OFFLINE SYNC & REPORTS ================= -->
+<div class="page-break">
+  <div id="sec-offline-sync">
+    <h1>7. Offline Mode & Data Synchronization Protocol</h1>
+    <p>
+      Recognizing that community nutrition workers frequently operate in low-connectivity rural pockets or mountain puroks, AppScale incorporates an advanced <strong>Offline-First Architecture</strong> powered by Dart Hive NoSQL.
+    </p>
+
+    <div class="card-grid">
+      <div class="feature-card">
+        <h4>💾 Offline Local Storage</h4>
+        <p>All beneficiary profiles, past measurements, schedules, and program attendances are cached locally on the device in high-speed binary storage. Full write capability remains available with zero internet.</p>
+      </div>
+      <div class="feature-card">
+        <h4>🔄 Automatic Conflict-Free Sync</h4>
+        <p>The moment cellular data or Wi-Fi connectivity is detected, AppScale activates a background synchronization queue, transmitting local pending records to the central cloud database without disrupting the user.</p>
+      </div>
+    </div>
+
+    <h3>Sync Status Indicators (Mobile Header & Sync Screen)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Badge Icon</th>
+          <th>Status</th>
+          <th>Meaning & Recommended Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge-status status-normal">● Green Cloud</span></td>
+          <td><strong>Synced</strong></td>
+          <td>All local mobile entries match the central server. No pending uploads.</td>
+        </tr>
+        <tr>
+          <td><span class="badge-status status-warning">▲ Amber Cloud</span></td>
+          <td><strong>Unsynced Items</strong></td>
+          <td>New measurements/records exist on the phone waiting for network connectivity to upload.</td>
+        </tr>
+        <tr>
+          <td><span class="badge-status status-danger">✕ Red Banner</span></td>
+          <td><strong>Offline Mode</strong></td>
+          <td>No network connection detected. Continue entering data normally; records will automatically sync when online.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-tip">
+      <span class="callout-title">Manual Force Sync:</span>
+      Workers can manually initiate a synchronization cycle at any time by going to <strong>Reports &rarr; Sync Status Screen</strong> and tapping <em>"Sync Now with Central Server"</em>.
+    </div>
+  </div>
+
+  <div id="sec-reports">
+    <h1>8. Reports, Forms & WHO Growth Classification</h1>
+    <p>
+      AppScale eliminates manual compilation of Operation Timbang Plus spreadsheets by automating report generation in accordance with the National Nutrition Council (NNC) standards.
+    </p>
+
+    <h3>1. Supported Standard Report Types</h3>
+    <ul>
+      <li><strong>Consolidated Barangay Nutrition Summary:</strong> Aggregated counts of normal, underweight, severely underweight, wasted, stunted, and overweight children grouped by age brackets and purok.</li>
+      <li><strong>Masterlist of Affected Children:</strong> Targeted listing of SAM, MAM, and stunted children for targeted intervention allocation.</li>
+      <li><strong>Feeding Program Progress Report:</strong> Attendance percentage, meal consumption rates, and pre/post weight delta comparisons.</li>
+      <li><strong>Official Signatories Sheet:</strong> Automatically embeds names and designations of BNS, Midwife, and Barangay Captain.</li>
+    </ul>
+
+    <h3>2. Export Formats</h3>
+    <ul>
+      <li><strong>Microsoft Excel (.xlsx):</strong> Fully styled, editable spreadsheet ready for submission to the Municipal Nutrition Action Officer (MNAO).</li>
+      <li><strong>Adobe PDF (.pdf):</strong> Printable, tamper-resistant document formatted with official barangay headers, logos, and signature blocks.</li>
+    </ul>
+
+    <h3>3. WHO Growth Reference Tables Reference</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Indicator</th>
+          <th>&lt;-3 SD</th>
+          <th>-3 SD to &lt;-2 SD</th>
+          <th>-2 SD to +2 SD</th>
+          <th>&gt;+2 SD</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Weight-for-Age (WFA)</strong></td>
+          <td><span class="badge-status status-danger">Severely Underweight</span></td>
+          <td><span class="badge-status status-warning">Underweight</span></td>
+          <td><span class="badge-status status-normal">Normal</span></td>
+          <td><span class="badge-status status-warning">Overweight</span></td>
+        </tr>
+        <tr>
+          <td><strong>Height-for-Age (HFA)</strong></td>
+          <td><span class="badge-status status-danger">Severely Stunted</span></td>
+          <td><span class="badge-status status-warning">Stunted</span></td>
+          <td><span class="badge-status status-normal">Normal</span></td>
+          <td><span class="badge-status status-normal">Tall</span></td>
+        </tr>
+        <tr>
+          <td><strong>Weight-for-Length/Height (WFL/H)</strong></td>
+          <td><span class="badge-status status-danger">Severely Wasted (SAM)</span></td>
+          <td><span class="badge-status status-warning">Wasted (MAM)</span></td>
+          <td><span class="badge-status status-normal">Normal</span></td>
+          <td><span class="badge-status status-danger">Obese / Overweight</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ================= TROUBLESHOOTING & FAQ ================= -->
+<div class="page-break">
+  <div id="sec-troubleshooting">
+    <h1>9. Troubleshooting, Security & FAQs</h1>
+
+    <h3>Frequently Encountered Issues & Resolutions</h3>
+
+    <div class="step-container">
+      <div class="step-item">
+        <div class="step-badge">?</div>
+        <div class="step-content">
+          <strong>Issue: "Account Locked: Too many failed login attempts"</strong>
+          <em>Solution:</em> Wait 15-30 minutes for the automated security lockout timer to expire, or contact your Barangay/City Administrator to unlock your account immediately via the User Management panel.
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">?</div>
+        <div class="step-content">
+          <strong>Issue: Mobile app displays "Unsynced Records Pending" for extended periods</strong>
+          <em>Solution:</em> Verify that the smartphone is connected to a working Wi-Fi or cellular network with active data. Open <em>Reports &rarr; Sync Status Screen</em> and tap <em>"Sync Now"</em>. Check for any validation error messages on individual records.
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">?</div>
+        <div class="step-content">
+          <strong>Issue: Child's z-score shows "Measurement Out of Range"</strong>
+          <em>Solution:</em> Ensure that the weight was entered in kilograms (kg) and height in centimeters (cm). An accidental entry of weight in pounds or height in inches will trigger validation barriers to preserve data integrity.
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-badge">?</div>
+        <div class="step-content">
+          <strong>Issue: How to transfer AppScale to a new mobile phone?</strong>
+          <em>Solution:</em> Before changing devices, ensure the existing phone is connected to the internet and all pending records are completely synced (Green Cloud badge). Then, install AppScale on the new device, log in with your credentials, and the central database will populate the local database automatically.
+        </div>
+      </div>
+    </div>
+
+    <h3>Best Practices for Data Privacy & Security</h3>
+    <ul>
+      <li><strong>Never share login credentials:</strong> Every BHW and BNS must have their own designated user account for accurate audit logging.</li>
+      <li><strong>Lock mobile devices:</strong> Ensure all smartphones or tablets running AppScale have a screen PIN, fingerprint, or password lock enabled.</li>
+      <li><strong>Log out on shared workstations:</strong> When using the Web Portal at barangay health centers, always click <em>"Log Out"</em> before leaving the computer terminal.</li>
+      <li><strong>Report lost devices:</strong> If a mobile device containing cached patient data is misplaced or stolen, notify the System Administrator immediately so the session token can be revoked from the server.</li>
+    </ul>
+
+    <div class="footer-note">
+      AppScale Barangay Health Management System &bull; Official User Manual &bull; Confidential & Proprietary Document
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

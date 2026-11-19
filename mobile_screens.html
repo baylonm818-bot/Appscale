@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  body { background: #f0f2f5; display: flex; flex-direction: column; gap: 40px; padding: 20px; }
+  .phone-frame {
+    width: 380px;
+    height: 720px;
+    background: #ffffff;
+    border-radius: 36px;
+    border: 10px solid #1e293b;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  .status-bar {
+    height: 28px;
+    background: #1b5e20;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .app-bar {
+    background: #2e7d32;
+    color: white;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  .app-bar h2 { font-size: 17px; font-weight: 700; flex: 1; }
+  .screen-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: #f8fafc;
+  }
+  .card {
+    background: white;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+  }
+  .form-group { margin-bottom: 12px; }
+  .form-label { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
+  .form-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #fff;
+    color: #1e293b;
+  }
+  .form-input:focus { border-color: #2e7d32; }
+  .btn-primary {
+    width: 100%;
+    background: #2e7d32;
+    color: white;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    margin-top: 10px;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(46,125,50,0.3);
+  }
+  .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge-red { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+  .badge-green { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+  .badge-orange { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
+  .badge-blue { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+  .bottom-nav {
+    height: 56px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    font-size: 10px;
+    color: #64748b;
+  }
+  .nav-item.active { color: #2e7d32; font-weight: 700; }
+</style>
+</head>
+<body>
+
+  <!-- Screen 1: BNS Mobile Login -->
+  <div id="screen-bns-login" class="phone-frame">
+    <div class="status-bar"><span>09:41</span><span>4G 📶 98%</span></div>
+    <div style="background: linear-gradient(135deg, #1b5e20, #2e7d32); padding: 40px 20px 30px; text-align: center; color: white;">
+      <div style="width: 70px; height: 70px; background: white; border-radius: 50%; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">🌱</div>
+      <h2 style="font-size: 22px; font-weight: 800; letter-spacing: 0.5px;">AppScale Field</h2>
+      <p style="font-size: 12px; opacity: 0.9; margin-top: 4px;">Barangay Nutrition Scholar Mobile App</p>
+      <div style="margin-top: 10px;"><span class="badge" style="background: rgba(255,255,255,0.2); color: white;">Municipality of Gasan</span></div>
+    </div>
+    <div class="screen-content" style="padding-top: 24px;">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <span style="font-size: 13px; font-weight: 700; color: #1e293b;">BNS Offline-First Sign In</span>
+          <span class="badge badge-green">Hive Offline Ready</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">BNS Username / Assigned Email</label>
+          <input class="form-input" type="text" value="bns.cabugao@gasan.gov.ph" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password / 6-Digit Field PIN</label>
+          <input class="form-input" type="password" value="••••••••" readonly>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin: 8px 0 14px;">
+          <label style="color: #64748b;"><input type="checkbox" checked> Keep logged in offline</label>
+          <a href="#" style="color: #2e7d32; font-weight: 600; text-decoration: none;">Forgot PIN?</a>
+        </div>
+        <button class="btn-primary">AUTHENTICATE &amp; LOAD HIVE CACHE</button>
+      </div>
+      <div style="text-align: center; font-size: 11px; color: #94a3b8; margin-top: 20px;">
+        Local encrypted database active.<br>Field records will automatically sync when online.
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen 2: Child Demographic Profiling -->
+  <div id="screen-bns-add-child" class="phone-frame">
+    <div class="status-bar"><span>09:42</span><span>📶 98%</span></div>
+    <div class="app-bar"><span>←</span><h2>New Child Registration</h2><span>💾</span></div>
+    <div class="screen-content">
+      <div class="card">
+        <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">Demographic Information</div>
+        <div class="form-group">
+          <label class="form-label">Full Child Name</label>
+          <input class="form-input" type="text" value="Mark Joshua B. Alcantara" readonly>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Sex</label>
+            <input class="form-input" type="text" value="Male" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date of Birth</label>
+            <input class="form-input" type="text" value="2024-03-15" readonly>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Exact Age in Months</label>
+          <input class="form-input" type="text" value="24 months (Auto-calculated)" readonly style="background:#f1f5f9; font-weight:600; color:#1b5e20;">
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">Household &amp; Location</div>
+        <div class="form-group">
+          <label class="form-label">Barangay &amp; Sitio</label>
+          <input class="form-input" type="text" value="Barangay Cabugao — Sitio Ilaya" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mother / Guardian Name</label>
+          <input class="form-input" type="text" value="Elena B. Alcantara" readonly>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+          <span style="font-size: 12px; font-weight: 600; color: #475569;">4Ps Beneficiary Household</span>
+          <span class="badge badge-green">YES (Active)</span>
+        </div>
+      </div>
+      <button class="btn-primary">SAVE PROFILE TO LOCAL HIVE</button>
+    </div>
+  </div>
+
+  <!-- Screen 3: OPT+ Anthropometric Assessment -->
+  <div id="screen-bns-assessment" class="phone-frame">
+    <div class="status-bar"><span>09:44</span><span>📶 98%</span></div>
+    <div class="app-bar"><span>←</span><h2>OPT+ Growth Assessment</h2><span>📋</span></div>
+    <div class="screen-content">
+      <div class="card" style="background: #f0fdf4; border-color: #bbf7d0;">
+        <div style="font-size: 12px; color: #166534; font-weight: 600;">Beneficiary: Mark Joshua B. Alcantara (24 mos)</div>
+        <div style="font-size: 11px; color: #15803d;">Date: November 18, 2026 | BNS: Jana Rolle</div>
+      </div>
+      <div class="card">
+        <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 10px;">Physical Measurements</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Weight (kg)</label>
+            <input class="form-input" type="text" value="8.90 kg" readonly style="font-size:15px; font-weight:700;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Length / Height (cm)</label>
+            <input class="form-input" type="text" value="79.5 cm" readonly style="font-size:15px; font-weight:700;">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Measurement Position</label>
+          <input class="form-input" type="text" value="Standing Height (Child &ge; 2 years)" readonly>
+        </div>
+      </div>
+      <div class="card" style="border: 2px solid #ef4444; background: #fffaf0;">
+        <div style="font-size: 13px; font-weight: 800; color: #991b1b; margin-bottom: 8px;">Automated WHO Child Growth Z-Scores</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+          <span style="color: #475569;">Weight-for-Age (WFA):</span>
+          <span class="badge badge-orange">Underweight (UW)</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px;">
+          <span style="color: #475569;">Height-for-Age (HFA):</span>
+          <span class="badge badge-orange">Stunted (St)</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+          <span style="color: #475569;">Weight-for-Length/Height:</span>
+          <span class="badge badge-red">Severely Wasted (SAM)</span>
+        </div>
+      </div>
+      <button class="btn-primary" style="background: #dc2626;">SAVE &amp; TRIGGER CLINICAL REFERRAL</button>
+    </div>
+  </div>
+
+  <!-- Screen 4: SAM Referral Trigger -->
+  <div id="screen-bns-referral" class="phone-frame">
+    <div class="status-bar"><span>09:45</span><span>📶 98%</span></div>
+    <div class="app-bar" style="background: #b91c1c;"><span>←</span><h2>Immediate Clinical Referral</h2><span>⚠️</span></div>
+    <div class="screen-content">
+      <div class="card" style="border-left: 4px solid #b91c1c;">
+        <div style="font-size: 12px; font-weight: 800; color: #b91c1c; text-transform: uppercase;">Red Flag Alert Triggered</div>
+        <p style="font-size: 12px; color: #64748b; margin-top: 4px;">Child diagnosed with Severely Wasted (SAM) nutritional status. Protocol requires immediate clinical endorsement to RHU Gasan.</p>
+      </div>
+      <div class="card">
+        <div class="form-group">
+          <label class="form-label">Severity Classification</label>
+          <span class="badge badge-red" style="font-size: 12px; padding: 6px 12px;">HIGH SEVERITY (SAM CLINICAL)</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Receiving Health Facility</label>
+          <input class="form-input" type="text" value="Gasan Rural Health Unit (RHU Clinic)" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Clinical Indication / Symptoms</label>
+          <textarea class="form-input" style="height: 60px;" readonly>Weight-for-Length &lt; -3 SD, bilateral pitting edema absent, appetite test passed. Urgent RUTF endorsement needed.</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Assigned BHW Case Manager</label>
+          <input class="form-input" type="text" value="Maria Santos (Cabugao BHW)" readonly>
+        </div>
+      </div>
+      <button class="btn-primary" style="background: #b91c1c;">SUBMIT EMERGENCY REFERRAL TO BHW</button>
+    </div>
+  </div>
+
+  <!-- Screen 5: 120-Day Feeding Program -->
+  <div id="screen-bns-feeding" class="phone-frame">
+    <div class="status-bar"><span>09:47</span><span>📶 98%</span></div>
+    <div class="app-bar"><span>←</span><h2>Supplementary Feeding (Day 45)</h2><span>🍲</span></div>
+    <div class="screen-content">
+      <div class="card" style="background: #f0fdf4; border-color: #86efac;">
+        <div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">120-Day Cycle Attendance</div>
+        <div style="font-size: 15px; font-weight: 800; color: #14532d; margin: 4px 0;">Cycle Day 45 of 120</div>
+        <div style="font-size: 11px; color: #166534;">Today's Menu: Iron-Fortified Lugaw + Boiled Egg + Malunggay</div>
+      </div>
+      <div class="card">
+        <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Cabugao Center Attendance Sheet</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px;">
+          <span>Mark Joshua Alcantara</span>
+          <span class="badge badge-green">PRESENT (Fed)</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px;">
+          <span>Carlo D. Santos</span>
+          <span class="badge badge-green">PRESENT (Fed)</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px;">
+          <span>Althea Marie Reyes</span>
+          <span class="badge badge-orange">RATION PICKUP</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 12px;">
+          <span>John Paul Mendoza</span>
+          <span class="badge badge-red">EXCUSED / SICK</span>
+        </div>
+      </div>
+      <button class="btn-primary">SUBMIT DAILY FEEDING LOG</button>
+    </div>
+  </div>
+
+  <!-- Screen 6: Micronutrient & Deworming -->
+  <div id="screen-bns-micronutrient" class="phone-frame">
+    <div class="status-bar"><span>09:48</span><span>📶 98%</span></div>
+    <div class="app-bar"><span>←</span><h2>Micronutrient Supplement</h2><span>💊</span></div>
+    <div class="screen-content">
+      <div class="card">
+        <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 10px;">Intervention Details</div>
+        <div class="form-group">
+          <label class="form-label">Supplement Type</label>
+          <input class="form-input" type="text" value="Vitamin A (Blue Capsule 100,000 IU)" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">DOH Administration Round</label>
+          <input class="form-input" type="text" value="Garantisadong Pambata (Round 2 - Nov 2026)" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deworming Tablet (Albendazole 400mg)</label>
+          <input class="form-input" type="text" value="Administered with meal (Directly Observed)" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Batch &amp; Lot Number</label>
+          <input class="form-input" type="text" value="DOH-LOT-2026-X981" readonly>
+        </div>
+      </div>
+      <button class="btn-primary">RECORD INTERVENTION</button>
+    </div>
+  </div>
+
+  <!-- Screen 7: Hive Sync Status -->
+  <div id="screen-bns-sync" class="phone-frame">
+    <div class="status-bar"><span>09:50</span><span>📶 4G 98%</span></div>
+    <div class="app-bar"><span>←</span><h2>Offline-to-Cloud Sync</h2><span>🔄</span></div>
+    <div class="screen-content">
+      <div class="card" style="text-align: center; padding: 24px 16px;">
+        <div style="font-size: 40px; margin-bottom: 8px;">☁️</div>
+        <div style="font-size: 16px; font-weight: 800; color: #1e293b;">Central Cloud Sync</div>
+        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Endpoint: appscale-two.vercel.app</div>
+        <div style="margin-top: 14px;"><span class="badge badge-green">INTERNET CONNECTED</span></div>
+      </div>
+      <div class="card">
+        <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 12px;">Local Cache Inventory (Hive)</div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px;">
+          <span>Unsynced Anthropometric Measurements:</span>
+          <span style="font-weight: 700; color: #c2410c;">6 records</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px;">
+          <span>Unsynced Feeding Attendances:</span>
+          <span style="font-weight: 700; color: #c2410c;">45 records</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px;">
+          <span>Unsynced Emergency Referrals:</span>
+          <span style="font-weight: 700; color: #b91c1c;">1 urgent</span>
+        </div>
+        <div style="border-top: 1px solid #f1f5f9; padding-top: 8px; margin-top: 8px; font-size: 11px; color: #64748b;">
+          Last successful sync: Today at 07:15 AM
+        </div>
+      </div>
+      <button class="btn-primary" style="background: #1b5e20;">SYNC ALL RECORDS TO SERVER NOW</button>
+    </div>
+  </div>
+
+</body>
+</html>

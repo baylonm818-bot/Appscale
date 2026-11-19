@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+body { background: #f8fafc; margin: 0; padding: 0; width: 400px; height: 750px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+.phone-frame {
+  width: 380px;
+  height: 720px;
+  background: #ffffff;
+  border-radius: 36px;
+  border: 10px solid #1e293b;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.status-bar {
+  height: 28px;
+  background: #1b5e20;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.app-bar {
+  background: #2e7d32;
+  color: white;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+.app-bar h2 { font-size: 17px; font-weight: 700; flex: 1; }
+.screen-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f8fafc;
+}
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+.form-group { margin-bottom: 12px; }
+.form-label { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
+  color: #1e293b;
+}
+.btn-primary {
+  width: 100%;
+  background: #2e7d32;
+  color: white;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 10px;
+  cursor: pointer;
+}
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.badge-red { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+.badge-green { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.badge-orange { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
+.badge-blue { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+</style>
+  </head>
+  <body>
+    
+    <div class="phone-frame">
+      <div class="status-bar"><span>09:42</span><span>📶 98%</span></div>
+      <div class="app-bar"><span>←</span><h2>New Child Registration</h2><span>💾</span></div>
+      <div class="screen-content">
+        <div class="card">
+          <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px;">Demographic Information</div>
+          <div class="form-group">
+            <label class="form-label">Full Child Name</label>
+            <input class="form-input" type="text" value="Mark Joshua B. Alcantara" readonly>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="form-group">
+              <label class="form-label">Sex</label>
+              <input class="form-input" type="text" value="Male" readonly>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date of Birth</label>
+              <input class="form-input" type="text" value="2024-03-15" readonly>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Age in Months</label>
+            <input class="form-input" type="text" value="24 months (Auto-calculated)" readonly style="background:#f1f5f9; font-weight:600; color:#1b5e20;">
+          </div>
+        </div>
+        <div class="card">
+          <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px;">Household &amp; Location</div>
+          <div class="form-group">
+            <label class="form-label">Barangay &amp; Sitio</label>
+            <input class="form-input" type="text" value="Barangay Cabugao — Sitio Ilaya" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mother / Guardian Name</label>
+            <input class="form-input" type="text" value="Elena B. Alcantara" readonly>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; font-weight: 600; color: #475569;">4Ps Beneficiary Household</span>
+            <span class="badge badge-green">YES (Active)</span>
+          </div>
+        </div>
+        <button class="btn-primary">SAVE PROFILE TO LOCAL HIVE</button>
+      </div>
+    </div>
+  </body>
+  </html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+body { background: #f8fafc; margin: 0; padding: 0; width: 400px; height: 750px; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+.phone-frame {
+  width: 380px;
+  height: 720px;
+  background: #ffffff;
+  border-radius: 36px;
+  border: 10px solid #1e293b;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.status-bar {
+  height: 28px;
+  background: #1b5e20;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.app-bar {
+  background: #2e7d32;
+  color: white;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+.app-bar h2 { font-size: 17px; font-weight: 700; flex: 1; }
+.screen-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f8fafc;
+}
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+.form-group { margin-bottom: 12px; }
+.form-label { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
+  color: #1e293b;
+}
+.btn-primary {
+  width: 100%;
+  background: #2e7d32;
+  color: white;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 10px;
+  cursor: pointer;
+}
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.badge-red { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+.badge-green { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.badge-orange { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
+.badge-blue { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+</style>
+  </head>
+  <body>
+    
+    <div class="phone-frame">
+      <div class="status-bar"><span>09:47</span><span>📶 98%</span></div>
+      <div class="app-bar"><span>←</span><h2>Supplementary Feeding</h2><span>🍲</span></div>
+      <div class="screen-content">
+        <div class="card" style="background: #f0fdf4; border-color: #86efac;">
+          <div style="font-size: 11px; font-weight: 700; color: #166534;">120-DAY CYCLE LOG</div>
+          <div style="font-size: 15px; font-weight: 800; color: #14532d; margin: 3px 0;">Cycle Day 45 of 120</div>
+          <div style="font-size: 11px; color: #166534;">Menu: Fortified Lugaw + Boiled Egg + Malunggay</div>
+        </div>
+        <div class="card">
+          <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Attendance &amp; Ration Sheet</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px;">
+            <span>Mark Joshua Alcantara</span>
+            <span class="badge badge-green">PRESENT (Fed)</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px;">
+            <span>Carlo D. Santos</span>
+            <span class="badge badge-green">PRESENT (Fed)</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px;">
+            <span>Althea Marie Reyes</span>
+            <span class="badge badge-orange">RATION PICKUP</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 0; font-size: 11px;">
+            <span>John Paul Mendoza</span>
+            <span class="badge badge-red">EXCUSED / SICK</span>
+          </div>
+        </div>
+        <button class="btn-primary">SUBMIT DAILY FEEDING ATTENDANCE</button>
+      </div>
+    </div>
+  </body>
+  </html>
