@@ -22,31 +22,53 @@ function generateOtp() {
 }
 
 function getTransporter() {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_SERVICE } = process.env;
 
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
-    throw new Error('SMTP configuration is missing. Please configure SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and SMTP_FROM in the backend environment.');
+  const user = (SMTP_USER || process.env.EMAIL_USER || '').trim();
+  const pass = (SMTP_PASS || process.env.EMAIL_PASS || '').replace(/\s+/g, '');
+  const from = (SMTP_FROM || `AppScale Nutrition <${user}>`).trim();
+
+  if (!user || !pass) {
+    throw new Error('SMTP credentials missing. Please set SMTP_USER and SMTP_PASS in environment.');
   }
 
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: Number(SMTP_PORT) === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-    connectionTimeout: 8000, // 8s connection timeout so it doesn't hang forever
-    greetingTimeout: 8000,
-    socketTimeout: 10000,
-  });
+  // Use Gmail service if Gmail user or host specified (handles ports/SSL automatically)
+  const isGmail = SMTP_SERVICE === 'gmail' ||
+    (SMTP_HOST && SMTP_HOST.includes('gmail')) ||
+    user.toLowerCase().endsWith('@gmail.com');
+
+  if (isGmail) {
+    return {
+      transporter: nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
+      }),
+      from,
+    };
+  }
+
+  return {
+    transporter: nodemailer.createTransport({
+      host: SMTP_HOST || 'smtp.gmail.com',
+      port: Number(SMTP_PORT) || 465,
+      secure: Number(SMTP_PORT) === 465 || !SMTP_PORT,
+      auth: { user, pass },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    }),
+    from,
+  };
 }
 
 async function sendOtpEmail(email, otp) {
-  const transporter = getTransporter();
+  const { transporter, from } = getTransporter();
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM,
+    from,
     to: email,
     subject: 'AppScale Password Reset OTP',
     html: `
