@@ -1,5 +1,6 @@
 import '../../core/utils/safe_parser.dart';
 import '../../shared/utils/app_user_identity.dart';
+import 'child.dart';
 
 class Mother {
   final String id;
@@ -171,12 +172,8 @@ class Mother {
   );
 
   String get formattedAddress {
-    final trimmed = address.trim();
-    if (trimmed.isEmpty) return 'Purok 1';
-    if (RegExp(r'^\d+$').hasMatch(trimmed)) {
-      return 'Purok $trimmed';
-    }
-    return trimmed;
+    final norm = Child.normalizePurok(address);
+    return norm.isNotEmpty ? norm : address.trim();
   }
 
   String get initials {

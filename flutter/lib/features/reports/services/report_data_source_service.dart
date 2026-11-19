@@ -2,6 +2,11 @@ import '../../../data/growth_standards/growth_classifier.dart';
 import '../../../data/local/child_repository.dart';
 import '../../../data/local/measurement_repository.dart';
 import '../../../data/local/mother_repository.dart';
+import '../../../data/local/deworming_repository.dart';
+import '../../../data/local/vitamin_a_repository.dart';
+import '../../../data/local/feeding_enrollment_repository.dart';
+import '../../../data/local/feeding_attendance_repository.dart';
+import '../../../data/local/program_schedule_repository.dart';
 import 'excel_table_data.dart';
 
 class MissingDataRecord {
@@ -298,5 +303,135 @@ class ReportDataSourceService {
     }
 
     return issues;
+  }
+
+  ExcelTableData buildVitaminAProgramData(String barangay, int year) {
+    final records = VitaminARepository()
+        .getAllForBarangay(barangay)
+        .where((r) => r.dateGiven.year == year)
+        .toList()
+      ..sort((a, b) => b.dateGiven.compareTo(a.dateGiven));
+
+    int no = 1;
+    final rows = records.map((r) {
+      return [
+        '${no++}',
+        r.childName,
+        _fmtDateOnly(r.dateGiven),
+        r.doseType.isNotEmpty ? r.doseType : 'Routine',
+        r.administeredBy.isNotEmpty ? r.administeredBy : 'BNS',
+        r.dosage,
+      ];
+    }).toList();
+
+    return ExcelTableData(
+      headers: [
+        'NO.',
+        'CHILD NAME',
+        'DATE GIVEN',
+        'ROUND / CYCLE',
+        'GIVEN BY',
+        'DOSAGE',
+      ],
+      rows: rows,
+    );
+  }
+
+  ExcelTableData buildDewormingProgramData(String barangay, int year) {
+    final records = DewormingRepository()
+        .getAllForBarangay(barangay)
+        .where((r) => r.dateGiven.year == year)
+        .toList()
+      ..sort((a, b) => b.dateGiven.compareTo(a.dateGiven));
+
+    int no = 1;
+    final rows = records.map((r) {
+      return [
+        '${no++}',
+        r.childName,
+        _fmtDateOnly(r.dateGiven),
+        r.round.isNotEmpty ? r.round : '1st Round',
+        r.administeredBy.isNotEmpty ? r.administeredBy : 'BNS',
+        r.drugName,
+      ];
+    }).toList();
+
+    return ExcelTableData(
+      headers: [
+        'NO.',
+        'CHILD NAME',
+        'DATE GIVEN',
+        'ROUND / CYCLE',
+        'GIVEN BY',
+        'DRUG ADMINISTERED',
+      ],
+      rows: rows,
+    );
+  }
+
+  ExcelTableData buildFeedingProgramData(String barangay, int year) {
+    final enrolled = FeedingEnrollmentRepository()
+        .getEnrolledChildren(barangay)
+        .where((c) => c.createdAt.year == year || c.isActive)
+        .toList()
+      ..sort((a, b) => a.fullName.compareTo(b.fullName));
+
+    final attRepo = FeedingAttendanceRepository();
+    int no = 1;
+    final rows = enrolled.map((c) {
+      final daysAttended = attRepo.getAttendedDaysForChild(barangay, c.id);
+      return [
+        '${no++}',
+        c.fullName,
+        _fmtDateOnly(c.createdAt),
+        'Cycle 1 (120 Days)',
+        'BNS / RHU',
+        '$daysAttended / 120 Days Attended',
+      ];
+    }).toList();
+
+    return ExcelTableData(
+      headers: [
+        'NO.',
+        'CHILD NAME',
+        'ENROLLMENT DATE',
+        'ROUND / CYCLE',
+        'GIVEN BY',
+        'PROGRESS / ATTENDANCE',
+      ],
+      rows: rows,
+    );
+  }
+
+  ExcelTableData buildActivitiesReportData(String barangay, int year) {
+    final schedules = ProgramScheduleRepository()
+        .getAllForBarangay(barangay)
+        .where((s) => s.date.year == year)
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    int no = 1;
+    final rows = schedules.map((s) {
+      return [
+        '${no++}',
+        s.title,
+        _fmtDateOnly(s.date),
+        s.location.isNotEmpty ? s.location : 'Barangay Hall',
+        s.programType,
+        s.notes.isNotEmpty ? s.notes : 'Scheduled',
+      ];
+    }).toList();
+
+    return ExcelTableData(
+      headers: [
+        'NO.',
+        'ACTIVITY TITLE',
+        'DATE',
+        'VENUE',
+        'PROGRAM / TYPE',
+        'NOTES / STATUS',
+      ],
+      rows: rows,
+    );
   }
 }

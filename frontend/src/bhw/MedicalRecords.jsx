@@ -20,11 +20,15 @@ import {
   ShieldCheck,
   Clock,
   Plus,
+  Download,
+  Utensils,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
+import { capitalizeWords, formatChildAge, COMMON_DISABILITIES } from '../utils/i18n';
 
 const statusColors = {
   normal: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200',
@@ -57,11 +61,31 @@ function MedicalRecords() {
   const [newGuardianContact, setNewGuardianContact] = useState('');
   const [newBarangay, setNewBarangay] = useState(user.barangay || 'Antipolo');
   const [newPurok, setNewPurok] = useState('');
+  const [newDisability, setNewDisability] = useState('None');
+  const [motherBirthDate, setMotherBirthDate] = useState('');
+  const [purokOptions, setPurokOptions] = useState([]);
+  const [purokFilter, setPurokFilter] = useState('all');
   const [addBeneficiarySubmitting, setAddBeneficiarySubmitting] = useState(false);
   const [addBeneficiaryError, setAddBeneficiaryError] = useState('');
   const [addBeneficiarySuccess, setAddBeneficiarySuccess] = useState('');
   const [addBeneficiaryErrors, setAddBeneficiaryErrors] = useState({});
   const [interventionErrors, setInterventionErrors] = useState({});
+
+  // Dynamic purok loader based on barangay
+  useEffect(() => {
+    const targetBrgy = newBarangay || user.barangay || 'Antipolo';
+    axiosClient.get(`/puroks?barangay=${encodeURIComponent(targetBrgy)}`)
+      .then((res) => {
+        const list = res.data || [];
+        setPurokOptions(list);
+        if (list.length > 0) {
+          setNewPurok(list[0].name);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load puroks for barangay:', err);
+      });
+  }, [newBarangay, user.barangay]);
 
   // ── Children state ──
   const [search, setSearch] = useState('');
@@ -140,6 +164,45 @@ function MedicalRecords() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mothers]);
 
+  const normalizePurok = (raw) => {
+    if (!raw) return '';
+    const trimmed = raw.trim();
+    if (!trimmed) return '';
+    const lower = trimmed.toLowerCase();
+    if (['uni', 'uno', 'isa'].includes(lower)) return 'Purok 1';
+    if (['dos', 'dalawa'].includes(lower)) return 'Purok 2';
+    if (['tres', 'tatlo'].includes(lower)) return 'Purok 3';
+    if (['cuatro', 'kwatro', 'apat'].includes(lower)) return 'Purok 4';
+    if (['cinco', 'singko', 'lima'].includes(lower)) return 'Purok 5';
+    if (['seis', 'anim'].includes(lower)) return 'Purok 6';
+    if (['siete', 'syete', 'pito'].includes(lower)) return 'Purok 7';
+    if (['ocho', 'otso', 'walo'].includes(lower)) return 'Purok 8';
+    if (/^\d+$/.test(lower)) return `Purok ${lower}`;
+    const numMatch = trimmed.match(/^(?:purok|prk\.?)\s*[-#]?\s*(\d+)$/i);
+    if (numMatch) return `Purok ${numMatch[1]}`;
+    const toTitle = (s) => s.split(/\s+/).filter(Boolean).map(w => /^(?:[ivxlcdm]+)$/i.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    const namedMatch = trimmed.match(/^(?:purok|prk\.?)\s*[-#]?\s*(.+)$/i);
+    if (namedMatch) return `Purok ${toTitle(namedMatch[1])}`;
+    return toTitle(trimmed);
+  };
+
+  const existingPuroks = useMemo(() => {
+    const set = new Set();
+    if (Array.isArray(childrenData)) {
+      childrenData.forEach(c => {
+        const norm = normalizePurok(c.purok);
+        if (norm) set.add(norm);
+      });
+    }
+    if (Array.isArray(mothersData)) {
+      mothersData.forEach(m => {
+        const norm = normalizePurok(m.purok);
+        if (norm) set.add(norm);
+      });
+    }
+    return Array.from(set).sort();
+  }, [childrenData, mothersData]);
+
   const { data: auditData, isLoading: auditLoading, error: auditQueryError, refetch: _refetchAudit } = useQuery({
     queryKey: ['medical-records-audit'],
     queryFn: async () => {
@@ -159,21 +222,55 @@ function MedicalRecords() {
       const q = search.trim().toLowerCase();
       list = list.filter((c) =>
         `${c.first_name || ''} ${c.last_name || ''}`.toLowerCase().includes(q) ||
-        (c.guardian_name || '').toLowerCase().includes(q)
+        (c.guardian_name || '').toLowerCase().includes(q) ||
+        (c.purok || '').toLowerCase().includes(q)
       );
     }
     if (statusFilter !== 'all') {
       list = list.filter((c) => c.overall_status === statusFilter);
     }
+    if (purokFilter !== 'all') {
+      list = list.filter((c) => normalizePurok(c.purok) === normalizePurok(purokFilter));
+    }
     if (ageFilter !== 'all') {
       list = list.filter((c) => {
+        if (ageFilter === '6-59') return c.age_in_months >= 6 && c.age_in_months <= 59;
         if (ageFilter === '0-23') return c.age_in_months >= 0 && c.age_in_months <= 23;
         if (ageFilter === '24-59') return c.age_in_months >= 24 && c.age_in_months <= 59;
         return true;
       });
     }
     return list;
-  }, [children, search, statusFilter, ageFilter]);
+  }, [children, search, statusFilter, purokFilter, ageFilter]);
+
+  const exportChildrenList = () => {
+    if (!filteredChildren || filteredChildren.length === 0) return;
+    const headers = ['Child ID', 'First Name', 'Last Name', 'Sex', 'Age (Months)', 'Birth Date', 'Guardian Name', 'Guardian Contact', 'Barangay', 'Purok', 'Disability', 'Nutritional Status', 'Last Visit'];
+    const rows = filteredChildren.map(c => [
+      c.child_id,
+      `"${c.first_name || ''}"`,
+      `"${c.last_name || ''}"`,
+      c.sex || '',
+      c.age_in_months || 0,
+      c.birth_date ? c.birth_date.slice(0, 10) : '',
+      `"${c.guardian_name || ''}"`,
+      `"${c.guardian_contact || ''}"`,
+      `"${c.barangay || ''}"`,
+      `"${c.purok || ''}"`,
+      `"${c.disability || 'None'}"`,
+      `"${c.overall_status || 'normal'}"`,
+      c.last_visit ? c.last_visit.slice(0, 10) : '',
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Children_Masterlist_${user.barangay || 'All'}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const filteredMothers = useMemo(() => {
     if (!motherSearch.trim()) return mothers;
@@ -199,6 +296,8 @@ function MedicalRecords() {
         growth_history: payload.growth_history || payload.nutritionHistory || [],
         services: payload.services || payload.servicesHistory || [],
         referrals: payload.referrals || [],
+        feeding_history: payload.feeding_history || payload.feedingHistory || [],
+        feeding_effectiveness: payload.feeding_effectiveness || payload.feedingEffectiveness || null,
       });
     } catch {
       setDetailError('Failed to load clinical records for this child.');
@@ -363,17 +462,29 @@ function MedicalRecords() {
 
                   <div className="p-4 border-b border-gray-100 space-y-3 bg-gray-50/50">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-bold text-gray-900">Registered Children</p>
-                      <span className="text-xs font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                        <CountUp value={filteredChildren.length} />
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-gray-900">Registered Children</p>
+                        <span className="text-xs font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                          <CountUp value={filteredChildren.length} />
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={exportChildrenList}
+                        disabled={filteredChildren.length === 0}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-[#1b5e20] bg-white border border-green-200 hover:bg-green-50 shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                        title="Export filtered list to Excel/CSV"
+                      >
+                        <Download size={13} />
+                        <span>Export</span>
+                      </button>
                     </div>
 
                     <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-100 transition">
                       <Search size={15} className="text-gray-400 shrink-0" />
                       <input
                         type="text"
-                        placeholder="Search child or guardian…"
+                        placeholder="Search child, guardian, or purok…"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="outline-none text-xs w-full bg-transparent text-gray-700 placeholder-gray-400"
@@ -381,28 +492,41 @@ function MedicalRecords() {
                       {search && <button onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-1.5">
                       <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                         className="border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-gray-700 bg-white"
                       >
-                        <option value="all">All Statuses</option>
+                        <option value="all">All Status</option>
                         <option value="normal">Normal</option>
                         <option value="MAM">MAM</option>
                         <option value="SAM">SAM</option>
                         <option value="underweight">Underweight</option>
                       </select>
 
-                      {/* Age group filter — Item 33 (0-23, 0-24, 24-59) */}
+                      {/* Age group filter — with 6-59 mos */}
                       <select
                         value={ageFilter}
                         onChange={(e) => setAgeFilter(e.target.value)}
                         className="border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-gray-700 bg-white"
                       >
                         <option value="all">All Ages</option>
+                        <option value="6-59">6–59 mos</option>
                         <option value="0-23">0–23 mos</option>
                         <option value="24-59">24–59 mos</option>
+                      </select>
+
+                      {/* Purok filter */}
+                      <select
+                        value={purokFilter}
+                        onChange={(e) => setPurokFilter(e.target.value)}
+                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-gray-700 bg-white"
+                      >
+                        <option value="all">All Puroks</option>
+                        {existingPuroks.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -434,8 +558,13 @@ function MedicalRecords() {
                             <div className="min-w-0 flex-1">
                               <p className={`text-xs font-bold truncate transition-colors ${isSelected ? 'text-emerald-950' : 'text-gray-900'}`}>{c.first_name} {c.last_name}</p>
                               <p className="text-[11px] text-gray-400 mt-0.5">
-                                {c.age_in_months} mos · {c.sex ? c.sex.toUpperCase() : 'N/A'} · {c.guardian_name || 'No guardian'}
+                                {formatChildAge(c.birth_date, Boolean(user.age_format_days), c.age_in_months, user.language || 'en')} · {c.sex ? c.sex.toUpperCase() : 'N/A'}{c.purok ? ` · ${c.purok}` : ''}
                               </p>
+                              {c.disability && c.disability !== 'None' && (
+                                <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 rounded px-1.5 py-0.5 mt-1 inline-block">
+                                  {c.disability}
+                                </span>
+                              )}
                             </div>
                             <span className={`px-2 py-0.5 rounded-full font-bold uppercase text-[10px] shrink-0 transition-colors ${statusColors[c.overall_status] || 'bg-gray-100 text-gray-700'}`}>
                               {c.overall_status || 'Normal'}
@@ -484,13 +613,16 @@ function MedicalRecords() {
                         <div>
                           <h2 className="text-xl font-black">{selectedChild.first_name} {selectedChild.last_name}</h2>
                           <p className="text-xs text-white/80 mt-0.5">
-                            {selectedChild.age_in_months} months old · {selectedChild.sex ? selectedChild.sex.toUpperCase() : 'N/A'} · Guardian: {selectedChild.guardian_name || '—'}
+                            {formatChildAge(selectedChild.birth_date, Boolean(user.age_format_days), selectedChild.age_in_months, user.language || 'en')} · {selectedChild.sex ? selectedChild.sex.toUpperCase() : 'N/A'}{selectedChild.purok ? ` · ${selectedChild.purok}` : ''}{selectedChild.barangay ? `, ${selectedChild.barangay}` : ''}
                           </p>
-                          {selectedChild.guardian_contact && (
-                            <p className="text-xs text-emerald-100/75 mt-0.5 flex items-center gap-1">
-                              <Phone size={11} /> {selectedChild.guardian_contact}
-                            </p>
-                          )}
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="text-xs text-emerald-100/90">
+                              Guardian: {selectedChild.guardian_name || '—'} {selectedChild.guardian_contact ? `(${selectedChild.guardian_contact})` : ''}
+                            </span>
+                            <span className="text-[10px] font-semibold bg-white/20 px-2 py-0.5 rounded-full text-white">
+                              Disability: {selectedChild.disability || 'None'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -507,10 +639,11 @@ function MedicalRecords() {
                       </div>
                     </div>
 
-                    <div className="flex border-b border-gray-100 bg-gray-50/70 px-6 gap-2">
+                    <div className="flex border-b border-gray-100 bg-gray-50/70 px-6 gap-2 overflow-x-auto">
                       {[
                         { key: 'growth', label: `Growth History & BMI (${detail?.growth_history?.length || 0})` },
                         { key: 'services', label: `Medications & Interventions (${detail?.services?.length || 0})` },
+                        { key: 'feeding', label: `Feeding History (${detail?.feeding_history?.length || 0})` },
                         { key: 'referrals', label: `Referral Logs (${detail?.referrals?.length || 0})` },
                       ].map((tab) => (
                         <button
@@ -652,6 +785,114 @@ function MedicalRecords() {
                                   ))}
                                 </div>
                               )}
+                            </div>
+                          )}
+
+                          {activeTab === 'feeding' && (
+                            <div className="space-y-5">
+                              {/* Effectiveness Summary Card */}
+                              {detail?.feeding_effectiveness ? (
+                                <div className="p-4 rounded-2xl bg-linear-to-br from-emerald-50/80 to-teal-50/50 border border-emerald-200/70 shadow-2xs">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+                                        <Utensils size={14} />
+                                      </div>
+                                      <p className="text-xs font-bold text-emerald-950">Feeding Program Effectiveness</p>
+                                    </div>
+                                    <span className={`text-[11px] font-black px-2.5 py-1 rounded-full uppercase ${
+                                      detail.feeding_effectiveness.is_effective
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'bg-amber-500 text-white'
+                                    }`}>
+                                      {detail.feeding_effectiveness.outcome}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                                    <div className="bg-white/90 p-3 rounded-xl border border-emerald-100">
+                                      <p className="text-[10px] font-bold text-gray-400 uppercase">Baseline / Initial</p>
+                                      <p className="text-xs font-bold text-gray-800 mt-0.5">{detail.feeding_effectiveness.initial_weight} kg · {detail.feeding_effectiveness.initial_status}</p>
+                                      <p className="text-[10px] text-gray-400">{detail.feeding_effectiveness.initial_date ? new Date(detail.feeding_effectiveness.initial_date).toLocaleDateString() : '—'}</p>
+                                    </div>
+                                    <div className="bg-white/90 p-3 rounded-xl border border-emerald-100">
+                                      <p className="text-[10px] font-bold text-gray-400 uppercase">Latest Assessment</p>
+                                      <p className="text-xs font-bold text-gray-800 mt-0.5">{detail.feeding_effectiveness.latest_weight} kg · {detail.feeding_effectiveness.latest_status}</p>
+                                      <p className="text-[10px] text-gray-400">{detail.feeding_effectiveness.latest_date ? new Date(detail.feeding_effectiveness.latest_date).toLocaleDateString() : '—'}</p>
+                                    </div>
+                                    <div className="bg-white/90 p-3 rounded-xl border border-emerald-100">
+                                      <p className="text-[10px] font-bold text-gray-400 uppercase">Weight Progression</p>
+                                      <p className={`text-xs font-bold mt-0.5 ${detail.feeding_effectiveness.weight_diff >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                                        {detail.feeding_effectiveness.weight_diff > 0 ? `+${detail.feeding_effectiveness.weight_diff}` : detail.feeding_effectiveness.weight_diff} kg net change
+                                      </p>
+                                      <p className="text-[10px] text-gray-500 font-medium">Progress over monitoring period</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-500 text-center">
+                                  Initial assessment comparison will appear as clinical measurements are recorded.
+                                </div>
+                              )}
+
+                              {/* Feeding Attendance & Meals Log */}
+                              <div>
+                                <p className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Meal Attendance & Consumption History</p>
+                                {!detail?.feeding_history || detail.feeding_history.length === 0 ? (
+                                  <p className="text-xs text-gray-400 py-8 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                                    No feeding attendance sessions recorded for this child yet.
+                                  </p>
+                                ) : (
+                                  <div className="overflow-x-auto rounded-xl border border-gray-100">
+                                    <table className="w-full text-xs">
+                                      <thead className="bg-gray-50/80 text-gray-600 font-bold border-b border-gray-100">
+                                        <tr>
+                                          <th className="py-2.5 px-3 text-left">Date</th>
+                                          <th className="py-2.5 px-3 text-left">Food / Meal Served</th>
+                                          <th className="py-2.5 px-3 text-center">Calories</th>
+                                          <th className="py-2.5 px-3 text-center">Status</th>
+                                          <th className="py-2.5 px-3 text-left">Remarks & Observation</th>
+                                          <th className="py-2.5 px-3 text-center">Mother Signature</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-100 bg-white">
+                                        {detail.feeding_history.map((f, fIdx) => (
+                                          <tr key={f.attendance_id || fIdx} className="hover:bg-gray-50/60">
+                                            <td className="py-2.5 px-3 font-semibold text-gray-800 whitespace-nowrap">
+                                              {new Date(f.attendance_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </td>
+                                            <td className="py-2.5 px-3 font-medium text-gray-800">
+                                              {f.meal_description || 'Standard Supplemental Meal'}
+                                            </td>
+                                            <td className="py-2.5 px-3 text-center text-gray-600">
+                                              {f.calories ? `${f.calories} kcal` : '—'}
+                                            </td>
+                                            <td className="py-2.5 px-3 text-center">
+                                              <span className={`px-2 py-0.5 rounded-full font-bold uppercase text-[10px] ${
+                                                f.status === 'present' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                                              }`}>
+                                                {f.status || 'present'}
+                                              </span>
+                                            </td>
+                                            <td className="py-2.5 px-3 text-gray-600 italic">
+                                              {f.remarks || '—'}
+                                            </td>
+                                            <td className="py-2.5 px-3 text-center">
+                                              {f.signature ? (
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                                  <CheckCircle2 size={11} /> Verified Signed
+                                                </span>
+                                              ) : (
+                                                <span className="text-[10px] text-gray-400">Not captured</span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
 
@@ -1243,14 +1484,24 @@ function MedicalRecords() {
                 const errs = {};
                 if (!newFirstName.trim()) errs.first_name = 'This field is required';
                 if (!newLastName.trim()) errs.last_name = 'This field is required';
-                if (beneficiaryType === 'child') {
-                  if (!newBirthDate) errs.birth_date = 'This field is required';
-                  if (!newSex) errs.sex = 'This field is required';
-                }
 
-                if (newGuardianContact && newGuardianContact.trim()) {
-                  const contactErr = validateContact(newGuardianContact, false);
-                  if (contactErr) errs.contact_number = contactErr;
+                if (beneficiaryType === 'child') {
+                  if (!newBirthDate) errs.birth_date = 'Birthday is required';
+                  if (!newSex) errs.sex = 'This field is required';
+                  if (!newGuardianContact.trim()) {
+                    errs.contact_number = 'Contact number is required';
+                  } else {
+                    const contactErr = validateContact(newGuardianContact, true);
+                    if (contactErr) errs.contact_number = contactErr;
+                  }
+                } else {
+                  if (!motherBirthDate) errs.mother_birth_date = 'Birthday is required';
+                  if (!newGuardianContact.trim()) {
+                    errs.contact_number = 'Contact number is required';
+                  } else {
+                    const contactErr = validateContact(newGuardianContact, true);
+                    if (contactErr) errs.contact_number = contactErr;
+                  }
                 }
 
                 if (Object.keys(errs).length > 0) {
@@ -1281,28 +1532,30 @@ function MedicalRecords() {
                 setAddBeneficiarySubmitting(true);
                 const endpoint = beneficiaryType === 'child' ? '/mobile/children' : '/mobile/mothers';
                 const payload = beneficiaryType === 'child' ? {
-                  first_name: newFirstName.trim(),
-                  middle_initial: newMiddleInitial.trim() || null,
-                  last_name: newLastName.trim(),
+                  first_name: capitalizeWords(newFirstName.trim()),
+                  middle_initial: newMiddleInitial ? newMiddleInitial.trim().toUpperCase() : null,
+                  last_name: capitalizeWords(newLastName.trim()),
                   birth_date: newBirthDate,
                   sex: newSex,
-                  guardian_name: newGuardianName.trim() || null,
-                  guardian_contact: newGuardianContact.trim() || null,
+                  guardian_name: newGuardianName.trim() ? capitalizeWords(newGuardianName.trim()) : null,
+                  guardian_contact: newGuardianContact.trim(),
                   barangay: newBarangay || user.barangay,
-                  purok: newPurok.trim() || null,
+                  purok: newPurok ? capitalizeWords(newPurok.trim()) : null,
+                  disability: newDisability || 'None',
                 } : {
-                  first_name: newFirstName.trim(),
-                  middle_initial: newMiddleInitial.trim() || null,
-                  last_name: newLastName.trim(),
-                  contact_number: newGuardianContact.trim() || null,
+                  first_name: capitalizeWords(newFirstName.trim()),
+                  middle_initial: newMiddleInitial ? newMiddleInitial.trim().toUpperCase() : null,
+                  last_name: capitalizeWords(newLastName.trim()),
+                  birth_date: motherBirthDate,
+                  contact_number: newGuardianContact.trim(),
                   barangay: newBarangay || user.barangay,
-                  purok: newPurok.trim() || null,
+                  purok: newPurok ? capitalizeWords(newPurok.trim()) : null,
                 };
                 axiosClient.post(endpoint, payload)
                   .then(() => {
                     setAddBeneficiarySuccess(`Successfully registered ${newFirstName} ${newLastName}!`);
                     if (beneficiaryType === 'child') refetchChildren(); else _refetchMothers();
-                    setNewFirstName(''); setNewMiddleInitial(''); setNewLastName(''); setNewBirthDate(''); setNewGuardianName(''); setNewGuardianContact(''); setNewPurok('');
+                    setNewFirstName(''); setNewMiddleInitial(''); setNewLastName(''); setNewBirthDate(''); setNewGuardianName(''); setNewGuardianContact(''); setMotherBirthDate(''); setNewDisability('None');
                   })
                   .catch((err) => setAddBeneficiaryError(err.response?.data?.message || 'Failed to register beneficiary.'))
                   .finally(() => setAddBeneficiarySubmitting(false));
@@ -1343,7 +1596,44 @@ function MedicalRecords() {
                 </button>
               </div>
 
-              {/* Names */}
+              {/* Barangay & Purok */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <FormLabel label="Barangay" required />
+                  <input
+                    type="text"
+                    readOnly
+                    value={newBarangay || user.barangay || 'Antipolo'}
+                    className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-700 font-semibold focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <FormLabel label="Purok / Zone" required />
+                  {purokOptions.length > 0 ? (
+                    <select
+                      name="purok"
+                      value={newPurok}
+                      onChange={(e) => setNewPurok(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 bg-white"
+                    >
+                      {purokOptions.map((p) => (
+                        <option key={p.id || p.name} value={p.name}>{p.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      name="purok"
+                      type="text"
+                      value={newPurok}
+                      onChange={(e) => setNewPurok(capitalizeWords(e.target.value))}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
+                      placeholder="Purok 1"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Names (Auto-capitalized) */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-1">
                   <FormLabel label="First Name" required />
@@ -1352,7 +1642,7 @@ function MedicalRecords() {
                     type="text"
                     value={newFirstName}
                     onChange={(e) => {
-                      setNewFirstName(e.target.value);
+                      setNewFirstName(capitalizeWords(e.target.value));
                       if (addBeneficiaryErrors.first_name) setAddBeneficiaryErrors(prev => ({ ...prev, first_name: '' }));
                     }}
                     className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition ${
@@ -1369,8 +1659,8 @@ function MedicalRecords() {
                     type="text"
                     maxLength={2}
                     value={newMiddleInitial}
-                    onChange={(e) => setNewMiddleInitial(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 text-center"
+                    onChange={(e) => setNewMiddleInitial(e.target.value.toUpperCase())}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 text-center uppercase"
                     placeholder="M"
                   />
                 </div>
@@ -1381,7 +1671,7 @@ function MedicalRecords() {
                     type="text"
                     value={newLastName}
                     onChange={(e) => {
-                      setNewLastName(e.target.value);
+                      setNewLastName(capitalizeWords(e.target.value));
                       if (addBeneficiaryErrors.last_name) setAddBeneficiaryErrors(prev => ({ ...prev, last_name: '' }));
                     }}
                     className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition ${
@@ -1397,7 +1687,7 @@ function MedicalRecords() {
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <FormLabel label="Birth Date (0-59 mos)" required />
+                      <FormLabel label="Birth Date (Required)" required />
                       <input
                         name="birth_date"
                         type="date"
@@ -1432,20 +1722,20 @@ function MedicalRecords() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <FormLabel label="Guardian Name" />
                       <input
                         name="guardian_name"
                         type="text"
                         value={newGuardianName}
-                        onChange={(e) => setNewGuardianName(e.target.value)}
+                        onChange={(e) => setNewGuardianName(capitalizeWords(e.target.value))}
                         className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
                         placeholder="Mother/Father Name"
                       />
                     </div>
                     <div>
-                      <FormLabel label="Guardian Contact" />
+                      <FormLabel label="Guardian Contact (Required)" required />
                       <input
                         name="contact_number"
                         type="tel"
@@ -1463,17 +1753,21 @@ function MedicalRecords() {
                       />
                       {addBeneficiaryErrors.contact_number && <p className="text-xs text-[#D32F2F] mt-1">{addBeneficiaryErrors.contact_number}</p>}
                     </div>
-                    <div>
-                      <FormLabel label="Purok / Zone" />
-                      <input
-                        name="purok"
-                        type="text"
-                        value={newPurok}
-                        onChange={(e) => setNewPurok(e.target.value)}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
-                        placeholder="Purok 1"
-                      />
-                    </div>
+                  </div>
+
+                  {/* Common Disabilities Dropdown */}
+                  <div>
+                    <FormLabel label="Common Disabilities / Needs" />
+                    <select
+                      name="disability"
+                      value={newDisability}
+                      onChange={(e) => setNewDisability(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 bg-white"
+                    >
+                      {COMMON_DISABILITIES.map((dis) => (
+                        <option key={dis} value={dis}>{dis}</option>
+                      ))}
+                    </select>
                   </div>
                 </>
               )}
@@ -1481,7 +1775,23 @@ function MedicalRecords() {
               {beneficiaryType === 'mother' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <FormLabel label="Contact Number" />
+                    <FormLabel label="Birth Date (Required)" required />
+                    <input
+                      name="mother_birth_date"
+                      type="date"
+                      value={motherBirthDate}
+                      onChange={(e) => {
+                        setMotherBirthDate(e.target.value);
+                        if (addBeneficiaryErrors.mother_birth_date) setAddBeneficiaryErrors(prev => ({ ...prev, mother_birth_date: '' }));
+                      }}
+                      className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition ${
+                        addBeneficiaryErrors.mother_birth_date ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-green-600'
+                      }`}
+                    />
+                    {addBeneficiaryErrors.mother_birth_date && <p className="text-xs text-[#D32F2F] mt-1">{addBeneficiaryErrors.mother_birth_date}</p>}
+                  </div>
+                  <div>
+                    <FormLabel label="Contact Number (Required)" required />
                     <input
                       name="contact_number"
                       type="tel"
@@ -1498,17 +1808,6 @@ function MedicalRecords() {
                       placeholder="09123456789"
                     />
                     {addBeneficiaryErrors.contact_number && <p className="text-xs text-[#D32F2F] mt-1">{addBeneficiaryErrors.contact_number}</p>}
-                  </div>
-                  <div>
-                    <FormLabel label="Purok / Zone" />
-                    <input
-                      name="purok"
-                      type="text"
-                      value={newPurok}
-                      onChange={(e) => setNewPurok(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600"
-                      placeholder="Purok 1"
-                    />
                   </div>
                 </div>
               )}

@@ -40,7 +40,8 @@ exports.getProfile = async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT user_id, first_name, middle_initial, last_name, email, username,
-              role, municipality, barangay, purok, contact_number, profile_picture
+              role, municipality, barangay, purok, contact_number, profile_picture,
+              COALESCE(language, 'en') AS language, COALESCE(age_format_days, 0) AS age_format_days
        FROM users WHERE user_id = ?`,
       [id]
     );
@@ -106,7 +107,7 @@ exports.updateProfile = async (req, res) => {
     return res.status(403).json({ message: 'Forbidden. You are not authorized to update this profile.' });
   }
 
-  const { first_name, middle_initial, last_name, email, contact_number, purok, profile_picture, password, new_password } = req.body;
+  const { first_name, middle_initial, last_name, email, contact_number, purok, profile_picture, password, new_password, language, age_format_days } = req.body;
 
   try {
     const [existingUserRows] = await pool.query('SELECT * FROM users WHERE user_id = ?', [id]);
@@ -119,6 +120,8 @@ exports.updateProfile = async (req, res) => {
     const updatedMiddleInitial = middle_initial !== undefined ? (middle_initial ? String(middle_initial).trim() : null) : current.middle_initial;
     const updatedLastName = last_name !== undefined ? String(last_name).trim() : current.last_name;
     const updatedEmail = email !== undefined ? String(email).trim() : current.email;
+    const updatedLanguage = language !== undefined ? (String(language).toLowerCase() === 'tl' ? 'tl' : 'en') : (current.language || 'en');
+    const updatedAgeFormatDays = age_format_days !== undefined ? (age_format_days ? 1 : 0) : (current.age_format_days || 0);
 
     let updatedContactNumber = current.contact_number;
     if (contact_number !== undefined) {
@@ -154,21 +157,22 @@ exports.updateProfile = async (req, res) => {
       }
       const newHash = await bcrypt.hash(String(nextPassword), 10);
       await pool.query(
-        `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?, profile_picture = ?, password_hash = ?
+        `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?, profile_picture = ?, password_hash = ?, language = ?, age_format_days = ?
          WHERE user_id = ?`,
-        [updatedFirstName, updatedMiddleInitial, updatedLastName, updatedEmail, updatedContactNumber, updatedPurok, updatedProfilePicture, newHash, id]
+        [updatedFirstName, updatedMiddleInitial, updatedLastName, updatedEmail, updatedContactNumber, updatedPurok, updatedProfilePicture, newHash, updatedLanguage, updatedAgeFormatDays, id]
       );
     } else {
       await pool.query(
-        `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?, profile_picture = ?
+        `UPDATE users SET first_name = ?, middle_initial = ?, last_name = ?, email = ?, contact_number = ?, purok = ?, profile_picture = ?, language = ?, age_format_days = ?
          WHERE user_id = ?`,
-        [updatedFirstName, updatedMiddleInitial, updatedLastName, updatedEmail, updatedContactNumber, updatedPurok, updatedProfilePicture, id]
+        [updatedFirstName, updatedMiddleInitial, updatedLastName, updatedEmail, updatedContactNumber, updatedPurok, updatedProfilePicture, updatedLanguage, updatedAgeFormatDays, id]
       );
     }
 
     const [updatedRows] = await pool.query(
       `SELECT user_id, first_name, middle_initial, last_name, email, username,
-              role, municipality, barangay, purok, contact_number, profile_picture
+              role, municipality, barangay, purok, contact_number, profile_picture,
+              COALESCE(language, 'en') AS language, COALESCE(age_format_days, 0) AS age_format_days
        FROM users WHERE user_id = ?`,
       [id]
     );
@@ -262,7 +266,8 @@ exports.uploadProfilePicture = async (req, res) => {
 
     const [rows] = await pool.query(
       `SELECT user_id, first_name, middle_initial, last_name, email, username,
-              role, municipality, barangay, purok, contact_number, profile_picture
+              role, municipality, barangay, purok, contact_number, profile_picture,
+              COALESCE(language, 'en') AS language, COALESCE(age_format_days, 0) AS age_format_days
        FROM users WHERE user_id = ?`,
       [id]
     );

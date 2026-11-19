@@ -45,6 +45,11 @@ class MotherRepository {
     return list;
   }
 
+  List<Mother> getByBarangay(String barangay) {
+    final lower = barangay.trim().toLowerCase();
+    return getAll().where((m) => m.barangay.trim().toLowerCase() == lower).toList();
+  }
+
   Future<void> update(Mother mother) async {
     final map = mother.toMap()..['_syncStatus'] = 'pending';
     await _box.put(mother.id, map);
@@ -217,8 +222,9 @@ class MotherRepository {
     final results = getAll().where((m) {
       final matchesBarangay =
           m.barangay.toLowerCase() == barangay.toLowerCase();
-      final matchesName =
-          lower.isEmpty || m.fullName.toLowerCase().contains(lower);
+      final matchesName = lower.isEmpty ||
+          m.fullName.toLowerCase().contains(lower) ||
+          m.address.toLowerCase().contains(lower);
       return matchesBarangay && matchesName;
     }).toList();
     return results.take(limit).toList();
@@ -238,8 +244,9 @@ class MotherRepository {
       final matchesBarangay =
           m.barangay.toLowerCase() == barangay.toLowerCase();
       final matchesActive = m.isActive == activeOnly;
-      final matchesQuery =
-          lower.isEmpty || m.fullName.toLowerCase().contains(lower);
+      final matchesQuery = lower.isEmpty ||
+          m.fullName.toLowerCase().contains(lower) ||
+          m.address.toLowerCase().contains(lower);
       final formatted = m.riskStatus.toLowerCase().replaceAll('_', ' ').replaceAll('-', ' ');
       final targetStatus = cleanStatus.replaceAll('_', ' ').replaceAll('-', ' ');
       final matchesStatus = targetStatus == 'all' ||

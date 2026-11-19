@@ -13,6 +13,7 @@ class Measurement {
   final String? customBmiStatus;
   final int? ageInDays;
   final int? ageInMonths;
+  final String? signature;
 
   const Measurement({
     required this.date,
@@ -27,6 +28,7 @@ class Measurement {
     this.customBmiStatus,
     this.ageInDays,
     this.ageInMonths,
+    this.signature,
   });
 
   /// Plausibility check for 0-59 months:
@@ -112,6 +114,7 @@ class Measurement {
     'bmiStatus': isPlausible ? bmiStatus : 'Needs re-measurement',
     'ageInDays': ageInDays,
     'ageInMonths': ageInMonths,
+    'signature': signature,
   };
 
   factory Measurement.fromMap(Map map) {
@@ -130,6 +133,7 @@ class Measurement {
       customBmiStatus: SafeParser.asString(map['bmiStatus'] ?? map['bmi_status']),
       ageInDays: SafeParser.asInt(map['ageInDays'] ?? map['age_in_days']),
       ageInMonths: SafeParser.asInt(map['ageInMonths'] ?? map['age_in_months']),
+      signature: SafeParser.asString(map['signature']),
     );
   }
 }

@@ -477,19 +477,21 @@ exports.createChild = async (req, res) => {
     const ageInMonths = Math.max(0, Math.floor(
       (Date.now() - new Date(birth_date).getTime()) / (1000 * 60 * 60 * 24 * 30.4375)
     ));
+    const childStatus = ageInMonths >= 59 ? 'inactive' : 'active';
 
     const [result] = await pool.query(
       `INSERT INTO children
          (first_name, middle_initial, last_name, sex, birth_date, age_in_months,
           barangay, purok, municipality, guardian_name, guardian_contact,
           disability, mother_id, encoded_by, status, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', NOW(), NOW())`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?, NOW(), NOW())`,
       [
         first_name.trim(), middle_initial || null, last_name.trim(), sex, birth_date,
         ageInMonths,
         barangay.trim(), purok || null, municipality || 'Gasan',
         guardian_name || null, guardian_contact.trim(),
         disability || 'None', mother_id || null, req.user?.user_id || null,
+        childStatus,
       ]
     );
 
@@ -536,6 +538,7 @@ exports.updateChild = async (req, res) => {
       (Date.now() - new Date(birth_date || existing.birth_date).getTime()) /
       (1000 * 60 * 60 * 24 * 30.4375)
     ));
+    const childStatus = ageInMonths >= 59 ? 'inactive' : (existing.status || 'active');
 
     await pool.query(
       `UPDATE children SET
@@ -543,7 +546,7 @@ exports.updateChild = async (req, res) => {
          birth_date = ?, age_in_months = ?,
          barangay = ?, purok = ?, municipality = ?,
          guardian_name = ?, guardian_contact = ?,
-         disability = ?, updated_at = NOW()
+         disability = ?, status = ?, updated_at = NOW()
        WHERE child_id = ?`,
       [
         (first_name || existing.first_name).trim(),
@@ -558,6 +561,7 @@ exports.updateChild = async (req, res) => {
         guardian_name !== undefined ? guardian_name : existing.guardian_name,
         guardian_contact.trim(),
         disability !== undefined ? disability : existing.disability,
+        childStatus,
         id,
       ]
     );

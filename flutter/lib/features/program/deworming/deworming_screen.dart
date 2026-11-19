@@ -60,6 +60,50 @@ class _DewormingScreenState extends State<DewormingScreen>
       Hive.box(HiveBoxes.settings).get('auth_user')?['barangay']?.toString() ??
       widget.barangay;
 
+  Future<void> _confirmResetRound(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.archive_outlined, color: AppColors.primaryGreen),
+            SizedBox(width: 8),
+            Text('Reset for New Round?'),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to advance to the next Deworming round/cycle?\n\n'
+          'Past records will NEVER be deleted. They will remain safely archived and accessible in history and official reports.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirm & Advance'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final box = Hive.box(HiveBoxes.settings);
+      final currentRound = box.get('deworming_round_$_currentBarangay', defaultValue: 1) as int;
+      await box.put('deworming_round_$_currentBarangay', currentRound + 1);
+      AppDataBus.notifyChanged();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Advanced to Deworming Round ${currentRound + 1}. All previous rounds safely archived in history.'),
+          backgroundColor: AppColors.primaryGreen,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -188,6 +232,11 @@ class _DewormingScreenState extends State<DewormingScreen>
             foregroundColor: Colors.white,
             iconTheme: const IconThemeData(color: Colors.white),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.restart_alt, color: Colors.white),
+                tooltip: 'Reset for New Round',
+                onPressed: () => _confirmResetRound(context),
+              ),
               IconButton(
                 icon: const Icon(Icons.calendar_month_outlined, color: Colors.white),
                 tooltip: 'Schedule Deworming Activity',

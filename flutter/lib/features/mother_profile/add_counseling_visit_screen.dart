@@ -18,6 +18,7 @@ import '../../shared/widgets/form_section_card.dart';
 import '../referrals/create_referral_screen.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../../shared/widgets/urgent_referral_dialog.dart';
+import '../../shared/widgets/mother_signature_pad.dart';
 
 const _kAccent = Color(0xFF1B5E20);
 const _kTopics = [
@@ -52,6 +53,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
   String? _observation;
   bool? _needsReferral;
   bool _isSaving = false;
+  String? _motherSignature;
 
   bool get _isFormValid {
     if (!_present) return true;
@@ -95,6 +97,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
             : null,
         needsReferral: isReferralMarked,
         createdAt: DateTime.now(),
+        signature: _present ? _motherSignature : null,
       );
 
       await _visitRepo
@@ -455,6 +458,14 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                             ],
                           ),
                         ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      MotherSignaturePad(
+                        title: "Mother's Signature (Counseling / Visit)",
+                        initialSignature: _motherSignature,
+                        onSignatureChanged: (sig) {
+                          setState(() => _motherSignature = sig);
+                        },
                       ),
                     ],
                     const SizedBox(height: AppSpacing.xl),

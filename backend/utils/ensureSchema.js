@@ -169,6 +169,103 @@ async function ensureAppSchema(pool) {
       console.warn('[Schema] sync_sessions table init warning:', e.message);
     }
 
+    // 7. Ensure `barangays` and `puroks` tables exist with seeds
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS \`barangays\` (
+          \`id\`           INT AUTO_INCREMENT PRIMARY KEY,
+          \`name\`         VARCHAR(100) NOT NULL UNIQUE,
+          \`municipality\` VARCHAR(100) NOT NULL DEFAULT 'Gasan',
+          \`created_at\`   DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+
+      const gasanBarangays = [
+        'Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang',
+        'Banot', 'Banuyo', 'Bognuyan', 'Cabugao', 'Dawis', 'Dili', 'Libtangin',
+        'Mahunig', 'Mangiliol', 'Masiga', 'Mat. Gasan', 'Pangi', 'Pinggan',
+        'Tabionan', 'Tiguion', 'Brgy. Uno', 'Brgy. Dos', 'Brgy. Tres', 'Tapuyan'
+      ];
+
+      for (const b of gasanBarangays) {
+        await pool.query(
+          `INSERT IGNORE INTO \`barangays\` (\`name\`, \`municipality\`) VALUES (?, 'Gasan')`,
+          [b]
+        );
+      }
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS \`puroks\` (
+          \`id\`           INT AUTO_INCREMENT PRIMARY KEY,
+          \`barangay_id\`  INT NOT NULL,
+          \`name\`         VARCHAR(100) NOT NULL,
+          \`is_active\`    TINYINT(1) NOT NULL DEFAULT 1,
+          \`created_at\`   DATETIME DEFAULT CURRENT_TIMESTAMP,
+          \`updated_at\`   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX \`idx_puroks_barangay\` (\`barangay_id\`),
+          FOREIGN KEY (\`barangay_id\`) REFERENCES \`barangays\` (\`id\`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+
+      // Seed each barangay with "Purok 1" placeholder if no puroks exist for that barangay
+      const [allB] = await pool.query(`SELECT id FROM \`barangays\``);
+      for (const bRow of allB) {
+        const [[{ pCnt }]] = await pool.query(
+          `SELECT COUNT(*) AS pCnt FROM \`puroks\` WHERE barangay_id = ?`,
+          [bRow.id]
+        );
+        if (Number(pCnt) === 0) {
+          await pool.query(
+            `INSERT INTO \`puroks\` (barangay_id, name, is_active) VALUES (?, 'Purok 1', 1)`,
+            [bRow.id]
+          );
+        }
+      }
+    } catch (e) {
+      console.warn('[Schema] barangays/puroks table init warning:', e.message);
+    }
+
+    // 8. Ensure `users` has `language` and `age_format_days`
+    try {
+      const [[{ langCnt }]] = await pool.query(
+        `SELECT COUNT(*) AS langCnt FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'language'`
+      );
+      if (Number(langCnt) === 0) {
+        await pool.query(`ALTER TABLE users ADD COLUMN language VARCHAR(10) NOT NULL DEFAULT 'en'`);
+        console.log('[Schema] Added column `users.language`');
+      }
+
+      const [[{ ageFmtCnt }]] = await pool.query(
+        `SELECT COUNT(*) AS ageFmtCnt FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'age_format_days'`
+      );
+      if (Number(ageFmtCnt) === 0) {
+        await pool.query(`ALTER TABLE users ADD COLUMN age_format_days TINYINT(1) NOT NULL DEFAULT 0`);
+        console.log('[Schema] Added column `users.age_format_days`');
+      }
+    } catch (e) {
+      console.warn('[Schema] users language/age_format_days warning:', e.message);
+    }
+
+    // 9. Ensure mother signature columns exist
+    const sigTables = ['nutrition_records', 'mother_services', 'feeding_attendance', 'child_services'];
+    for (const tName of sigTables) {
+      try {
+        const [[{ sigCnt }]] = await pool.query(
+          `SELECT COUNT(*) AS sigCnt FROM INFORMATION_SCHEMA.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'signature'`,
+          [tName]
+        );
+        if (Number(sigCnt) === 0) {
+          await pool.query(`ALTER TABLE \`${tName}\` ADD COLUMN signature LONGTEXT NULL`);
+          console.log(`[Schema] Added column \`${tName}.signature\``);
+        }
+      } catch (e) {
+        console.warn(`[Schema] ${tName}.signature warning:`, e.message);
+      }
+    }
+
     console.log('[Schema] All database schema migrations verified successfully.');
   } catch (err) {
     console.warn('[Schema] ensureAppSchema warning:', err.message);

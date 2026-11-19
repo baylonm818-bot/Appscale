@@ -1031,6 +1031,108 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
           const SizedBox(height: AppSpacing.lg),
 
+          // App Preferences
+          Text(
+            'App Preferences',
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
+                // Language Selection
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.language, size: 20, color: AppColors.primaryGreen),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Language / Wika',
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            Text(
+                              settings.language == 'tl' ? 'Tagalog (Filipino)' : 'English',
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(value: 'en', label: Text('EN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                        ButtonSegment(value: 'tl', label: Text('TL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                      ],
+                      selected: {settings.language},
+                      onSelectionChanged: (newSelection) async {
+                        final chosen = newSelection.first;
+                        await settings.setLanguage(chosen);
+                        setState(() {});
+                      },
+                      style: ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 20, color: AppColors.border),
+                // Age Format Toggle
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.cake_outlined, size: 20, color: AppColors.primaryGreen),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Age Format with Days',
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                ),
+                                Text(
+                                  settings.ageFormatDays
+                                      ? 'Enabled (e.g. "3 months and 4 days")'
+                                      : 'Disabled (Default: months only)',
+                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: settings.ageFormatDays,
+                      activeThumbColor: AppColors.primaryGreen,
+                      onChanged: (val) async {
+                        await settings.setAgeFormatDays(val);
+                        setState(() {});
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.lg),
+
           // System Info
           Text(
             'System Information',

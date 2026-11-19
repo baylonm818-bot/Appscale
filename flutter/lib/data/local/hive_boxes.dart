@@ -28,6 +28,7 @@ class HiveBoxes {
   static const deworming = 'deworming_box';
   static const reportSignatories = 'report_signatories_box';
   static const reportSnapshots = 'report_snapshots_box';
+  static const puroks = 'puroks_box';
 
   static Future<void> init() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +57,7 @@ class HiveBoxes {
       deworming,
       reportSignatories,
       reportSnapshots,
+      puroks,
     ];
 
     for (final boxName in boxNames) {
@@ -306,6 +308,46 @@ class SettingsRepository {
     }
 
     return anySynced;
+  }
+
+  String get language {
+    final user = authUser;
+    if (user != null && user['language'] != null && user['language'].toString().isNotEmpty) {
+      return user['language'].toString();
+    }
+    return _box.get('app_language', defaultValue: 'en');
+  }
+
+  Future<void> setLanguage(String lang) async {
+    await _box.put('app_language', lang);
+    final user = authUser;
+    if (user != null) {
+      final updated = Map<String, dynamic>.from(user);
+      updated['language'] = lang;
+      await setAuthUser(updated);
+    }
+    AppDataBus.notifyChanged();
+  }
+
+  bool get ageFormatDays {
+    final user = authUser;
+    if (user != null && user['age_format_days'] != null) {
+      final v = user['age_format_days'];
+      if (v is bool) return v;
+      if (v == 1 || v == '1' || v == 'true') return true;
+    }
+    return _box.get('age_format_days', defaultValue: false);
+  }
+
+  Future<void> setAgeFormatDays(bool value) async {
+    await _box.put('age_format_days', value);
+    final user = authUser;
+    if (user != null) {
+      final updated = Map<String, dynamic>.from(user);
+      updated['age_format_days'] = value ? 1 : 0;
+      await setAuthUser(updated);
+    }
+    AppDataBus.notifyChanged();
   }
 
   Future<void> clearSession() async {

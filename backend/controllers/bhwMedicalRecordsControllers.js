@@ -16,7 +16,8 @@ exports.getMedicalRecordsList = async (req, res) => {
 
     const [children] = await pool.query(
       `SELECT
-        c.child_id, c.first_name, c.last_name, c.sex,
+        c.child_id, c.first_name, c.last_name, c.sex, c.birth_date, c.purok, c.guardian_contact,
+        COALESCE(c.disability, 'None') AS disability,
         CASE
           WHEN c.birth_date IS NOT NULL THEN TIMESTAMPDIFF(MONTH, c.birth_date, CURDATE())
           ELSE c.age_in_months
@@ -134,7 +135,8 @@ exports.getChildMedicalHistory = async (req, res) => {
 
   try {
     const [[child]] = await pool.query(
-      `SELECT child_id, first_name, last_name, barangay, sex,
+      `SELECT child_id, first_name, last_name, barangay, purok, birth_date, guardian_name, guardian_contact, sex,
+              COALESCE(disability, 'None') AS disability,
               CASE
                 WHEN birth_date IS NOT NULL THEN TIMESTAMPDIFF(MONTH, birth_date, CURDATE())
                 ELSE age_in_months
@@ -207,7 +209,58 @@ exports.getChildMedicalHistory = async (req, res) => {
       [childId]
     );
 
-    return res.status(200).json({ child, nutritionHistory, servicesHistory, referrals });
+    let feedingHistory = [];
+    try {
+      const [fRows] = await pool.query(
+        `SELECT fa.attendance_id, fa.attendance_date, fa.status,
+                COALESCE(fm.meal_description, fa.meal_served, 'Standard Supplemental Meal') AS meal_description,
+                fm.calories,
+                COALESCE(fm.notes, fa.remarks) AS notes,
+                fa.remarks,
+                fa.signature
+         FROM feeding_attendance fa
+         LEFT JOIN feeding_meals fm ON fm.attendance_id = fa.attendance_id
+         WHERE fa.child_id = ?
+         ORDER BY fa.attendance_date DESC, fa.attendance_id DESC`,
+        [childId]
+      );
+      feedingHistory = fRows;
+    } catch (_fErr) {
+      console.warn('Non-critical feeding history query warning:', _fErr?.message);
+    }
+
+    // Compute effectiveness summary
+    let feedingEffectiveness = null;
+    if (nutritionHistory && nutritionHistory.length > 0) {
+      const latest = nutritionHistory[0]; // ordered DESC
+      const initial = nutritionHistory[nutritionHistory.length - 1];
+      const initialWeight = Number(initial.weight_kg) || 0;
+      const latestWeight = Number(latest.weight_kg) || 0;
+      const weightDiff = Number((latestWeight - initialWeight).toFixed(2));
+      const isNormal = String(latest.overall_status || '').toLowerCase() === 'normal';
+      const wasNormal = String(initial.overall_status || '').toLowerCase() === 'normal';
+
+      let outcome = 'Pending Continued Monitoring';
+      if (isNormal && !wasNormal) outcome = 'Highly Effective (Reached Normal)';
+      else if (isNormal && wasNormal) outcome = 'Maintained Normal Status';
+      else if (weightDiff > 0.5) outcome = 'Effective (Positive Weight Gain)';
+      else if (weightDiff > 0) outcome = 'Moderately Effective (Slight Gain)';
+      else outcome = 'Needs Diet / Medical Adjustment';
+
+      feedingEffectiveness = {
+        initial_status: initial.overall_status || 'Unknown',
+        initial_weight: initialWeight,
+        initial_date: initial.record_date,
+        latest_status: latest.overall_status || 'Unknown',
+        latest_weight: latestWeight,
+        latest_date: latest.record_date,
+        weight_diff: weightDiff,
+        outcome,
+        is_effective: isNormal || weightDiff > 0.3,
+      };
+    }
+
+    return res.status(200).json({ child, nutritionHistory, servicesHistory, referrals, feedingHistory, feedingEffectiveness });
   } catch (error) {
     console.error('Get child medical history error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });

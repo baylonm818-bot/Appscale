@@ -18,6 +18,7 @@ import {
   X,
   Shield,
   PenLine,
+  MapPin,
 } from 'lucide-react';
 
 const menuItems = [
@@ -25,6 +26,7 @@ const menuItems = [
   { name: 'User Management', path: '/admin/users', icon: Users },
   { name: 'Master List', path: '/admin/masterlist', icon: ClipboardList },
   { name: 'Schedule', path: '/admin/schedule', icon: Calendar },
+  { name: 'Purok Management', path: '/admin/puroks', icon: MapPin },
   { name: 'System Logs', path: '/admin/system-logs', icon: Shield },
   { name: 'Signatories', path: '/admin/signatories', icon: PenLine },
   { name: 'Settings', path: '/admin/profile', icon: UserCircle },

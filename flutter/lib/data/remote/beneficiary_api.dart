@@ -282,6 +282,7 @@ class BeneficiaryApi {
     required Map<String, String> statuses,
     Map<String, String>? remarks,
     String? foodServed,
+    Map<String, String>? signatures,
   }) async {
     final settings = SettingsRepository();
     final token = settings.authToken;
@@ -299,6 +300,7 @@ class BeneficiaryApi {
       'status': e.value,
       'remarks': remarks?[e.key],
       'meal_served': foodServed,
+      'signature': signatures?[e.key],
     }).toList();
     return _post('/mobile/feeding-attendance', {
       'barangay': barangay,

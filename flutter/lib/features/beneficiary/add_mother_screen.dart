@@ -8,11 +8,13 @@ import '../../data/local/beneficiary_link_service.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/mother_repository.dart';
+import '../../data/local/purok_repository.dart';
 import '../../data/models/child.dart';
 import '../../data/models/mother.dart';
 import '../../shared/widgets/app_date_field.dart';
 import '../../shared/widgets/app_dropdown_field.dart';
 import '../../shared/widgets/app_text_field.dart';
+import '../../shared/widgets/purok_autocomplete_field.dart';
 import '../../shared/widgets/app_yes_no_toggle.dart';
 import '../../shared/widgets/form_action_buttons.dart';
 import '../../shared/widgets/form_required_note.dart';
@@ -74,6 +76,8 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
 
   final _scrollController = ScrollController();
   final _fullNameFocusNode = FocusNode();
+  final _addressFocusNode = FocusNode();
+  List<String> _existingPuroks = [];
 
   final _fullNameKey = GlobalKey();
   final _birthDateKey = GlobalKey();
@@ -111,6 +115,37 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
           existing.disability.toLowerCase() != 'no';
       _linkedChildren = _childRepo.getByIds(existing.linkedChildIds);
     }
+    _loadExistingPuroks();
+  }
+
+  void _loadExistingPuroks() {
+    try {
+      final repoPuroks = PurokRepository()
+          .getByBarangay(_currentBarangay)
+          .map((p) => p.name)
+          .where((p) => p.isNotEmpty)
+          .toList();
+      if (repoPuroks.isNotEmpty) {
+        _existingPuroks = repoPuroks;
+        if (_addressController.text.trim().isEmpty) {
+          _addressController.text = repoPuroks.first;
+        }
+        return;
+      }
+      final childPuroks = _childRepo
+          .getByBarangay(_currentBarangay)
+          .map((c) => Child.normalizePurok(c.address))
+          .where((a) => a.isNotEmpty);
+      final motherPuroks = _motherRepo
+          .getByBarangay(_currentBarangay)
+          .map((m) => Child.normalizePurok(m.address))
+          .where((a) => a.isNotEmpty);
+      final set = <String>{...childPuroks, ...motherPuroks};
+      _existingPuroks = set.toList()..sort();
+      if (_existingPuroks.isNotEmpty && _addressController.text.trim().isEmpty) {
+        _addressController.text = _existingPuroks.first;
+      }
+    } catch (_) {}
   }
 
   bool _hasUnsavedInput() {
@@ -187,23 +222,30 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
     String? addressErr;
     String? contactErr;
 
-    if (_fullNameController.text.trim().isEmpty) {
+    final fullNameTrimmed = _fullNameController.text.trim();
+    if (fullNameTrimmed.isEmpty) {
       fullNameErr = 'This field is required';
+    } else if (fullNameTrimmed.length < 2) {
+      fullNameErr = 'Name must be at least 2 characters';
     }
-    // Mother DOB is optional: If empty, show "Not recorded" and don't compute an age.
-    if (_birthDate != null) {
+
+    if (_birthDate == null) {
+      birthDateErr = 'Birth date is required';
+    } else {
       final motherAge = (DateTime.now().difference(_birthDate!).inDays / 365).floor();
       if (motherAge < 12) {
         birthDateErr = 'Mother must be at least 12 years old ($motherAge yrs)';
       }
     }
     if (_addressController.text.trim().isEmpty) {
-      addressErr = 'This field is required';
+      addressErr = 'Purok is required';
     }
 
     final rawContact = _contactController.text.trim();
     final sanitizedContact = AppUserIdentity.sanitizeMobileNumber(rawContact);
-    if (rawContact.isNotEmpty && !AppUserIdentity.isValidPhilippineContactNumber(rawContact)) {
+    if (rawContact.isEmpty) {
+      contactErr = 'Contact number is required';
+    } else if (!AppUserIdentity.isValidPhilippineContactNumber(rawContact)) {
       contactErr = 'Contact number must be 11 digits (e.g. 09123456789)';
     }
 
@@ -287,12 +329,13 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
       }
     }
 
+    final normalizedAddress = Child.normalizePurok(_addressController.text.trim());
     final mother = Mother(
       id: widget.existingMother?.id ?? MotherRepository.generateId(),
       fullName: _fullNameController.text.trim(),
       birthDate: _birthDate,
       contactNo: sanitizedContact,
-      address: _addressController.text.trim(),
+      address: normalizedAddress,
       barangay: _currentBarangay,
       breastfeedingPractice: _breastfeedingPractice,
       belongsToIpGroup: _belongsToIpGroup,
@@ -493,6 +536,7 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
                             focusNode: _fullNameFocusNode,
                             hasError: _fullNameError != null,
                             errorText: _fullNameError,
+                            textCapitalization: TextCapitalization.words,
                             onChanged: (_) {
                               if (_fullNameError != null) {
                                 setState(() => _fullNameError = null);
@@ -522,6 +566,7 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
                                 child: AppTextField(
                                   key: _contactKey,
                                   label: 'Contact no.',
+                                  isRequired: true,
                                   hint: '09XXXXXXXXX',
                                   icon: Icons.call_outlined,
                                   controller: _contactController,
@@ -539,38 +584,15 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
                               ),
                             ],
                           ),
-                          AppDropdownField(
-                            key: _addressKey,
-                            label: 'Purok Address',
-                            isRequired: true,
-                            value: [
-                              'Purok 1',
-                              'Purok 2',
-                              'Purok 3',
-                              'Purok 4',
-                              'Purok 5',
-                              'Purok 6',
-                              'Purok 7',
-                            ].contains(_addressController.text.trim())
-                                ? _addressController.text.trim()
-                                : (_addressController.text.trim().isNotEmpty
-                                    ? _addressController.text.trim()
-                                    : 'Purok 1'),
-                            options: const [
-                              'Purok 1',
-                              'Purok 2',
-                              'Purok 3',
-                              'Purok 4',
-                              'Purok 5',
-                              'Purok 6',
-                              'Purok 7',
-                            ],
-                            hasError: _addressError != null,
+                          PurokAutocompleteField(
+                            fieldKey: _addressKey,
+                            controller: _addressController,
+                            focusNode: _addressFocusNode,
                             errorText: _addressError,
+                            suggestions: _existingPuroks,
                             onChanged: (v) {
-                              if (v != null) {
+                              if (_addressError != null && v.trim().isNotEmpty) {
                                 setState(() {
-                                  _addressController.text = v;
                                   _addressError = null;
                                 });
                               }
@@ -684,6 +706,7 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
   void dispose() {
     _scrollController.dispose();
     _fullNameFocusNode.dispose();
+    _addressFocusNode.dispose();
     _fullNameController.dispose();
     _contactController.dispose();
     _addressController.dispose();

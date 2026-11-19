@@ -13,6 +13,7 @@ import '../../../../data/models/child.dart';
 import '../../../../shared/utils/app_pickers.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/mother_signature_pad.dart';
 
 import '../../../../data/local/app_data_bus.dart';
 
@@ -33,6 +34,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
   DateTime _selectedDate = DateTime.now();
   Map<String, String?> _draftStatuses = {};
   Map<String, String> _draftRemarks = {};
+  Map<String, String> _draftSignatures = {};
   late final TextEditingController _foodServedController;
   final Set<String> _withdrawingIds = {};
 
@@ -43,6 +45,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
       text: FeedingAttendanceRepository().getFoodServedForDate(_currentBarangay, _selectedDate),
     );
     _draftRemarks = FeedingAttendanceRepository().getRemarksForDate(_currentBarangay, _selectedDate);
+    _draftSignatures = FeedingAttendanceRepository().getSignaturesForDate(_currentBarangay, _selectedDate);
     AppDataBus.version.addListener(_onDataChanged);
   }
 
@@ -81,6 +84,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
         _selectedDate = picked;
         _draftStatuses = {};
         _draftRemarks = FeedingAttendanceRepository().getRemarksForDate(_currentBarangay, picked);
+        _draftSignatures = FeedingAttendanceRepository().getSignaturesForDate(_currentBarangay, picked);
         _foodServedController.text = FeedingAttendanceRepository().getFoodServedForDate(_currentBarangay, picked);
       });
     }
@@ -549,6 +553,71 @@ class _AttendanceTabState extends State<AttendanceTab> {
                           ),
                         ),
                       ],
+
+                      // Signature indicator / button when Present
+                      if (currentStatus == 'Present') ...[
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () => _openSignatureDialog(c),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: (_draftSignatures[c.id] != null ||
+                                      FeedingAttendanceRepository()
+                                          .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
+                                  ? AppColors.lightGreenBg
+                                  : Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: (_draftSignatures[c.id] != null ||
+                                        FeedingAttendanceRepository()
+                                            .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
+                                    ? AppColors.primaryGreen.withValues(alpha: 0.5)
+                                    : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  (_draftSignatures[c.id] != null ||
+                                          FeedingAttendanceRepository()
+                                              .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
+                                      ? Icons.check_circle
+                                      : Icons.draw_outlined,
+                                  size: 13,
+                                  color: (_draftSignatures[c.id] != null ||
+                                          FeedingAttendanceRepository()
+                                              .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
+                                      ? AppColors.darkGreen
+                                      : AppColors.textMuted,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    (_draftSignatures[c.id] != null ||
+                                            FeedingAttendanceRepository()
+                                                .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
+                                        ? "Mother's Signature Attached (Tap to re-sign)"
+                                        : "Tap to sign with Mother's Signature",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: (_draftSignatures[c.id] != null ||
+                                              FeedingAttendanceRepository()
+                                                  .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
+                                          ? AppColors.darkGreen
+                                          : AppColors.textMuted,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Icon(Icons.edit, size: 11, color: AppColors.primaryGreen),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 );
@@ -597,6 +666,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
                   enrolledStatuses,
                   remarks: _draftRemarks,
                   foodServed: _foodServedController.text.trim(),
+                  signatures: _draftSignatures,
                 );
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -699,7 +769,13 @@ class _AttendanceTabState extends State<AttendanceTab> {
                 final remarkText = selectedReason == 'Other reason'
                     ? controller.text.trim()
                     : selectedReason;
-                Navigator.pop(ctx, remarkText.isNotEmpty ? remarkText : 'Absent');
+                if (remarkText.isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Please specify a reason for absence.')),
+                  );
+                  return;
+                }
+                Navigator.pop(ctx, remarkText);
               },
               child: const Text('Mark Absent'),
             ),
@@ -708,12 +784,54 @@ class _AttendanceTabState extends State<AttendanceTab> {
       ),
     );
 
-    if (result != null) {
+    if (result != null && result.isNotEmpty) {
       setState(() {
         _draftStatuses = {...statuses, childId: 'Absent'};
         _draftRemarks[childId] = result;
       });
     }
+  }
+
+  Future<void> _openSignatureDialog(Child child) async {
+    String? currentSig = _draftSignatures[child.id] ??
+        FeedingAttendanceRepository().getSignaturesForDate(_currentBarangay, _selectedDate)[child.id];
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          "Mother's Signature - ${child.fullName}",
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: MotherSignaturePad(
+            title: "Guardian Signature for Feeding",
+            initialSignature: currentSig,
+            onSignatureChanged: (newSig) {
+              currentSig = newSig;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            onPressed: () {
+              if (currentSig != null && currentSig!.isNotEmpty) {
+                setState(() {
+                  _draftSignatures[child.id] = currentSig!;
+                });
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save Signature'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAbsenceHistorySheet(BuildContext context, Child child) {

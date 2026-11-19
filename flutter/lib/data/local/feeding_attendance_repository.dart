@@ -21,6 +21,9 @@ class FeedingAttendanceRepository {
   String _childFoodKey(String barangay, DateTime date) =>
       '${_key(barangay, date)}|child_food';
 
+  String _signaturesKey(String barangay, DateTime date) =>
+      '${_key(barangay, date)}|signatures';
+
   Future<void> saveForDate(
     String barangay,
     DateTime date,
@@ -28,6 +31,7 @@ class FeedingAttendanceRepository {
     Map<String, String>? remarks,
     String? foodServed,
     Map<String, String>? childFood,
+    Map<String, String>? signatures,
   }) async {
     await _box.put(_key(barangay, date), statuses);
     if (remarks != null) {
@@ -38,6 +42,9 @@ class FeedingAttendanceRepository {
     }
     if (childFood != null) {
       await _box.put(_childFoodKey(barangay, date), childFood);
+    }
+    if (signatures != null) {
+      await _box.put(_signaturesKey(barangay, date), signatures);
     }
 
     // Link to FeedingSession of this day (creates session if not yet present)
@@ -73,8 +80,15 @@ class FeedingAttendanceRepository {
         statuses: statuses,
         remarks: remarks ?? getRemarksForDate(barangay, date),
         foodServed: foodServed ?? getFoodServedForDate(barangay, date),
+        signatures: signatures ?? getSignaturesForDate(barangay, date),
       );
     } catch (_) {}
+  }
+
+  Map<String, String> getSignaturesForDate(String barangay, DateTime date) {
+    final raw = _box.get(_signaturesKey(barangay, date)) as Map?;
+    if (raw == null) return {};
+    return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
   }
 
   Map<String, String> getRemarksForDate(String barangay, DateTime date) {
@@ -144,7 +158,7 @@ class FeedingAttendanceRepository {
   Future<void> syncPending() async {
     for (final key in _box.keys) {
       final keyStr = key.toString();
-      if (keyStr.contains('|remarks') || keyStr.contains('|food') || keyStr.contains('|child_food')) {
+      if (keyStr.contains('|remarks') || keyStr.contains('|food') || keyStr.contains('|child_food') || keyStr.contains('|signatures')) {
         continue;
       }
       final parts = keyStr.split('|');
@@ -161,6 +175,7 @@ class FeedingAttendanceRepository {
                 statuses: statuses,
                 remarks: getRemarksForDate(barangay, date),
                 foodServed: getFoodServedForDate(barangay, date),
+                signatures: getSignaturesForDate(barangay, date),
               );
             } catch (_) {}
           }

@@ -540,68 +540,61 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Top 4 Key Metric Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* 1. Total Enrolled */}
-            <div className="rounded-2xl bg-emerald-50/70 border border-emerald-100 p-4 text-left">
+          {/* Top Key Metric Cards (Enrolled, Reached Normal within Schedule, Reached Normal in Barangay) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* 1. Enrolled in Feeding */}
+            <div className="rounded-2xl bg-emerald-50/80 border border-emerald-200/80 p-5 text-left shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-800">Total in Feeding</span>
-                <span className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
-                  <Baby size={16} />
+                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Enrolled in Feeding</span>
+                <span className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+                  <Baby size={18} />
                 </span>
               </div>
-              <p className="text-3xl font-black text-emerald-800 mt-2">
+              <p className="text-3xl font-black text-emerald-900 mt-2">
                 <CountUp value={feedingStats.enrolled || 0} />
               </p>
-              <p className="text-[11px] text-emerald-600 font-medium mt-1">Beneficiaries undergoing feeding</p>
+              <div className="mt-2 pt-2 border-t border-emerald-100/80 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span>Beneficiaries actively enrolled in feeding program</span>
+              </div>
             </div>
 
-            {/* 2. Reached Normal (Recovered) */}
-            <div className="rounded-2xl bg-blue-50/70 border border-blue-100 p-4 text-left">
+            {/* 2. Reached Normal (Within Feeding Schedule) */}
+            <div className="rounded-2xl bg-blue-50/80 border border-blue-200/80 p-5 text-left shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-blue-800">Reached Normal</span>
-                <span className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700">
-                  <CheckCircle2 size={16} />
+                <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Reached Normal (Within Schedule)</span>
+                <span className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700">
+                  <CheckCircle2 size={18} />
                 </span>
               </div>
-              <p className="text-3xl font-black text-blue-800 mt-2">
+              <p className="text-3xl font-black text-blue-900 mt-2">
                 <CountUp value={feedingStats.reached_normal_in_feeding || 0} />
               </p>
-              <p className="text-[11px] text-blue-600 font-medium mt-1">
-                {feedingStats.enrolled > 0
-                  ? `${Math.round(((feedingStats.reached_normal_in_feeding || 0) / feedingStats.enrolled) * 100)}% recovery rate`
-                  : 'Achieved normal status'}
-              </p>
-            </div>
-
-            {/* 3. Still in Intervention (Not Normal) */}
-            <div className="rounded-2xl bg-amber-50/70 border border-amber-100 p-4 text-left">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900">Under Intervention</span>
-                <span className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
-                  <AlertTriangle size={16} />
+              <div className="mt-2 pt-2 border-t border-blue-100/80 flex items-center gap-1.5 text-[11px] text-blue-700 font-medium">
+                <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                <span>
+                  {feedingStats.enrolled > 0
+                    ? `${Math.round(((feedingStats.reached_normal_in_feeding || 0) / feedingStats.enrolled) * 100)}% recovered within feeding schedule`
+                    : 'Normalized within program timeline'}
                 </span>
               </div>
-              <p className="text-3xl font-black text-amber-800 mt-2">
-                <CountUp value={feedingStats.still_malnourished || 0} />
-              </p>
-              <p className="text-[11px] text-amber-700 font-medium mt-1">
-                {feedingStats.sam_count || 0} SAM • {feedingStats.mam_count || 0} MAM
-              </p>
             </div>
 
-            {/* 4. Total Attendance Sessions */}
-            <div className="rounded-2xl bg-purple-50/70 border border-purple-100 p-4 text-left">
+            {/* 3. Reached Normal Nutritional Status in Barangay */}
+            <div className="rounded-2xl bg-teal-50/80 border border-teal-200/80 p-5 text-left shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-purple-900">Feeding Logs</span>
-                <span className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700">
-                  <Utensils size={16} />
+                <span className="text-xs font-bold text-teal-800 uppercase tracking-wider">Reached Normal (In Barangay)</span>
+                <span className="w-9 h-9 rounded-xl bg-teal-100 flex items-center justify-center text-teal-700">
+                  <Heart size={18} />
                 </span>
               </div>
-              <p className="text-3xl font-black text-purple-800 mt-2">
-                <CountUp value={feedingStats.total_attendance || 0} />
+              <p className="text-3xl font-black text-teal-900 mt-2">
+                <CountUp value={feedingStats.achieved_normal_in_barangay || 0} />
               </p>
-              <p className="text-[11px] text-purple-600 font-medium mt-1">Total meal attendances logged</p>
+              <div className="mt-2 pt-2 border-t border-teal-100/80 flex items-center gap-1.5 text-[11px] text-teal-700 font-medium">
+                <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
+                <span>All active children with normal nutritional status in barangays</span>
+              </div>
             </div>
           </div>
 

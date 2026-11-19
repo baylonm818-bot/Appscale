@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axiosClient from '../api/axiosClient';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import { useAuth } from '../components/AuthContext';
-import { Camera, Lock, User, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Camera, Lock, User, ShieldCheck, ChevronRight, Globe, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShimmerSkeleton } from '../components/ui/motion';
 import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
@@ -91,10 +91,23 @@ function ProfileInfoRow({ label, value, name, onSave }) {
   );
 }
 
+/* ── Toggle switch ── */
+function Toggle({ checked, onChange }) {
+  return (
+    <button type="button" onClick={onChange}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none cursor-pointer
+        ${checked ? 'bg-[#2e7d32]' : 'bg-gray-200'}`}>
+      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform
+        ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+    </button>
+  );
+}
+
 const TABS = [
-  { key: 'profile',  label: 'Profile Info',     icon: User        },
-  { key: 'password', label: 'Change Password',  icon: Lock        },
-  { key: 'security', label: 'Account Security', icon: ShieldCheck },
+  { key: 'profile',     label: 'Profile Info',     icon: User        },
+  { key: 'preferences', label: 'Preferences',      icon: Globe       },
+  { key: 'password',    label: 'Change Password',  icon: Lock        },
+  { key: 'security',    label: 'Account Security', icon: ShieldCheck },
 ];
 
 const inputCls = "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition";
@@ -229,10 +242,18 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
         first_name: updated.first_name, middle_initial: updated.middle_initial,
         last_name: updated.last_name, email: updated.email,
         contact_number: updated.contact_number, purok: updated.purok,
+        language: updated.language || 'en',
+        age_format_days: updated.age_format_days ? 1 : 0,
       });
       const returnedUser = res.data?.user || updated;
       setProfile(returnedUser);
       if (typeof updateUser === 'function') updateUser(returnedUser);
+      if (fieldName === 'language') {
+        localStorage.setItem('lang', value);
+      }
+      if (fieldName === 'age_format_days') {
+        localStorage.setItem('age_format_days', value ? '1' : '0');
+      }
       setProfileMsg('Updated successfully.');
       setTimeout(() => setProfileMsg(''), 2500);
     } catch (err) { setProfileErr(err.response?.data?.message || 'Update failed.'); }
@@ -460,6 +481,84 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
             <ProfileInfoRow label="Email"           name="email"           value={profile?.email || ''}           onSave={handleFieldSave} />
             <ProfileInfoRow label="Contact Number"  name="contact_number"  value={profile?.contact_number || ''}  onSave={handleFieldSave} />
             <ProfileInfoRow label="Purok"           name="purok"           value={profile?.purok || ''}           onSave={handleFieldSave} />
+          </>
+        )}
+
+        {/* PREFERENCES (LANGUAGE & DISPLAY) */}
+        {activeTab === 'preferences' && (
+          <>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
+                <Globe size={16} className="text-[#2e7d32]" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-800">Language & Display Preferences</h3>
+                <p className="text-xs text-gray-400">Settings are saved per user account</p>
+              </div>
+            </div>
+            {profileMsg && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">{profileMsg}</div>}
+            {profileErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">{profileErr}</div>}
+
+            <div className="space-y-6 divide-y divide-gray-100">
+              {/* Language Selection */}
+              <div className="pt-2">
+                <h4 className="text-sm font-bold text-gray-800 mb-1">System Language</h4>
+                <p className="text-xs text-gray-500 mb-3">Choose whether to view interface labels and prompts in English or Tagalog.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
+                  <button
+                    type="button"
+                    onClick={() => handleFieldSave('language', 'en')}
+                    className={`flex items-center justify-between p-3.5 rounded-xl border transition text-left cursor-pointer ${
+                      (profile?.language || 'en') === 'en'
+                        ? 'border-[#2e7d32] bg-green-50/50 text-[#1b5e20] ring-1 ring-[#2e7d32]'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    <div>
+                      <p className="text-sm font-bold">English</p>
+                      <p className="text-xs text-gray-400">Default municipal language</p>
+                    </div>
+                    {(profile?.language || 'en') === 'en' && <Check size={18} className="text-[#2e7d32]" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleFieldSave('language', 'tl')}
+                    className={`flex items-center justify-between p-3.5 rounded-xl border transition text-left cursor-pointer ${
+                      profile?.language === 'tl'
+                        ? 'border-[#2e7d32] bg-green-50/50 text-[#1b5e20] ring-1 ring-[#2e7d32]'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    <div>
+                      <p className="text-sm font-bold">Tagalog (Filipino)</p>
+                      <p className="text-xs text-gray-400">Pambansang wika</p>
+                    </div>
+                    {profile?.language === 'tl' && <Check size={18} className="text-[#2e7d32]" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Age Format Toggle */}
+              <div className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div className="max-w-md">
+                    <h4 className="text-sm font-bold text-gray-800 mb-1">Age Display Format</h4>
+                    <p className="text-xs text-gray-500">
+                      When enabled, child ages include exact days (e.g. &ldquo;3 months and 4 days&rdquo;). Default shows months only (e.g. &ldquo;3 months&rdquo;).
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={Boolean(profile?.age_format_days)}
+                    onChange={() => handleFieldSave('age_format_days', !profile?.age_format_days)}
+                  />
+                </div>
+                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-600">
+                  <span className="font-semibold text-gray-700">Preview:</span>
+                  <span>{Boolean(profile?.age_format_days) ? '3 months and 4 days / 3 buwan at 4 araw' : '3 months / 3 buwan'}</span>
+                </div>
+              </div>
+            </div>
           </>
         )}
 

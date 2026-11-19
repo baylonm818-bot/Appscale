@@ -452,6 +452,21 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     if (reportTypeId == 'children_masterlist') {
       return ds.buildChildrenMasterlistData(_currentBarangay, _period.year);
     }
+    if (reportTypeId == 'lactating_mothers_masterlist') {
+      return ds.buildLactatingMothersData(_currentBarangay, _period.year);
+    }
+    if (reportTypeId == 'vitamin_a_masterlist') {
+      return ds.buildVitaminAProgramData(_currentBarangay, _period.year);
+    }
+    if (reportTypeId == 'deworming_masterlist') {
+      return ds.buildDewormingProgramData(_currentBarangay, _period.year);
+    }
+    if (reportTypeId == 'feeding_program_masterlist') {
+      return ds.buildFeedingProgramData(_currentBarangay, _period.year);
+    }
+    if (reportTypeId == 'activities_report') {
+      return ds.buildActivitiesReportData(_currentBarangay, _period.year);
+    }
     return ds.buildLactatingMothersData(_currentBarangay, _period.year);
   }
 

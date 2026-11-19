@@ -16,6 +16,7 @@ import Profile from './admin/Profile';
 import Signatories from './admin/Signatories';
 // Step 9: Admin-only system logs
 import SystemLogs from './admin/SystemLogs';
+import PurokManagement from './admin/PurokManagement';
 
 
 import BHWSchedule from './bhw/Schedule';
@@ -125,6 +126,7 @@ function App() {
             <Route path="signatories"   element={<Signatories />} />
             {/* Step 9: System activity logs */}
             <Route path="system-logs"   element={<SystemLogs />} />
+            <Route path="puroks"        element={<PurokManagement />} />
 
           </Route>
 

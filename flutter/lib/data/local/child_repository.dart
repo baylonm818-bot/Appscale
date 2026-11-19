@@ -229,7 +229,9 @@ class ChildRepository {
         .where(
           (c) =>
               c.isActive &&
-              (lower.isEmpty || c.fullName.toLowerCase().contains(lower)),
+              (lower.isEmpty ||
+                  c.fullName.toLowerCase().contains(lower) ||
+                  c.address.toLowerCase().contains(lower)),
         )
         .take(limit)
         .toList();
@@ -277,8 +279,9 @@ class ChildRepository {
     final lower = query.trim().toLowerCase();
     return getByBarangay(barangay).where((c) {
       final matchesActive = c.isActive == activeOnly;
-      final matchesQuery =
-          lower.isEmpty || c.fullName.toLowerCase().contains(lower);
+      final matchesQuery = lower.isEmpty ||
+          c.fullName.toLowerCase().contains(lower) ||
+          c.address.toLowerCase().contains(lower);
       bool matchesFilter = true;
       if (filter != null) {
         if (filter.onlyNotWeighed) {

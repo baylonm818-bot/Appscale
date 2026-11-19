@@ -23,9 +23,11 @@ class AppTextField extends StatefulWidget {
   final String? suffixText;
   final Widget? inlineExtra;
   final TextInputAction? textInputAction;
+  final TextCapitalization textCapitalization;
   final Iterable<String>? autofillHints;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onFieldSubmitted;
+  final bool readOnly;
 
   const AppTextField({
     super.key,
@@ -48,9 +50,11 @@ class AppTextField extends StatefulWidget {
     this.suffixText,
     this.inlineExtra,
     this.textInputAction,
+    this.textCapitalization = TextCapitalization.none,
     this.autofillHints,
     this.onChanged,
     this.onFieldSubmitted,
+    this.readOnly = false,
   });
 
   @override
@@ -110,6 +114,7 @@ class _AppTextFieldState extends State<AppTextField> {
         TextField(
           controller: widget.controller,
           focusNode: widget.focusNode,
+          readOnly: widget.readOnly,
           obscureText: _obscure,
           keyboardType: resolvedKeyboardType,
           maxLength: widget.maxLength,
@@ -118,6 +123,7 @@ class _AppTextFieldState extends State<AppTextField> {
               : null,
           inputFormatters: resolvedFormatters,
           textInputAction: widget.textInputAction,
+          textCapitalization: widget.textCapitalization,
           autofillHints: widget.autofillHints,
           onChanged: widget.onChanged,
           onSubmitted: widget.onFieldSubmitted,

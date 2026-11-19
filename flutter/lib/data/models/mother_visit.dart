@@ -13,6 +13,7 @@ class MotherVisit {
 
   final bool needsReferral;
   final DateTime? createdAt;
+  final String? signature;
 
   const MotherVisit({
     required this.date,
@@ -25,6 +26,7 @@ class MotherVisit {
     this.observationNote,
     this.needsReferral = false,
     this.createdAt,
+    this.signature,
   });
 
   bool get stoppedBreastfeeding =>
@@ -48,6 +50,7 @@ class MotherVisit {
     'observationNote': observationNote,
     'needsReferral': isReferralNeeded,
     'createdAt': effectiveCreatedAt.toIso8601String(),
+    'signature': signature,
   };
 
   factory MotherVisit.fromMap(Map map) => MotherVisit(
@@ -66,5 +69,6 @@ class MotherVisit {
           SafeParser.asString(map['observation']) == 'Signs of concern',
     ),
     createdAt: SafeParser.asDateTime(map['createdAt'] ?? map['created_at']),
+    signature: SafeParser.asString(map['signature']),
   );
 }

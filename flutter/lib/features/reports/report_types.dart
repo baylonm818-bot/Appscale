@@ -73,6 +73,12 @@ class ReportTypes {
     category: ReportCategory.individualRecord,
     formats: [ExportFormat.excel],
   );
+  static const activitiesReport = ReportTypeInfo(
+    id: 'activities_report',
+    title: 'Calendar of Activities Report',
+    category: ReportCategory.individualRecord,
+    formats: [ExportFormat.pdf, ExportFormat.excel],
+  );
 
   // 3. Masterlists
   static const childrenMasterlist = ReportTypeInfo(
@@ -84,6 +90,24 @@ class ReportTypes {
   static const lactatingMothersMasterlist = ReportTypeInfo(
     id: 'lactating_mothers_masterlist',
     title: 'Masterlist of Lactating Mothers',
+    category: ReportCategory.masterlist,
+    formats: [ExportFormat.pdf, ExportFormat.excel],
+  );
+  static const vitaminAMasterlist = ReportTypeInfo(
+    id: 'vitamin_a_masterlist',
+    title: 'Vitamin A Supplementation Masterlist & Report',
+    category: ReportCategory.masterlist,
+    formats: [ExportFormat.pdf, ExportFormat.excel],
+  );
+  static const dewormingMasterlist = ReportTypeInfo(
+    id: 'deworming_masterlist',
+    title: 'Deworming Program Masterlist & Report',
+    category: ReportCategory.masterlist,
+    formats: [ExportFormat.pdf, ExportFormat.excel],
+  );
+  static const feedingProgramMasterlist = ReportTypeInfo(
+    id: 'feeding_program_masterlist',
+    title: 'Supplementary Feeding Program Masterlist & Report',
     category: ReportCategory.masterlist,
     formats: [ExportFormat.pdf, ExportFormat.excel],
   );
@@ -99,10 +123,14 @@ class ReportTypes {
     monthlyWeightRecord,
     quarterlyWeighing,
     optPlus,
+    activitiesReport,
   ];
   static const masterlistTypes = [
     childrenMasterlist,
     lactatingMothersMasterlist,
+    vitaminAMasterlist,
+    dewormingMasterlist,
+    feedingProgramMasterlist,
   ];
   static const all = [
     ...consolidationTypes,

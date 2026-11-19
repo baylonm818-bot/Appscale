@@ -24,6 +24,7 @@ import '../masterlist/widgets/status_badge.dart';
 import '../referrals/create_referral_screen.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../../shared/widgets/urgent_referral_dialog.dart';
+import '../../shared/widgets/mother_signature_pad.dart';
 
 class AddMeasurementScreen extends StatefulWidget {
   final Child child;
@@ -61,6 +62,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
   DateTime _monthYear = DateTime.now();
   bool _edema = false;
   bool _isSaving = false;
+  String? _motherSignature;
 
   Measurement? get _previousEntry {
     final history = _measurementRepo.getForChild(widget.child.id);
@@ -666,6 +668,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       customBmiStatus: isPlausible ? assessment.weightForLengthStatus : 'Needs re-measurement',
       ageInDays: assessmentDays,
       ageInMonths: _assessmentAgeMonths,
+      signature: _motherSignature,
     );
 
     await _measurementRepo.addMeasurement(widget.child.id, measurement);
@@ -1071,6 +1074,14 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                         ),
                       ),
                     ],
+                    const SizedBox(height: AppSpacing.lg),
+                    MotherSignaturePad(
+                      title: "Mother / Guardian Signature (Monitoring)",
+                      initialSignature: _motherSignature,
+                      onSignatureChanged: (sig) {
+                        setState(() => _motherSignature = sig);
+                      },
+                    ),
                     const SizedBox(height: AppSpacing.xl),
                   ],
                 ),

@@ -135,14 +135,18 @@ exports.upsertChild = async (req, res) => {
     });
   }
 
-  if (guardian_contact !== undefined && guardian_contact !== null && String(guardian_contact).trim() !== '') {
-    const contactCheck = validateContactNumber(guardian_contact);
-    if (!contactCheck.valid) {
-      return res.status(400).json({ message: contactCheck.message });
-    }
+  if (!guardian_contact || !String(guardian_contact).trim()) {
+    return res.status(400).json({
+      message: 'Guardian contact number is required.',
+    });
   }
 
-  // Item 36: Strictly limit child age to 0-59 months (0 to 5 years old)
+  const contactCheck = validateContactNumber(guardian_contact);
+  if (!contactCheck.valid) {
+    return res.status(400).json({ message: contactCheck.message });
+  }
+
+  // Strictly calculate age in months
   const bDate = new Date(birth_date);
   const now = new Date();
   if (isNaN(bDate.getTime())) {
@@ -151,12 +155,15 @@ exports.upsertChild = async (req, res) => {
   let ageMonths = (now.getFullYear() - bDate.getFullYear()) * 12 + (now.getMonth() - bDate.getMonth());
   if (now.getDate() < bDate.getDate()) ageMonths--;
 
-  if (ageMonths < 0 || ageMonths > 59) {
+  if (ageMonths < 0) {
     return res.status(400).json({
-      message: 'Child age must be between 0 and 59 months (under 5 years old).',
+      message: 'Child birth date cannot be in the future.',
       code: 'invalid_child_age',
     });
   }
+
+  // Requirement B: Child auto-becomes inactive at 59 months
+  const resolvedStatus = (ageMonths >= 59) ? 'inactive' : (status || 'active');
 
   try {
     let resolvedMotherId = mother_id || null;
@@ -207,15 +214,21 @@ exports.upsertChild = async (req, res) => {
             birth_date,
             birth_date,
             resolvedBarangay,
-            purok || address || 'Purok 1',
+            (purok || address || '').trim() || null,
             guardian_name || null,
             guardian_contact || null,
-            childStatus,
+            resolvedStatus,
             resolvedMotherId,
             resolvedEncodedBy,
             childId,
           ]
         );
+
+        await logAction(pool, req, 'UPDATE_CHILD', 'child', childId, {
+          child_name: `${firstName} ${lastName || ''}`.trim(),
+          barangay: resolvedBarangay,
+          status: resolvedStatus,
+        }, resolvedBarangay);
 
         if (req.body.is_enrolled != null) {
           try {
@@ -307,14 +320,20 @@ exports.upsertChild = async (req, res) => {
         birth_date,
         birth_date,
         resolvedBarangay,
-        purok || address || 'Purok 1',
+        (purok || address || '').trim() || null,
         guardian_name || null,
         guardian_contact || null,
         resolvedMotherId,
-        childStatus,
+        resolvedStatus,
         resolvedEncodedBy,
       ]
     );
+
+    await logAction(pool, req, 'CREATE_CHILD', 'child', result.insertId, {
+      child_name: `${firstName} ${lastName || ''}`.trim(),
+      barangay: resolvedBarangay,
+      status: resolvedStatus,
+    }, resolvedBarangay);
 
     // Automatic Notification for BHW/Admin
     try {
@@ -423,15 +442,17 @@ exports.upsertMother = async (req, res) => {
     middleInitial = parts.middleInitial;
   }
 
-  if (!firstName || !resolvedBarangay) {
-    return res.status(400).json({ message: 'Mother first name and barangay are required.' });
+  if (!firstName || !birth_date || !resolvedBarangay) {
+    return res.status(400).json({ message: 'Mother first name, birth date, and barangay are required.' });
   }
 
-  if (contact_number !== undefined && contact_number !== null && String(contact_number).trim() !== '') {
-    const contactCheck = validateContactNumber(contact_number);
-    if (!contactCheck.valid) {
-      return res.status(400).json({ message: contactCheck.message });
-    }
+  if (!contact_number || !String(contact_number).trim()) {
+    return res.status(400).json({ message: 'Mother contact number is required.' });
+  }
+
+  const contactCheck = validateContactNumber(contact_number);
+  if (!contactCheck.valid) {
+    return res.status(400).json({ message: contactCheck.message });
   }
 
   const resolvedEncodedBy = encoded_by || req.user?.user_id || null;
@@ -465,7 +486,7 @@ exports.upsertMother = async (req, res) => {
             birth_date || null,
             contact_number || null,
             resolvedBarangay,
-            purok || address || 'Purok 1',
+            (purok || address || '').trim() || null,
             weight_kg ? Number(weight_kg) : null,
             height_cm ? Number(height_cm) : null,
             req.body.muac_cm ? Number(req.body.muac_cm) : null,
@@ -476,6 +497,11 @@ exports.upsertMother = async (req, res) => {
             motherId,
           ]
         );
+
+        await logAction(pool, req, 'UPDATE_MOTHER', 'mother', motherId, {
+          mother_name: `${firstName} ${lastName || ''}`.trim(),
+          barangay: resolvedBarangay,
+        }, resolvedBarangay);
         // compute bmi and muac status and update
         try {
           const safeWeight = req.body.weight_kg ? Number(req.body.weight_kg) : null;
@@ -538,7 +564,7 @@ exports.upsertMother = async (req, res) => {
         lastName || '',
         birth_date || null,
         resolvedBarangay,
-        purok || address || 'Purok 1',
+        (purok || address || '').trim() || null,
         contact_number || null,
         weight_kg ? Number(weight_kg) : null,
         height_cm ? Number(height_cm) : null,
@@ -599,6 +625,11 @@ exports.upsertMother = async (req, res) => {
         console.error('Link children to mother error (insert):', linkErr && linkErr.message);
       }
     }
+
+    await logAction(pool, req, 'CREATE_MOTHER', 'mother', result.insertId, {
+      mother_name: `${firstName} ${lastName || ''}`.trim(),
+      barangay: resolvedBarangay,
+    }, resolvedBarangay);
 
     return res.status(201).json({
       message: 'Mother registered successfully.',
@@ -740,13 +771,15 @@ exports.syncNutritionRecord = async (req, res) => {
       });
     }
 
+    const rawSig = req.body.signature || req.body.mother_signature || null;
+
     const [result] = await pool.query(
       `INSERT INTO nutrition_records (
          child_id, record_date, age_in_months, weight_kg, height_cm, muac_cm,
-         weight_status, height_status, overall_status, recorded_by, bmi, bmi_status
+         weight_status, height_status, overall_status, recorded_by, bmi, bmi_status, signature
        ) VALUES (
          ?, ?, ?, ?, ?, ?,
-         ?, ?, ?, ?, ?, ?
+         ?, ?, ?, ?, ?, ?, ?
        )`,
       [
         resolvedChildId,
@@ -761,6 +794,7 @@ exports.syncNutritionRecord = async (req, res) => {
         recBy,
         computedBmi,
         bmiStatus,
+        rawSig,
       ]
     );
 
@@ -1323,7 +1357,7 @@ exports.getMobileSync = async (req, res) => {
     const refParams = barangay ? [barangay, barangay, barangay] : [];
     const refWhere = barangay ? '(c.barangay = ? OR m.barangay = ? OR ? IS NULL)' : '1=1';
 
-    const [[children], [nutritionRecords], [mothers], [motherServices], [schedules], [referrals], [notifications], [programEnrollments], [mealPlans], [feedingAttendance], [feedingSchedule], [childServices]] = await Promise.all([
+    const [[children], [nutritionRecords], [mothers], [motherServices], [schedules], [referrals], [notifications], [programEnrollments], [mealPlans], [feedingAttendance], [feedingSchedule], [childServices], [puroks]] = await Promise.all([
       pool.query(
         `SELECT c.child_id, c.external_id, c.first_name, c.middle_initial, c.last_name,
                 c.birth_date, c.sex, c.age_in_months, c.age_group, c.barangay, c.purok,
@@ -1444,12 +1478,20 @@ exports.getMobileSync = async (req, res) => {
       ),
       pool.query(
         `SELECT cs.service_id, cs.external_id, cs.child_id, c.external_id AS child_external_id,
-                cs.service_type, cs.service_name, cs.dosage, cs.service_date, cs.provided_by, cs.notes
+                cs.service_type, cs.service_name, cs.dosage, cs.service_date, cs.provided_by, cs.notes,
+                cs.signature
          FROM child_services cs
          INNER JOIN children c ON c.child_id = cs.child_id
          WHERE ${barangay ? 'c.barangay = ?' : '1=1'}
          ORDER BY cs.service_date ASC`,
         barangay ? [barangay] : []
+      ),
+      pool.query(
+        `SELECT p.id, p.barangay_id, b.name AS barangay_name, p.name, p.is_active
+         FROM puroks p
+         JOIN barangays b ON p.barangay_id = b.id
+         WHERE p.is_active = 1
+         ORDER BY b.name ASC, p.name ASC`
       ),
     ]);
 
@@ -1548,6 +1590,7 @@ exports.getMobileSync = async (req, res) => {
       schedules: visibleSchedules,
       referrals,
       notifications: formattedNotifications,
+      puroks: puroks || [],
       profilePicture,
       syncedAt: new Date().toISOString(),
     });
@@ -1832,6 +1875,8 @@ exports.recordFeedingAttendance = async (req, res) => {
       }
       const attDate = item.attendance_date || new Date().toISOString().slice(0, 10);
       const extKey = `${resolvedBarangay}|${item.child_external_id || cId}|${attDate}`;
+      const normStatus = String(item.status || '').toLowerCase() === 'absent' ? 'absent' : 'present';
+      const attSig = item.signature || req.body.signature || null;
 
       const [existing] = await pool.query(
         `SELECT attendance_id FROM feeding_attendance
@@ -1845,16 +1890,16 @@ exports.recordFeedingAttendance = async (req, res) => {
       if (existing.length > 0) {
         await pool.query(
           `UPDATE feeding_attendance
-           SET status = ?, meal_served = COALESCE(?, meal_served), remarks = COALESCE(?, remarks)
+           SET status = ?, meal_served = COALESCE(?, meal_served), remarks = COALESCE(?, remarks), signature = COALESCE(?, signature)
            WHERE attendance_id = ?`,
-          [item.status || 'Present', item.meal_served || null, item.remarks || null, existing[0].attendance_id]
+          [normStatus, item.meal_served || null, item.remarks || null, attSig, existing[0].attendance_id]
         );
       } else {
         await pool.query(
           `INSERT INTO feeding_attendance
-           (external_id, child_id, child_external_id, barangay, attendance_date, status, meal_served, remarks, recorded_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [extKey, cId, item.child_external_id || null, resolvedBarangay, attDate, item.status || 'Present', item.meal_served || null, item.remarks || null, req.user?.user_id || null]
+           (external_id, child_id, child_external_id, barangay, attendance_date, status, meal_served, remarks, signature, recorded_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [extKey, cId, item.child_external_id || null, resolvedBarangay, attDate, normStatus, item.meal_served || null, item.remarks || null, attSig, req.user?.user_id || null]
         );
       }
     }
@@ -1957,22 +2002,30 @@ exports.recordChildService = async (req, res) => {
       [external_id || '', resolvedChildId, service_type, sDate]
     );
 
+    const sig = req.body.signature || req.body.mother_signature || null;
+
     if (existing.length > 0) {
       await pool.query(
         `UPDATE child_services
-         SET dosage = COALESCE(?, dosage), service_name = COALESCE(?, service_name), notes = COALESCE(?, notes), provided_by = COALESCE(?, provided_by)
+         SET dosage = COALESCE(?, dosage), service_name = COALESCE(?, service_name), notes = COALESCE(?, notes), provided_by = COALESCE(?, provided_by), signature = COALESCE(?, signature)
          WHERE service_id = ?`,
-        [dosage || null, service_name || null, notes || null, provided_by || null, existing[0].service_id]
+        [dosage || null, service_name || null, notes || null, provided_by || null, sig, existing[0].service_id]
       );
       return res.status(200).json({ message: 'Child service updated successfully.', service_id: existing[0].service_id });
     }
 
     const [result] = await pool.query(
       `INSERT INTO child_services
-       (external_id, child_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [external_id || null, resolvedChildId, service_type, service_name || service_type, dosage || null, sDate, next_schedule || null, provided_by || 'BNS', notes || null]
+       (external_id, child_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes, signature)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [external_id || null, resolvedChildId, service_type, service_name || service_type, dosage || null, sDate, next_schedule || null, provided_by || 'BNS', notes || null, sig]
     );
+
+    await logAction(pool, req, 'RECORD_CHILD_SERVICE', 'child_services', result.insertId, {
+      child_id: resolvedChildId,
+      service_type,
+      service_date: sDate,
+    });
 
     return res.status(201).json({ message: 'Child service recorded successfully.', service_id: result.insertId });
   } catch (error) {
@@ -2022,22 +2075,30 @@ exports.recordMotherService = async (req, res) => {
       [external_id || '', resolvedMotherId, service_type || 'Maternal Counseling', sDate]
     );
 
+    const sig = req.body.signature || req.body.mother_signature || null;
+
     if (existing.length > 0) {
       await pool.query(
         `UPDATE mother_services
-         SET dosage = COALESCE(?, dosage), service_name = COALESCE(?, service_name), notes = COALESCE(?, notes), provided_by = COALESCE(?, provided_by)
+         SET dosage = COALESCE(?, dosage), service_name = COALESCE(?, service_name), notes = COALESCE(?, notes), provided_by = COALESCE(?, provided_by), signature = COALESCE(?, signature)
          WHERE service_id = ?`,
-        [dosage || null, service_name || null, notes || null, provided_by || null, existing[0].service_id]
+        [dosage || null, service_name || null, notes || null, provided_by || null, sig, existing[0].service_id]
       );
       return res.status(200).json({ message: 'Mother service updated successfully.', service_id: existing[0].service_id });
     }
 
     const [result] = await pool.query(
       `INSERT INTO mother_services
-       (external_id, mother_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [external_id || null, resolvedMotherId, service_type || 'Maternal Counseling', service_name || service_type || 'Maternal Counseling', dosage || null, sDate, next_schedule || null, provided_by || 'BNS', notes || null]
+       (external_id, mother_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes, signature)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [external_id || null, resolvedMotherId, service_type || 'Maternal Counseling', service_name || service_type || 'Maternal Counseling', dosage || null, sDate, next_schedule || null, provided_by || 'BNS', notes || null, sig]
     );
+
+    await logAction(pool, req, 'RECORD_MOTHER_SERVICE', 'mother_services', result.insertId, {
+      mother_id: resolvedMotherId,
+      service_type: service_type || 'Maternal Counseling',
+      service_date: sDate,
+    });
 
     return res.status(201).json({ message: 'Mother service recorded successfully.', service_id: result.insertId });
   } catch (error) {

@@ -1,5 +1,6 @@
 import '../../core/utils/safe_parser.dart';
 import '../../shared/utils/app_user_identity.dart';
+import '../local/hive_boxes.dart';
 import 'guardian.dart';
 
 class Child {
@@ -95,8 +96,46 @@ class Child {
 
   int get ageInMonths => ageInMonthsAt(DateTime.now());
 
+  /// Formatted age string respecting the user's detailed days preference.
+  String formatAge({bool? includeDays, DateTime? referenceDate}) {
+    final ref = referenceDate ?? DateTime.now();
+    bool withDays = false;
+    try {
+      withDays = includeDays ?? SettingsRepository().ageFormatDays;
+    } catch (_) {}
+
+    if (!withDays) {
+      final m = ageInMonthsAt(ref);
+      return '$m ${m == 1 ? "month" : "months"}';
+    }
+
+    DateTime cur = DateTime(birthDate.year, birthDate.month, birthDate.day);
+    int m = 0;
+    while (true) {
+      final nextMonth = DateTime(cur.year, cur.month + 1, cur.day);
+      if (nextMonth.isAfter(ref)) break;
+      cur = nextMonth;
+      m++;
+    }
+    final remainingDays = ref.difference(cur).inDays;
+    if (m == 0) {
+      return '$remainingDays ${remainingDays == 1 ? "day" : "days"}';
+    }
+    if (remainingDays <= 0) {
+      return '$m ${m == 1 ? "month" : "months"}';
+    }
+    return '$m ${m == 1 ? "month" : "months"} and $remainingDays ${remainingDays == 1 ? "day" : "days"}';
+  }
+
   /// Full label: "2 yr. 4 mo." or "3 mos." or "8 days" / "1 wk. 1 day" for infants under 1 month.
   String ageLabelAt(DateTime referenceDate) {
+    bool withDays = false;
+    try {
+      withDays = SettingsRepository().ageFormatDays;
+    } catch (_) {}
+    if (withDays) {
+      return formatAge(includeDays: true, referenceDate: referenceDate);
+    }
     final months = ageInMonthsAt(referenceDate);
     if (months == 0) {
       final s = DateTime(birthDate.year, birthDate.month, birthDate.day);
@@ -134,22 +173,49 @@ class Child {
   }
 
   static String normalizePurok(String? raw) {
-    if (raw == null) return 'Purok 1';
-    final t = raw.trim().toLowerCase();
-    if (t.isEmpty) return 'Purok 1';
-    if (t == 'uni' || t == 'uno' || t == 'isa' || t == '1' || t == 'purok 1' || t == 'purok1') return 'Purok 1';
-    if (t == 'dos' || t == 'dalawa' || t == '2' || t == 'purok 2' || t == 'purok2') return 'Purok 2';
-    if (t == 'tres' || t == 'tatlo' || t == '3' || t == 'purok 3' || t == 'purok3') return 'Purok 3';
-    if (t == 'cuatro' || t == 'apat' || t == '4' || t == 'purok 4' || t == 'purok4') return 'Purok 4';
-    if (t == 'cinco' || t == 'lima' || t == '5' || t == 'purok 5' || t == 'purok5') return 'Purok 5';
-    if (t == 'seis' || t == 'anim' || t == '6' || t == 'purok 6' || t == 'purok6') return 'Purok 6';
-    if (t == 'siete' || t == 'pito' || t == '7' || t == 'purok 7' || t == 'purok7') return 'Purok 7';
-    if (RegExp(r'^\d+$').hasMatch(t)) return 'Purok $t';
-    if (t.startsWith('purok')) {
-      final numMatch = RegExp(r'\d+').firstMatch(t);
-      if (numMatch != null) return 'Purok ${numMatch.group(0)}';
+    if (raw == null) return '';
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+
+    final lower = trimmed.toLowerCase();
+    if (lower == 'uni' || lower == 'uno' || lower == 'isa') return 'Purok 1';
+    if (lower == 'dos' || lower == 'dalawa') return 'Purok 2';
+    if (lower == 'tres' || lower == 'tatlo') return 'Purok 3';
+    if (lower == 'cuatro' || lower == 'kwatro' || lower == 'apat') return 'Purok 4';
+    if (lower == 'cinco' || lower == 'singko' || lower == 'lima') return 'Purok 5';
+    if (lower == 'seis' || lower == 'anim') return 'Purok 6';
+    if (lower == 'siete' || lower == 'syete' || lower == 'pito') return 'Purok 7';
+    if (lower == 'ocho' || lower == 'otso' || lower == 'walo') return 'Purok 8';
+
+    // Pure number like "1", "7", "12" -> "Purok 1", "Purok 7"
+    if (RegExp(r'^\d+$').hasMatch(lower)) {
+      return 'Purok $lower';
     }
-    return raw.trim();
+
+    // Match variations like "prk 1", "prk. 1", "prk1", "purok 1", "purok-1", "purok1"
+    final purokNumMatch = RegExp(r'^(?:purok|prk\.?)\s*[-#]?\s*(\d+)$', caseSensitive: false).firstMatch(trimmed);
+    if (purokNumMatch != null) {
+      return 'Purok ${purokNumMatch.group(1)}';
+    }
+
+    // Match "prk <name>" or "purok <name>" -> "Purok <Title Case Name>"
+    final purokNamedMatch = RegExp(r'^(?:purok|prk\.?)\s*[-#]?\s*(.+)$', caseSensitive: false).firstMatch(trimmed);
+    if (purokNamedMatch != null) {
+      final rest = purokNamedMatch.group(1)!.trim();
+      return 'Purok ${_toTitleCase(rest)}';
+    }
+
+    // Otherwise, normalize spaces and title case each word (e.g. "sitio maligaya" -> "Sitio Maligaya")
+    return _toTitleCase(trimmed);
+  }
+
+  static String _toTitleCase(String text) {
+    return text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).map((word) {
+      if (RegExp(r'^(?:[ivxlcdm]+)$', caseSensitive: false).hasMatch(word)) {
+        return word.toUpperCase();
+      }
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
   }
 
   String get formattedAddress => normalizePurok(address);

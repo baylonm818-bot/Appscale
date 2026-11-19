@@ -166,7 +166,7 @@ class BeneficiaryLinkService {
       fullName: cleanName.isNotEmpty ? cleanName : 'Mother',
       birthDate: guardianBirthDate,
       contactNo: cleanContact,
-      address: address.trim().isNotEmpty ? address.trim() : 'Purok 1',
+      address: Child.normalizePurok(address),
       barangay: barangay,
       breastfeedingPractice: '',
       belongsToIpGroup: belongsToIpGroup,

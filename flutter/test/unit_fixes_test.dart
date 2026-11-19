@@ -1371,6 +1371,43 @@ void main() {
       String validAddress = 'Purok 1';
       expect(validAddress.trim().isNotEmpty, isTrue);
     });
+
+    test('Purok normalization: normalizes numbers, aliases, named puroks and preserves old records', () {
+      expect(Child.normalizePurok(null), equals(''));
+      expect(Child.normalizePurok(''), equals(''));
+      expect(Child.normalizePurok('   '), equals(''));
+
+      // Preserves existing Purok 1-6 records
+      expect(Child.normalizePurok('Purok 1'), equals('Purok 1'));
+      expect(Child.normalizePurok('Purok 6'), equals('Purok 6'));
+      expect(Child.normalizePurok('Purok 7'), equals('Purok 7'));
+
+      // Numeric inputs
+      expect(Child.normalizePurok('1'), equals('Purok 1'));
+      expect(Child.normalizePurok('7'), equals('Purok 7'));
+      expect(Child.normalizePurok('12'), equals('Purok 12'));
+
+      // Typo/spacing variations
+      expect(Child.normalizePurok('purok 1'), equals('Purok 1'));
+      expect(Child.normalizePurok('purok1'), equals('Purok 1'));
+      expect(Child.normalizePurok('prk 1'), equals('Purok 1'));
+      expect(Child.normalizePurok('prk. 1'), equals('Purok 1'));
+      expect(Child.normalizePurok('prk 7'), equals('Purok 7'));
+
+      // Word mappings
+      expect(Child.normalizePurok('uno'), equals('Purok 1'));
+      expect(Child.normalizePurok('dos'), equals('Purok 2'));
+      expect(Child.normalizePurok('tres'), equals('Purok 3'));
+      expect(Child.normalizePurok('apat'), equals('Purok 4'));
+      expect(Child.normalizePurok('lima'), equals('Purok 5'));
+      expect(Child.normalizePurok('anim'), equals('Purok 6'));
+      expect(Child.normalizePurok('pito'), equals('Purok 7'));
+
+      // Named puroks / sitios
+      expect(Child.normalizePurok('purok mabuhay'), equals('Purok Mabuhay'));
+      expect(Child.normalizePurok('prk mabuhay'), equals('Purok Mabuhay'));
+      expect(Child.normalizePurok('sitio ilaya'), equals('Sitio Ilaya'));
+    });
   });
 }
 

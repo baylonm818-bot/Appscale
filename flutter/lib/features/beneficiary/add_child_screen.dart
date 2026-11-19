@@ -8,12 +8,14 @@ import '../../data/local/activity_log_repository.dart';
 import '../../data/local/beneficiary_link_service.dart';
 import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
+import '../../data/local/purok_repository.dart';
 import '../../data/models/child.dart';
 import '../../data/models/guardian.dart';
 import '../../data/models/mother.dart';
 import '../../shared/widgets/app_date_field.dart';
 import '../../shared/widgets/app_dropdown_field.dart';
 import '../../shared/widgets/app_text_field.dart';
+import '../../shared/widgets/purok_autocomplete_field.dart';
 import '../../shared/widgets/app_yes_no_toggle.dart';
 import '../../shared/widgets/form_action_buttons.dart';
 import '../../shared/widgets/form_required_note.dart';
@@ -86,6 +88,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
   final _scrollController = ScrollController();
   final _fullNameFocusNode = FocusNode();
+  final _addressFocusNode = FocusNode();
+  List<String> _existingPuroks = [];
 
   final _fullNameKey = GlobalKey();
   final _birthDateKey = GlobalKey();
@@ -173,6 +177,37 @@ class _AddChildScreenState extends State<AddChildScreen> {
     } else if (widget.prefillGuardianName.isNotEmpty) {
       _relationship = 'Mother';
     }
+    _loadExistingPuroks();
+  }
+
+  void _loadExistingPuroks() {
+    try {
+      final repoPuroks = PurokRepository()
+          .getByBarangay(_currentBarangay)
+          .map((p) => p.name)
+          .where((p) => p.isNotEmpty)
+          .toList();
+      if (repoPuroks.isNotEmpty) {
+        _existingPuroks = repoPuroks;
+        if (_addressController.text.trim().isEmpty) {
+          _addressController.text = repoPuroks.first;
+        }
+        return;
+      }
+      final childPuroks = _childRepo
+          .getByBarangay(_currentBarangay)
+          .map((c) => Child.normalizePurok(c.address))
+          .where((a) => a.isNotEmpty);
+      final motherPuroks = _motherRepo
+          .getByBarangay(_currentBarangay)
+          .map((m) => Child.normalizePurok(m.address))
+          .where((a) => a.isNotEmpty);
+      final set = <String>{...childPuroks, ...motherPuroks};
+      _existingPuroks = set.toList()..sort();
+      if (_existingPuroks.isNotEmpty && _addressController.text.trim().isEmpty) {
+        _addressController.text = _existingPuroks.first;
+      }
+    } catch (_) {}
   }
 
   bool _hasUnsavedInput() {
@@ -195,7 +230,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
     if (_disabilityController.text.trim().isNotEmpty) return true;
     if (!_keepMotherDetails) {
       if (_addressController.text.trim().isNotEmpty &&
-          _addressController.text.trim() != (widget.prefillAddress.isNotEmpty ? widget.prefillAddress : 'Purok 1')) {
+          _addressController.text.trim() != widget.prefillAddress) {
         return true;
       }
       if (_guardianNameController.text.trim().isNotEmpty &&
@@ -286,7 +321,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       genderErr = 'Please select a gender';
     }
     if (_addressController.text.trim().isEmpty) {
-      addressErr = 'Purok address is required';
+      addressErr = 'Purok is required';
     }
     final guardianNameTrimmed = _guardianNameController.text.trim();
     if (guardianNameTrimmed.isEmpty) {
@@ -425,6 +460,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
     Mother? targetMother = _linkedMother;
     final isMotherGuardian = _relationship?.trim().toLowerCase() == 'mother';
+    final normalizedAddress = Child.normalizePurok(_addressController.text.trim());
 
     if (isMotherGuardian) {
       if (_keepMotherDetails && _linkedMother != null) {
@@ -434,7 +470,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
           barangay: _currentBarangay,
           guardianName: _guardianNameController.text.trim(),
           guardianContact: sanitizedGuardianContact,
-          address: _addressController.text.trim(),
+          address: normalizedAddress,
           guardianBirthDate: _guardianBirthDate,
           belongsToIpGroup: _belongsToIpGroup,
           excludeChildId: widget.existingChild?.id,
@@ -450,7 +486,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       fullName: _fullNameController.text.trim(),
       birthDate: _birthDate!,
       gender: _gender!,
-      address: _addressController.text.trim(),
+      address: normalizedAddress,
       barangay: _currentBarangay,
       belongsToIpGroup: _belongsToIpGroup,
       disability: (!_hasDisability || _effectiveDisability.isEmpty)
@@ -466,8 +502,12 @@ class _AddChildScreenState extends State<AddChildScreen> {
       createdAt: widget.existingChild?.createdAt ?? DateTime.now(),
       nutritionStatus: widget.existingChild?.nutritionStatus ?? 'Not weighed',
       lastWeighedAt: widget.existingChild?.lastWeighedAt,
-      isActive: widget.existingChild?.isActive ?? true,
-      inactiveReason: widget.existingChild?.inactiveReason,
+      isActive: ((DateTime.now().year - _birthDate!.year) * 12 + DateTime.now().month - _birthDate!.month - (DateTime.now().day < _birthDate!.day ? 1 : 0)) >= 59
+          ? false
+          : (widget.existingChild?.isActive ?? true),
+      inactiveReason: ((DateTime.now().year - _birthDate!.year) * 12 + DateTime.now().month - _birthDate!.month - (DateTime.now().day < _birthDate!.day ? 1 : 0)) >= 59
+          ? 'Reached 59 months of age'
+          : widget.existingChild?.inactiveReason,
       stuntingStatus: widget.existingChild?.stuntingStatus ?? 'Not weighed',
       wastingStatus: widget.existingChild?.wastingStatus ?? 'Not weighed',
     );
@@ -725,6 +765,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             focusNode: _fullNameFocusNode,
                             hasError: _fullNameError != null,
                             errorText: _fullNameError,
+                            textCapitalization: TextCapitalization.words,
                             onChanged: (_) {
                               if (_fullNameError != null) {
                                 setState(() => _fullNameError = null);
@@ -768,38 +809,15 @@ class _AddChildScreenState extends State<AddChildScreen> {
                               ),
                             ],
                           ),
-                          AppDropdownField(
-                            key: _addressKey,
-                            label: 'Purok Address',
-                            isRequired: true,
-                            hint: 'Select Purok',
-                            value: () {
-                              final norm = Child.normalizePurok(_addressController.text.trim());
-                              return const [
-                                'Purok 1',
-                                'Purok 2',
-                                'Purok 3',
-                                'Purok 4',
-                                'Purok 5',
-                                'Purok 6',
-                                'Purok 7',
-                              ].contains(norm) ? norm : null;
-                            }(),
-                            options: const [
-                              'Purok 1',
-                              'Purok 2',
-                              'Purok 3',
-                              'Purok 4',
-                              'Purok 5',
-                              'Purok 6',
-                              'Purok 7',
-                            ],
-                            hasError: _addressError != null,
+                          PurokAutocompleteField(
+                            fieldKey: _addressKey,
+                            controller: _addressController,
+                            focusNode: _addressFocusNode,
                             errorText: _addressError,
+                            suggestions: _existingPuroks,
                             onChanged: (v) {
-                              if (v != null) {
+                              if (_addressError != null && v.trim().isNotEmpty) {
                                 setState(() {
-                                  _addressController.text = v;
                                   _addressError = null;
                                 });
                               }
@@ -871,6 +889,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             controller: _guardianNameController,
                             hasError: _guardianNameError != null,
                             errorText: _guardianNameError,
+                            textCapitalization: TextCapitalization.words,
                             onChanged: (_) {
                               if (_guardianNameError != null) {
                                 setState(() => _guardianNameError = null);
@@ -1117,6 +1136,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   void dispose() {
     _scrollController.dispose();
     _fullNameFocusNode.dispose();
+    _addressFocusNode.dispose();
     _fullNameController.dispose();
     _addressController.dispose();
     _guardianNameController.dispose();

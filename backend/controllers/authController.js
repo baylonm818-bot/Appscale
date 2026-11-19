@@ -399,6 +399,8 @@ exports.login = async (req, res) => {
         role: user.role,
         barangay: user.barangay,
         municipality: user.municipality,
+        language: user.language || 'en',
+        age_format_days: user.age_format_days ? 1 : 0,
         profile_picture: user.profile_picture
           ? (user.profile_picture.startsWith('http') || user.profile_picture.startsWith('data:')
               ? user.profile_picture

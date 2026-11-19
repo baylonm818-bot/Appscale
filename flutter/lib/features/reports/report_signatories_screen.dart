@@ -48,7 +48,11 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
       _mnaoController.text = remembered.mnaoAdminAideName;
       _dnpcController.text = remembered.dnpcName;
     } else {
-      // Blank by default
+      // Fallback to official admin-configured signatories
+      final adminConfigured = _repo.resolveForUser(_settings.authUser);
+      _punongBarangayController.text = adminConfigured.punongBarangayName;
+      _mnaoController.text = adminConfigured.mnaoAdminAideName;
+      _dnpcController.text = adminConfigured.dnpcName;
       _remember = false;
     }
   }
@@ -95,6 +99,7 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
   @override
   Widget build(BuildContext context) {
     final hasSaved = _repo.hasRemembered(_userId);
+    final isBns = _settings.authUser?['role']?.toString().toLowerCase() != 'admin';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -121,7 +126,7 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
                       style: AppTextStyles.h2.copyWith(color: Colors.white),
                     ),
                   ),
-                  if (hasSaved)
+                  if (hasSaved && !isBns)
                     TextButton.icon(
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.white70,
@@ -143,14 +148,39 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Names left blank will print an empty line for physical signature after printing.',
-                      style: AppTextStyles.body.copyWith(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
+                    if (isBns) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.primaryGreen.withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.admin_panel_settings_outlined, color: AppColors.primaryGreen, size: 18),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Official report signatories are configured by the Municipal Administrator on the Web Portal. Signatories shown below are applied to all generated reports.',
+                                style: TextStyle(fontSize: 12, color: AppColors.darkGreen, height: 1.3),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
+                    ] else ...[
+                      Text(
+                        'Names left blank will print an empty line for physical signature after printing.',
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.md),
 
                     // ── Signatory Names ──
                     Text('Submitted / Prepared by (BNS)', style: AppTextStyles.label),
@@ -183,51 +213,70 @@ class _ReportSignatoriesScreenState extends State<ReportSignatoriesScreen> {
                     const SizedBox(height: AppSpacing.md),
                     AppTextField(
                       label: 'Noted by · Punong Barangay',
-                      hint: 'Leave blank to sign by hand',
+                      hint: 'Configured by Admin',
                       icon: Icons.person_outline,
                       controller: _punongBarangayController,
+                      readOnly: isBns,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     AppTextField(
                       label: 'Approved by · Admin Aide, MNAO',
-                      hint: 'Leave blank to sign by hand',
+                      hint: 'Configured by Admin',
                       icon: Icons.person_outline,
                       controller: _mnaoController,
+                      readOnly: isBns,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     AppTextField(
                       label: 'Approved by · DNPC',
-                      hint: 'Leave blank to sign by hand',
+                      hint: 'Configured by Admin',
                       icon: Icons.person_outline,
                       controller: _dnpcController,
+                      readOnly: isBns,
                     ),
                     const SizedBox(height: AppSpacing.md),
 
-                    // ── Remember Checkbox ──
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      value: _remember,
-                      onChanged: (val) {
-                        setState(() => _remember = val ?? false);
-                      },
-                      title: const Text(
-                        'Remember for next time',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    if (!isBns) ...[
+                      // ── Remember Checkbox ──
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        value: _remember,
+                        onChanged: (val) {
+                          setState(() => _remember = val ?? false);
+                        },
+                        title: const Text(
+                          'Remember for next time',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: const Text(
+                          'Saves these names for your account on this device.',
+                          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
                       ),
-                      subtitle: const Text(
-                        'Saves these names for your account on this device.',
-                        style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.lg),
 
-                    FormActionButtons(
-                      saveLabel: 'Save',
-                      onSave: _save,
-                      onCancel: () => Navigator.pop(context),
-                      isSaving: _isSaving,
-                    ),
+                      FormActionButtons(
+                        saveLabel: 'Save',
+                        onSave: _save,
+                        onCancel: () => Navigator.pop(context),
+                        isSaving: _isSaving,
+                      ),
+                    ] else ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primaryGreen,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Close', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -11,8 +11,13 @@ import {
   Plus, 
   Search,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  FileText,
+  Download,
+  Printer,
+  X
 } from 'lucide-react';
+import { capitalizeWords } from '../utils/i18n';
 
 /* ── Helpers ── */
 const statusLabels = { pending: 'Scheduled', done: 'Completed', cancelled: 'Cancelled', archived: 'Archived', missed: 'Missed' };
@@ -214,6 +219,142 @@ function Schedule() {
   const [selectedDateKey, setSelectedDateKey] = useState(() => formatDateKey(new Date()));
   const [fetching, setFetching]         = useState(false);
 
+  // Activities Report State
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportFromDate, setReportFromDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  });
+  const [reportToDate, setReportToDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+  });
+  const [reportBarangay, setReportBarangay] = useState('All Barangays');
+
+  const reportFilteredActivities = useMemo(() => {
+    return activities.filter((act) => {
+      const actDate = act.schedule_date ? act.schedule_date.slice(0, 10) : '';
+      if (reportFromDate && actDate < reportFromDate) return false;
+      if (reportToDate && actDate > reportToDate) return false;
+      if (reportBarangay !== 'All Barangays' && act.barangay !== reportBarangay) return false;
+      return true;
+    }).sort((a, b) => (a.schedule_date || '').localeCompare(b.schedule_date || ''));
+  }, [activities, reportFromDate, reportToDate, reportBarangay]);
+
+  const handlePrintReport = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to view printable report.');
+      return;
+    }
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Report of Activities - ${reportBarangay}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 30px; color: #111; font-size: 12px; }
+    .header { text-align: center; margin-bottom: 24px; }
+    .header p { margin: 2px 0; }
+    .header .gov { font-size: 11px; text-transform: uppercase; color: #444; }
+    .header .title { font-size: 15px; font-weight: bold; margin-top: 8px; text-decoration: underline; }
+    .header .meta { font-size: 11px; margin-top: 4px; color: #555; }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; font-size: 11px; }
+    th { background-color: #f0f0f0; font-weight: bold; }
+    .status { text-transform: uppercase; font-weight: bold; font-size: 10px; }
+    .signatures { margin-top: 45px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+    .sig-col { width: 45%; text-align: center; }
+    .sig-line { margin-top: 40px; border-top: 1px solid #333; padding-top: 4px; font-weight: bold; }
+    @media print {
+      body { margin: 15mm; }
+      @page { size: portrait; margin: 10mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <p class="gov">Republic of the Philippines</p>
+    <p class="gov">Province of Marinduque</p>
+    <p class="gov">Municipality of Gasan</p>
+    <p class="title">NUTRITION PROGRAM — CALENDAR & REPORT OF ACTIVITIES</p>
+    <p class="meta"><strong>Date Range:</strong> ${reportFromDate} to ${reportToDate} &nbsp;|&nbsp; <strong>Barangay:</strong> ${reportBarangay}</p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 80px;">Date</th>
+        <th style="width: 70px;">Time</th>
+        <th>Activity Title</th>
+        <th>Type</th>
+        <th>Venue</th>
+        <th>Target Role</th>
+        <th>Barangay</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${reportFilteredActivities.length === 0 ? '<tr><td colspan="8" style="text-align:center; padding: 20px;">No scheduled activities found for this period and criteria.</td></tr>' :
+        reportFilteredActivities.map(act => `
+          <tr>
+            <td>${act.schedule_date ? act.schedule_date.slice(0, 10) : '—'}</td>
+            <td>${formatScheduleTime(act.schedule_time) || '—'}</td>
+            <td><strong>${act.title || 'Untitled'}</strong>${act.notes ? `<br><small style="color:#555;">${act.notes}</small>` : ''}</td>
+            <td>${(act.schedule_type || 'activity').replace('_', ' ')}</td>
+            <td>${act.venue || '—'}</td>
+            <td>${act.target_role || 'All'}</td>
+            <td>${act.barangay || 'All Barangays'}</td>
+            <td class="status">${act.status || 'pending'}</td>
+          </tr>
+        `).join('')}
+    </tbody>
+  </table>
+  <div class="signatures">
+    <div class="sig-col">
+      <p style="margin: 0; font-size: 11px;">Prepared by:</p>
+      <div class="sig-line">Barangay Nutrition Scholar / BHW</div>
+      <p style="margin: 2px 0 0; font-size: 10px; color: #555;">Barangay Health & Nutrition Worker</p>
+    </div>
+    <div class="sig-col">
+      <p style="margin: 0; font-size: 11px;">Noted by:</p>
+      <div class="sig-line">Municipal Nutrition Action Officer (MNAO)</div>
+      <p style="margin: 2px 0 0; font-size: 10px; color: #555;">Municipal Nutrition Program</p>
+    </div>
+  </div>
+  <script>
+    window.onload = function() { window.print(); };
+  </script>
+</body>
+</html>`;
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  const handleDownloadCsv = () => {
+    if (!reportFilteredActivities || reportFilteredActivities.length === 0) return;
+    const headers = ['Schedule ID', 'Date', 'Time', 'Title', 'Type', 'Venue', 'Barangay', 'Target Role', 'Status', 'Notes'];
+    const rows = reportFilteredActivities.map(act => [
+      act.schedule_id,
+      act.schedule_date ? act.schedule_date.slice(0, 10) : '',
+      `"${formatScheduleTime(act.schedule_time) || ''}"`,
+      `"${act.title || ''}"`,
+      `"${(act.schedule_type || '').replace('_', ' ')}"`,
+      `"${act.venue || ''}"`,
+      `"${act.barangay || 'All Barangays'}"`,
+      `"${act.target_role || 'All'}"`,
+      `"${act.status || 'pending'}"`,
+      `"${act.notes || ''}"`,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Activities_Report_${reportBarangay.replace(/\s+/g, '_')}_${reportFromDate}_to_${reportToDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const fetchActivities = async () => {
     setFetching(true);
     setError('');
@@ -247,7 +388,8 @@ function Schedule() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const finalVal = (name === 'title' || name === 'venue') ? capitalizeWords(value) : value;
+    setForm((prev) => ({ ...prev, [name]: finalVal }));
     if (schedErrors[name]) {
       setSchedErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -523,14 +665,25 @@ function Schedule() {
           />
         </div>
 
-        {/* Add Activity Button */}
-        <button
-          onClick={() => handleOpenAddForDate(selectedDateKey)}
-          className="flex items-center justify-center gap-2 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-sm cursor-pointer shrink-0"
-        >
-          <Plus size={18} />
-          <span>Add Activity</span>
-        </button>
+        {/* Action Buttons: Activities Report & Add Activity */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowReportModal(true)}
+            className="flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-[#1b5e20] border-2 border-green-200 px-4 py-2.5 rounded-xl font-bold text-sm transition shadow-2xs cursor-pointer shrink-0"
+            title="Generate and export activities report per date range and barangay"
+          >
+            <FileText size={17} />
+            <span>Activities Report</span>
+          </button>
+
+          <button
+            onClick={() => handleOpenAddForDate(selectedDateKey)}
+            className="flex items-center justify-center gap-2 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-sm cursor-pointer shrink-0"
+          >
+            <Plus size={18} />
+            <span>Add Activity</span>
+          </button>
+        </div>
       </div>
 
       {/* ── Main Interactive Calendar View ── */}
@@ -999,6 +1152,96 @@ function Schedule() {
         </motion.div>
       )}
     </AnimatePresence>,
+    document.body
+  )}
+
+  {/* ── Activities Report Modal ── */}
+  {showReportModal && createPortal(
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col my-8">
+        <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between text-white shrink-0">
+          <div className="flex items-center gap-2">
+            <FileText size={20} />
+            <div>
+              <h3 className="text-base font-bold">Export Activities Report</h3>
+              <p className="text-xs text-white/80">Generate calendar & activity summary</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowReportModal(false)}
+            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <FormLabel label="From Date" required />
+              <input
+                type="date"
+                value={reportFromDate}
+                onChange={(e) => setReportFromDate(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 bg-white"
+              />
+            </div>
+            <div>
+              <FormLabel label="To Date" required />
+              <input
+                type="date"
+                value={reportToDate}
+                onChange={(e) => setReportToDate(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 bg-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <FormLabel label="Barangay Coverage" required />
+            <select
+              value={reportBarangay}
+              onChange={(e) => setReportBarangay(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 bg-white"
+            >
+              <option value="All Barangays">All Barangays (Municipal-wide)</option>
+              {['Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang', 'Banot', 'Banuyo', 'Bognuyan', 'Cabugao', 'Dawis', 'Dili', 'Libtangin', 'Mahunig', 'Mangiliol', 'Masiga', 'Mat. Gasan', 'Pangi', 'Pinggan', 'Tabionan', 'Tiguion', 'Brgy. Uno', 'Brgy. Dos', 'Brgy. Tres', 'Tapuyan'].map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between text-xs">
+            <span className="font-semibold text-gray-700">Matching Activities:</span>
+            <span className="font-bold text-[#1b5e20] bg-green-100 px-2.5 py-0.5 rounded-full">
+              {reportFilteredActivities.length} record(s)
+            </span>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={handlePrintReport}
+              disabled={reportFilteredActivities.length === 0}
+              className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:opacity-95 transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-sm"
+            >
+              <Printer size={15} />
+              <span>Print / Save PDF</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadCsv}
+              disabled={reportFilteredActivities.length === 0}
+              className="flex-1 py-2.5 rounded-xl text-xs font-bold text-[#1b5e20] bg-white border border-green-300 hover:bg-green-50 transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs"
+            >
+              <Download size={15} />
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
     document.body
   )}
     </div>

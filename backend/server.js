@@ -24,6 +24,7 @@ const bhwMedicalRecordsRoutes = require('./routes/bhwMedicalRecordsRoutes');
 const bhwNotificationRoutes = require('./routes/bhwNotificationRoutes');
 const bhwProfileRoutes = require('./routes/bhwProfileRoutes');
 const mobileBeneficiaryRoutes = require('./routes/mobileBeneficiaryRoutes');
+const purokRoutes = require('./routes/purokRoutes');
 
 
 const app = express();
@@ -129,6 +130,7 @@ app.use('/api/bhw/notification', bhwNotificationRoutes);
 app.use('/api/bhw/notifications', bhwNotificationRoutes);
 app.use('/api/bhw/profile', bhwProfileRoutes);
 app.use('/api/mobile', mobileBeneficiaryRoutes);
+app.use('/api/puroks', purokRoutes);
 
 // Serve uploads with explicit headers to allow cross-origin image usage from frontend
 // Ensure uploads responses include CORP and CORS headers before static serving

@@ -260,6 +260,23 @@ class MeasurementTile extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (measurement.signature != null && measurement.signature!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.draw, size: 13, color: AppColors.primaryGreen),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Mother\'s Signature Attached',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.primaryGreen,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

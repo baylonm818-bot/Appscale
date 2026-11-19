@@ -7,6 +7,8 @@ import '../../core/utils/safe_parser.dart';
 import '../local/hive_boxes.dart';
 import '../local/app_data_bus.dart';
 import '../local/referral_repository.dart';
+import '../local/purok_repository.dart';
+import '../models/purok.dart';
 
 /// Central service that is the single source of truth for pulling server data
 /// into the local Hive cache. Called after login and on reconnect.
@@ -505,6 +507,16 @@ class SyncService {
       await motherVisitBox.put(motherId, merged);
     }
 
+    // ── 14. Puroks ────────────────────────────────────────────────────────────
+    final puroksList = (payload['puroks'] as List? ?? []);
+    if (puroksList.isNotEmpty) {
+      final puroks = puroksList
+          .whereType<Map>()
+          .map((p) => Purok.fromMap(p))
+          .toList();
+      await PurokRepository().saveAll(puroks);
+    }
+
     debugPrint(
       '[SyncService] Seeded '
       '${children.length} children, '
@@ -514,7 +526,8 @@ class SyncService {
       '${schedules.length} schedules, '
       '${notifications.length} notifications, '
       '${enrollments.length} enrollments, '
-      '${mealPlans.length} meal plans',
+      '${mealPlans.length} meal plans, '
+      '${puroksList.length} puroks',
     );
   }
 
