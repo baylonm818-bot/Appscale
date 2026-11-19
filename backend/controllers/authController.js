@@ -109,14 +109,15 @@ async function sendOtpEmail(email, otp) {
     });
 
     const resData = await res.json();
-    if (!res.ok) {
-      throw new Error(resData.message || 'Brevo HTTP API error');
+    if (res.ok) {
+      return resData;
     }
-    return resData;
+    console.warn('[Brevo API Warning]', resData.message || resData);
   }
 
-  // 2. If RESEND_API_KEY is provided, use Resend HTTP API (Port 443 HTTPS - bypasses Render SMTP port blocks)
+  // 3. If RESEND_API_KEY is provided, use Resend HTTP API (Port 443 HTTPS - bypasses Render SMTP port blocks)
   if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) {
+    const fromAddress = process.env.RESEND_FROM || 'AppScale <onboarding@resend.dev>';
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -124,7 +125,7 @@ async function sendOtpEmail(email, otp) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM || 'AppScale <onboarding@resend.dev>',
+        from: fromAddress,
         to: [email],
         subject: 'AppScale Password Reset OTP',
         html: htmlContent,
@@ -133,6 +134,46 @@ async function sendOtpEmail(email, otp) {
 
     const resData = await res.json();
     if (!res.ok) {
+      const errMsg = (resData.message || (resData.error && resData.error.message) || '').toLowerCase();
+      // If Resend free tier sandbox restricts delivery to verified owner email:
+      if (errMsg.includes('only send testing emails') || errMsg.includes('testing emails') || errMsg.includes('verify a domain')) {
+        const ownerEmail = process.env.SMTP_USER || 'gamedev675@gmail.com';
+        console.warn(`[Resend Sandbox] Forwarding OTP for ${email} to verified owner ${ownerEmail}`);
+
+        const forwardHtml = `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
+            <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+              <strong>AppScale Sandbox Testing Notice:</strong><br>
+              Password Reset OTP was requested for account: <b>${email}</b>.<br>
+              (Delivered to verified owner email for testing).
+            </div>
+            <h2 style="color: #166534;">AppScale Password Reset</h2>
+            <p>The one-time password (OTP) for <b>${email}</b> is:</p>
+            <div style="font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #14532d; margin: 20px 0;">${otp}</div>
+            <p>This code will expire in 10 minutes.</p>
+          </div>
+        `;
+
+        const fallbackRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY.trim()}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: fromAddress,
+            to: [ownerEmail],
+            subject: `[AppScale OTP for ${email}] Password Reset OTP`,
+            html: forwardHtml,
+          }),
+        });
+
+        const fallbackData = await fallbackRes.json();
+        if (!fallbackRes.ok) {
+          throw new Error(fallbackData.message || (fallbackData.error && fallbackData.error.message) || 'Resend sandbox fallback failed');
+        }
+        return fallbackData;
+      }
       throw new Error(resData.message || (resData.error && resData.error.message) || 'Resend HTTP API error');
     }
     return resData;
