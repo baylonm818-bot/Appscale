@@ -75,7 +75,31 @@ async function sendOtpEmail(email, otp) {
     </div>
   `;
 
-  // 1. If RESEND_API_KEY is provided, use Resend HTTP API (Port 443 HTTPS - bypasses Render SMTP port blocks)
+  // 1. If BREVO_API_KEY is provided, use Brevo HTTP API (Port 443 HTTPS - supports any recipient without domain verification)
+  if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim()) {
+    const senderEmail = process.env.BREVO_SENDER || process.env.SMTP_USER || 'gamedev675@gmail.com';
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY.trim(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: 'AppScale Nutrition', email: senderEmail },
+        to: [{ email }],
+        subject: 'AppScale Password Reset OTP',
+        htmlContent: htmlContent,
+      }),
+    });
+
+    const resData = await res.json();
+    if (!res.ok) {
+      throw new Error(resData.message || 'Brevo HTTP API error');
+    }
+    return resData;
+  }
+
+  // 2. If RESEND_API_KEY is provided, use Resend HTTP API (Port 443 HTTPS - bypasses Render SMTP port blocks)
   if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
