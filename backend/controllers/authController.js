@@ -155,6 +155,7 @@ exports.forgotPassword = async (req, res) => {
       passwordResetTokens.delete(normalizedEmail.toLowerCase());
       return res.status(500).json({
         message: 'Failed to send OTP to your email. Please check the email server configuration or contact the administrator.',
+        reason: emailError && emailError.message ? emailError.message : 'Unknown error',
       });
     }
   } catch (error) {
