@@ -75,7 +75,23 @@ async function sendOtpEmail(email, otp) {
     </div>
   `;
 
-  // 1. If BREVO_API_KEY is provided, use Brevo HTTP API (Port 443 HTTPS - supports any recipient without domain verification)
+  // 1. If GOOGLE_SCRIPT_URL is provided, use Google Apps Script Webhook (Port 443 HTTPS - sends to ANY email in the world directly via user's Gmail without domain/IP blocks)
+  const scriptUrl = process.env.GOOGLE_SCRIPT_URL || process.env.GOOGLE_APPS_SCRIPT_URL;
+  if (scriptUrl && scriptUrl.trim()) {
+    const res = await fetch(scriptUrl.trim(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: email,
+        subject: 'AppScale Password Reset OTP',
+        html: htmlContent,
+      }),
+    });
+    const resData = await res.json();
+    return resData;
+  }
+
+  // 2. If BREVO_API_KEY is provided, use Brevo HTTP API (Port 443 HTTPS - supports any recipient without domain verification)
   if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim()) {
     const senderEmail = process.env.BREVO_SENDER || process.env.SMTP_USER || 'gamedev675@gmail.com';
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
