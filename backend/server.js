@@ -104,6 +104,37 @@ app.get('/api/download-apk', (req, res) => {
     }
 });
 
+// Public App Version Check route for mobile in-app updates
+app.get('/api/app-version', (req, res) => {
+    const fs = require('fs');
+    const apkPath = path.join(__dirname, 'uploads', 'appscale.apk');
+    const hasApk = fs.existsSync(apkPath);
+    let fileSize = 0;
+    let modifiedAt = null;
+    if (hasApk) {
+        try {
+            const stats = fs.statSync(apkPath);
+            fileSize = stats.size;
+            modifiedAt = stats.mtime;
+        } catch (e) {}
+    }
+
+    const version = process.env.APP_VERSION || '3.3.0';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 33);
+    const releaseNotes = process.env.APP_RELEASE_NOTES ||
+        '• Purok management per barangay\n• Fixed dashboard SAM count & multi-indicator sync\n• Clean referral display with full history logging\n• Month-end age clamping & 59-month auto-graduation\n• In-app automatic update support';
+
+    res.json({
+        latestVersion: version,
+        versionCode: versionCode,
+        hasApk: hasApk,
+        downloadUrl: '/api/download-apk',
+        fileSizeBytes: fileSize,
+        releaseNotes: releaseNotes,
+        updatedAt: modifiedAt || new Date(),
+    });
+});
+
 // JWT middleware will protect routes below (added dynamically)
 const jwtMiddleware = require('./middleware/jwtMiddleware');
 

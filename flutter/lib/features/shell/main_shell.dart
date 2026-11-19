@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../core/services/app_update_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/main_scaffold.dart';
 import '../beneficiary/add_profile_sheet.dart';
@@ -215,6 +216,19 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         _restoreFromServer();
       }
       _wasOffline = !isOnline;
+    });
+
+    // In-app auto-update check (delayed 3s after shell mounts)
+    Future.delayed(const Duration(seconds: 3), () async {
+      if (!mounted) return;
+      try {
+        final updateInfo = await AppUpdateService.checkForUpdate();
+        if (mounted && updateInfo != null && updateInfo.hasUpdate) {
+          await AppUpdateService.showUpdateDialog(context, updateInfo);
+        }
+      } catch (e) {
+        debugPrint('[Shell] Auto-update check error: $e');
+      }
     });
   }
 

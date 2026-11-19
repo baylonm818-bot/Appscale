@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/constants/api_constants.dart';
+import '../../core/services/app_update_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -35,6 +36,32 @@ class UserProfileScreen extends StatefulWidget {
 class _UserProfileScreenState extends State<UserProfileScreen> {
   bool _isUploadingPicture = false;
   String? _uploadError;
+  bool _checkingUpdate = false;
+
+  Future<void> _handleManualUpdateCheck() async {
+    setState(() => _checkingUpdate = true);
+    try {
+      final updateInfo = await AppUpdateService.checkForUpdate();
+      if (!mounted) return;
+      if (updateInfo != null && updateInfo.hasUpdate) {
+        await AppUpdateService.showUpdateDialog(context, updateInfo, isManualCheck: true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              updateInfo == null
+                  ? 'Hindi makakonekta sa server para mag-check ng update.'
+                  : 'Nasa pinakabagong bersyon ka na (v${AppUpdateService.currentVersion}).',
+            ),
+            backgroundColor: updateInfo == null ? AppColors.statAmber : AppColors.primaryGreen,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _checkingUpdate = false);
+    }
+  }
 
   void _onDataChanged() {
     if (mounted) setState(() {});
@@ -1156,7 +1183,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 _buildInfoRow(
                   Icons.info_outline,
                   'App Version',
-                  'AppScale v3.2.0 (OPT Plus Standards)',
+                  'AppScale v${AppUpdateService.currentVersion}',
+                  trailing: TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: _checkingUpdate ? null : _handleManualUpdateCheck,
+                    child: _checkingUpdate
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGreen),
+                          )
+                        : const Text(
+                            'Check',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryGreen,
+                            ),
+                          ),
+                  ),
                 ),
                 const Divider(height: 1, color: AppColors.border),
                 _buildInfoRow(
@@ -1320,7 +1369,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(IconData icon, String label, String value, {Widget? trailing}) {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
@@ -1353,6 +1402,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ),
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            trailing,
+          ],
         ],
       ),
     );
