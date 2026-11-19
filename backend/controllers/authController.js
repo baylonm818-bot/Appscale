@@ -65,21 +65,47 @@ function getTransporter() {
 }
 
 async function sendOtpEmail(email, otp) {
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
+      <h2 style="color: #166534;">AppScale Password Reset</h2>
+      <p>Your one-time password (OTP) is:</p>
+      <div style="font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #14532d; margin: 20px 0;">${otp}</div>
+      <p>This code will expire in 10 minutes.</p>
+      <p>If you did not request this, you can ignore this email.</p>
+    </div>
+  `;
+
+  // 1. If RESEND_API_KEY is provided, use Resend HTTP API (Port 443 HTTPS - bypasses Render SMTP port blocks)
+  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY.trim()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: process.env.RESEND_FROM || 'AppScale <onboarding@resend.dev>',
+        to: [email],
+        subject: 'AppScale Password Reset OTP',
+        html: htmlContent,
+      }),
+    });
+
+    const resData = await res.json();
+    if (!res.ok) {
+      throw new Error(resData.message || (resData.error && resData.error.message) || 'Resend HTTP API error');
+    }
+    return resData;
+  }
+
+  // 2. Otherwise use standard Nodemailer SMTP (Works on local and non-restricted cloud servers)
   const { transporter, from } = getTransporter();
 
-  await transporter.sendMail({
+  return transporter.sendMail({
     from,
     to: email,
     subject: 'AppScale Password Reset OTP',
-    html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
-        <h2 style="color: #166534;">AppScale Password Reset</h2>
-        <p>Your one-time password (OTP) is:</p>
-        <div style="font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #14532d; margin: 20px 0;">${otp}</div>
-        <p>This code will expire in 10 minutes.</p>
-        <p>If you did not request this, you can ignore this email.</p>
-      </div>
-    `,
+    html: htmlContent,
   });
 }
 
