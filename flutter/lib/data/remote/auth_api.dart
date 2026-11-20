@@ -136,12 +136,12 @@ class AuthApi {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/forgot-password'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email.trim()}),
+      body: jsonEncode({'email': email.trim(), 'platform': 'mobile'}),
     ).timeout(const Duration(seconds: 15));
 
     final body = _decodeJson(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = body['message'] ?? 'Unable to send OTP.';
+      final message = body['message'] ?? 'Unknown account.';
       throw Exception(message);
     }
 
@@ -155,7 +155,7 @@ class AuthApi {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/verify-otp'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email.trim(), 'otp': otp.trim()}),
+      body: jsonEncode({'email': email.trim(), 'otp': otp.trim(), 'platform': 'mobile'}),
     );
 
     final body = _decodeJson(response);
@@ -174,7 +174,7 @@ class AuthApi {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/reset-password'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email.trim(), 'newPassword': newPassword}),
+      body: jsonEncode({'email': email.trim(), 'newPassword': newPassword, 'platform': 'mobile'}),
     );
 
     final body = _decodeJson(response);

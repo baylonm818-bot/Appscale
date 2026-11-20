@@ -166,13 +166,13 @@ function LoginCard({ emailInputRef }) {
       const res = await fetch(`${API_URL}/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail.trim() }),
+        body: JSON.stringify({ email: forgotEmail.trim(), platform: "web" }),
       });
 
       const data = await res.json();
       if (!res.ok) {
         setForgotMessageType("error");
-        setForgotMessage(data.message || "No account found for this email.");
+        setForgotMessage(data.message || "Unknown account.");
         return;
       }
 
@@ -259,6 +259,7 @@ function LoginCard({ emailInputRef }) {
         body: JSON.stringify({
           email: forgotEmail,
           newPassword,
+          platform: "web",
         }),
       });
 

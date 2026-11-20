@@ -193,6 +193,7 @@ async function sendOtpEmail(email, otp) {
 // Check if account exists and can receive password reset
 exports.checkAccount = async (req, res) => {
   const email = (req.query.email || req.body.email || '').trim();
+  const platform = ((req.query.platform || req.body.platform || '').trim()).toLowerCase();
 
   if (!email) {
     return res.status(400).json({ message: 'Email is required.', exists: false });
@@ -205,16 +206,29 @@ exports.checkAccount = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(200).json({ exists: false, canReset: false, message: 'No registered account found with this email.' });
+      return res.status(200).json({ exists: false, canReset: false, message: 'Unknown account.' });
     }
 
     const user = rows[0];
-    const canReset = ['admin', 'bhw', 'bns'].includes(user.role);
+    const userRole = (user.role || '').toLowerCase();
+
+    // Platform-specific isolation:
+    // Web: only web accounts (admin, bhw) are recognized. BNS is mobile-only -> "Unknown account."
+    if (platform === 'web' && userRole === 'bns') {
+      return res.status(200).json({ exists: false, canReset: false, message: 'Unknown account.' });
+    }
+
+    // Mobile: only mobile accounts (bns, bhw) are recognized. Admin is web-only -> "Unknown account."
+    if (platform === 'mobile' && userRole === 'admin') {
+      return res.status(200).json({ exists: false, canReset: false, message: 'Unknown account.' });
+    }
+
+    const canReset = ['admin', 'bhw', 'bns'].includes(userRole);
 
     return res.status(200).json({
-      exists: true,
+      exists: canReset,
       canReset,
-      message: canReset ? 'Account verified.' : 'Password reset is not authorized for this account.'
+      message: canReset ? 'Account verified.' : 'Unknown account.'
     });
   } catch (error) {
     console.error('Check account error:', error);
@@ -223,8 +237,9 @@ exports.checkAccount = async (req, res) => {
 };
 
 exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
+  const { email, platform } = req.body;
   const normalizedEmail = (email || '').trim();
+  const normalizedPlatform = (platform || '').trim().toLowerCase();
 
   if (!normalizedEmail) {
     return res.status(400).json({ message: 'Email is required.' });
@@ -237,14 +252,25 @@ exports.forgotPassword = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: 'No account found for this email.' });
+      return res.status(404).json({ message: 'Unknown account.' });
     }
 
     const user = rows[0];
-    console.log('Selected user for login:', user.user_id, user.role);
+    const userRole = (user.role || '').toLowerCase();
 
-    if (!['admin', 'bhw', 'bns'].includes(user.role)) {
-      return res.status(403).json({ message: 'Password reset is not authorized for this account.' });
+    // Platform-specific isolation:
+    // Web: only web accounts (admin, bhw) are recognized. BNS is mobile-only -> "Unknown account."
+    if (normalizedPlatform === 'web' && userRole === 'bns') {
+      return res.status(404).json({ message: 'Unknown account.' });
+    }
+
+    // Mobile: only mobile accounts (bns, bhw) are recognized. Admin is web-only -> "Unknown account."
+    if (normalizedPlatform === 'mobile' && userRole === 'admin') {
+      return res.status(404).json({ message: 'Unknown account.' });
+    }
+
+    if (!['admin', 'bhw', 'bns'].includes(userRole)) {
+      return res.status(404).json({ message: 'Unknown account.' });
     }
 
     const otp = generateOtp();
@@ -272,8 +298,9 @@ exports.forgotPassword = async (req, res) => {
 };
 
 exports.resetPassword = async (req, res) => {
-  const { email, newPassword } = req.body;
+  const { email, newPassword, platform } = req.body;
   const normalizedEmail = (email || '').trim();
+  const normalizedPlatform = (platform || '').trim().toLowerCase();
 
   if (!normalizedEmail || !newPassword) {
     return res.status(400).json({ message: 'Email and new password are required.' });
@@ -302,13 +329,22 @@ exports.resetPassword = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: 'No account found for this email.' });
+      return res.status(404).json({ message: 'Unknown account.' });
     }
 
     const user = rows[0];
+    const userRole = (user.role || '').toLowerCase();
 
-    if (!['admin', 'bhw', 'bns'].includes(user.role)) {
-      return res.status(403).json({ message: 'Password reset is not authorized for this account.' });
+    if (normalizedPlatform === 'web' && userRole === 'bns') {
+      return res.status(404).json({ message: 'Unknown account.' });
+    }
+
+    if (normalizedPlatform === 'mobile' && userRole === 'admin') {
+      return res.status(404).json({ message: 'Unknown account.' });
+    }
+
+    if (!['admin', 'bhw', 'bns'].includes(userRole)) {
+      return res.status(404).json({ message: 'Unknown account.' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
