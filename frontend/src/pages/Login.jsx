@@ -286,6 +286,29 @@ function LoginCard({ emailInputRef }) {
 
   return (
     <div className="relative w-full max-w-md rounded-[28px] border border-white/40 bg-white/95 p-7 shadow-[0_30px_80px_rgba(10,42,20,0.32)] backdrop-blur-xl sm:p-9 transition-all duration-300 hover:shadow-[0_35px_90px_rgba(10,42,20,0.40)]">
+      {/* ── Top-left Back button (katapat ng X button) for Forgot Password Modal ── */}
+      {showForgotPassword && (
+        <button
+          type="button"
+          onClick={() => {
+            setForgotMessage("");
+            if (resetStep === "password") {
+              setResetStep("otp");
+            } else if (resetStep === "otp") {
+              setResetStep("email");
+            } else {
+              setShowForgotPassword(false);
+            }
+          }}
+          aria-label="Back"
+          className="absolute left-5 top-5 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-[#1b5e20] transition-all duration-200 border border-slate-200 shadow-sm active:scale-90"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+        </button>
+      )}
+
       {/* ── Top-right X button for Forgot Password Modal ── */}
       {showForgotPassword && (
         <button
@@ -305,9 +328,11 @@ function LoginCard({ emailInputRef }) {
 
       <div className="mb-8">
         <h2 className="text-3xl font-black tracking-tight text-slate-900">
-          Welcome back!
+          {showForgotPassword ? "Reset Password" : "Welcome back!"}
         </h2>
-        <p className="mt-2 text-sm text-slate-500">Sign in to your account to continue</p>
+        <p className="mt-2 text-sm text-slate-500">
+          {showForgotPassword ? "Follow the steps to recover your account" : "Sign in to your account to continue"}
+        </p>
       </div>
 
       {error && (
@@ -340,18 +365,6 @@ function LoginCard({ emailInputRef }) {
               {resetStep === "otp" && "Verify OTP — Step 2 of 3"}
               {resetStep === "password" && "New Password — Step 3 of 3"}
             </h3>
-            {resetStep !== "email" && (
-              <button
-                type="button"
-                onClick={() => {
-                  setForgotMessage("");
-                  setResetStep(resetStep === "password" ? "otp" : "email");
-                }}
-                className="text-xs text-slate-500 hover:text-emerald-700 font-semibold"
-              >
-                ← Back
-              </button>
-            )}
           </div>
 
           {/* ── STEP 1: Email ── */}
