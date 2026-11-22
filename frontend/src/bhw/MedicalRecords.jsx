@@ -20,7 +20,6 @@ import {
   ShieldCheck,
   Clock,
   Plus,
-  Download,
   Utensils,
   FileSpreadsheet,
 } from 'lucide-react';
@@ -468,16 +467,6 @@ function MedicalRecords() {
                           <CountUp value={filteredChildren.length} />
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={exportChildrenList}
-                        disabled={filteredChildren.length === 0}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-[#1b5e20] bg-white border border-green-200 hover:bg-green-50 shadow-2xs transition disabled:opacity-50 cursor-pointer"
-                        title="Export filtered list to Excel/CSV"
-                      >
-                        <Download size={13} />
-                        <span>Export</span>
-                      </button>
                     </div>
 
                     <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-gray-200 focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-100 transition">

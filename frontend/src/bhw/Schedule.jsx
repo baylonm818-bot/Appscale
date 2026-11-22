@@ -704,18 +704,8 @@ function Schedule() {
           />
         </div>
 
-        {/* Actions: Activities Report & Add Schedule */}
+        {/* Actions: Add Schedule */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowReportModal(true)}
-            className="flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-[#1b5e20] border-2 border-green-200 px-4 py-2.5 rounded-xl font-bold text-sm transition shadow-2xs cursor-pointer shrink-0"
-            title="Generate and export activities report per date range and barangay"
-          >
-            <FileText size={17} />
-            <span>Activities Report</span>
-          </button>
-
           <button
             type="button"
             onClick={() => handleOpenAddForDate(selectedDateKey)}

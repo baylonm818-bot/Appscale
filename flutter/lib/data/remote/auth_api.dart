@@ -15,6 +15,9 @@ class AuthUser {
   final String? lastName;
   final String? contactNumber;
   final String? email;
+  final String? healthStation;
+  final int? activeChildrenCount;
+  final int? activeMothersCount;
 
   const AuthUser({
     required this.userId,
@@ -28,6 +31,9 @@ class AuthUser {
     this.lastName,
     this.contactNumber,
     this.email,
+    this.healthStation,
+    this.activeChildrenCount,
+    this.activeMothersCount,
   });
 
   factory AuthUser.fromMap(Map<String, dynamic> map) {
@@ -45,6 +51,13 @@ class AuthUser {
       lastName: map['last_name']?.toString(),
       contactNumber: map['contact_number']?.toString(),
       email: map['email']?.toString(),
+      healthStation: map['health_station']?.toString(),
+      activeChildrenCount: map['active_children_count'] is int
+          ? map['active_children_count'] as int
+          : int.tryParse('${map['active_children_count']}'),
+      activeMothersCount: map['active_mothers_count'] is int
+          ? map['active_mothers_count'] as int
+          : int.tryParse('${map['active_mothers_count']}'),
     );
   }
 }
@@ -69,6 +82,9 @@ class AuthSession {
       'barangay': user.barangay,
       'municipality': user.municipality,
       'profile_picture': user.profilePicture,
+      'health_station': user.healthStation,
+      'active_children_count': user.activeChildrenCount,
+      'active_mothers_count': user.activeMothersCount,
     },
   };
 

@@ -219,7 +219,8 @@ class SettingsRepository {
 
       for (final key in [
         'first_name', 'middle_initial', 'last_name', 'email', 'contact_number',
-        'purok', 'barangay', 'municipality', 'role', 'full_name', 'username'
+        'purok', 'barangay', 'municipality', 'role', 'full_name', 'username',
+        'health_station', 'active_children_count', 'active_mothers_count'
       ]) {
         if (serverUser[key] != null) {
           merged[key] = serverUser[key];

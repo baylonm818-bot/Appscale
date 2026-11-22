@@ -51,7 +51,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             content: Text(
               updateInfo == null
                   ? 'Hindi makakonekta sa server para mag-check ng update.'
-                  : 'Nasa pinakabagong bersyon ka na (v${AppUpdateService.currentVersion}).',
+                  : "You're up to date",
             ),
             backgroundColor: updateInfo == null ? AppColors.statAmber : AppColors.primaryGreen,
             behavior: SnackBarBehavior.floating,
@@ -240,10 +240,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 final isOnline = await _checkOnline();
                 if (isOnline && token.isNotEmpty && userId.isNotEmpty) {
                   try {
-                    await AuthApi.updateProfile(userId: userId, token: token, data: payload);
+                    final res = await AuthApi.updateProfile(userId: userId, token: token, data: payload);
+                    if (res['user'] is Map) {
+                      final serverUser = Map<String, dynamic>.from(res['user'] as Map);
+                      final current = Map<String, dynamic>.from(settings.authUser ?? {});
+                      current.addAll(serverUser);
+                      await settings.setAuthUser(current);
+                    }
                     await settings.setPendingProfileUpdate(null, userId: userId);
                     await settings.refreshProfileFromServer();
+                    AppDataBus.notifyChanged();
                     nav.pop();
+                    if (mounted) setState(() {});
                     messenger.showSnackBar(
                       const SnackBar(
                         content: Text('Profile updated and synced successfully.'),
@@ -262,6 +270,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 await settings.setPendingProfileUpdate(payload, userId: userId);
                 AppDataBus.notifyChanged();
                 nav.pop();
+                if (mounted) setState(() {});
                 messenger.showSnackBar(
                   SnackBar(
                     content: Text(
@@ -282,6 +291,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ),
       ),
     );
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _showChangePasswordDialog() async {
@@ -758,24 +770,57 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final liveDisplayName = AppUserIdentity.resolveDisplayName(settings.authUser);
     final resolvedName = liveDisplayName.isNotEmpty && liveDisplayName != 'Worker'
         ? liveDisplayName
-        : (widget.bnsName.isNotEmpty ? widget.bnsName : liveDisplayName);
-    final resolvedBarangay = widget.barangay.isNotEmpty
+        : (widget.bnsName.isNotEmpty ? widget.bnsName : (settings.authUser?['username']?.toString() ?? 'Worker'));
+    final rawBarangay = widget.barangay.isNotEmpty
         ? widget.barangay
         : AppUserIdentity.resolveBarangay(settings.authUser);
+    final resolvedBarangay = rawBarangay.trim();
     final profileImageUrl = settings.authUser?['profile_picture']?.toString();
-    final barangayLabel = resolvedBarangay.trim().isEmpty
-        ? 'Barangay Tiguion'
+    final barangayLabel = resolvedBarangay.isEmpty
+        ? 'Unassigned'
         : resolvedBarangay.toLowerCase().startsWith('barangay ')
         ? resolvedBarangay
         : 'Barangay $resolvedBarangay';
-    final totalChildren = ChildRepository()
-        .getAll()
-        .where((c) => c.isActive)
-        .length;
-    final totalMothers = MotherRepository()
-        .getAll()
-        .where((m) => m.isActive)
-        .length;
+
+    // Health Station from API record or dynamically derived from actual barangay
+    final rawHealthStation = settings.authUser?['health_station']?.toString().trim();
+    final healthStation = (rawHealthStation != null && rawHealthStation.isNotEmpty)
+        ? rawHealthStation
+        : (resolvedBarangay.isNotEmpty
+            ? (resolvedBarangay.toLowerCase().startsWith('barangay ')
+                ? '$resolvedBarangay Health Station'
+                : '$resolvedBarangay Barangay Health Station')
+            : 'Rural Health Unit');
+
+    // Counts from user's actual database record via API, with local fallback matching real barangay
+    final dynamic serverChildren = settings.authUser?['active_children_count'];
+    final dynamic serverMothers = settings.authUser?['active_mothers_count'];
+
+    final int totalChildren = serverChildren is int
+        ? serverChildren
+        : (serverChildren != null ? int.tryParse('$serverChildren') : null) ??
+            (resolvedBarangay.isNotEmpty
+                ? ChildRepository()
+                    .getByBarangay(resolvedBarangay)
+                    .where((c) => c.isActive)
+                    .length
+                : ChildRepository()
+                    .getAll()
+                    .where((c) => c.isActive)
+                    .length);
+
+    final int totalMothers = serverMothers is int
+        ? serverMothers
+        : (serverMothers != null ? int.tryParse('$serverMothers') : null) ??
+            (resolvedBarangay.isNotEmpty
+                ? MotherRepository()
+                    .getAll()
+                    .where((m) => m.barangay.trim().toLowerCase() == resolvedBarangay.trim().toLowerCase() && m.isActive)
+                    .length
+                : MotherRepository()
+                    .getAll()
+                    .where((m) => m.isActive)
+                    .length);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -942,48 +987,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
           const SizedBox(height: AppSpacing.md),
 
-          // Profile Actions
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text(
-                    'Edit Profile',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                  onPressed: _showEditProfileDialog,
+          // Edit Profile Action
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.darkGreen,
-                    side: const BorderSide(color: AppColors.darkGreen),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  icon: const Icon(Icons.lock_outline, size: 16),
-                  label: const Text(
-                    'Change Password',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                  onPressed: _showChangePasswordDialog,
-                ),
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              label: const Text(
+                'Edit Profile',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               ),
-            ],
+              onPressed: _showEditProfileDialog,
+            ),
           ),
 
           if (settings.pendingProfileUpdate != null || settings.pendingPasswordChange != null) ...[
@@ -1035,7 +1058,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 _buildInfoRow(
                   Icons.local_hospital_outlined,
                   'Health Station',
-                  'Tiguion Barangay Health Station',
+                  healthStation,
                 ),
                 const Divider(height: 1, color: AppColors.border),
                 _buildInfoRow(
@@ -1051,108 +1074,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   Icons.badge_outlined,
                   'Accreditation',
                   'DOH / NNC Certified BNS',
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.lg),
-
-          // App Preferences
-          Text(
-            'App Preferences',
-            style: AppTextStyles.h2.copyWith(fontSize: 16),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              children: [
-                // Language Selection
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.language, size: 20, color: AppColors.primaryGreen),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Language / Wika',
-                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                            ),
-                            Text(
-                              settings.language == 'tl' ? 'Tagalog (Filipino)' : 'English',
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'en', label: Text('EN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                        ButtonSegment(value: 'tl', label: Text('TL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                      ],
-                      selected: {settings.language},
-                      onSelectionChanged: (newSelection) async {
-                        final chosen = newSelection.first;
-                        await settings.setLanguage(chosen);
-                        setState(() {});
-                      },
-                      style: ButtonStyle(
-                        visualDensity: VisualDensity.compact,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 20, color: AppColors.border),
-                // Age Format Toggle
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          const Icon(Icons.cake_outlined, size: 20, color: AppColors.primaryGreen),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Age Format with Days',
-                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                                ),
-                                Text(
-                                  settings.ageFormatDays
-                                      ? 'Enabled (e.g. "3 months and 4 days")'
-                                      : 'Disabled (Default: months only)',
-                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: settings.ageFormatDays,
-                      activeThumbColor: AppColors.primaryGreen,
-                      onChanged: (val) async {
-                        await settings.setAgeFormatDays(val);
-                        setState(() {});
-                      },
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -1181,30 +1102,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
                 const Divider(height: 1, color: AppColors.border),
                 _buildInfoRow(
-                  Icons.info_outline,
-                  'App Version',
-                  'AppScale v${AppUpdateService.currentVersion}',
-                  trailing: TextButton(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: _checkingUpdate ? null : _handleManualUpdateCheck,
-                    child: _checkingUpdate
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGreen),
-                          )
-                        : const Text(
-                            'Check',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primaryGreen,
-                            ),
-                          ),
+                  Icons.cake_outlined,
+                  'Age Format with Days',
+                  settings.ageFormatDays ? 'Enabled' : 'Disabled',
+                  trailing: Switch(
+                    value: settings.ageFormatDays,
+                    activeThumbColor: AppColors.primaryGreen,
+                    onChanged: (val) async {
+                      await settings.setAgeFormatDays(val);
+                      setState(() {});
+                    },
                   ),
                 ),
                 const Divider(height: 1, color: AppColors.border),
@@ -1217,124 +1124,283 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
           ),
 
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.lg),
 
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.statRed,
-              side: const BorderSide(color: AppColors.statRed),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+          // Settings Section (Language, Change Password, App Update, Logout)
+          Text(
+            'Settings',
+            style: AppTextStyles.h2.copyWith(fontSize: 16),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
             ),
-            icon: const Icon(Icons.logout, size: 18),
-            label: const Text(
-              'Log Out',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            onPressed: () async {
-              final pendingCount = ChildRepository().pendingCount +
-                  MotherRepository().pendingCount +
-                  MeasurementRepository().pendingCount +
-                  ReferralRepository().pendingCount +
-                  (SettingsRepository().pendingProfilePicturePath != null ? 1 : 0);
-
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  title: const Row(
+            child: Column(
+              children: [
+                // 1. Language
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(Icons.logout, color: Colors.red, size: 22),
-                      SizedBox(width: 8),
-                      Text(
-                        'Log Out',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                      Row(
+                        children: [
+                          const Icon(Icons.language, size: 20, color: AppColors.primaryGreen),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Language / Wika',
+                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                              Text(
+                                settings.language == 'tl' ? 'Tagalog (Filipino)' : 'English',
+                                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(value: 'en', label: Text('EN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                          ButtonSegment(value: 'tl', label: Text('TL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+                        ],
+                        selected: {settings.language},
+                        onSelectionChanged: (newSelection) async {
+                          final chosen = newSelection.first;
+                          await settings.setLanguage(chosen);
+                          setState(() {});
+                        },
+                        style: ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                       ),
                     ],
                   ),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (pendingCount > 0) ...[
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFFBEB),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFFDE68A)),
-                          ),
-                          child: Row(
+                ),
+                const Divider(height: 1, color: AppColors.border),
+
+                // 2. Change Password
+                InkWell(
+                  onTap: _showChangePasswordDialog,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.lock_outline, size: 20, color: AppColors.primaryGreen),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.warning_amber_rounded,
-                                  color: Color(0xFFD97706), size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '$pendingCount record(s) not yet synced! They will remain on this phone but will not show on the web portal until synced.',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF92400E),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                              Text(
+                                'Change Password',
+                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                              Text(
+                                'Update your account login password',
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                               ),
                             ],
                           ),
                         ),
+                        const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
                       ],
-                      const Text(
-                        'Are you sure you want to log out? You will need to sign in again to access your account.',
-                        style: TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.border),
+
+                // 3. App Update
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.system_update_rounded, size: 20, color: AppColors.primaryGreen),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'App Update',
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            Text(
+                              'Installed: v${AppUpdateService.currentVersion}',
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.12),
+                          foregroundColor: AppColors.primaryGreen,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: _checkingUpdate ? null : _handleManualUpdateCheck,
+                        child: _checkingUpdate
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGreen),
+                              )
+                            : const Text(
+                                'Check',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
                       ),
                     ],
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text(
-                        'Log Out',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ],
                 ),
-              );
-              if (confirmed != true) return;
-              final settings = SettingsRepository();
-              await settings.clearSession();
-              if (!context.mounted) return;
-              Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (_) => false,
-              );
-            },
+                const Divider(height: 1, color: AppColors.border),
+
+                // 4. Logout
+                InkWell(
+                  onTap: _handleLogout,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.logout, size: 20, color: AppColors.statRed),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Logout',
+                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.statRed),
+                              ),
+                              Text(
+                                'Sign out of your session on this device',
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, size: 20, color: AppColors.statRed),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 32),
         ],
       ),
+    );
+  }
+
+  Future<void> _handleLogout() async {
+    final pendingCount = ChildRepository().pendingCount +
+        MotherRepository().pendingCount +
+        MeasurementRepository().pendingCount +
+        ReferralRepository().pendingCount +
+        (SettingsRepository().pendingProfilePicturePath != null ? 1 : 0);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.logout, color: Colors.red, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Log Out',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (pendingCount > 0) ...[
+              Container(
+                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Color(0xFFD97706), size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '$pendingCount record(s) not yet synced! They will remain on this phone but will not show on the web portal until synced.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF92400E),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const Text(
+              'Are you sure you want to log out? You will need to sign in again to access your account.',
+              style: TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Log Out',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final settings = SettingsRepository();
+    await settings.clearSession();
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
     );
   }
 

@@ -77,7 +77,7 @@ function Referrals() {
   // filters
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'child', 'mother'
-  const [statusFilter, setStatusFilter] = useState(initialStatus || 'Pending');
+  const [statusFilter, setStatusFilter] = useState(initialStatus || 'all');
   const [userInteractedWithFilter, setUserInteractedWithFilter] = useState(Boolean(initialStatus));
   const [referrerRoleFilter, setReferrerRoleFilter] = useState('all'); // 'all', 'BHW', 'BNS'
   const [severityFilter, setSeverityFilter] = useState('all');
@@ -213,22 +213,6 @@ function Referrals() {
 
   const childReferralsCount = useMemo(() => referrals.filter((r) => !isMotherReferral(r)).length, [referrals]);
   const motherReferralsCount = useMemo(() => referrals.filter((r) => isMotherReferral(r)).length, [referrals]);
-
-  // Default tab rule: Pending if any pending, else Ongoing if any ongoing, else all
-  useEffect(() => {
-    if (!userInteractedWithFilter && referrals.length > 0) {
-      const activeList = referrals.filter((r) => !isArchived(r));
-      const hasPending = activeList.some((r) => normalizeStatus(r.status) === 'Pending');
-      const hasOngoing = activeList.some((r) => normalizeStatus(r.status) === 'Ongoing');
-      if (hasPending) {
-        setStatusFilter('Pending');
-      } else if (hasOngoing) {
-        setStatusFilter('Ongoing');
-      } else {
-        setStatusFilter('all');
-      }
-    }
-  }, [referrals, userInteractedWithFilter]);
 
   const handleSelectStatusFilter = (tab) => {
     setUserInteractedWithFilter(true);

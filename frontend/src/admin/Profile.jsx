@@ -3,7 +3,8 @@ import axiosClient from '../api/axiosClient';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import { useAuth } from '../components/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Lock, Bell, ShieldCheck, User, ChevronRight, Globe, Check } from 'lucide-react';
+import { Camera, Lock, Bell, User, ChevronRight, Globe, Check, Info } from 'lucide-react';
+import logo from '../assets/logo.png';
 import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
 /* ── Inline-edit field row ── */
@@ -121,7 +122,7 @@ const TABS = [
   { key: 'preferences',   label: 'Preferences',  icon: Globe      },
   { key: 'password',      label: 'Password',     icon: Lock       },
   { key: 'notifications', label: 'Notifications',icon: Bell       },
-  { key: 'security',      label: 'Security',     icon: ShieldCheck},
+  { key: 'about',         label: 'About',         icon: Info       },
 ];
 
 const inputCls = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition";
@@ -554,7 +555,7 @@ function Profile() {
           </>
         )}
 
-        {/* PREFERENCES (LANGUAGE & DISPLAY) */}
+        {/* PREFERENCES (DISPLAY) */}
         {activeTab === 'preferences' && (
           <>
             <div className="flex items-center gap-3 mb-5">
@@ -562,55 +563,16 @@ function Profile() {
                 <Globe size={16} className="text-[#2e7d32]" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-800">Language & Display Preferences</h3>
+                <h3 className="text-base font-bold text-gray-800">Display Preferences</h3>
                 <p className="text-xs text-gray-400">Settings are saved per user account</p>
               </div>
             </div>
             {profileMsg && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">{profileMsg}</div>}
             {profileErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">{profileErr}</div>}
 
-            <div className="space-y-6 divide-y divide-gray-100">
-              {/* Language Selection */}
-              <div className="pt-2">
-                <h4 className="text-sm font-bold text-gray-800 mb-1">System Language</h4>
-                <p className="text-xs text-gray-500 mb-3">Choose whether to view interface labels and prompts in English or Tagalog.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
-                  <button
-                    type="button"
-                    onClick={() => handleFieldSave('language', 'en')}
-                    className={`flex items-center justify-between p-3.5 rounded-xl border transition text-left cursor-pointer ${
-                      (profile?.language || 'en') === 'en'
-                        ? 'border-[#2e7d32] bg-green-50/50 text-[#1b5e20] ring-1 ring-[#2e7d32]'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}
-                  >
-                    <div>
-                      <p className="text-sm font-bold">English</p>
-                      <p className="text-xs text-gray-400">Default municipal language</p>
-                    </div>
-                    {(profile?.language || 'en') === 'en' && <Check size={18} className="text-[#2e7d32]" />}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleFieldSave('language', 'tl')}
-                    className={`flex items-center justify-between p-3.5 rounded-xl border transition text-left cursor-pointer ${
-                      profile?.language === 'tl'
-                        ? 'border-[#2e7d32] bg-green-50/50 text-[#1b5e20] ring-1 ring-[#2e7d32]'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}
-                  >
-                    <div>
-                      <p className="text-sm font-bold">Tagalog (Filipino)</p>
-                      <p className="text-xs text-gray-400">Pambansang wika</p>
-                    </div>
-                    {profile?.language === 'tl' && <Check size={18} className="text-[#2e7d32]" />}
-                  </button>
-                </div>
-              </div>
-
+            <div className="space-y-6">
               {/* Age Format Toggle */}
-              <div className="pt-4">
+              <div className="pt-2">
                 <div className="flex items-center justify-between">
                   <div className="max-w-md">
                     <h4 className="text-sm font-bold text-gray-800 mb-1">Age Display Format</h4>
@@ -625,7 +587,7 @@ function Profile() {
                 </div>
                 <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-600">
                   <span className="font-semibold text-gray-700">Preview:</span>
-                  <span>{Boolean(profile?.age_format_days) ? '3 months and 4 days / 3 buwan at 4 araw' : '3 months / 3 buwan'}</span>
+                  <span>{Boolean(profile?.age_format_days) ? '3 months and 4 days' : '3 months'}</span>
                 </div>
               </div>
             </div>
@@ -703,30 +665,55 @@ function Profile() {
           </>
         )}
 
-        {/* SECURITY */}
-        {activeTab === 'security' && (
+        {/* ABOUT */}
+        {activeTab === 'about' && (
           <>
             <div className="flex items-center gap-3 mb-5">
               <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
-                <ShieldCheck size={16} className="text-green-700" />
+                <Info size={16} className="text-[#2e7d32]" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-800">Account Security</h3>
-                <p className="text-xs text-gray-400">Review your current account session details</p>
+                <h3 className="text-base font-bold text-gray-800">About AppScale</h3>
+                <p className="text-xs text-gray-400">System information and program details</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[
-                { label: 'Email',             value: profile?.email    || '—' },
-                { label: 'Role',              value: (profile?.role || '—').toUpperCase() },
-                { label: 'Assigned Barangay', value: profile?.barangay || 'Municipal account' },
-                { label: 'Session Status',    value: 'Active', green: true },
-              ].map(({ label, value, green }) => (
-                <div key={label} className={`rounded-2xl p-4 ${green ? 'bg-green-50 border border-green-100' : 'bg-gray-50'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${green ? 'text-green-600' : 'text-gray-400'}`}>{label}</p>
-                  <p className={`text-sm font-bold ${green ? 'text-green-800' : 'text-gray-800'}`}>{value}</p>
+
+            <div className="bg-linear-to-br from-green-50 to-emerald-50/40 border border-green-100 rounded-2xl p-5 mb-5">
+              <div className="flex items-center gap-3.5 mb-3">
+                <div className="w-12 h-12 rounded-xl bg-white shadow-xs border border-green-100 flex items-center justify-center p-2">
+                  <img src={logo} alt="AppScale" className="w-full h-full object-contain" />
                 </div>
-              ))}
+                <div>
+                  <h4 className="text-lg font-bold text-gray-900">AppScale</h4>
+                  <p className="text-xs font-semibold text-[#2e7d32]">Child Nutrition Monitoring & Early Warning System</p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                AppScale is the digital health and nutrition monitoring platform of the Municipality of Gasan, Marinduque. Designed for Rural Health Units (RHU), Barangay Nutrition Scholars (BNS), and Barangay Health Workers (BHW) to track child growth and maternal health indicators.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Application Version</p>
+                <p className="text-sm font-bold text-gray-800">v3.2.0</p>
+              </div>
+              <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Municipality</p>
+                <p className="text-sm font-bold text-gray-800">Gasan, Marinduque</p>
+              </div>
+              <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Target Beneficiaries</p>
+                <p className="text-sm font-bold text-gray-800">Children 0–59 months & Mothers</p>
+              </div>
+              <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Platform Deployment</p>
+                <p className="text-sm font-bold text-gray-800">Web Admin Portal & Flutter Mobile</p>
+              </div>
+            </div>
+
+            <div className="text-center pt-3 text-xs text-gray-400 border-t border-gray-100">
+              © {new Date().getFullYear()} Municipal Nutrition Committee • Rural Health Unit of Gasan
             </div>
           </>
         )}

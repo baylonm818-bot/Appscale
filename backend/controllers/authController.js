@@ -7,6 +7,50 @@ const { isUserActiveForLogin } = require('../utils/roleAccess');
 const MAX_FAILED_ATTEMPTS = 5;
 const passwordResetTokens = new Map();
 
+async function attachUserStats(user) {
+  if (!user) return user;
+  const userBarangay = (user.barangay || '').trim();
+  let totalChildren = 0;
+  let totalMothers = 0;
+  if (userBarangay) {
+    try {
+      const [[childStats]] = await pool.query(
+        `SELECT COUNT(*) AS total FROM children WHERE (LOWER(TRIM(barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND status = 'active'`,
+        [userBarangay, userBarangay]
+      );
+      totalChildren = childStats ? Number(childStats.total || 0) : 0;
+    } catch (e) {
+      console.error('attachUserStats children count error:', e);
+    }
+    try {
+      const [[motherStats]] = await pool.query(
+        `SELECT COUNT(*) AS total FROM mothers WHERE (LOWER(TRIM(barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND status = 'active'`,
+        [userBarangay, userBarangay]
+      );
+      totalMothers = motherStats ? Number(motherStats.total || 0) : 0;
+    } catch (e) {
+      console.error('attachUserStats mothers count error:', e);
+    }
+  } else if (String(user.role || '').toLowerCase() === 'admin') {
+    try {
+      const [[childStats]] = await pool.query(`SELECT COUNT(*) AS total FROM children WHERE status = 'active'`);
+      totalChildren = childStats ? Number(childStats.total || 0) : 0;
+      const [[motherStats]] = await pool.query(`SELECT COUNT(*) AS total FROM mothers WHERE status = 'active'`);
+      totalMothers = motherStats ? Number(motherStats.total || 0) : 0;
+    } catch (e) {
+      console.error('attachUserStats admin counts error:', e);
+    }
+  }
+  user.active_children_count = totalChildren;
+  user.active_mothers_count = totalMothers;
+  user.health_station = userBarangay
+    ? (userBarangay.toLowerCase().startsWith('barangay ')
+        ? `${userBarangay} Health Station`
+        : `${userBarangay} Barangay Health Station`)
+    : 'Rural Health Unit';
+  return user;
+}
+
 function normalizeLoginEmail(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -596,28 +640,31 @@ exports.login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
 
+    const userPayload = {
+      user_id: user.user_id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      username: user.username,
+      email: user.email,
+      contact_number: user.contact_number,
+      full_name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
+      role: user.role,
+      barangay: user.barangay,
+      municipality: user.municipality,
+      language: user.language || 'en',
+      age_format_days: user.age_format_days ? 1 : 0,
+      profile_picture: user.profile_picture
+        ? (user.profile_picture.startsWith('http') || user.profile_picture.startsWith('data:')
+            ? user.profile_picture
+            : `${process.env.APP_BASE_URL || 'https://appscale-1.onrender.com'}${user.profile_picture.startsWith('/') ? '' : '/'}${user.profile_picture}`)
+        : null,
+    };
+    await attachUserStats(userPayload);
+
     return res.status(200).json({
       message: 'Login successful.',
       token,
-      user: {
-        user_id: user.user_id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        username: user.username,
-        email: user.email,
-        contact_number: user.contact_number,
-        full_name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
-        role: user.role,
-        barangay: user.barangay,
-        municipality: user.municipality,
-        language: user.language || 'en',
-        age_format_days: user.age_format_days ? 1 : 0,
-        profile_picture: user.profile_picture
-          ? (user.profile_picture.startsWith('http') || user.profile_picture.startsWith('data:')
-              ? user.profile_picture
-              : `${process.env.APP_BASE_URL || 'https://appscale-1.onrender.com'}${user.profile_picture.startsWith('/') ? '' : '/'}${user.profile_picture}`)
-          : null,
-      },
+      user: userPayload,
     });
   } catch (error) {
     console.error('Login error:', error && (error.stack || error.message || error));
@@ -649,6 +696,7 @@ exports.getMe = async (req, res) => {
       const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
       user.profile_picture = `${base}${user.profile_picture.startsWith('/') ? '' : '/'}${user.profile_picture}`;
     }
+    await attachUserStats(user);
     return res.status(200).json(user);
   } catch (error) {
     console.error('getMe error:', error);

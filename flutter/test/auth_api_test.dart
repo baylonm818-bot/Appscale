@@ -11,8 +11,11 @@ void main() {
           'username': 'admin',
           'full_name': 'Admin User',
           'role': 'admin',
-          'barangay': 'Tiguion',
+          'barangay': 'Antipolo',
           'municipality': 'Gasan',
+          'health_station': 'Antipolo Barangay Health Station',
+          'active_children_count': 26,
+          'active_mothers_count': 27,
           'profile_picture': null,
         },
       });
@@ -20,7 +23,10 @@ void main() {
       expect(session.token, 'abc123');
       expect(session.user.userId, 42);
       expect(session.user.role, 'admin');
-      expect(session.user.barangay, 'Tiguion');
+      expect(session.user.barangay, 'Antipolo');
+      expect(session.user.healthStation, 'Antipolo Barangay Health Station');
+      expect(session.user.activeChildrenCount, 26);
+      expect(session.user.activeMothersCount, 27);
       expect(session.user.fullName, 'Admin User');
     });
 

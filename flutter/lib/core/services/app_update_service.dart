@@ -8,6 +8,59 @@ import 'package:path_provider/path_provider.dart';
 import '../constants/api_constants.dart';
 import '../theme/app_colors.dart';
 
+/// Represents a semantic version with major, minor, patch and optional build number.
+class AppVersion implements Comparable<AppVersion> {
+  final int major;
+  final int minor;
+  final int patch;
+  final int build;
+
+  const AppVersion({
+    required this.major,
+    required this.minor,
+    required this.patch,
+    this.build = 0,
+  });
+
+  static AppVersion? tryParse(String? raw) {
+    if (raw == null) return null;
+    var cleaned = raw.trim();
+    if (cleaned.isEmpty) return null;
+    if (cleaned.startsWith('v') || cleaned.startsWith('V')) {
+      cleaned = cleaned.substring(1).trim();
+    }
+    int buildNum = 0;
+    if (cleaned.contains('+')) {
+      final parts = cleaned.split('+');
+      cleaned = parts[0];
+      if (parts.length > 1) {
+        buildNum = int.tryParse(parts[1].trim()) ?? 0;
+      }
+    }
+    if (cleaned.contains('-')) {
+      cleaned = cleaned.split('-')[0];
+    }
+    final segments = cleaned.split('.');
+    final major = segments.isNotEmpty ? (int.tryParse(segments[0].trim()) ?? 0) : 0;
+    final minor = segments.length > 1 ? (int.tryParse(segments[1].trim()) ?? 0) : 0;
+    final patch = segments.length > 2 ? (int.tryParse(segments[2].trim()) ?? 0) : 0;
+    return AppVersion(major: major, minor: minor, patch: patch, build: buildNum);
+  }
+
+  @override
+  int compareTo(AppVersion other) {
+    if (major != other.major) return major.compareTo(other.major);
+    if (minor != other.minor) return minor.compareTo(other.minor);
+    if (patch != other.patch) return patch.compareTo(other.patch);
+    if (build != other.build) return build.compareTo(other.build);
+    return 0;
+  }
+
+  bool isHigherThan(AppVersion other) => compareTo(other) > 0;
+  bool isLowerThan(AppVersion other) => compareTo(other) < 0;
+  bool isEqualTo(AppVersion other) => compareTo(other) == 0;
+}
+
 class AppUpdateInfo {
   final bool hasUpdate;
   final String currentVersion;
@@ -47,6 +100,19 @@ class AppUpdateService {
   static const String currentVersion = '3.2.0';
   static const int currentVersionCode = 32;
 
+  /// Compares two versions numerically (major.minor.patch).
+  /// Returns >0 if v1 > v2, <0 if v1 < v2, and 0 if v1 == v2.
+  static int compareVersions(String v1, String v2) {
+    final parsed1 = AppVersion.tryParse(v1) ?? const AppVersion(major: 0, minor: 0, patch: 0);
+    final parsed2 = AppVersion.tryParse(v2) ?? const AppVersion(major: 0, minor: 0, patch: 0);
+    return parsed1.compareTo(parsed2);
+  }
+
+  /// Returns true ONLY when [serverVersion] is strictly HIGHER than [installedVersion].
+  static bool isServerVersionHigher(String serverVersion, String installedVersion) {
+    return compareVersions(serverVersion, installedVersion) > 0;
+  }
+
   /// Checks the backend server for a newer APK version
   static Future<AppUpdateInfo?> checkForUpdate() async {
     try {
@@ -66,7 +132,10 @@ class AppUpdateService {
       final fileSizeBytes = int.tryParse(data['fileSizeBytes']?.toString() ?? '') ?? 0;
       final releaseNotes = (data['releaseNotes'] ?? 'Bug fixes and performance improvements.').toString();
 
-      final hasUpdate = hasApk && (latestVersionCode > currentVersionCode);
+      // ONLY offer update when server version is strictly HIGHER than installed version.
+      // Compare numerically by major.minor.patch.
+      final isHigher = isServerVersionHigher(latestVersion, currentVersion);
+      final hasUpdate = hasApk && isHigher;
 
       return AppUpdateInfo(
         hasUpdate: hasUpdate,
@@ -89,7 +158,11 @@ class AppUpdateService {
   static Future<void> downloadAndInstall({
     required String downloadUrl,
     required Function(double progress, int received, int total) onProgress,
+    String? targetVersion,
   }) async {
+    if (targetVersion != null && !isServerVersionHigher(targetVersion, currentVersion)) {
+      throw Exception('Cannot install an older or equal build. Target: v$targetVersion, Installed: v$currentVersion.');
+    }
     final client = http.Client();
     try {
       final request = http.Request('GET', Uri.parse(downloadUrl));
@@ -147,6 +220,18 @@ class AppUpdateService {
     AppUpdateInfo info, {
     bool isManualCheck = false,
   }) async {
+    if (!info.hasUpdate || !isServerVersionHigher(info.latestVersion, info.currentVersion)) {
+      if (isManualCheck) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("You're up to date"),
+            backgroundColor: AppColors.primaryGreen,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -180,6 +265,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     try {
       await AppUpdateService.downloadAndInstall(
         downloadUrl: widget.info.downloadUrl,
+        targetVersion: widget.info.latestVersion,
         onProgress: (progress, received, total) {
           if (!mounted) return;
           setState(() {

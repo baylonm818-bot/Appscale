@@ -9,6 +9,50 @@ function canAccessProfile(req, targetId) {
   return role === 'admin' || requesterId === target;
 }
 
+async function attachUserStats(user) {
+  if (!user) return user;
+  const userBarangay = (user.barangay || '').trim();
+  let totalChildren = 0;
+  let totalMothers = 0;
+  if (userBarangay) {
+    try {
+      const [[childStats]] = await pool.query(
+        `SELECT COUNT(*) AS total FROM children WHERE (LOWER(TRIM(barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND status = 'active'`,
+        [userBarangay, userBarangay]
+      );
+      totalChildren = childStats ? Number(childStats.total || 0) : 0;
+    } catch (e) {
+      console.error('attachUserStats children count error:', e);
+    }
+    try {
+      const [[motherStats]] = await pool.query(
+        `SELECT COUNT(*) AS total FROM mothers WHERE (LOWER(TRIM(barangay)) = LOWER(TRIM(?)) OR ? = 'All Barangays') AND status = 'active'`,
+        [userBarangay, userBarangay]
+      );
+      totalMothers = motherStats ? Number(motherStats.total || 0) : 0;
+    } catch (e) {
+      console.error('attachUserStats mothers count error:', e);
+    }
+  } else if (String(user.role || '').toLowerCase() === 'admin') {
+    try {
+      const [[childStats]] = await pool.query(`SELECT COUNT(*) AS total FROM children WHERE status = 'active'`);
+      totalChildren = childStats ? Number(childStats.total || 0) : 0;
+      const [[motherStats]] = await pool.query(`SELECT COUNT(*) AS total FROM mothers WHERE status = 'active'`);
+      totalMothers = motherStats ? Number(motherStats.total || 0) : 0;
+    } catch (e) {
+      console.error('attachUserStats admin counts error:', e);
+    }
+  }
+  user.active_children_count = totalChildren;
+  user.active_mothers_count = totalMothers;
+  user.health_station = userBarangay
+    ? (userBarangay.toLowerCase().startsWith('barangay ')
+        ? `${userBarangay} Health Station`
+        : `${userBarangay} Barangay Health Station`)
+    : 'Rural Health Unit';
+  return user;
+}
+
 exports.getProfile = async (req, res) => {
   const { id } = req.params;
 
@@ -33,6 +77,8 @@ exports.getProfile = async (req, res) => {
       const base = process.env.APP_BASE_URL || 'https://appscale-1.onrender.com';
       user.profile_picture = `${base}${pic.startsWith('/') ? '' : '/'}${pic}`;
     }
+    user.full_name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username;
+    await attachUserStats(user);
     return res.status(200).json(user);
   } catch (error) {
     console.error('Get profile error:', error);
@@ -109,6 +155,7 @@ exports.updateProfile = async (req, res) => {
       updatedUser.profile_picture = `${base}${updatedUser.profile_picture.startsWith('/') ? '' : '/'}${updatedUser.profile_picture}`;
     }
 
+    await attachUserStats(updatedUser);
     return res.status(200).json({ message: 'Profile updated successfully.', user: updatedUser });
   } catch (error) {
     console.error('Update profile error:', error);
