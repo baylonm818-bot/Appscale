@@ -119,10 +119,10 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.0';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 33);
+    const version = process.env.APP_VERSION || '3.3.1';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 34);
     const releaseNotes = process.env.APP_RELEASE_NOTES ||
-        '• Purok management per barangay\n• Fixed dashboard SAM count & multi-indicator sync\n• Clean referral display with full history logging\n• Month-end age clamping & 59-month auto-graduation\n• In-app automatic update support';
+        '• 3-Step Forgot Password Flow with OTP\n• Dynamic Profile & Real database counts\n• In-app automatic update and downgrade protection\n• Performance and synchronization improvements';
 
     res.json({
         latestVersion: version,
