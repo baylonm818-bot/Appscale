@@ -119,10 +119,10 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.2';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 35);
+    const version = process.env.APP_VERSION || '3.3.3';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 36);
     const releaseNotes = process.env.APP_RELEASE_NOTES ||
-        '• Bagong Wika / Language toggle (English at Tagalog)\n• Real-time translation sa buong app nang walang restart\n• Pinahusay na App Update Check & Offline Stability';
+        '• Inilipat ang Logout button sa Worker Profile page (may kumpirmasyon)\n• Inalis ang duplicate na Settings button (gear icon na lang sa itaas)\n• Bagong Wika / Language toggle (English at Tagalog)';
 
     res.json({
         latestVersion: version,

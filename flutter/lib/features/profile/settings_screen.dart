@@ -378,42 +378,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-
-          // ── Section 5: Logout ──
-          const SizedBox(height: AppSpacing.md),
-          _buildCard(
-            children: [
-              InkWell(
-                onTap: () => showLogoutConfirmationDialog(context),
-                borderRadius: BorderRadius.circular(14),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.logout, size: 20, color: AppColors.statRed),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'logout'.tr,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.statRed),
-                            ),
-                            Text(
-                              'logout_sub'.tr,
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, size: 20, color: AppColors.statRed),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 32),
         ],
       ),

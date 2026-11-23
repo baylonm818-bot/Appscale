@@ -18,6 +18,7 @@ import '../../data/local/hive_boxes.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/remote/auth_api.dart';
 import '../../shared/utils/app_user_identity.dart';
+import 'profile_dialogs.dart';
 import 'settings_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -686,25 +687,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
           const SizedBox(height: AppSpacing.lg),
 
-          // ── Quick Settings Shortcut ──
+          // ── Logout Button (Red outlined button with confirm dialog) ──
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primaryGreen,
-              side: const BorderSide(color: AppColors.primaryGreen, width: 1.2),
+              foregroundColor: AppColors.statRed,
+              side: const BorderSide(color: AppColors.statRed, width: 1.2),
               padding: const EdgeInsets.symmetric(vertical: 13),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            icon: const Icon(Icons.settings_outlined, size: 18),
+            icon: const Icon(Icons.logout, size: 18),
             label: Text(
-              AppStrings.t('settings'),
+              'logout'.tr,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            },
+            onPressed: () => showLogoutConfirmationDialog(context),
           ),
           const SizedBox(height: 32),
         ],

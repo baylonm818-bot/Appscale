@@ -120,8 +120,8 @@ class AppUpdateService {
   AppUpdateService._();
 
   /// Current running version of the mobile app
-  static const String currentVersion = '3.3.1';
-  static const int currentVersionCode = 34;
+  static const String currentVersion = '3.3.3';
+  static const int currentVersionCode = 36;
 
   /// Compares two versions numerically (major.minor.patch).
   /// Returns >0 if v1 > v2, <0 if v1 < v2, and 0 if v1 == v2.
