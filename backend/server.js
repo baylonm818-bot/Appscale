@@ -119,10 +119,10 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.1';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 34);
+    const version = process.env.APP_VERSION || '3.3.2';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 35);
     const releaseNotes = process.env.APP_RELEASE_NOTES ||
-        '• 3-Step Forgot Password Flow with OTP\n• Dynamic Profile & Real database counts\n• In-app automatic update and downgrade protection\n• Performance and synchronization improvements';
+        '• Bagong Wika / Language toggle (English at Tagalog)\n• Real-time translation sa buong app nang walang restart\n• Pinahusay na App Update Check & Offline Stability';
 
     res.json({
         latestVersion: version,
