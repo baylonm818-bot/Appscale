@@ -9,6 +9,7 @@ import '../../../data/local/vitamin_a_repository.dart';
 import '../../../shared/utils/app_user_identity.dart';
 import '../../../data/models/child.dart';
 import '../../../data/models/vitamin_a_record.dart';
+import '../../../shared/utils/app_notifications.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_date_field.dart';
 
@@ -112,19 +113,18 @@ class _RecordVitaminAScreenState extends State<RecordVitaminAScreen> {
       await _vitARepo.save(record);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Vitamin A recorded for ${_selectedChild!.fullName}'),
-            backgroundColor: AppColors.primaryGreen,
-          ),
+        AppNotificationUI.showSuccess(
+          context,
+          'Vitamin A recorded for ${_selectedChild!.fullName}',
         );
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        AppNotificationUI.showError(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error saving: $e')));
+          'Error saving: $e',
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);

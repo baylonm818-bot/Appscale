@@ -5,6 +5,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../data/local/hive_boxes.dart';
 import '../../../data/local/meal_plan_repository.dart';
 import '../../../data/models/meal_plan.dart';
+import '../../../shared/utils/app_notifications.dart';
 import '../../../shared/widgets/app_date_field.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/form_action_buttons.dart';
@@ -40,10 +41,9 @@ class _UpdateMealPlanScreenState extends State<UpdateMealPlanScreen> {
 
   Future<void> _save() async {
     if (!_isFormValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Add at least one food item and a start date'),
-        ),
+      AppNotificationUI.showWarning(
+        context,
+        'Add at least one food item and a start date',
       );
       return;
     }

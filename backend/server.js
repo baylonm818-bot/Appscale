@@ -119,17 +119,21 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.5';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 38);
+    const version = process.env.APP_VERSION || '3.3.6';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 39);
     const notesEn = [
-        'Age format with days is now permanently enabled across all records',
-        'Removed redundant toggle switch from Settings',
-        'Strict bilingual support (pure English and Tagalog)'
+        "Mother's finger signature touch drawing fixed, required on visits, queued and synced",
+        "Floating rounded SnackBars above bottom navigation and fixed button overlap padding",
+        "Feeding program attendance overhaul with search, compact rows, and progress summary",
+        "Feeding session improvement tracking (weight & status comparison before vs after)",
+        "Referrals active tracking fix, clinical reason display, and duplicate referral prevention"
     ];
     const notesTl = [
-        'Awtomatiko at permanente nang may bilang ng araw ang edad ng bata',
-        'Inalis ang switch toggle sa Settings',
-        'Ganap na suporta sa dalawang wika (English at Tagalog)'
+        "Pag-ayos sa pirma ng ina gamit ang daliri, kailangan sa pagbisita, at naka-sync",
+        "Lumulutang na abiso (floating snackbar) at tamang espasyo sa ibaba ng listahan",
+        "Mas maayos na attendance sa feeding program na may search at progress summary",
+        "Pagsubaybay sa pag-unlad ng bata sa feeding sessions (timbang at estado bago at matapos)",
+        "Pag-ayos sa referral: hindi na madodoble at may malinaw na dahilan ang bawat bata"
     ];
     const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 

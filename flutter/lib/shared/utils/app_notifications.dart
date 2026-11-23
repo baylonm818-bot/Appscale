@@ -68,7 +68,7 @@ class AppNotificationUI {
       SnackBar(
         elevation: 0,
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         padding: EdgeInsets.zero,
         backgroundColor: Colors.transparent,
         duration: const Duration(seconds: 4),

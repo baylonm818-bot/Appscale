@@ -443,7 +443,7 @@ class _VitaminAScreenState extends State<VitaminAScreen>
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, 80),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, 120),
       itemCount: filtered.length,
       separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
@@ -589,7 +589,7 @@ class _VitaminAScreenState extends State<VitaminAScreen>
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, 80),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, 120),
       itemCount: filtered.length,
       separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
@@ -748,7 +748,7 @@ class _VitaminAScreenState extends State<VitaminAScreen>
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, 80),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, 120),
       itemCount: filtered.length,
       separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, index) {

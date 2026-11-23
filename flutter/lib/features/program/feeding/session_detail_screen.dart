@@ -9,10 +9,9 @@ import '../../../data/local/feeding_session_repository.dart';
 import '../../../data/local/hive_boxes.dart';
 import '../../../data/local/measurement_repository.dart';
 import '../../../data/models/child.dart';
+import '../../../data/models/feeding_child_progress.dart';
 import '../../../data/models/feeding_session.dart';
 import '../../../data/models/measurement.dart';
-import '../../../shared/utils/app_page_route.dart';
-import '../../child_profile/add_measurement_screen.dart';
 import '../../masterlist/utils/child_status_meta.dart';
 import '../../masterlist/widgets/status_badge.dart';
 
@@ -352,8 +351,20 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
     int absentCount = 0;
     for (final c in enrolled) {
       final st = attendanceMap[c.id];
-      if (st == 'Present') presentCount++;
-      if (st == 'Absent') absentCount++;
+      if (st == 'Present') {
+        presentCount++;
+      } else if (st == 'Absent') {
+        absentCount++;
+      }
+    }
+    if (presentCount == 0 && absentCount == 0 && attendanceMap.isNotEmpty) {
+      for (final st in attendanceMap.values) {
+        if (st == 'Present') {
+          presentCount++;
+        } else if (st == 'Absent') {
+          absentCount++;
+        }
+      }
     }
 
     // Measure children on session date
@@ -867,40 +878,27 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                       itemBuilder: (context, index) {
                         final child = enrolled[index];
                         final measurements = _measurementRepo.getForChild(child.id);
-
-                        // Measurement on session date
-                        Measurement? sessionMeasurement;
-                        for (final m in measurements) {
-                          if (m.date.year == _currentSession.date.year &&
-                              m.date.month == _currentSession.date.month &&
-                              m.date.day == _currentSession.date.day) {
-                            sessionMeasurement = m;
-                            break;
-                          }
-                        }
-
-                        // Prior measurement strictly before session date
-                        Measurement? priorMeasurement;
-                        final targetMidnight = DateTime(
-                          _currentSession.date.year,
-                          _currentSession.date.month,
-                          _currentSession.date.day,
+                        final progress = FeedingChildProgress.evaluate(
+                          child,
+                          measurements,
+                          sessionDate: _currentSession.date,
                         );
-                        for (final m in measurements) {
-                          if (m.date.isBefore(targetMidnight) && m.isPlausible) {
-                            priorMeasurement = m;
-                            break;
-                          }
-                        }
 
-                        final isPriority =
-                            child.nutritionStatus == 'Severely Underweight' ||
-                            child.wastingStatus == 'SAM' ||
-                            child.wastingStatus == 'MAM';
-
-                        double? weightDiff;
-                        if (sessionMeasurement != null && priorMeasurement != null) {
-                          weightDiff = sessionMeasurement.weightKg - priorMeasurement.weightKg;
+                        Color statusBadgeBg;
+                        Color statusBadgeTextColor;
+                        IconData statusBadgeIcon;
+                        if (progress.status == 'Improved') {
+                          statusBadgeBg = AppColors.primaryGreen.withValues(alpha: 0.12);
+                          statusBadgeTextColor = AppColors.primaryGreen;
+                          statusBadgeIcon = Icons.trending_up;
+                        } else if (progress.status == 'Declined') {
+                          statusBadgeBg = AppColors.statRed.withValues(alpha: 0.12);
+                          statusBadgeTextColor = AppColors.statRed;
+                          statusBadgeIcon = Icons.trending_down;
+                        } else {
+                          statusBadgeBg = const Color(0xFF64748B).withValues(alpha: 0.12);
+                          statusBadgeTextColor = const Color(0xFF64748B);
+                          statusBadgeIcon = Icons.trending_flat;
                         }
 
                         return InkWell(
@@ -909,17 +907,12 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: isPriority
-                                  ? AppColors.statRed.withValues(alpha: 0.04)
-                                  : Colors.white,
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isPriority
-                                    ? AppColors.statRed.withValues(alpha: 0.25)
-                                    : AppColors.border,
-                              ),
+                              border: Border.all(color: AppColors.border),
                             ),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 CircleAvatar(
                                   radius: 18,
@@ -947,140 +940,118 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
-                                          if (isPriority) ...[
-                                            const SizedBox(width: 4),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.statRed.withValues(alpha: 0.12),
-                                                borderRadius: BorderRadius.circular(12),
-                                              ),
-                                              child: const Text(
-                                                'Priority',
-                                                style: TextStyle(
-                                                  color: AppColors.statRed,
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: statusBadgeBg,
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: statusBadgeTextColor.withValues(alpha: 0.3)),
                                             ),
-                                          ],
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(statusBadgeIcon, size: 12, color: statusBadgeTextColor),
+                                                const SizedBox(width: 3),
+                                                Text(
+                                                  progress.status,
+                                                  style: TextStyle(
+                                                    color: statusBadgeTextColor,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ],
                                       ),
-                                      const SizedBox(height: 2),
+                                      const SizedBox(height: 6),
 
-                                      if (sessionMeasurement != null) ...[
-                                        Row(
+                                      // Before (Enrollment) vs After (Current / Session)
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade50,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.grey.shade200),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Text(
-                                              '${sessionMeasurement.weightKg.toStringAsFixed(1)} kg',
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w700,
-                                                color: AppColors.textPrimary,
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    'Before (Enrollment)',
+                                                    style: TextStyle(fontSize: 9.5, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                                                  ),
+                                                  const SizedBox(height: 1),
+                                                  Text(
+                                                    progress.baseline != null
+                                                        ? '${progress.baseline!.weightKg.toStringAsFixed(1)} kg'
+                                                        : '--',
+                                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                                  ),
+                                                  Text(
+                                                    progress.baseline != null
+                                                        ? 'WFA: ${progress.baseline!.weightForAgeStatus}\nWFH: ${progress.baseline!.effectiveWastingStatus}'
+                                                        : 'No baseline',
+                                                    style: const TextStyle(fontSize: 9.5, color: AppColors.textSecondary),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                            const SizedBox(width: 6),
-                                            if (weightDiff != null) ...[
-                                              Icon(
-                                                weightDiff >= 0
-                                                    ? Icons.arrow_upward_rounded
-                                                    : Icons.arrow_downward_rounded,
-                                                size: 13,
-                                                color: weightDiff >= 0
-                                                    ? AppColors.primaryGreen
-                                                    : AppColors.statRed,
+                                            const Padding(
+                                              padding: EdgeInsets.symmetric(horizontal: 6),
+                                              child: Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.primaryGreen),
+                                            ),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      const Text(
+                                                        'After (Current)',
+                                                        style: TextStyle(fontSize: 9.5, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                                                      ),
+                                                      if (progress.weightDiff != null && progress.weightDiff != 0) ...[
+                                                        const SizedBox(width: 4),
+                                                        Text(
+                                                          '(${progress.weightDiff! >= 0 ? '+' : ''}${progress.weightDiff!.toStringAsFixed(1)})',
+                                                          style: TextStyle(
+                                                            fontSize: 9.5,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: progress.weightDiff! >= 0 ? AppColors.primaryGreen : AppColors.statRed,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 1),
+                                                  Text(
+                                                    progress.latest != null
+                                                        ? '${progress.latest!.weightKg.toStringAsFixed(1)} kg'
+                                                        : '--',
+                                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                                  ),
+                                                  Text(
+                                                    progress.latest != null
+                                                        ? 'WFA: ${progress.latest!.weightForAgeStatus}\nWFH: ${progress.latest!.effectiveWastingStatus}'
+                                                        : 'No follow-up',
+                                                    style: const TextStyle(fontSize: 9.5, color: AppColors.textSecondary),
+                                                  ),
+                                                ],
                                               ),
-                                              Text(
-                                                '${weightDiff >= 0 ? '+' : ''}${weightDiff.toStringAsFixed(1)} kg',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: weightDiff >= 0
-                                                      ? AppColors.primaryGreen
-                                                      : AppColors.statRed,
-                                                ),
-                                              ),
-                                            ] else ...[
-                                              const Text(
-                                                '(baseline)',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  color: AppColors.textMuted,
-                                                ),
-                                              ),
-                                            ],
+                                            ),
                                           ],
                                         ),
-                                        const SizedBox(height: 4),
-                                        StatusBadge(
-                                          label: sessionMeasurement.weightForAgeStatus,
-                                          color: ChildStatusMeta.colorFor(
-                                            sessionMeasurement.weightForAgeStatus,
-                                          ),
-                                        ),
-                                      ] else ...[
-                                        const Text(
-                                          'Not weighed on this day',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: AppColors.textMuted,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        StatusBadge(
-                                          label: child.nutritionStatus,
-                                          color: ChildStatusMeta.colorFor(child.nutritionStatus),
-                                        ),
-                                      ],
+                                      ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-
-                                if (sessionMeasurement == null)
-                                  OutlinedButton(
-                                    onPressed: () => Navigator.push(
-                                      context,
-                                      appPageRoute(
-                                        AddMeasurementScreen(
-                                          child: child,
-                                          showReferralPrompt: false,
-                                        ),
-                                      ),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      side: const BorderSide(color: AppColors.primaryGreen),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    ),
-                                    child: const Text(
-                                      'Weigh',
-                                      style: TextStyle(
-                                        color: AppColors.primaryGreen,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.lightGreenBg,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.check,
-                                      size: 16,
-                                      color: AppColors.primaryGreen,
-                                    ),
-                                  ),
                               ],
                             ),
                           ),

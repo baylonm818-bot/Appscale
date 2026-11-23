@@ -4,6 +4,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/models/referral.dart';
 import '../../../shared/utils/app_date_format.dart';
+import '../../../shared/utils/app_notifications.dart';
 import '../../../data/local/referral_repository.dart';
 
 /// Read-only referral detail sheet for BNS mobile users.
@@ -298,11 +299,9 @@ class ReferralDetailSheet extends StatelessWidget {
                   await ReferralRepository().archive(referral.id);
                   if (context.mounted) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Referral for ${referral.resolvedBeneficiaryName} archived'),
-                        duration: const Duration(seconds: 2),
-                      ),
+                    AppNotificationUI.showSuccess(
+                      context,
+                      'Referral for ${referral.resolvedBeneficiaryName} archived',
                     );
                   }
                 },
@@ -327,11 +326,9 @@ class ReferralDetailSheet extends StatelessWidget {
                   await ReferralRepository().unarchive(referral.id);
                   if (context.mounted) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Referral for ${referral.resolvedBeneficiaryName} unarchived'),
-                        duration: const Duration(seconds: 2),
-                      ),
+                    AppNotificationUI.showSuccess(
+                      context,
+                      'Referral for ${referral.resolvedBeneficiaryName} unarchived',
                     );
                   }
                 },

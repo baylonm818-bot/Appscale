@@ -63,6 +63,7 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
     if (_observation == null || _observation!.isEmpty) return false;
     if (_observation == 'Signs of concern' && _observationNoteController.text.trim().isEmpty) return false;
     if (_needsReferral == null) return false;
+    if (_motherSignature == null || _motherSignature!.trim().isEmpty) return false;
     return true;
   }
 
@@ -462,6 +463,8 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
                       const SizedBox(height: AppSpacing.lg),
                       MotherSignaturePad(
                         title: "Mother's Signature (Counseling / Visit)",
+                        isRequired: _present,
+                        errorMessage: 'Signature is required',
                         initialSignature: _motherSignature,
                         onSignatureChanged: (sig) {
                           setState(() => _motherSignature = sig);

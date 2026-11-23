@@ -4,8 +4,11 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/app_data_bus.dart';
 import '../../data/local/hive_boxes.dart';
+import '../../data/local/measurement_repository.dart';
 import '../../data/local/referral_needs_service.dart';
 import '../../data/local/referral_repository.dart';
+import '../../data/models/child.dart';
+import '../../shared/utils/app_notifications.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/empty_state.dart';
@@ -39,6 +42,50 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
 
   Future<void> _handleRefresh() async {
     await ReferralRepository().pullLatest(barangay: _currentBarangay);
+  }
+
+  String _getChildReferralReason(Child c) {
+    final reasons = <String>[];
+    final latest = MeasurementRepository().getLatestPlausible(c.id);
+
+    final wfa = (latest?.weightForAgeStatus ?? c.nutritionStatus).trim();
+    final hfa = (latest?.heightForAgeStatus ?? c.stuntingStatus).trim();
+    final wfh = (latest?.effectiveWastingStatus ?? c.wastingStatus).trim();
+
+    if (wfh.toUpperCase().contains('SAM') || wfh.toLowerCase().contains('severely wasted')) {
+      reasons.add('SAM');
+    } else if (wfh.toUpperCase().contains('MAM') || wfh.toLowerCase().contains('moderately wasted')) {
+      reasons.add('MAM');
+    }
+
+    if (wfa.toLowerCase().contains('severely underweight')) {
+      reasons.add('Severely Underweight');
+    } else if (wfa.toLowerCase().contains('underweight')) {
+      reasons.add('Underweight');
+    }
+
+    if (hfa.toLowerCase().contains('severely stunted')) {
+      reasons.add('Severely Stunted');
+    } else if (hfa.toLowerCase().contains('stunted')) {
+      reasons.add('Stunted');
+    }
+
+    if (reasons.isEmpty) {
+      for (final s in [c.wastingStatus, c.nutritionStatus, c.stuntingStatus]) {
+        final t = s.trim();
+        if (t.isNotEmpty &&
+            !t.toLowerCase().contains('normal') &&
+            !t.toLowerCase().contains('needs re-measurement')) {
+          reasons.add(t);
+        }
+      }
+    }
+
+    if (reasons.isEmpty) {
+      return 'Severe or at-risk nutritional status';
+    }
+
+    return reasons.toSet().join(', ');
   }
 
   @override
@@ -126,7 +173,12 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                     color: AppColors.darkGreen,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        120,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -160,17 +212,7 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                               (c) => _NeedsReferralTile(
                                 name: c.fullName,
                                 subtitle: '${c.ageLabel} · ${c.formattedAddress}',
-                                reason: [
-                                  c.nutritionStatus,
-                                  c.stuntingStatus,
-                                  c.wastingStatus,
-                                ]
-                                    .where(
-                                      (s) =>
-                                          s.startsWith('Severely') ||
-                                          s == 'SAM',
-                                    )
-                                    .join(', '),
+                                reason: _getChildReferralReason(c),
                                 onCreate: () async {
                                   await Navigator.push(
                                     context,
@@ -321,11 +363,9 @@ class _ReferralsOverviewScreenState extends State<ReferralsOverviewScreen> {
                                       await ReferralRepository().archive(r.id);
                                     }
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Archived $completedCount completed referrals'),
-                                          duration: const Duration(seconds: 2),
-                                        ),
+                                      AppNotificationUI.showSuccess(
+                                        context,
+                                        'Archived $completedCount completed referrals',
                                       );
                                     }
                                   }

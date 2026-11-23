@@ -42,6 +42,7 @@ class MotherVisitRepository {
           if (visit.observationNote != null) visit.observationNote,
           if (visit.concernNote != null) 'Concern: ${visit.concernNote}',
         ].join('. '),
+        signature: visit.signature,
       );
       if (res.success) {
         final updated = (_box.get(motherId) as List?) ?? [];
@@ -93,6 +94,7 @@ class MotherVisitRepository {
                 if (visit.observationNote != null) visit.observationNote,
                 if (visit.concernNote != null) 'Concern: ${visit.concernNote}',
               ].join('. '),
+              signature: visit.signature,
             );
             if (res.success) {
               m['_syncStatus'] = 'synced';

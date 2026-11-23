@@ -8,6 +8,7 @@ import '../../../../data/local/feeding_enrollment_repository.dart';
 import '../../../../data/local/feeding_session_repository.dart';
 import '../../../../data/local/hive_boxes.dart';
 import '../../../../data/local/measurement_repository.dart';
+import '../../../../data/models/feeding_child_progress.dart';
 import '../../../../data/models/feeding_session.dart';
 import '../../../../shared/utils/app_page_route.dart';
 import '../../../../shared/utils/app_pickers.dart';
@@ -570,8 +571,20 @@ class _SessionsTabState extends State<SessionsTab> {
                       int absent = 0;
                       for (final child in enrolled) {
                         final st = attendance[child.id];
-                        if (st == 'Present') present++;
-                        if (st == 'Absent') absent++;
+                        if (st == 'Present') {
+                          present++;
+                        } else if (st == 'Absent') {
+                          absent++;
+                        }
+                      }
+                      if (present == 0 && absent == 0 && attendance.isNotEmpty) {
+                        for (final st in attendance.values) {
+                          if (st == 'Present') {
+                            present++;
+                          } else if (st == 'Absent') {
+                            absent++;
+                          }
+                        }
                       }
 
                       // Check how many children weighed on this session date
@@ -588,6 +601,22 @@ class _SessionsTabState extends State<SessionsTab> {
                         }
                       }
 
+                      // Improvement stats across enrolled children up to session date
+                      int improved = 0;
+                      int noChange = 0;
+                      int declined = 0;
+                      for (final child in enrolled) {
+                        final list = _measurementRepo.getForChild(child.id);
+                        final p = FeedingChildProgress.evaluate(child, list, sessionDate: session.date);
+                        if (p.status == 'Improved') {
+                          improved++;
+                        } else if (p.status == 'Declined') {
+                          declined++;
+                        } else {
+                          noChange++;
+                        }
+                      }
+
                       return _FeedingSessionCard(
                         session: session,
                         dateText: _formatCardDate(session.date),
@@ -595,6 +624,9 @@ class _SessionsTabState extends State<SessionsTab> {
                         presentCount: present,
                         absentCount: absent,
                         weighedCount: weighed,
+                        improvedCount: improved,
+                        noChangeCount: noChange,
+                        declinedCount: declined,
                         onTap: () {
                           Navigator.push(
                             context,
@@ -625,6 +657,9 @@ class _FeedingSessionCard extends StatelessWidget {
   final int presentCount;
   final int absentCount;
   final int weighedCount;
+  final int improvedCount;
+  final int noChangeCount;
+  final int declinedCount;
   final VoidCallback onTap;
 
   const _FeedingSessionCard({
@@ -634,6 +669,9 @@ class _FeedingSessionCard extends StatelessWidget {
     required this.presentCount,
     required this.absentCount,
     required this.weighedCount,
+    required this.improvedCount,
+    required this.noChangeCount,
+    required this.declinedCount,
     required this.onTap,
   });
 
@@ -754,6 +792,47 @@ class _FeedingSessionCard extends StatelessWidget {
                   color: AppColors.textMuted,
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.insights, size: 13, color: AppColors.primaryGreen),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Improved $improvedCount',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryGreen,
+                    ),
+                  ),
+                  const Text('  ·  ', style: TextStyle(color: AppColors.border, fontSize: 11)),
+                  Text(
+                    'No change $noChangeCount',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                  const Text('  ·  ', style: TextStyle(color: AppColors.border, fontSize: 11)),
+                  Text(
+                    'Declined $declinedCount',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: declinedCount > 0 ? AppColors.statRed : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

@@ -10,6 +10,7 @@ import '../../../../data/local/hive_boxes.dart';
 import '../../../../data/local/meal_plan_repository.dart';
 import '../../../../data/local/measurement_repository.dart';
 import '../../../../data/models/child.dart';
+import '../../../../shared/utils/app_notifications.dart';
 import '../../../../shared/utils/app_pickers.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/empty_state.dart';
@@ -37,6 +38,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
   Map<String, String> _draftSignatures = {};
   late final TextEditingController _foodServedController;
   final Set<String> _withdrawingIds = {};
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -198,9 +200,10 @@ class _AttendanceTabState extends State<AttendanceTab> {
       statuses[c.id] = existingStatus; // null if unmarked
     }
 
-    // Counts must reflect ONLY marked enrolled children
+    // Counts reflect marked enrolled children
     final presentCount = enrolled.where((c) => statuses[c.id] == 'Present').length;
     final absentCount = enrolled.where((c) => statuses[c.id] == 'Absent').length;
+    final unmarkedCount = enrolled.length - presentCount - absentCount;
 
     final mealPlan = MealPlanRepository().getActiveForDate(
       _currentBarangay,
@@ -208,8 +211,15 @@ class _AttendanceTabState extends State<AttendanceTab> {
     );
     final isToday = _isSameDay(_selectedDate, DateTime.now());
 
+    final filteredEnrolled = _searchQuery.isEmpty
+        ? enrolled
+        : enrolled
+            .where((c) =>
+                c.fullName.toLowerCase().contains(_searchQuery.toLowerCase()))
+            .toList();
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 120),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -244,71 +254,154 @@ class _AttendanceTabState extends State<AttendanceTab> {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          InkWell(
-            onTap: _pickDate,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today_outlined,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    isToday
-                        ? 'Today · ${_formatDate(_selectedDate)}'
-                        : _formatDate(_selectedDate),
-                    style: AppTextStyles.label.copyWith(fontSize: 13),
-                  ),
-                  const Spacer(),
-                  Text(
-                    'Change',
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.primaryGreen,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Food Served on this date
+          const SizedBox(height: AppSpacing.sm),
+
+          // Compact Header: Date and Meal in ONE card
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.border),
             ),
-            child: Row(
+            child: Column(
               children: [
-                const Icon(Icons.restaurant_menu, size: 16, color: AppColors.primaryGreen),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _foodServedController,
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      hintText: mealPlan != null
-                          ? 'Meal: ${mealPlan.itemsSummary}'
-                          : 'Record food served today (e.g. Nutri-soup, Porridge)',
-                      hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                InkWell(
+                  onTap: _pickDate,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_today_outlined,
+                          size: 16,
+                          color: AppColors.primaryGreen,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isToday
+                              ? 'Today · ${_formatDate(_selectedDate)}'
+                              : _formatDate(_selectedDate),
+                          style: AppTextStyles.label.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        const Text(
+                          'Change Date',
+                          style: TextStyle(
+                            color: AppColors.primaryGreen,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkGreen,
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.border),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.restaurant_menu, size: 16, color: AppColors.primaryGreen),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _foodServedController,
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                            hintText: mealPlan != null
+                                ? 'Meal: ${mealPlan.itemsSummary}'
+                                : 'Record food served today (e.g. Nutri-soup, Porridge)',
+                            hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.darkGreen,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Summary: Present / Absent / Not yet marked, with a progress bar
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _SummaryBadge(
+                        value: '$presentCount',
+                        label: 'Present',
+                        color: AppColors.primaryGreen,
+                        icon: Icons.check_circle_outline,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _SummaryBadge(
+                        value: '$absentCount',
+                        label: 'Absent',
+                        color: AppColors.statRed,
+                        icon: Icons.cancel_outlined,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _SummaryBadge(
+                        value: '$unmarkedCount',
+                        label: 'Not yet marked',
+                        color: const Color(0xFF64748B),
+                        icon: Icons.help_outline,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: SizedBox(
+                    height: 6,
+                    child: Row(
+                      children: [
+                        if (presentCount > 0)
+                          Expanded(
+                            flex: presentCount,
+                            child: Container(color: AppColors.primaryGreen),
+                          ),
+                        if (absentCount > 0)
+                          Expanded(
+                            flex: absentCount,
+                            child: Container(color: AppColors.statRed),
+                          ),
+                        if (unmarkedCount > 0)
+                          Expanded(
+                            flex: unmarkedCount,
+                            child: Container(color: Colors.grey.shade300),
+                          ),
+                        if (enrolled.isEmpty)
+                          Expanded(
+                            child: Container(color: Colors.grey.shade200),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -317,42 +410,77 @@ class _AttendanceTabState extends State<AttendanceTab> {
           ),
           const SizedBox(height: AppSpacing.md),
 
-          // Count boxes: strictly Present and Absent
+          // Search & Quick Action: Mark all present
           Row(
             children: [
               Expanded(
-                child: _CountBox(
-                  value: '$presentCount',
-                  label: 'Present',
-                  color: AppColors.primaryGreen,
+                child: SizedBox(
+                  height: 38,
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search child name...',
+                      hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      prefixIcon: const Icon(Icons.search, size: 18),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      filled: true,
+                      fillColor: AppColors.surface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 12),
+                    onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
-              Expanded(
-                child: _CountBox(
-                  value: '$absentCount',
-                  label: 'Absent',
-                  color: AppColors.statRed,
+              OutlinedButton.icon(
+                onPressed: enrolled.isEmpty
+                    ? null
+                    : () {
+                        final updated = Map<String, String?>.from(statuses);
+                        for (final c in filteredEnrolled) {
+                          updated[c.id] = 'Present';
+                          _draftRemarks.remove(c.id);
+                        }
+                        setState(() => _draftStatuses = updated);
+                      },
+                icon: const Icon(Icons.done_all, size: 15),
+                label: const Text(
+                  'Mark all present',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _CountBox(
-                  value: '${enrolled.length}',
-                  label: 'Enrolled',
-                  color: AppColors.textPrimary,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.darkGreen,
+                  side: const BorderSide(color: AppColors.primaryGreen),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
+
           if (enrolled.isEmpty)
             const EmptyState(
               icon: Icons.groups_outlined,
               message: 'No enrolled children yet.',
             )
+          else if (filteredEnrolled.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('No matching child found.', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+              ),
+            )
           else
-            ...enrolled.map(
+            ...filteredEnrolled.map(
               (c) {
                 final isPending = _enrollmentRepo.isPendingSync(c.id);
                 final isWithdrawing = _withdrawingIds.contains(c.id);
@@ -360,49 +488,151 @@ class _AttendanceTabState extends State<AttendanceTab> {
                     .getRemarksForDate(_currentBarangay, _selectedDate);
                 final childRemark = _draftRemarks[c.id] ?? savedRemarks[c.id];
                 final currentStatus = statuses[c.id];
+                final isSigned = _draftSignatures[c.id] != null ||
+                    FeedingAttendanceRepository()
+                        .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] !=
+                        null;
+                final statusLabel = c.wastingStatus.isNotEmpty
+                    ? c.wastingStatus
+                    : c.nutritionStatus;
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: currentStatus == 'Present'
+                          ? AppColors.primaryGreen.withValues(alpha: 0.3)
+                          : (currentStatus == 'Absent'
+                              ? AppColors.statRed.withValues(alpha: 0.3)
+                              : AppColors.border),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.lightGreenBg,
+                            child: Text(
+                              c.initials,
+                              style: const TextStyle(
+                                color: AppColors.darkGreen,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Expanded(
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Flexible(
-                                  child: Text(
-                                    c.fullName,
-                                    style: AppTextStyles.label.copyWith(fontSize: 13),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                Text(
+                                  c.fullName,
+                                  style: AppTextStyles.label.copyWith(fontSize: 12.5),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
                                 ),
-                                if (isPending) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.statAmber.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(4),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: _statusChipColor(statusLabel).withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        statusLabel,
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: _statusChipColor(statusLabel),
+                                        ),
+                                      ),
                                     ),
-                                    child: const Text(
-                                      'Pending sync',
+                                    if (isPending) ...[
+                                      const SizedBox(width: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.statAmber.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Text(
+                                          'Pending',
+                                          style: TextStyle(
+                                            fontSize: 8.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.statAmber,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          // Present / Absent Toggle Buttons
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _draftStatuses = {...statuses, c.id: 'Present'};
+                                      _draftRemarks.remove(c.id);
+                                    });
+                                  },
+                                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(7)),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: currentStatus == 'Present' ? AppColors.primaryGreen : Colors.transparent,
+                                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(7)),
+                                    ),
+                                    child: Text(
+                                      'Present',
                                       style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.statAmber,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: currentStatus == 'Present' ? Colors.white : AppColors.textSecondary,
                                       ),
                                     ),
                                   ),
-                                ],
+                                ),
+                                Container(width: 1, height: 16, color: Colors.grey.shade300),
+                                InkWell(
+                                  onTap: () => _promptAbsentRemark(c.id, c.fullName, statuses),
+                                  borderRadius: const BorderRadius.horizontal(right: Radius.circular(7)),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: currentStatus == 'Absent' ? AppColors.statRed : Colors.transparent,
+                                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(7)),
+                                    ),
+                                    child: Text(
+                                      'Absent',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: currentStatus == 'Absent' ? Colors.white : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -418,6 +648,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
                                     size: 18,
                                     color: AppColors.textMuted,
                                   ),
+                            padding: EdgeInsets.zero,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -489,47 +720,55 @@ class _AttendanceTabState extends State<AttendanceTab> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-
-                      // Present & Absent Status Chips
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _statusChip(
-                              'Present',
-                              c.id,
-                              statuses,
-                              AppColors.primaryGreen,
-                              onTap: () {
-                                setState(() {
-                                  _draftStatuses = {...statuses, c.id: 'Present'};
-                                  _draftRemarks.remove(c.id);
-                                });
-                              },
+                      if (currentStatus == 'Present') ...[
+                        const SizedBox(height: 5),
+                        GestureDetector(
+                          onTap: () => _openSignatureDialog(c),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                            decoration: BoxDecoration(
+                              color: isSigned ? AppColors.lightGreenBg : Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isSigned
+                                    ? AppColors.primaryGreen.withValues(alpha: 0.5)
+                                    : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isSigned ? Icons.check_circle : Icons.draw_outlined,
+                                  size: 13,
+                                  color: isSigned ? AppColors.darkGreen : AppColors.textMuted,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    isSigned
+                                        ? "Mother's Signature Attached (Tap to view/re-sign)"
+                                        : "Tap to sign with Mother's Signature",
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      color: isSigned ? AppColors.darkGreen : AppColors.textMuted,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Icon(Icons.edit, size: 11, color: AppColors.primaryGreen),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _statusChip(
-                              'Absent',
-                              c.id,
-                              statuses,
-                              AppColors.statRed,
-                              onTap: () {
-                                _promptAbsentRemark(c.id, c.fullName, statuses);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Remark note when Absent
+                        ),
+                      ],
                       if (currentStatus == 'Absent' && childRemark != null && childRemark.isNotEmpty) ...[
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 5),
                         GestureDetector(
                           onTap: () => _promptAbsentRemark(c.id, c.fullName, statuses),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
                             decoration: BoxDecoration(
                               color: AppColors.statRed.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(6),
@@ -542,77 +781,16 @@ class _AttendanceTabState extends State<AttendanceTab> {
                                 Expanded(
                                   child: Text(
                                     'Reason: $childRemark',
-                                    style: const TextStyle(fontSize: 11, color: AppColors.statRed, fontWeight: FontWeight.w600),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const Icon(Icons.edit, size: 11, color: AppColors.statRed),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-
-                      // Signature indicator / button when Present
-                      if (currentStatus == 'Present') ...[
-                        const SizedBox(height: 6),
-                        GestureDetector(
-                          onTap: () => _openSignatureDialog(c),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: (_draftSignatures[c.id] != null ||
-                                      FeedingAttendanceRepository()
-                                          .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
-                                  ? AppColors.lightGreenBg
-                                  : Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: (_draftSignatures[c.id] != null ||
-                                        FeedingAttendanceRepository()
-                                            .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
-                                    ? AppColors.primaryGreen.withValues(alpha: 0.5)
-                                    : Colors.grey.shade300,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  (_draftSignatures[c.id] != null ||
-                                          FeedingAttendanceRepository()
-                                              .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
-                                      ? Icons.check_circle
-                                      : Icons.draw_outlined,
-                                  size: 13,
-                                  color: (_draftSignatures[c.id] != null ||
-                                          FeedingAttendanceRepository()
-                                              .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
-                                      ? AppColors.darkGreen
-                                      : AppColors.textMuted,
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    (_draftSignatures[c.id] != null ||
-                                            FeedingAttendanceRepository()
-                                                .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
-                                        ? "Mother's Signature Attached (Tap to re-sign)"
-                                        : "Tap to sign with Mother's Signature",
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: (_draftSignatures[c.id] != null ||
-                                              FeedingAttendanceRepository()
-                                                  .getSignaturesForDate(_currentBarangay, _selectedDate)[c.id] != null)
-                                          ? AppColors.darkGreen
-                                          : AppColors.textMuted,
+                                    style: const TextStyle(
+                                      fontSize: 10.5,
+                                      color: AppColors.statRed,
                                       fontWeight: FontWeight.w600,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const Icon(Icons.edit, size: 11, color: AppColors.primaryGreen),
+                                const Icon(Icons.edit, size: 11, color: AppColors.statRed),
                               ],
                             ),
                           ),
@@ -669,8 +847,9 @@ class _AttendanceTabState extends State<AttendanceTab> {
                   signatures: _draftSignatures,
                 );
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Attendance & food history saved successfully')),
+                AppNotificationUI.showSuccess(
+                  context,
+                  'Attendance & food history saved successfully',
                 );
               },
             ),
@@ -1288,36 +1467,15 @@ class _AttendanceTabState extends State<AttendanceTab> {
     );
   }
 
-  Widget _statusChip(
-    String label,
-    String childId,
-    Map<String, String?> statuses,
-    Color color, {
-    VoidCallback? onTap,
-  }) {
-    final selected = statuses[childId] == label;
-    return InkWell(
-      onTap: onTap ??
-          () => setState(() => _draftStatuses = {...statuses, childId: label}),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? color : AppColors.background,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: selected ? color : AppColors.border),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : AppColors.textSecondary,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
+  Color _statusChipColor(String status) {
+    final s = status.toLowerCase();
+    if (s.contains('sam') || s.contains('severely wasted') || s.contains('severely underweight')) {
+      return AppColors.statRed;
+    }
+    if (s.contains('mam') || s.contains('moderately wasted') || s.contains('underweight') || s.contains('stunted')) {
+      return AppColors.statOrange;
+    }
+    return AppColors.primaryGreen;
   }
 
   bool _isSameDay(DateTime a, DateTime b) =>
@@ -1449,36 +1607,58 @@ class _SuggestedCardState extends State<_SuggestedCard> {
   }
 }
 
-class _CountBox extends StatelessWidget {
+class _SummaryBadge extends StatelessWidget {
   final String value;
   final String label;
   final Color color;
-  const _CountBox({
+  final IconData icon;
+
+  const _SummaryBadge({
     required this.value,
     required this.label,
     required this.color,
+    required this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Icon(icon, size: 13, color: color),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
           Text(
             value,
             style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
               color: color,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
             ),
           ),
-          Text(label, style: AppTextStyles.body.copyWith(fontSize: 10)),
         ],
       ),
     );

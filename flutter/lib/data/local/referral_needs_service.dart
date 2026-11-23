@@ -38,21 +38,37 @@ class ReferralNeedsService {
   }
 
   bool _isChildReferralActiveOrResolved(Child c) {
-    final referrals = _referralRepo.getForBeneficiary(c.id);
-    if (referrals.isEmpty) return false;
+    final allRefs = _referralRepo.getAll().where((r) {
+      if (r.isCancelled) return false;
+      if (r.beneficiaryId == c.id) return true;
+      if (r.resolvedBeneficiaryName.trim().toLowerCase() == c.fullName.trim().toLowerCase()) {
+        return true;
+      }
+      return false;
+    }).toList();
+    if (allRefs.isEmpty) return false;
 
-    // If an open referral exists (Pending or In Progress), do not show in Needs Referral
-    final hasOpen = referrals.any((r) => r.isPending || r.isInProgress);
-    if (hasOpen) return true;
+    allRefs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    // Check latest referral
-    final latest = referrals.first;
+    // A child with an active referral (Pending/Ongoing/In Progress) must NOT appear in Needs referral
+    final hasActive = allRefs.any((r) =>
+        r.isPending ||
+        r.isInProgress ||
+        r.isOngoing ||
+        r.status.toLowerCase() == 'pending' ||
+        r.status.toLowerCase() == 'ongoing' ||
+        r.status.toLowerCase() == 'in progress');
+    if (hasActive) return true; // excluded from "Needs referral"
+
+    // Allow a new referral only when the old one is Completed and the child is still severe/at-risk
+    final latest = allRefs.first;
     if (latest.isCompleted) {
       final measurements = _measurementRepo.getForChild(c.id);
       if (measurements.isNotEmpty) {
         final newest = measurements.first;
-        if (newest.date.isAfter(latest.createdAt)) {
-          if (!newest.isPlausible) return true; // Invalid record doesn't re-trigger severe referral
+        final refDate = latest.updatedAt ?? latest.createdAt;
+        if (newest.date.isAfter(refDate)) {
+          if (!newest.isPlausible) return true;
           final isSevere = newest.weightForAgeStatus == 'Severely Underweight' ||
               newest.heightForAgeStatus == 'Severely Stunted' ||
               newest.effectiveWastingStatus == 'SAM';
@@ -65,24 +81,40 @@ class ReferralNeedsService {
   }
 
   bool _isMotherReferralActiveOrResolved(Mother m) {
-    final referrals = _referralRepo.getForBeneficiary(m.id);
-    if (referrals.isEmpty) return false;
+    final allRefs = _referralRepo.getAll().where((r) {
+      if (r.isCancelled) return false;
+      if (r.beneficiaryId == m.id) return true;
+      if (r.resolvedBeneficiaryName.trim().toLowerCase() == m.fullName.trim().toLowerCase()) {
+        return true;
+      }
+      return false;
+    }).toList();
+    if (allRefs.isEmpty) return false;
 
-    final hasOpen = referrals.any((r) => r.isPending || r.isInProgress);
-    if (hasOpen) return true;
+    allRefs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    final latest = referrals.first;
+    final hasActive = allRefs.any((r) =>
+        r.isPending ||
+        r.isInProgress ||
+        r.isOngoing ||
+        r.status.toLowerCase() == 'pending' ||
+        r.status.toLowerCase() == 'ongoing' ||
+        r.status.toLowerCase() == 'in progress');
+    if (hasActive) return true;
+
+    final latest = allRefs.first;
     if (latest.isCompleted) {
       final visits = _motherVisitRepo.getForMother(m.id);
       if (visits.isNotEmpty) {
         final newest = visits.first;
-        if (newest.date.isAfter(latest.createdAt)) {
+        final refDate = latest.updatedAt ?? latest.createdAt;
+        if (newest.date.isAfter(refDate)) {
           if (newest.hasMedicalConcern || newest.observation == 'Signs of concern') {
             return false;
           }
         }
       }
-      return true; // resolved
+      return true;
     }
     return false;
   }

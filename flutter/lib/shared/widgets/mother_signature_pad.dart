@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:ui' as ui;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -9,12 +10,16 @@ class MotherSignaturePad extends StatefulWidget {
   final String? initialSignature;
   final ValueChanged<String?> onSignatureChanged;
   final String title;
+  final bool isRequired;
+  final String? errorMessage;
 
   const MotherSignaturePad({
     super.key,
     this.initialSignature,
     required this.onSignatureChanged,
     this.title = "Mother / Guardian Signature",
+    this.isRequired = false,
+    this.errorMessage,
   });
 
   @override
@@ -24,12 +29,25 @@ class MotherSignaturePad extends StatefulWidget {
 class _MotherSignaturePadState extends State<MotherSignaturePad> {
   final List<List<Offset>> _strokes = [];
   String? _signatureBase64;
-  bool _isDrawing = false;
+  bool _isDrawing = true;
 
   @override
   void initState() {
     super.initState();
     _signatureBase64 = widget.initialSignature;
+    _isDrawing = widget.initialSignature == null || widget.initialSignature!.isEmpty;
+  }
+
+  @override
+  void didUpdateWidget(MotherSignaturePad oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialSignature != oldWidget.initialSignature &&
+        widget.initialSignature != _signatureBase64) {
+      setState(() {
+        _signatureBase64 = widget.initialSignature;
+        _isDrawing = widget.initialSignature == null || widget.initialSignature!.isEmpty;
+      });
+    }
   }
 
   Future<void> _captureSignature() async {
@@ -45,6 +63,7 @@ class _MotherSignaturePadState extends State<MotherSignaturePad> {
       final paint = Paint()
         ..color = const Color(0xFF1B5E20)
         ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
         ..strokeWidth = 3.0;
 
       // Draw light background
@@ -54,8 +73,13 @@ class _MotherSignaturePadState extends State<MotherSignaturePad> {
       );
 
       for (final stroke in _strokes) {
-        for (int i = 0; i < stroke.length - 1; i++) {
-          canvas.drawLine(stroke[i], stroke[i + 1], paint);
+        if (stroke.isEmpty) continue;
+        if (stroke.length == 1) {
+          canvas.drawCircle(stroke[0], 2.0, paint);
+        } else {
+          for (int i = 0; i < stroke.length - 1; i++) {
+            canvas.drawLine(stroke[i], stroke[i + 1], paint);
+          }
         }
       }
 
@@ -67,7 +91,7 @@ class _MotherSignaturePadState extends State<MotherSignaturePad> {
         final dataUrl = 'data:image/png;base64,$base64Str';
         setState(() {
           _signatureBase64 = dataUrl;
-          _isDrawing = false;
+          // Keep _isDrawing = true so user can draw additional strokes if needed
         });
         widget.onSignatureChanged(dataUrl);
       }
@@ -88,12 +112,16 @@ class _MotherSignaturePadState extends State<MotherSignaturePad> {
   @override
   Widget build(BuildContext context) {
     final hasExistingSignature = _signatureBase64 != null && _signatureBase64!.isNotEmpty;
+    final isMissing = widget.isRequired && !hasExistingSignature;
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(
+          color: isMissing ? Colors.red.shade300 : Colors.grey.shade300,
+          width: isMissing ? 1.5 : 1.0,
+        ),
       ),
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
@@ -104,15 +132,30 @@ class _MotherSignaturePadState extends State<MotherSignaturePad> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.draw_outlined, size: 18, color: AppColors.primaryGreen),
+                  Icon(
+                    Icons.draw_outlined,
+                    size: 18,
+                    color: isMissing ? Colors.red.shade700 : AppColors.primaryGreen,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     widget.title,
                     style: AppTextStyles.label.copyWith(
-                      color: AppColors.textPrimary,
+                      color: isMissing ? Colors.red.shade900 : AppColors.textPrimary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  if (widget.isRequired) ...[
+                    const SizedBox(width: 4),
+                    const Text(
+                      '*',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ],
               ),
               if (hasExistingSignature && !_isDrawing)
@@ -121,7 +164,9 @@ class _MotherSignaturePadState extends State<MotherSignaturePad> {
                     setState(() {
                       _isDrawing = true;
                       _strokes.clear();
+                      _signatureBase64 = null;
                     });
+                    widget.onSignatureChanged(null);
                   },
                   icon: const Icon(Icons.edit, size: 14, color: AppColors.primaryGreen),
                   label: const Text('Re-sign', style: TextStyle(fontSize: 12, color: AppColors.primaryGreen)),
@@ -180,41 +225,56 @@ class _MotherSignaturePadState extends State<MotherSignaturePad> {
                 color: Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: AppColors.primaryGreen.withValues(alpha: 0.3),
+                  color: isMissing
+                      ? Colors.red.shade400
+                      : (_strokes.isNotEmpty
+                          ? AppColors.primaryGreen
+                          : AppColors.primaryGreen.withValues(alpha: 0.3)),
                   width: 1.5,
                 ),
               ),
               child: Stack(
                 children: [
-                  GestureDetector(
-                    onPanStart: (details) {
-                      setState(() {
-                        _strokes.add([details.localPosition]);
-                      });
+                  RawGestureDetector(
+                    gestures: {
+                      _EagerSignatureGestureRecognizer:
+                          GestureRecognizerFactoryWithHandlers<_EagerSignatureGestureRecognizer>(
+                        () => _EagerSignatureGestureRecognizer(),
+                        (_EagerSignatureGestureRecognizer instance) {
+                          instance.onStart = (pos) {
+                            setState(() {
+                              _strokes.add([pos]);
+                            });
+                          };
+                          instance.onUpdate = (pos) {
+                            setState(() {
+                              if (_strokes.isNotEmpty) {
+                                _strokes.last.add(pos);
+                              }
+                            });
+                          };
+                          instance.onEnd = () {
+                            _captureSignature();
+                          };
+                        },
+                      ),
                     },
-                    onPanUpdate: (details) {
-                      setState(() {
-                        if (_strokes.isNotEmpty) {
-                          _strokes.last.add(details.localPosition);
-                        }
-                      });
-                    },
-                    onPanEnd: (_) {
-                      _captureSignature();
-                    },
+                    behavior: HitTestBehavior.opaque,
                     child: CustomPaint(
                       painter: _SignaturePainter(_strokes),
                       size: Size.infinite,
                     ),
                   ),
                   if (_strokes.isEmpty)
-                    Center(
-                      child: Text(
-                        'Sign with finger here',
-                        style: TextStyle(
-                          color: Colors.grey.shade400,
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
+                    IgnorePointer(
+                      child: Center(
+                        child: Text(
+                          'Sign with finger here',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                       ),
                     ),
@@ -222,20 +282,53 @@ class _MotherSignaturePadState extends State<MotherSignaturePad> {
                     bottom: 6,
                     left: 12,
                     right: 12,
-                    child: Divider(
-                      color: Colors.grey.shade300,
-                      thickness: 1,
+                    child: IgnorePointer(
+                      child: Divider(
+                        color: Colors.grey.shade300,
+                        thickness: 1,
+                      ),
                     ),
                   ),
+                  if (hasExistingSignature)
+                    Positioned(
+                      top: 6,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check, size: 12, color: AppColors.primaryGreen),
+                            SizedBox(width: 3),
+                            Text('Signed', style: TextStyle(fontSize: 10, color: AppColors.primaryGreen, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
             const SizedBox(height: 6),
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                if (isMissing)
+                  Text(
+                    widget.errorMessage ?? 'Signature is required',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.red.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                else
+                  const SizedBox.shrink(),
                 TextButton.icon(
-                  onPressed: _strokes.isEmpty ? null : _clear,
+                  onPressed: (_strokes.isEmpty && _signatureBase64 == null) ? null : _clear,
                   icon: const Icon(Icons.clear, size: 14),
                   label: const Text('Clear', style: TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(
@@ -252,6 +345,40 @@ class _MotherSignaturePadState extends State<MotherSignaturePad> {
   }
 }
 
+/// Eager gesture recognizer that unconditionally accepts the pointer immediately on down,
+/// disabling any parent Scrollable or drag listeners while drawing.
+class _EagerSignatureGestureRecognizer extends OneSequenceGestureRecognizer {
+  _EagerSignatureGestureRecognizer() : super(debugOwner: 'EagerSignatureGestureRecognizer');
+
+  ValueChanged<Offset>? onStart;
+  ValueChanged<Offset>? onUpdate;
+  VoidCallback? onEnd;
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    startTrackingPointer(event.pointer, event.transform);
+    resolve(GestureDisposition.accepted);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    if (event is PointerDownEvent) {
+      onStart?.call(event.localPosition);
+    } else if (event is PointerMoveEvent) {
+      onUpdate?.call(event.localPosition);
+    } else if (event is PointerUpEvent || event is PointerCancelEvent) {
+      onEnd?.call();
+      stopTrackingPointer(event.pointer);
+    }
+  }
+
+  @override
+  String get debugDescription => 'eagerSignature';
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {}
+}
+
 class _SignaturePainter extends CustomPainter {
   final List<List<Offset>> strokes;
 
@@ -262,11 +389,17 @@ class _SignaturePainter extends CustomPainter {
     final paint = Paint()
       ..color = const Color(0xFF1B5E20)
       ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
       ..strokeWidth = 3.0;
 
     for (final stroke in strokes) {
-      for (int i = 0; i < stroke.length - 1; i++) {
-        canvas.drawLine(stroke[i], stroke[i + 1], paint);
+      if (stroke.isEmpty) continue;
+      if (stroke.length == 1) {
+        canvas.drawCircle(stroke[0], 2.0, paint);
+      } else {
+        for (int i = 0; i < stroke.length - 1; i++) {
+          canvas.drawLine(stroke[i], stroke[i + 1], paint);
+        }
       }
     }
   }

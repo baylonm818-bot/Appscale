@@ -6,6 +6,7 @@ import '../../../data/local/measurement_repository.dart';
 import '../../../data/local/referral_repository.dart';
 import '../../../data/models/child.dart';
 import '../../masterlist/widgets/status_badge.dart';
+import '../../referrals/widgets/referral_detail_sheet.dart';
 import '../../../shared/utils/app_date_format.dart';
 
 class ChildProfileHeader extends StatelessWidget {
@@ -51,11 +52,18 @@ class ChildProfileHeader extends StatelessWidget {
 
     final referralStatus = ReferralRepository().getReferralHeaderStatus(
       beneficiaryId: child.id,
+      fullName: child.fullName,
       hasRecords: hasValidMeasurements,
       needsReferralFromRecord: needsReferral,
       recordDate: latestValidMeasurement?.date,
     );
 
+    final activeReferral = referralStatus.referral != null &&
+        (referralStatus.referral!.isPending ||
+            referralStatus.referral!.isInProgress ||
+            referralStatus.referral!.isOngoing)
+        ? referralStatus.referral
+        : null;
 
     return Container(
       width: double.infinity,
@@ -96,6 +104,13 @@ class ChildProfileHeader extends StatelessWidget {
                 if (referralStatus.showReferButton && onReferralPressed != null) ...[
                   const SizedBox(width: 6),
                   _ReferralButton(onPressed: onReferralPressed!),
+                ] else if (activeReferral != null) ...[
+                  const SizedBox(width: 6),
+                  _ViewReferralButton(
+                    status: activeReferral.statusDisplay,
+                    date: activeReferral.createdAt,
+                    onPressed: () => ReferralDetailSheet.show(context, referral: activeReferral),
+                  ),
                 ],
                 const SizedBox(width: 6),
               ],
@@ -396,6 +411,48 @@ class _ReferralButton extends StatelessWidget {
                   color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ViewReferralButton extends StatelessWidget {
+  final String status;
+  final DateTime date;
+  final VoidCallback onPressed;
+
+  const _ViewReferralButton({
+    required this.status,
+    required this.date,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.22),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.visibility_outlined, color: Colors.white, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                'View referral ($status)',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

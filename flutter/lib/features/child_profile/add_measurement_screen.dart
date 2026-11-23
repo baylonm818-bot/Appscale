@@ -192,7 +192,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     return _weightValidation.isError ||
         _heightValidation.isError ||
         _muacValidation.isError ||
-        _plausibilityError != null;
+        _plausibilityError != null ||
+        (_motherSignature == null || _motherSignature!.trim().isEmpty);
   }
 
   String get _hardErrorSummary {
@@ -201,8 +202,11 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     if (_heightValidation.isError) fields.add('Height');
     if (_muacValidation.isError) fields.add('MUAC');
     if (_plausibilityError != null) return _plausibilityError!;
-    if (fields.isEmpty) return 'Ayusin ang mga invalid value bago i-save.';
-    return 'Ayusin ang error sa ${fields.join(" at ")} bago i-save.';
+    if (fields.isNotEmpty) return 'Ayusin ang error sa ${fields.join(" at ")} bago i-save.';
+    if (_motherSignature == null || _motherSignature!.trim().isEmpty) {
+      return 'Signature is required';
+    }
+    return 'Ayusin ang mga invalid value bago i-save.';
   }
 
   Widget _buildChildContextInfoRow() {
@@ -1077,6 +1081,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                     const SizedBox(height: AppSpacing.lg),
                     MotherSignaturePad(
                       title: "Mother / Guardian Signature (Monitoring)",
+                      isRequired: true,
+                      errorMessage: 'Signature is required',
                       initialSignature: _motherSignature,
                       onSignatureChanged: (sig) {
                         setState(() => _motherSignature = sig);

@@ -492,11 +492,15 @@ class ReferralRepository {
   }
 
   /// Returns the latest referral for a beneficiary that is not cancelled or rejected.
-  Referral? getLatestValidForBeneficiary(String beneficiaryId) {
-    final list = getAll().where((r) =>
-        r.beneficiaryId == beneficiaryId &&
-        !r.isCancelled
-    ).toList();
+  Referral? getLatestValidForBeneficiary(String beneficiaryId, {String? fullName}) {
+    final list = getAll().where((r) {
+      if (r.isCancelled) return false;
+      if (r.beneficiaryId == beneficiaryId) return true;
+      if (fullName != null && r.resolvedBeneficiaryName.trim().toLowerCase() == fullName.trim().toLowerCase()) {
+        return true;
+      }
+      return false;
+    }).toList();
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list.isNotEmpty ? list.first : null;
   }
@@ -504,25 +508,32 @@ class ReferralRepository {
   /// Calculates header button and status chip state for a beneficiary profile:
   ReferralHeaderStatus getReferralHeaderStatus({
     required String beneficiaryId,
+    String? fullName,
     bool hasRecords = true,
     bool needsReferralFromRecord = false,
     DateTime? recordDate,
   }) {
-    final latestReferral = getLatestValidForBeneficiary(beneficiaryId);
+    final latestReferral = getLatestValidForBeneficiary(beneficiaryId, fullName: fullName);
 
-    // If there is ANY valid referral in the database for this beneficiary:
-    // ALWAYS hide the Refer button (anuman ang status)!
     if (latestReferral != null) {
-      return ReferralHeaderStatus(
-        showReferButton: false,
-        referral: latestReferral,
-        chipLabel: latestReferral.isCompleted
-            ? 'Referral completed'
-            : 'Referred to BHW',
-        chipColor: latestReferral.isCompleted
-            ? AppColors.primaryGreen
-            : AppColors.statOrange,
-      );
+      final isActive = latestReferral.isPending || latestReferral.isInProgress || latestReferral.isOngoing;
+      if (isActive) {
+        return ReferralHeaderStatus(
+          showReferButton: false,
+          referral: latestReferral,
+          chipLabel: 'Referred to BHW (${latestReferral.statusDisplay})',
+          chipColor: AppColors.statOrange,
+        );
+      }
+      if (latestReferral.isCompleted) {
+        // Allow a new referral only when the old one is Completed and the child is still severe/at-risk
+        return ReferralHeaderStatus(
+          showReferButton: needsReferralFromRecord,
+          referral: latestReferral,
+          chipLabel: 'Referral completed',
+          chipColor: AppColors.primaryGreen,
+        );
+      }
     }
 
     // No referral in database yet: show button!

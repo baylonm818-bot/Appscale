@@ -138,6 +138,7 @@ class BeneficiaryApi {
       'height_status': measurement.heightForAgeStatus,
       'overall_status': measurement.effectiveWastingStatus,
       'recorded_by': settings.authUser?['user_id'],
+      'signature': measurement.signature,
     }, token);
   }
 
@@ -173,6 +174,7 @@ class BeneficiaryApi {
       'overall_status': measurement.effectiveWastingStatus,
       'recorded_by': settings.authUser?['user_id'],
       'audit_note': auditNote,
+      'signature': measurement.signature,
     }, token);
   }
 
@@ -373,6 +375,7 @@ class BeneficiaryApi {
     DateTime? nextSchedule,
     String? providedBy,
     String? notes,
+    String? signature,
   }) async {
     final settings = SettingsRepository();
     final token = settings.authToken;
@@ -393,6 +396,7 @@ class BeneficiaryApi {
       'next_schedule': nextSchedule != null ? _date(nextSchedule) : null,
       'provided_by': providedBy ?? 'BNS',
       'notes': notes,
+      'signature': signature,
     }, token);
   }
 
