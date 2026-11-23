@@ -330,24 +330,10 @@ class SettingsRepository {
     AppDataBus.notifyChanged();
   }
 
-  bool get ageFormatDays {
-    final user = authUser;
-    if (user != null && user['age_format_days'] != null) {
-      final v = user['age_format_days'];
-      if (v is bool) return v;
-      if (v == 1 || v == '1' || v == 'true') return true;
-    }
-    return _box.get('age_format_days', defaultValue: false);
-  }
+  bool get ageFormatDays => true;
 
   Future<void> setAgeFormatDays(bool value) async {
-    await _box.put('age_format_days', value);
-    final user = authUser;
-    if (user != null) {
-      final updated = Map<String, dynamic>.from(user);
-      updated['age_format_days'] = value ? 1 : 0;
-      await setAuthUser(updated);
-    }
+    await _box.put('age_format_days', true);
     AppDataBus.notifyChanged();
   }
 

@@ -6,7 +6,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/app_data_bus.dart';
-import '../../data/local/hive_boxes.dart';
 import 'profile_dialogs.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -103,8 +102,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = SettingsRepository();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -236,42 +233,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         visualDensity: VisualDensity.compact,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1, color: AppColors.border),
-
-              // Age Format with Days toggle
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.cake_outlined, size: 20, color: AppColors.primaryGreen),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'age_format_days'.tr,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                          ),
-                          Text(
-                            'age_format_days_sub'.tr,
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: settings.ageFormatDays,
-                      activeThumbColor: AppColors.primaryGreen,
-                      onChanged: (val) async {
-                        await settings.setAgeFormatDays(val);
-                        AppDataBus.notifyChanged();
-                        setState(() {});
-                      },
                     ),
                   ],
                 ),

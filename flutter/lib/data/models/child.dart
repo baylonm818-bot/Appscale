@@ -1,7 +1,6 @@
 import '../../app_strings.dart';
 import '../../core/utils/safe_parser.dart';
 import '../../shared/utils/app_user_identity.dart';
-import '../local/hive_boxes.dart';
 import 'guardian.dart';
 
 class Child {
@@ -102,13 +101,10 @@ class Child {
 
   int get ageInMonths => ageInMonthsAt(DateTime.now());
 
-  /// Formatted age string respecting the user's detailed days preference.
+  /// Formatted age string with exact days always included.
   String formatAge({bool? includeDays, DateTime? referenceDate}) {
     final ref = referenceDate ?? DateTime.now();
-    bool withDays = false;
-    try {
-      withDays = includeDays ?? SettingsRepository().ageFormatDays;
-    } catch (_) {}
+    final withDays = includeDays ?? true;
 
     final isTl = L.isTagalog;
 
@@ -146,57 +142,15 @@ class Child {
     return '$m $mUnit $andWord $remainingDays $dUnit';
   }
 
-  /// Full label: "2 yr. 4 mo." or "3 mos." or "8 days" / "1 wk. 1 day" for infants under 1 month.
+  /// Full label: always includes exact days (e.g. "5 months and 14 days" or "12 days").
   String ageLabelAt(DateTime referenceDate) {
-    bool withDays = false;
-    try {
-      withDays = SettingsRepository().ageFormatDays;
-    } catch (_) {}
-    if (withDays) {
-      return formatAge(includeDays: true, referenceDate: referenceDate);
-    }
-    final months = ageInMonthsAt(referenceDate);
-    final isTl = L.isTagalog;
-    if (months == 0) {
-      final s = DateTime(birthDate.year, birthDate.month, birthDate.day);
-      final e = DateTime(referenceDate.year, referenceDate.month, referenceDate.day);
-      final days = e.difference(s).inDays;
-      if (days <= 0) return isTl ? '0 araw' : '0 days';
-      if (days < 7) {
-        return '$days ${isTl ? "araw" : (days == 1 ? "day" : "days")}';
-      }
-      final weeks = days ~/ 7;
-      final remDays = days % 7;
-      final wkUnit = isTl ? 'linggo' : (weeks == 1 ? "wk." : "wks.");
-      final dUnit = isTl ? 'araw' : (remDays == 1 ? "day" : "days");
-      if (remDays == 0) {
-        return '$weeks $wkUnit';
-      }
-      return '$weeks $wkUnit $remDays $dUnit';
-    }
-    if (months < 12) {
-      return '$months ${isTl ? "buwan" : (months == 1 ? "mo." : "mos.")}';
-    }
-    final years = months ~/ 12;
-    final remainder = months % 12;
-    final yrUnit = isTl ? 'taon' : (years == 1 ? "yr." : "yrs.");
-    final moUnit = isTl ? 'buwan' : (remainder == 1 ? "mo." : "mos.") ;
-    if (remainder == 0) {
-      return '$years $yrUnit';
-    }
-    return '$years $yrUnit $remainder $moUnit';
+    return formatAge(includeDays: true, referenceDate: referenceDate);
   }
 
   String get ageLabel => ageLabelAt(DateTime.now());
 
-  /// Short display for list tiles / pills, e.g. "2 mos", "1 wk 1 day", "3 yrs"
-  String get ageDisplay {
-    final months = ageInMonths;
-    if (months == 0) return ageLabel;
-    final isTl = L.isTagalog;
-    final moUnit = isTl ? 'buwan' : (months == 1 ? "mo" : "mos");
-    return '$months $moUnit';
-  }
+  /// Short display for list tiles / pills
+  String get ageDisplay => ageLabel;
 
   static String normalizePurok(String? raw) {
     if (raw == null) return '';

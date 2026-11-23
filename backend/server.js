@@ -119,19 +119,17 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.4';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 37);
+    const version = process.env.APP_VERSION || '3.3.5';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 38);
     const notesEn = [
-        'Strict bilingual support (pure English and Tagalog without mixing)',
-        'Worker Profile logout and settings navigation updated',
-        'Accurate OPT age calculation displaying localized months and days',
-        'Bilingual update release notes and dialog'
+        'Age format with days is now permanently enabled across all records',
+        'Removed redundant toggle switch from Settings',
+        'Strict bilingual support (pure English and Tagalog)'
     ];
     const notesTl = [
-        'Ganap na suporta sa dalawang wika (puro English at Tagalog nang walang halong salita)',
-        'Na-update ang logout at settings navigation sa Worker Profile',
-        'Tumpak na kalkulasyon ng edad sa OPT na may buwan at araw',
-        'Bilingual na tala ng bagong bersyon at update dialog'
+        'Awtomatiko at permanente nang may bilang ng araw ang edad ng bata',
+        'Inalis ang switch toggle sa Settings',
+        'Ganap na suporta sa dalawang wika (English at Tagalog)'
     ];
     const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 
