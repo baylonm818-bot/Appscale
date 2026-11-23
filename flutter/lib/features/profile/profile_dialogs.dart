@@ -36,10 +36,10 @@ Future<void> showEditProfileDialog(BuildContext context) async {
   final rawBarangay = AppUserIdentity.resolveBarangay(user);
   final healthStation = user['health_station']?.toString().trim().isNotEmpty == true
       ? user['health_station'].toString().trim()
-      : (rawBarangay.isNotEmpty ? '$rawBarangay Health Station' : 'Rural Health Unit');
+      : (rawBarangay.isNotEmpty ? '$rawBarangay ${AppStrings.t('health_station')}' : AppStrings.t('rural_health_unit'));
   final accreditation = user['accreditation']?.toString().trim().isNotEmpty == true
       ? user['accreditation'].toString().trim()
-      : 'DOH / NNC Certified BNS';
+      : AppStrings.t('accreditation_val');
 
   final formKey = GlobalKey<FormState>();
   bool isSaving = false;
@@ -193,7 +193,7 @@ Future<void> showEditProfileDialog(BuildContext context) async {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${AppStrings.t('health_station')} (Admin Only)',
+                              '${AppStrings.t('health_station')} (${AppStrings.t('admin_only')})',
                               style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
                             ),
                             Text(
@@ -226,7 +226,7 @@ Future<void> showEditProfileDialog(BuildContext context) async {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${AppStrings.t('accreditation')} (Admin Only)',
+                              '${AppStrings.t('accreditation')} (${AppStrings.t('admin_only')})',
                               style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
                             ),
                             Text(

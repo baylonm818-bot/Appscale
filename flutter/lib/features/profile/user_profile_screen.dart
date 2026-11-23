@@ -410,7 +410,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ? AppStrings.t('unassigned')
         : resolvedBarangay.toLowerCase().startsWith('barangay ')
             ? resolvedBarangay
-            : 'Barangay $resolvedBarangay';
+            : '${AppStrings.t('assigned_barangay')} $resolvedBarangay';
 
     // Health Station from API record or derived from barangay
     final rawHealthStation = settings.authUser?['health_station']?.toString().trim();
@@ -418,9 +418,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ? rawHealthStation
         : (resolvedBarangay.isNotEmpty
             ? (resolvedBarangay.toLowerCase().startsWith('barangay ')
-                ? '$resolvedBarangay Health Station'
-                : '$resolvedBarangay Barangay Health Station')
-            : 'Rural Health Unit');
+                ? '$resolvedBarangay ${AppStrings.t('health_station')}'
+                : '$resolvedBarangay Barangay ${AppStrings.t('health_station')}')
+            : AppStrings.t('rural_health_unit'));
 
     // Counts from user record or local repository
     final dynamic serverChildren = settings.authUser?['active_children_count'];
@@ -583,7 +583,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '$barangayLabel • Rural Health Unit',
+                  '$barangayLabel • ${AppStrings.t('rural_health_unit')}',
                   style: AppTextStyles.body.copyWith(
                     color: Colors.white70,
                     fontSize: 13,

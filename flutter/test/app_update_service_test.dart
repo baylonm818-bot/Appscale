@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:appscalev3/app_strings.dart';
 import 'package:appscalev3/core/services/app_update_service.dart';
 
 void main() {
@@ -52,6 +53,32 @@ void main() {
 
       expect(info.hasUpdate, isFalse);
       expect(info.fileSizeFormatted, '');
+    });
+
+    test('localizedReleaseNotes selects matching language without mixing', () {
+      const info = AppUpdateInfo(
+        hasUpdate: true,
+        currentVersion: '3.3.3',
+        latestVersion: '3.3.4',
+        currentVersionCode: 36,
+        latestVersionCode: 37,
+        hasApk: true,
+        downloadUrl: 'https://example.com/api/download-apk',
+        fileSizeBytes: 25 * 1024 * 1024,
+        releaseNotes: 'Fallback release notes',
+        notesEn: ['English feature 1', 'English feature 2'],
+        notesTl: ['Tagalog feature 1', 'Tagalog feature 2'],
+      );
+
+      L.lang.value = 'en';
+      expect(info.localizedReleaseNotes, contains('English feature 1'));
+      expect(info.localizedReleaseNotes, isNot(contains('Tagalog feature 1')));
+
+      L.lang.value = 'tl';
+      expect(info.localizedReleaseNotes, contains('Tagalog feature 1'));
+      expect(info.localizedReleaseNotes, isNot(contains('English feature 1')));
+
+      L.lang.value = 'en';
     });
   });
 

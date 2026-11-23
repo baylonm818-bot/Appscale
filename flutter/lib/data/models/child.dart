@@ -1,3 +1,4 @@
+import '../../app_strings.dart';
 import '../../core/utils/safe_parser.dart';
 import '../../shared/utils/app_user_identity.dart';
 import '../local/hive_boxes.dart';
@@ -66,30 +67,35 @@ class Child {
   static String ageDisplayAt(DateTime birthDate, {DateTime? asOf}) {
     final ref = asOf ?? DateTime.now();
     final months = monthsBetween(birthDate, ref);
+    final isTl = L.isTagalog;
     if (months == 0) {
       final s = DateTime(birthDate.year, birthDate.month, birthDate.day);
       final e = DateTime(ref.year, ref.month, ref.day);
       final days = e.difference(s).inDays;
-      if (days <= 0) return '0 days';
+      if (days <= 0) return isTl ? '0 araw' : '0 days';
       if (days < 7) {
-        return '$days ${days == 1 ? "day" : "days"}';
+        return '$days ${isTl ? "araw" : (days == 1 ? "day" : "days")}';
       }
       final weeks = days ~/ 7;
       final remDays = days % 7;
+      final wkUnit = isTl ? 'linggo' : (weeks == 1 ? "wk" : "wks");
+      final dUnit = isTl ? 'araw' : (remDays == 1 ? "day" : "days");
       if (remDays == 0) {
-        return '$weeks ${weeks == 1 ? "wk" : "wks"}';
+        return '$weeks $wkUnit';
       }
-      return '$weeks ${weeks == 1 ? "wk" : "wks"} $remDays ${remDays == 1 ? "day" : "days"}';
+      return '$weeks $wkUnit $remDays $dUnit';
     }
     if (months < 12) {
-      return '$months ${months == 1 ? "mo." : "mos"}';
+      return '$months ${isTl ? "buwan" : (months == 1 ? "mo." : "mos")}';
     }
     final years = months ~/ 12;
     final remainder = months % 12;
+    final yrUnit = isTl ? 'taon' : (years == 1 ? "yr" : "yrs");
+    final moUnit = isTl ? 'buwan' : (remainder == 1 ? "mo" : "mos");
     if (remainder == 0) {
-      return '$years ${years == 1 ? "yr" : "yrs"}';
+      return '$years $yrUnit';
     }
-    return '$years ${years == 1 ? "yr" : "yrs"} $remainder ${remainder == 1 ? "mo" : "mos"}';
+    return '$years $yrUnit $remainder $moUnit';
   }
 
   int ageInMonthsAt(DateTime referenceDate) => monthsBetween(birthDate, referenceDate);
@@ -104,13 +110,16 @@ class Child {
       withDays = includeDays ?? SettingsRepository().ageFormatDays;
     } catch (_) {}
 
+    final isTl = L.isTagalog;
+
     if (birthDate.isAfter(ref)) {
-      return withDays ? '0 days' : '0 months';
+      return withDays ? (isTl ? '0 araw' : '0 days') : (isTl ? '0 buwan' : '0 months');
     }
 
     final m = ageInMonthsAt(ref);
     if (!withDays) {
-      return '$m ${m == 1 ? "month" : "months"}';
+      final mUnit = isTl ? 'buwan' : (m == 1 ? "month" : "months");
+      return '$m $mUnit';
     }
 
     // Accurate calculation of completed months date and remaining days
@@ -124,13 +133,17 @@ class Child {
         ? refDateOnly.difference(completedMonthsDate).inDays
         : 0;
 
+    final dUnit = isTl ? 'araw' : (remainingDays == 1 ? "day" : "days");
+    final mUnit = isTl ? 'buwan' : (m == 1 ? "month" : "months");
+
     if (m == 0) {
-      return '$remainingDays ${remainingDays == 1 ? "day" : "days"}';
+      return '$remainingDays $dUnit';
     }
     if (remainingDays <= 0) {
-      return '$m ${m == 1 ? "month" : "months"}';
+      return '$m $mUnit';
     }
-    return '$m ${m == 1 ? "month" : "months"} and $remainingDays ${remainingDays == 1 ? "day" : "days"}';
+    final andWord = isTl ? 'at' : 'and';
+    return '$m $mUnit $andWord $remainingDays $dUnit';
   }
 
   /// Full label: "2 yr. 4 mo." or "3 mos." or "8 days" / "1 wk. 1 day" for infants under 1 month.
@@ -143,30 +156,35 @@ class Child {
       return formatAge(includeDays: true, referenceDate: referenceDate);
     }
     final months = ageInMonthsAt(referenceDate);
+    final isTl = L.isTagalog;
     if (months == 0) {
       final s = DateTime(birthDate.year, birthDate.month, birthDate.day);
       final e = DateTime(referenceDate.year, referenceDate.month, referenceDate.day);
       final days = e.difference(s).inDays;
-      if (days <= 0) return '0 days';
+      if (days <= 0) return isTl ? '0 araw' : '0 days';
       if (days < 7) {
-        return '$days ${days == 1 ? "day" : "days"}';
+        return '$days ${isTl ? "araw" : (days == 1 ? "day" : "days")}';
       }
       final weeks = days ~/ 7;
       final remDays = days % 7;
+      final wkUnit = isTl ? 'linggo' : (weeks == 1 ? "wk." : "wks.");
+      final dUnit = isTl ? 'araw' : (remDays == 1 ? "day" : "days");
       if (remDays == 0) {
-        return '$weeks ${weeks == 1 ? "wk." : "wks."}';
+        return '$weeks $wkUnit';
       }
-      return '$weeks ${weeks == 1 ? "wk." : "wks."} $remDays ${remDays == 1 ? "day" : "days"}';
+      return '$weeks $wkUnit $remDays $dUnit';
     }
     if (months < 12) {
-      return '$months ${months == 1 ? "mo." : "mos."}';
+      return '$months ${isTl ? "buwan" : (months == 1 ? "mo." : "mos.")}';
     }
     final years = months ~/ 12;
     final remainder = months % 12;
+    final yrUnit = isTl ? 'taon' : (years == 1 ? "yr." : "yrs.");
+    final moUnit = isTl ? 'buwan' : (remainder == 1 ? "mo." : "mos.") ;
     if (remainder == 0) {
-      return '$years ${years == 1 ? "yr." : "yrs."}';
+      return '$years $yrUnit';
     }
-    return '$years ${years == 1 ? "yr." : "yrs."} $remainder ${remainder == 1 ? "mo." : "mos."}';
+    return '$years $yrUnit $remainder $moUnit';
   }
 
   String get ageLabel => ageLabelAt(DateTime.now());
@@ -175,7 +193,9 @@ class Child {
   String get ageDisplay {
     final months = ageInMonths;
     if (months == 0) return ageLabel;
-    return '$months ${months == 1 ? "mo" : "mos"}';
+    final isTl = L.isTagalog;
+    final moUnit = isTl ? 'buwan' : (months == 1 ? "mo" : "mos");
+    return '$months $moUnit';
   }
 
   static String normalizePurok(String? raw) {

@@ -94,6 +94,8 @@ class AppUpdateInfo {
   final String downloadUrl;
   final int fileSizeBytes;
   final String releaseNotes;
+  final List<String> notesEn;
+  final List<String> notesTl;
   final DateTime? updatedAt;
 
   const AppUpdateInfo({
@@ -106,8 +108,21 @@ class AppUpdateInfo {
     required this.downloadUrl,
     required this.fileSizeBytes,
     required this.releaseNotes,
+    this.notesEn = const [],
+    this.notesTl = const [],
     this.updatedAt,
   });
+
+  /// Returns the release notes matching the active language without mixing EN and TL.
+  String get localizedReleaseNotes {
+    final list = L.isTagalog
+        ? (notesTl.isNotEmpty ? notesTl : notesEn)
+        : (notesEn.isNotEmpty ? notesEn : notesTl);
+    if (list.isNotEmpty) {
+      return list.map((item) => '• $item').join('\n');
+    }
+    return releaseNotes;
+  }
 
   String get fileSizeFormatted {
     if (fileSizeBytes <= 0) return '';
@@ -120,8 +135,8 @@ class AppUpdateService {
   AppUpdateService._();
 
   /// Current running version of the mobile app
-  static const String currentVersion = '3.3.3';
-  static const int currentVersionCode = 36;
+  static const String currentVersion = '3.3.4';
+  static const int currentVersionCode = 37;
 
   /// Compares two versions numerically (major.minor.patch).
   /// Returns >0 if v1 > v2, <0 if v1 < v2, and 0 if v1 == v2.
@@ -173,6 +188,14 @@ class AppUpdateService {
           : '${ApiConstants.serverOrigin}$rawDownload';
       final fileSizeBytes = int.tryParse(data['fileSizeBytes']?.toString() ?? '') ?? 0;
       final releaseNotes = (data['releaseNotes'] ?? 'Bug fixes and performance improvements.').toString();
+      final notesEnRaw = data['notes_en'];
+      final notesTlRaw = data['notes_tl'];
+      final notesEn = notesEnRaw is List
+          ? notesEnRaw.map((e) => e.toString()).toList()
+          : <String>[];
+      final notesTl = notesTlRaw is List
+          ? notesTlRaw.map((e) => e.toString()).toList()
+          : <String>[];
 
       // ONLY offer update when server version is strictly HIGHER than installed version.
       // Compare semantically by major.minor.patch (e.g. 3.3.10 > 3.3.1).
@@ -189,6 +212,8 @@ class AppUpdateService {
         downloadUrl: fullDownloadUrl,
         fileSizeBytes: fileSizeBytes,
         releaseNotes: releaseNotes,
+        notesEn: notesEn,
+        notesTl: notesTl,
       );
 
       if (hasUpdate) {
@@ -420,7 +445,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               ),
               child: SingleChildScrollView(
                 child: Text(
-                  widget.info.releaseNotes,
+                  widget.info.localizedReleaseNotes,
                   style: const TextStyle(fontSize: 12, height: 1.45, color: AppColors.textPrimary),
                 ),
               ),

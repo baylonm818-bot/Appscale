@@ -138,9 +138,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const Icon(Icons.person_outline, size: 20, color: AppColors.primaryGreen),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          'edit_profile'.tr,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'edit_profile'.tr,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            Text(
+                              'edit_profile_sub'.tr,
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                            ),
+                          ],
                         ),
                       ),
                       const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
@@ -205,7 +214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             Text(
-                              L.isTagalog ? 'language_tl'.tr : 'language_en'.tr,
+                              'language_sub'.tr,
                               style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                             ),
                           ],
@@ -270,8 +279,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
 
-          // ── Section 3: App Update ──
-          _buildSectionHeader('app_update'.tr),
+          // ── Section 3: App ──
+          _buildSectionHeader('app_section'.tr),
           _buildCard(
             children: [
               Padding(

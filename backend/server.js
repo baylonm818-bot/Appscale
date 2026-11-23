@@ -119,10 +119,21 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.3';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 36);
-    const releaseNotes = process.env.APP_RELEASE_NOTES ||
-        '• Inilipat ang Logout button sa Worker Profile page (may kumpirmasyon)\n• Inalis ang duplicate na Settings button (gear icon na lang sa itaas)\n• Bagong Wika / Language toggle (English at Tagalog)';
+    const version = process.env.APP_VERSION || '3.3.4';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 37);
+    const notesEn = [
+        'Strict bilingual support (pure English and Tagalog without mixing)',
+        'Worker Profile logout and settings navigation updated',
+        'Accurate OPT age calculation displaying localized months and days',
+        'Bilingual update release notes and dialog'
+    ];
+    const notesTl = [
+        'Ganap na suporta sa dalawang wika (puro English at Tagalog nang walang halong salita)',
+        'Na-update ang logout at settings navigation sa Worker Profile',
+        'Tumpak na kalkulasyon ng edad sa OPT na may buwan at araw',
+        'Bilingual na tala ng bagong bersyon at update dialog'
+    ];
+    const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 
     res.json({
         latestVersion: version,
@@ -131,6 +142,8 @@ app.get('/api/app-version', (req, res) => {
         downloadUrl: '/api/download-apk',
         fileSizeBytes: fileSize,
         releaseNotes: releaseNotes,
+        notes_en: notesEn,
+        notes_tl: notesTl,
         updatedAt: modifiedAt || new Date(),
     });
 });
