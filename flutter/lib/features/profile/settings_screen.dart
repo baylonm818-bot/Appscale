@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/localization/app_strings.dart';
+import '../../app_strings.dart';
 import '../../core/services/app_update_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -38,22 +38,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _handleManualUpdateCheck() async {
     setState(() => _checkingUpdate = true);
     try {
-      final updateInfo = await AppUpdateService.checkForUpdate();
+      final result = await AppUpdateService.checkForUpdateWithDetails();
       if (!mounted) return;
-      if (updateInfo != null && updateInfo.hasUpdate) {
-        await AppUpdateService.showUpdateDialog(context, updateInfo, isManualCheck: true);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              updateInfo == null
-                  ? AppStrings.t('cannot_connect_update')
-                  : AppStrings.t('up_to_date'),
+
+      switch (result.status) {
+        case AppUpdateStatus.noInternet:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('update_no_internet'.tr),
+              backgroundColor: AppColors.statRed,
+              behavior: SnackBarBehavior.floating,
             ),
-            backgroundColor: updateInfo == null ? AppColors.statAmber : AppColors.primaryGreen,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+          );
+          break;
+        case AppUpdateStatus.serverUnreachable:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('update_server_unreachable'.tr),
+              backgroundColor: AppColors.statAmber,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          break;
+        case AppUpdateStatus.alreadyLatest:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('update_already_latest'.tr),
+              backgroundColor: AppColors.primaryGreen,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          break;
+        case AppUpdateStatus.updateAvailable:
+          if (result.info != null) {
+            await AppUpdateService.showUpdateDialog(context, result.info!, isManualCheck: true);
+          }
+          break;
       }
     } finally {
       if (mounted) setState(() => _checkingUpdate = false);
@@ -88,7 +108,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(AppStrings.t('settings_title')),
+        title: Text('settings_title'.tr),
         backgroundColor: AppColors.darkGreen,
         foregroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -104,7 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           // ── Section 1: Account & Profile ──
-          _buildSectionHeader(AppStrings.t('account_and_profile')),
+          _buildSectionHeader('account_and_profile'.tr),
           _buildCard(
             children: [
               // Edit Profile
@@ -119,7 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          AppStrings.t('edit_profile'),
+                          'edit_profile'.tr,
                           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                         ),
                       ),
@@ -145,11 +165,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              AppStrings.t('change_password'),
+                              'change_password'.tr,
                               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             Text(
-                              AppStrings.t('change_password_sub'),
+                              'change_password_sub'.tr,
                               style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                             ),
                           ],
@@ -164,7 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           // ── Section 2: Preferences ──
-          _buildSectionHeader(AppStrings.t('preferences')),
+          _buildSectionHeader('preferences'.tr),
           _buildCard(
             children: [
               // Language Switcher (EN | TL)
@@ -181,13 +201,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              AppStrings.t('language'),
+                              'language'.tr,
                               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             Text(
-                              settings.language == 'tl'
-                                  ? AppStrings.t('language_tl')
-                                  : AppStrings.t('language_en'),
+                              L.isTagalog ? 'language_tl'.tr : 'language_en'.tr,
                               style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                             ),
                           ],
@@ -199,11 +217,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ButtonSegment(value: 'en', label: Text('EN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
                         ButtonSegment(value: 'tl', label: Text('TL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
                       ],
-                      selected: {settings.language},
+                      selected: {L.lang.value},
                       onSelectionChanged: (newSelection) async {
                         final chosen = newSelection.first;
-                        await settings.setLanguage(chosen);
-                        AppDataBus.notifyChanged();
+                        await L.set(chosen);
                         setState(() {});
                       },
                       style: const ButtonStyle(
@@ -228,11 +245,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            AppStrings.t('age_format_days'),
+                            'age_format_days'.tr,
                             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                           ),
                           Text(
-                            AppStrings.t('age_format_days_sub'),
+                            'age_format_days_sub'.tr,
                             style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                           ),
                         ],
@@ -254,7 +271,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           // ── Section 3: App Update ──
-          _buildSectionHeader(AppStrings.t('app_update')),
+          _buildSectionHeader('app_update'.tr),
           _buildCard(
             children: [
               Padding(
@@ -268,11 +285,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            AppStrings.t('app_update'),
+                            'app_update'.tr,
                             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                           ),
                           Text(
-                            '${AppStrings.t('installed_version')}: v${AppUpdateService.currentVersion}',
+                            'update_installed_version'.trArgs({'version': AppUpdateService.currentVersion}),
                             style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                           ),
                         ],
@@ -296,7 +313,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGreen),
                             )
                           : Text(
-                              AppStrings.t('check_update'),
+                              'update_check_btn'.tr,
                               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                             ),
                     ),
@@ -307,7 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           // ── Section 4: System Information (Read-only) ──
-          _buildSectionHeader(AppStrings.t('system_information')),
+          _buildSectionHeader('system_information'.tr),
           _buildCard(
             children: [
               Padding(
@@ -321,11 +338,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            AppStrings.t('storage_mode'),
+                            'storage_mode'.tr,
                             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                           ),
                           Text(
-                            AppStrings.t('storage_mode_val'),
+                            'storage_mode_val'.tr,
                             style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                           ),
                         ],
@@ -346,11 +363,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            AppStrings.t('sync_protocol'),
+                            'sync_protocol'.tr,
                             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                           ),
                           Text(
-                            AppStrings.t('sync_protocol_val'),
+                            'sync_protocol_val'.tr,
                             style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                           ),
                         ],
@@ -380,11 +397,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              AppStrings.t('logout'),
+                              'logout'.tr,
                               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.statRed),
                             ),
                             Text(
-                              AppStrings.t('logout_sub'),
+                              'logout_sub'.tr,
                               style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                             ),
                           ],

@@ -1,12 +1,35 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../app_strings.dart';
 import '../constants/api_constants.dart';
 import '../theme/app_colors.dart';
+
+enum AppUpdateStatus {
+  noInternet,
+  serverUnreachable,
+  alreadyLatest,
+  updateAvailable,
+}
+
+class AppUpdateCheckResult {
+  final AppUpdateStatus status;
+  final AppUpdateInfo? info;
+  final String? errorMessage;
+  final int? statusCode;
+
+  const AppUpdateCheckResult({
+    required this.status,
+    this.info,
+    this.errorMessage,
+    this.statusCode,
+  });
+}
 
 /// Represents a semantic version with major, minor, patch and optional build number.
 class AppVersion implements Comparable<AppVersion> {
@@ -113,13 +136,32 @@ class AppUpdateService {
     return compareVersions(serverVersion, installedVersion) > 0;
   }
 
-  /// Checks the backend server for a newer APK version
-  static Future<AppUpdateInfo?> checkForUpdate() async {
+  /// Checks the backend server for a newer APK version with detailed network/version status.
+  static Future<AppUpdateCheckResult> checkForUpdateWithDetails() async {
+    // 1. Check network connectivity first
     try {
-      final uri = Uri.parse('${ApiConstants.apiBaseUrl}/app-version');
+      final connectivity = await Connectivity().checkConnectivity();
+      if (!connectivity.any((r) => r != ConnectivityResult.none)) {
+        debugPrint('[AppUpdateService] No internet connection detected.');
+        return const AppUpdateCheckResult(status: AppUpdateStatus.noInternet);
+      }
+    } catch (e) {
+      debugPrint('[AppUpdateService] Connectivity check exception: $e');
+    }
+
+    // 2. Query endpoint from single source of truth (ApiConstants.apiBaseUrl)
+    final uri = Uri.parse('${ApiConstants.apiBaseUrl}/app-version');
+    try {
       final res = await http.get(uri).timeout(const Duration(seconds: 10));
 
-      if (res.statusCode != 200) return null;
+      if (res.statusCode != 200) {
+        debugPrint('[AppUpdateService] Server returned error status code: ${res.statusCode}, body: ${res.body}');
+        return AppUpdateCheckResult(
+          status: AppUpdateStatus.serverUnreachable,
+          statusCode: res.statusCode,
+          errorMessage: 'HTTP ${res.statusCode}',
+        );
+      }
 
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final latestVersion = (data['latestVersion'] ?? currentVersion).toString();
@@ -133,11 +175,11 @@ class AppUpdateService {
       final releaseNotes = (data['releaseNotes'] ?? 'Bug fixes and performance improvements.').toString();
 
       // ONLY offer update when server version is strictly HIGHER than installed version.
-      // Compare numerically by major.minor.patch.
+      // Compare semantically by major.minor.patch (e.g. 3.3.10 > 3.3.1).
       final isHigher = isServerVersionHigher(latestVersion, currentVersion);
       final hasUpdate = hasApk && isHigher;
 
-      return AppUpdateInfo(
+      final info = AppUpdateInfo(
         hasUpdate: hasUpdate,
         currentVersion: currentVersion,
         latestVersion: latestVersion,
@@ -148,10 +190,27 @@ class AppUpdateService {
         fileSizeBytes: fileSizeBytes,
         releaseNotes: releaseNotes,
       );
+
+      if (hasUpdate) {
+        debugPrint('[AppUpdateService] Update available: v$latestVersion (Installed: v$currentVersion)');
+        return AppUpdateCheckResult(status: AppUpdateStatus.updateAvailable, info: info);
+      } else {
+        debugPrint('[AppUpdateService] Already on latest version: v$currentVersion (Server: v$latestVersion)');
+        return AppUpdateCheckResult(status: AppUpdateStatus.alreadyLatest, info: info);
+      }
     } catch (e) {
-      debugPrint('[AppUpdateService] Check update error: $e');
-      return null;
+      debugPrint('[AppUpdateService] Server unreachable exception: $e');
+      return AppUpdateCheckResult(
+        status: AppUpdateStatus.serverUnreachable,
+        errorMessage: e.toString(),
+      );
     }
+  }
+
+  /// Checks the backend server for a newer APK version (legacy helper)
+  static Future<AppUpdateInfo?> checkForUpdate() async {
+    final result = await checkForUpdateWithDetails();
+    return result.info;
   }
 
   /// Downloads the APK and launches the Android Package Installer
@@ -223,8 +282,8 @@ class AppUpdateService {
     if (!info.hasUpdate || !isServerVersionHigher(info.latestVersion, info.currentVersion)) {
       if (isManualCheck) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("You're up to date"),
+          SnackBar(
+            content: Text('update_already_latest'.tr),
             backgroundColor: AppColors.primaryGreen,
             behavior: SnackBarBehavior.floating,
           ),
@@ -259,7 +318,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     setState(() {
       _isDownloading = true;
       _errorMessage = null;
-      _statusText = 'Inihahanda ang pag-download...';
+      _statusText = 'update_preparing'.tr;
     });
 
     try {
@@ -273,9 +332,9 @@ class _UpdateDialogState extends State<_UpdateDialog> {
             if (total > 0) {
               final receivedMb = (received / (1024 * 1024)).toStringAsFixed(1);
               final totalMb = (total / (1024 * 1024)).toStringAsFixed(1);
-              _statusText = 'Idina-download: $receivedMb MB / $totalMb MB (${(progress * 100).toInt()}%)';
+              _statusText = '${'update_downloading'.tr} $receivedMb MB / $totalMb MB (${(progress * 100).toInt()}%)';
             } else {
-              _statusText = 'Idina-download ang update...';
+              _statusText = 'update_downloading'.tr;
             }
           });
         },
@@ -286,9 +345,10 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       }
     } catch (e) {
       if (!mounted) return;
+      debugPrint('[AppUpdateService] Download error: $e');
       setState(() {
         _isDownloading = false;
-        _errorMessage = 'Hindi matapos ang pag-download. Pakisubukang muli mamaya.';
+        _errorMessage = 'update_failed'.tr;
       });
     }
   }
@@ -322,9 +382,9 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Bagong Update ng AppScale!',
-                        style: TextStyle(
+                      Text(
+                        'update_available_title'.tr,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -345,9 +405,9 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               ],
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Ano ang bago sa bersyong ito:',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+            Text(
+              'update_whats_new'.tr,
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 6),
             Container(
@@ -395,7 +455,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 if (!_isDownloading)
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Mamaya Na', style: TextStyle(color: AppColors.textMuted)),
+                    child: Text('update_later'.tr, style: const TextStyle(color: AppColors.textMuted)),
                   ),
                 const SizedBox(width: 8),
                 ElevatedButton(
@@ -412,7 +472,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                      : const Text('I-update Ngayon'),
+                      : Text('update_install'.tr),
                 ),
               ],
             ),

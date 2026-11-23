@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/local/child_repository.dart';
 import '../../../data/models/child.dart';
@@ -59,43 +60,43 @@ class DashboardRepository {
 
     return [
       StatCardData(
-        label: 'Children (0-59 mos)',
+        label: 'stat_children_0_59'.tr,
         value: '${activeChildren.length}',
         subtitle: dueForWeighingCount > 0
-            ? '$dueForWeighingCount due for weighing'
+            ? 'due_for_weighing_count'.trArgs({'count': '$dueForWeighingCount'})
             : (childrenThisMonth > 0
-                ? '$childrenThisMonth new this month'
-                : 'All up to date'),
+                ? 'new_this_month_count'.trArgs({'count': '$childrenThisMonth'})
+                : 'all_up_to_date'.tr),
         accentColor: const Color(0xFF1B5E20), // dark green
         icon: Icons.child_care_rounded,
       ),
 
       StatCardData(
-        label: 'Lactating Mothers',
+        label: 'stat_lactating_mothers'.tr,
         value: '${activeMothers.length}',
         subtitle: mothersThisMonth > 0
-            ? '$mothersThisMonth new this month'
-            : 'No new this month',
+            ? 'new_this_month_count'.trArgs({'count': '$mothersThisMonth'})
+            : 'no_new_this_month'.tr,
         accentColor: const Color(0xFF00796B), // teal
         icon: Icons.pregnant_woman_rounded,
       ),
       StatCardData(
-        label: 'SAM Cases',
+        label: 'stat_sam_cases'.tr,
         value: '$samCases',
         subtitle: samCases > 0
-            ? '$samCases acute wasting · $severeCount severe'
+            ? 'sam_wasting_severe'.trArgs({'sam': '$samCases', 'severe': '$severeCount'})
             : (severeCount > 0
-                ? '$severeCount severe (no acute SAM)'
-                : 'No active cases'),
+                ? 'severe_no_acute'.trArgs({'severe': '$severeCount'})
+                : 'no_active_cases'.tr),
         accentColor: const Color(0xFFC62828), // deep red / terracotta
         icon: Icons.warning_amber_rounded,
       ),
       StatCardData(
-        label: 'Feeding Program',
+        label: 'stat_feeding_program'.tr,
         value: '$enrolledCount',
         subtitle: enrolledCount > 0
-            ? '$enrolledCount enrolled'
-            : 'None enrolled',
+            ? 'enrolled_count'.trArgs({'count': '$enrolledCount'})
+            : 'none_enrolled'.tr,
         accentColor: const Color(0xFF558B2F), // olive / moss green
         icon: Icons.restaurant_menu_rounded,
       ),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../app_strings.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/remote/auth_api.dart';
@@ -51,12 +52,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (step < 0 || step > 2) return;
     // Step 2 is only reachable after OTP is requested
     if (step == 1 && !_otpRequested) {
-      _showMessage('Please enter your email and request an OTP first.');
+      _showMessage('enter_email_first'.tr);
       return;
     }
     // Step 3 is only reachable after OTP is verified
     if (step == 2 && !_otpVerified) {
-      _showMessage('Please verify the 6-digit OTP code first.');
+      _showMessage('verify_otp_first'.tr);
       return;
     }
     setState(() => _currentStep = step);
@@ -78,7 +79,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _requestOtp() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      _showMessage('Please enter your email address.');
+      _showMessage('enter_email'.tr);
       return;
     }
 
@@ -101,7 +102,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (_resendCooldown > 0 || _isLoading) return;
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      _showMessage('Please enter your email address.');
+      _showMessage('enter_email'.tr);
       return;
     }
 
@@ -123,12 +124,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final otp = _otpController.text.trim();
 
     if (email.isEmpty) {
-      _showMessage('Please enter your email.');
+      _showMessage('enter_email'.tr);
       return;
     }
 
     if (otp.length != 6) {
-      _showMessage('Please enter the full 6-digit OTP.');
+      _showMessage('enter_full_otp'.tr);
       return;
     }
 
@@ -137,7 +138,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       await AuthApi.verifyOtp(email: email, otp: otp);
       if (!mounted) return;
       setState(() => _otpVerified = true);
-      _showMessage('OTP verified. Please enter your new password.');
+      _showMessage('otp_verified_prompt'.tr);
       _goToStep(2);
     } catch (error) {
       _showMessage(error.toString().replaceFirst('Exception: ', ''));
@@ -152,17 +153,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final confirmPassword = _confirmPasswordController.text;
 
     if (password.isEmpty || confirmPassword.isEmpty) {
-      _showMessage('Please complete all password fields.');
+      _showMessage('complete_password_fields'.tr);
       return;
     }
 
     if (password.length < 8) {
-      _showMessage('Password must be at least 8 characters long.');
+      _showMessage('password_min_length'.tr);
       return;
     }
 
     if (password != confirmPassword) {
-      _showMessage('Passwords do not match.');
+      _showMessage('passwords_dont_match'.tr);
       return;
     }
 
@@ -170,7 +171,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     try {
       await AuthApi.resetPassword(email: email, newPassword: password);
       if (!mounted) return;
-      _showMessage('Password reset successful. Please log in again.');
+      _showMessage('password_reset_success'.tr);
       Navigator.of(context).pop();
     } catch (error) {
       _showMessage(error.toString().replaceFirst('Exception: ', ''));
@@ -200,7 +201,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text('Forgot Password'),
+          title: Text('forgot_pass_title'.tr),
           backgroundColor: AppColors.surface,
           foregroundColor: AppColors.textPrimary,
           elevation: 0,
@@ -280,10 +281,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const SizedBox(height: 8),
           Text(
             _currentStep == 0
-                ? 'Step 1 of 3: Enter Email'
+                ? 'step_enter_email'.tr
                 : _currentStep == 1
-                    ? 'Step 2 of 3: Verify OTP Code'
-                    : 'Step 3 of 3: Reset Password',
+                    ? 'step_verify_otp'.tr
+                    : 'step_reset_password'.tr,
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -301,23 +302,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Reset your account password', style: AppTextStyles.h2),
+          Text('reset_account_password'.tr, style: AppTextStyles.h2),
           const SizedBox(height: 8),
           Text(
-            'Enter your registered email address to receive a 6-digit verification code.',
+            'reset_password_instruction'.tr,
             style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
           ),
           const SizedBox(height: 28),
           AppTextField(
-            label: 'Email',
-            hint: 'Enter your email address',
+            label: 'email'.tr,
+            hint: 'hint_enter_email'.tr,
             icon: Icons.email_outlined,
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 24),
           AppButton(
-            label: 'Send Code',
+            label: 'send_code'.tr,
             onPressed: _isLoading ? null : _requestOtp,
             isLoading: _isLoading,
           ),
@@ -334,10 +335,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Enter Verification Code', style: AppTextStyles.h2),
+          Text('otp_title'.tr, style: AppTextStyles.h2),
           const SizedBox(height: 8),
           Text(
-            'We sent a 6-digit verification code to:',
+            'otp_sent_to'.tr,
             style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
           ),
           const SizedBox(height: 6),
@@ -367,8 +368,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 28),
           AppTextField(
-            label: '6-digit OTP',
-            hint: 'Enter the 6-digit code',
+            label: 'otp_label'.tr,
+            hint: 'otp_hint'.tr,
             icon: Icons.pin_outlined,
             controller: _otpController,
             keyboardType: TextInputType.number,
@@ -379,7 +380,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 20),
           AppButton(
-            label: 'Verify',
+            label: 'verify_code'.tr,
             onPressed: _isLoading ? null : _verifyOtp,
             isLoading: _isLoading,
           ),
@@ -393,8 +394,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
               label: Text(
                 _resendCooldown > 0
-                    ? 'Resend Code (${_resendCooldown}s)'
-                    : 'Resend Code',
+                    ? 'resend_code_cooldown'.trArgs({'seconds': '$_resendCooldown'})
+                    : 'resend_code'.tr,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
@@ -415,31 +416,31 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Create New Password', style: AppTextStyles.h2),
+          Text('create_new_password'.tr, style: AppTextStyles.h2),
           const SizedBox(height: 8),
           Text(
-            'Your identity has been verified. Enter a new password for your account.',
+            'identity_verified'.tr,
             style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
           ),
           const SizedBox(height: 28),
           AppTextField(
-            label: 'New Password',
-            hint: 'Enter a new password (min. 8 characters)',
+            label: 'new_password'.tr,
+            hint: 'hint_new_password'.tr,
             icon: Icons.lock_outline,
             isPassword: true,
             controller: _passwordController,
           ),
           const SizedBox(height: 16),
           AppTextField(
-            label: 'Confirm Password',
-            hint: 'Re-enter your password',
+            label: 'confirm_password'.tr,
+            hint: 'hint_confirm_password'.tr,
             icon: Icons.lock_reset,
             isPassword: true,
             controller: _confirmPasswordController,
           ),
           const SizedBox(height: 24),
           AppButton(
-            label: 'Reset Password',
+            label: 'save_password'.tr,
             onPressed: _isLoading ? null : _resetPassword,
             isLoading: _isLoading,
           ),

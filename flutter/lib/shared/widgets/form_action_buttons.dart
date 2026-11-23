@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app_strings.dart';
 import 'app_button.dart';
 import 'app_outlined_button.dart';
 
@@ -25,7 +26,7 @@ class FormActionButtons extends StatelessWidget {
         AppButton(label: saveLabel, onPressed: onSave, isLoading: isSaving),
         const SizedBox(height: 10),
         AppOutlinedButton(
-          label: 'Cancel',
+          label: 'cancel'.tr,
           onPressed: isSaving ? null : onCancel,
         ),
       ],

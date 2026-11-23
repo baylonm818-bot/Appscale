@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app_strings.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -51,7 +52,7 @@ class AddProfileSheet extends StatelessWidget {
             ),
           ),
           Text(
-            'What would you like to add?',
+            'add_profile_prompt'.tr,
             style: AppTextStyles.h1.copyWith(
               fontSize: 18,
               color: AppColors.textPrimary,
@@ -59,7 +60,7 @@ class AddProfileSheet extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Choose a profile to register',
+            'choose_profile_sub'.tr,
             style: AppTextStyles.body.copyWith(
               fontSize: 12,
               color: AppColors.textMuted,
@@ -69,8 +70,8 @@ class AddProfileSheet extends StatelessWidget {
           _AddOptionTile(
             icon: Icons.person_add_alt_1,
             accentColor: AppColors.primaryGreen,
-            title: 'Add Child',
-            subtitle: 'Register a new child profile',
+            title: 'add_child'.tr,
+            subtitle: 'register_child_sub'.tr,
             onTap: () {
               final navigator = Navigator.of(context);
               if (navigator.canPop()) {
@@ -85,8 +86,8 @@ class AddProfileSheet extends StatelessWidget {
           _AddOptionTile(
             icon: Icons.pregnant_woman,
             accentColor: AppColors.statBlue,
-            title: 'Add Mother',
-            subtitle: 'Register a new mother profile',
+            title: 'add_mother'.tr,
+            subtitle: 'register_mother_sub'.tr,
             onTap: () {
               final navigator = Navigator.of(context);
               if (navigator.canPop()) {
@@ -99,7 +100,7 @@ class AddProfileSheet extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           AppOutlinedButton(
-            label: 'Cancel',
+            label: 'cancel'.tr,
             onPressed: () => Navigator.pop(context),
           ),
         ],

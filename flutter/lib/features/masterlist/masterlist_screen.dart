@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app_strings.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -110,9 +111,9 @@ class MasterlistScreenState extends State<MasterlistScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Sort by',
-                      style: TextStyle(
+                    Text(
+                      'sort_by'.tr,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
@@ -124,9 +125,9 @@ class MasterlistScreenState extends State<MasterlistScreen> {
                           Navigator.pop(context);
                           _openFilter();
                         },
-                        child: const Text(
-                          'Advanced Filters',
-                          style: TextStyle(
+                        child: Text(
+                          'advanced_filters'.tr,
+                          style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: AppColors.primaryGreen,
@@ -137,28 +138,28 @@ class MasterlistScreenState extends State<MasterlistScreen> {
                 ),
                 const SizedBox(height: 8),
                 _buildSortTile(
-                  title: 'Severity (Pinakamalala una)',
-                  subtitle: 'Severe, At risk, Overweight/Obese, Normal',
+                  title: 'sort_severity'.tr,
+                  subtitle: 'sort_severity_sub'.tr,
                   option: MasterlistSortOption.severity,
                   icon: Icons.priority_high,
                 ),
                 _buildSortTile(
-                  title: 'Name (A to Z)',
-                  subtitle: 'Alphabetical order',
+                  title: 'sort_name'.tr,
+                  subtitle: 'sort_name_sub'.tr,
                   option: MasterlistSortOption.name,
                   icon: Icons.sort_by_alpha,
                 ),
                 _buildSortTile(
-                  title: 'Age',
+                  title: 'sort_age'.tr,
                   subtitle: _category == MasterlistCategory.children
-                      ? 'Pinakabata muna'
-                      : 'Edad ng ina',
+                      ? 'sort_age_children_sub'.tr
+                      : 'sort_age_mothers_sub'.tr,
                   option: MasterlistSortOption.age,
                   icon: Icons.cake_outlined,
                 ),
                 _buildSortTile(
-                  title: 'Purok / Address',
-                  subtitle: 'Ayon sa purok o tirahan',
+                  title: 'sort_purok'.tr,
+                  subtitle: 'sort_purok_sub'.tr,
                   option: MasterlistSortOption.purok,
                   icon: Icons.location_on_outlined,
                 ),
@@ -271,8 +272,8 @@ class MasterlistScreenState extends State<MasterlistScreen> {
                   children: [
                     MasterlistSearchBar(
                       hint: _category == MasterlistCategory.children
-                          ? 'Search children...'
-                          : 'Search mothers...',
+                          ? 'search_children'.tr
+                          : 'search_mothers'.tr,
                       onChanged: (v) => setState(() => _query = v),
                       onFilterTap: _openSortSheet,
                     ),
@@ -292,8 +293,8 @@ class MasterlistScreenState extends State<MasterlistScreen> {
                           const SizedBox(width: 6),
                           Text(
                             _category == MasterlistCategory.children
-                                ? 'Children who completed monitoring'
-                                : 'Mothers who stopped breastfeeding',
+                                ? 'children_completed_monitoring'.tr
+                                : 'mothers_stopped_breastfeeding'.tr,
                             style: AppTextStyles.body.copyWith(
                               fontSize: 11,
                               color: AppColors.textMuted,

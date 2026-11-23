@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../app_strings.dart';
 import '../../core/services/app_update_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/main_scaffold.dart';
@@ -86,9 +87,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           AddProfileSheet.show(context);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Only BNS can add beneficiaries.'),
-              backgroundColor: Color(0xFF1B5E20),
+            SnackBar(
+              content: Text('only_bns_can_add'.tr),
+              backgroundColor: const Color(0xFF1B5E20),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -103,7 +104,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     width: 12,
                     height: 12,
                     child: CircularProgressIndicator(
@@ -111,10 +112,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                       valueColor: AlwaysStoppedAnimation(AppColors.primaryGreen),
                     ),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
-                    'Syncing data with cloud in background...',
-                    style: TextStyle(
+                    'cloud_syncing_bg'.tr,
+                    style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.darkGreen,
                       fontWeight: FontWeight.w500,
@@ -132,10 +133,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                 children: [
                   const Icon(Icons.cloud_off, size: 14, color: Color(0xFFE65100)),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Cloud sync failed. Data available offline.',
-                      style: TextStyle(fontSize: 11, color: Color(0xFFBF360C)),
+                      'cloud_sync_failed'.tr,
+                      style: const TextStyle(fontSize: 11, color: Color(0xFFBF360C)),
                     ),
                   ),
                   TextButton(
@@ -144,9 +145,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                       visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
-                    child: const Text(
-                      'Retry',
-                      style: TextStyle(
+                    child: Text(
+                      'retry'.tr,
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFFE65100),
@@ -347,8 +348,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         if (mounted) {
           AppNotificationUI.showSuccess(
             context,
-            'Synced $synced record${synced > 1 ? 's' : ''} to server.',
-            title: 'Auto-Sync Completed',
+            'synced_n_records'.trArgs({'count': '$synced'}),
+            title: 'auto_sync_completed'.tr,
           );
         }
       }

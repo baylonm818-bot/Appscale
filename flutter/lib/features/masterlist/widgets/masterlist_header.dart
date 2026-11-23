@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -27,7 +28,7 @@ class MasterlistHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Master list',
+            'master_list_title'.tr,
             style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 20),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -41,13 +42,13 @@ class MasterlistHeader extends StatelessWidget {
               children: [
                 Expanded(
                   child: _segment(
-                    'Children ($childrenCount)',
+                    'children_tab'.trArgs({'count': '$childrenCount'}),
                     MasterlistCategory.children,
                   ),
                 ),
                 Expanded(
                   child: _segment(
-                    'Mothers ($mothersCount)',
+                    'mothers_tab'.trArgs({'count': '$mothersCount'}),
                     MasterlistCategory.mothers,
                   ),
                 ),

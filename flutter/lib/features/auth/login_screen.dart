@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../app_strings.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/hive_boxes.dart';
@@ -41,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (email.isEmpty || password.isEmpty) {
       if (!mounted) return;
       setState(() {
-        _loginError = 'Please enter both email and password.';
+        _loginError = 'login_error_empty'.tr;
       });
       return;
     }
@@ -49,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _loginError = '';
       _isLoading = true;
-      _loginPhase = 'Signing in...';
+      _loginPhase = 'logging_in'.tr;
     });
 
     try {
@@ -106,14 +107,14 @@ class _LoginScreenState extends State<LoginScreen> {
           raw.contains('timed out');
       setState(() {
         _loginError = isNetworkError
-            ? 'No internet connection. Please check your network and try again.'
+            ? 'update_no_internet'.tr
             : raw.replaceFirst('Exception: ', '');
       });
     } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _loginPhase = 'Login';
+          _loginPhase = 'login_btn'.tr;
         });
       }
     }
@@ -139,10 +140,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 Image.asset('assets/images/appscale_logo.png', width: 80),
                 const SizedBox(height: 8),
-                Text('BNS Health Monitoring', style: AppTextStyles.h1),
+                Text('bns_health_monitoring'.tr, style: AppTextStyles.h1),
                 const SizedBox(height: 4),
                 Text(
-                  'Barangay Nutrition Scholar Portal',
+                  'login_sub'.tr,
                   style: AppTextStyles.body.copyWith(
                     color: AppColors.darkGreen,
                     fontWeight: FontWeight.w600,
@@ -158,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: AppColors.textMuted,
                     ),
                     const SizedBox(width: 4),
-                    Text('Municipality of Gasan', style: AppTextStyles.body),
+                    Text('municipality_of_gasan'.tr, style: AppTextStyles.body),
                   ],
                 ),
                 const SizedBox(height: 28),
@@ -222,11 +223,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-                      Text('Welcome BNS!', style: AppTextStyles.h2),
+                      Text('welcome_bns'.tr, style: AppTextStyles.h2),
                       const SizedBox(height: 16),
                       AppTextField(
-                        label: 'Email',
-                        hint: 'Enter email address',
+                        label: 'email'.tr,
+                        hint: 'hint_enter_email'.tr,
                         icon: Icons.person_outline,
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -235,8 +236,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 14),
                       AppTextField(
-                        label: 'Password',
-                        hint: 'Enter password',
+                        label: 'password'.tr,
+                        hint: 'hint_enter_password'.tr,
                         icon: Icons.lock_outline,
                         isPassword: true,
                         controller: _passwordController,
@@ -265,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                'Remember Me',
+                                'remember_me'.tr,
                                 style: AppTextStyles.body,
                                 softWrap: false,
                               ),
@@ -285,7 +286,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             child: Text(
-                              'Forgot Password?',
+                              'forgot_password'.tr,
                               style: AppTextStyles.body.copyWith(
                                 color: AppColors.darkGreen,
                                 fontWeight: FontWeight.w600,
@@ -296,7 +297,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 10),
                       AppButton(
-                        label: _isLoading ? _loginPhase : 'Login',
+                        label: _isLoading ? _loginPhase : 'login_btn'.tr,
                         onPressed: _handleLogin,
                         isLoading: _isLoading,
                       ),

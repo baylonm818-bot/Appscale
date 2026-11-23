@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app_strings.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import 'app_button.dart';
@@ -49,7 +50,7 @@ class UrgentReferralDialog {
               ),
               const SizedBox(height: 14),
               Text(
-                'Urgent attention may be needed',
+                'urgent_attention_needed'.tr,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.h2.copyWith(
                   fontSize: 17,
@@ -58,7 +59,7 @@ class UrgentReferralDialog {
               ),
               const SizedBox(height: 8),
               Text(
-                'Create a referral for $beneficiaryName now?',
+                'create_referral_prompt'.trArgs({'name': beneficiaryName}),
                 textAlign: TextAlign.center,
                 style: AppTextStyles.body.copyWith(fontSize: 13),
               ),
@@ -73,7 +74,7 @@ class UrgentReferralDialog {
                 child: Column(
                   children: [
                     Text(
-                      'This suggests:',
+                      'this_suggests'.tr,
                       style: AppTextStyles.body.copyWith(
                         fontSize: 12,
                         color: AppColors.textMuted,
@@ -93,7 +94,7 @@ class UrgentReferralDialog {
               ),
               const SizedBox(height: 18),
               AppButton(
-                label: 'Create Referral',
+                label: 'create_referral'.tr,
                 onPressed: () {
                   Navigator.pop(context);
                   onCreateReferral();
@@ -101,7 +102,7 @@ class UrgentReferralDialog {
               ),
               const SizedBox(height: 10),
               AppOutlinedButton(
-                label: 'Later',
+                label: 'not_now'.tr,
                 onPressed: () {
                   Navigator.pop(context);
                   onLater?.call();

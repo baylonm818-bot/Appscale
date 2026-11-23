@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/local/activity_log_entry.dart';
@@ -14,7 +15,7 @@ class RecentActivityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayEntries = entries.take(3).toList();
     return SectionCard(
-      title: 'Recent Activity',
+      title: 'recent_activities'.tr,
       child: displayEntries.isEmpty
           ? const _EmptyState()
           : _EntryList(entries: displayEntries),
@@ -34,7 +35,7 @@ class _EmptyState extends StatelessWidget {
           const Icon(Icons.history, color: AppColors.textMuted, size: 24),
           const SizedBox(height: 6),
           Text(
-            'Nothing recorded yet.',
+            'no_recent_activities'.tr,
             textAlign: TextAlign.center,
             style: AppTextStyles.body.copyWith(
               fontSize: 12,

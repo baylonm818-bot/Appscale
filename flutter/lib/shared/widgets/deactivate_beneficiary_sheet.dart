@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app_strings.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -147,12 +148,12 @@ class _DeactivateBeneficiarySheetState
 
     if (_reason == 'Transferred') {
       if (_targetBarangay == null || _targetBarangay!.trim().isEmpty) {
-        setState(() => _errorMessage = 'Pumili ng bagong barangay.');
+        setState(() => _errorMessage = 'select_target_barangay'.tr);
         return;
       }
     } else if (_reason == 'Other') {
       if (_otherController.text.trim().isEmpty) {
-        setState(() => _errorMessage = 'Mangyaring ilagay ang dahilan.');
+        setState(() => _errorMessage = 'specify_reason'.tr);
         return;
       }
     }
@@ -199,15 +200,15 @@ class _DeactivateBeneficiarySheetState
             ),
             Text(
               _reason == 'Transferred'
-                  ? 'Ilipat si ${widget.beneficiaryName}'
-                  : 'I-deactivate si ${widget.beneficiaryName}',
+                  ? 'transfer_name'.trArgs({'name': widget.beneficiaryName})
+                  : 'deactivate_name'.trArgs({'name': widget.beneficiaryName}),
               style: AppTextStyles.h2.copyWith(fontSize: 16),
             ),
             const SizedBox(height: 4),
             Text(
               _reason == 'Transferred'
-                  ? 'Ililipat ang buong record sa bagong barangay.'
-                  : 'Kailangan ang dahilan at petsa para sa opisyal na talaan.',
+                  ? 'transfer_record_desc'.tr
+                  : 'deactivate_record_desc'.tr,
               style: AppTextStyles.body.copyWith(
                 fontSize: 12,
                 color: AppColors.textMuted,
@@ -248,7 +249,7 @@ class _DeactivateBeneficiarySheetState
             ),
             const SizedBox(height: AppSpacing.sm),
             AppDateField(
-              label: 'Petsa / Date (Required)',
+              label: 'date_required'.tr,
               value: _selectedDate,
               onChanged: (d) => setState(() => _selectedDate = d),
               lastDate: DateTime.now(),
@@ -262,12 +263,12 @@ class _DeactivateBeneficiarySheetState
                 )
               else if (_barangays.isEmpty)
                 Text(
-                  'Walang ibang barangay na magagamit.',
+                  'no_other_barangays'.tr,
                   style: AppTextStyles.caption.copyWith(color: AppColors.statRed),
                 )
               else
                 AppDropdownField(
-                  label: 'Lumipat sa anong barangay? (Required)',
+                  label: 'transfer_to_which_barangay'.tr,
                   value: _targetBarangay ?? _barangays.first,
                   options: _barangays,
                   onChanged: (v) {
@@ -282,8 +283,8 @@ class _DeactivateBeneficiarySheetState
                       setState(() => _alsoTransferLinked = v ?? false),
                   title: Text(
                     widget.isChild
-                        ? 'Ilipat din ba ang ina?'
-                        : 'Ilipat din ba ang mga anak?',
+                        ? 'also_transfer_mother'.tr
+                        : 'also_transfer_children'.tr,
                     style: AppTextStyles.body.copyWith(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -291,8 +292,8 @@ class _DeactivateBeneficiarySheetState
                   ),
                   subtitle: Text(
                     widget.isChild
-                        ? 'Isasama ang nakalink na record ng ina sa paglipat.'
-                        : 'Isasama ang lahat ng nakalink na anak sa paglipat.',
+                        ? 'transfer_linked_mother_sub'.tr
+                        : 'transfer_linked_children_sub'.tr,
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.textMuted,
                       fontSize: 11,
@@ -307,8 +308,8 @@ class _DeactivateBeneficiarySheetState
             if (_reason == 'Other') ...[
               const SizedBox(height: AppSpacing.md),
               AppTextField(
-                label: 'Mangyaring tukuyin ang dahilan (Required)',
-                hint: 'Ilagay ang dahilan',
+                label: 'specify_reason_required'.tr,
+                hint: 'specify_reason_hint'.tr,
                 icon: Icons.edit_note_outlined,
                 controller: _otherController,
               ),
@@ -325,7 +326,7 @@ class _DeactivateBeneficiarySheetState
             ],
             const SizedBox(height: AppSpacing.xl),
             AppButton(
-              label: _reason == 'Transferred' ? 'Ilipat' : 'Kumpirmahin',
+              label: _reason == 'Transferred' ? 'transfer_btn'.tr : 'confirm'.tr,
               onPressed: _onConfirm,
             ),
           ],

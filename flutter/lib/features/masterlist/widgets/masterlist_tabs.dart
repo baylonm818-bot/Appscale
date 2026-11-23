@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 
 class MasterlistTabs extends StatelessWidget {
@@ -19,8 +20,8 @@ class MasterlistTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _tab('Active ($activeCount)', true),
-        _tab('Inactive ($inactiveCount)', false),
+        _tab('active_count_tab'.trArgs({'count': '$activeCount'}), true),
+        _tab('inactive_count_tab'.trArgs({'count': '$inactiveCount'}), false),
       ],
     );
   }

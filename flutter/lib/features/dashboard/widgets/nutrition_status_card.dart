@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app_strings.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_card.dart';
@@ -11,12 +12,11 @@ class NutritionStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: 'Nutritional Status (WHO Standards)',
+      title: 'nutritional_status_who'.tr,
       child: items.isEmpty
-          ? const EmptyState(
+          ? EmptyState(
               icon: Icons.bar_chart_outlined,
-              message:
-                  'No measurements recorded yet. This updates as children get weighed.',
+              message: 'no_measurements_recorded'.tr,
             )
           : Column(
               children: [

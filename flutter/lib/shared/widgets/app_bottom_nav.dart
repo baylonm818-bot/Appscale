@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../app_strings.dart';
 import '../../core/theme/app_colors.dart';
 
 class _NavItem {
   final IconData icon;
   final IconData activeIcon;
-  final String label;
-  const _NavItem(this.icon, this.activeIcon, this.label);
+  final String labelKey;
+  const _NavItem(this.icon, this.activeIcon, this.labelKey);
 }
 
 /// Home / List / Add / Program / Reports, all five living in the same
@@ -26,14 +27,14 @@ class AppBottomNav extends StatelessWidget {
   });
 
   static const _items = [
-    _NavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
-    _NavItem(Icons.list_alt_outlined, Icons.list_alt_rounded, 'List'),
+    _NavItem(Icons.home_outlined, Icons.home_rounded, 'nav_home'),
+    _NavItem(Icons.list_alt_outlined, Icons.list_alt_rounded, 'nav_records'),
     _NavItem(
       Icons.medical_services_outlined,
       Icons.medical_services_rounded,
-      'Program',
+      'nav_program',
     ),
-    _NavItem(Icons.bar_chart_outlined, Icons.bar_chart_rounded, 'Reports'),
+    _NavItem(Icons.bar_chart_outlined, Icons.bar_chart_rounded, 'nav_reports'),
   ];
 
   @override
@@ -104,7 +105,7 @@ class AppBottomNav extends StatelessWidget {
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
               ),
               child: Text(
-                item.label,
+                item.labelKey.tr,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

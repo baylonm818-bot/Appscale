@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/section_card.dart';
@@ -13,13 +14,13 @@ class UpcomingActivitiesCard extends StatelessWidget {
     final nearest = activities.take(1).toList();
 
     return SectionCard(
-      title: 'Upcoming',
+      title: 'upcoming_title'.tr,
       child: nearest.isEmpty
           ? Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Center(
                 child: Text(
-                  'No upcoming activities scheduled.',
+                  'no_upcoming_activities'.tr,
                   style: AppTextStyles.body.copyWith(
                     fontSize: 12,
                     color: AppColors.textMuted,
