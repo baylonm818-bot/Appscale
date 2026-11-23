@@ -64,12 +64,18 @@ class AuthUser {
 
 class AuthSession {
   final String token;
+  final String? refreshToken;
   final AuthUser user;
 
-  const AuthSession({required this.token, required this.user});
+  const AuthSession({
+    required this.token,
+    this.refreshToken,
+    required this.user,
+  });
 
   Map<String, dynamic> toMap() => {
     'token': token,
+    'refreshToken': refreshToken,
     'user': {
       'user_id': user.userId,
       'username': user.username,
@@ -91,6 +97,7 @@ class AuthSession {
   factory AuthSession.fromMap(Map<String, dynamic> map) {
     return AuthSession(
       token: (map['token'] ?? '').toString(),
+      refreshToken: map['refreshToken']?.toString(),
       user: AuthUser.fromMap(Map<String, dynamic>.from(map['user'] ?? {})),
     );
   }
@@ -111,12 +118,14 @@ class AuthApi {
 
   static AuthSession parseLoginResponse(Map<String, dynamic> payload) {
     final token = (payload['token'] ?? '').toString();
+    final refreshToken = payload['refreshToken']?.toString();
     final userMap = payload['user'];
     if (token.isEmpty || userMap == null) {
       throw const FormatException('Invalid login response from server.');
     }
     return AuthSession(
       token: token,
+      refreshToken: refreshToken,
       user: AuthUser.fromMap(Map<String, dynamic>.from(userMap)),
     );
   }
@@ -148,11 +157,32 @@ class AuthApi {
     return parseLoginResponse(body);
   }
 
-  static Future<String> forgotPassword({required String email}) async {
+  static Future<Map<String, dynamic>> checkAccount({
+    required String email,
+    String platform = 'mobile',
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/auth/check-account'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email.trim(), 'platform': platform}),
+    ).timeout(const Duration(seconds: 15));
+
+    final body = _decodeJson(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = body['message'] ?? 'Could not verify account.';
+      throw Exception(message);
+    }
+    return body;
+  }
+
+  static Future<Map<String, dynamic>> forgotPassword({
+    required String email,
+    String channel = 'email',
+  }) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/forgot-password'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email.trim(), 'platform': 'mobile'}),
+      body: jsonEncode({'email': email.trim(), 'platform': 'mobile', 'channel': channel}),
     ).timeout(const Duration(seconds: 15));
 
     final body = _decodeJson(response);
@@ -161,10 +191,10 @@ class AuthApi {
       throw Exception(message);
     }
 
-    return (body['message'] ?? 'OTP sent successfully.').toString();
+    return body;
   }
 
-  static Future<String> verifyOtp({
+  static Future<Map<String, dynamic>> verifyOtp({
     required String email,
     required String otp,
   }) async {
@@ -176,21 +206,27 @@ class AuthApi {
 
     final body = _decodeJson(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = body['message'] ?? 'OTP verification failed.';
+      final message = body['message'] ?? 'Incorrect or expired code.';
       throw Exception(message);
     }
 
-    return (body['message'] ?? 'OTP verified.').toString();
+    return body;
   }
 
   static Future<String> resetPassword({
     required String email,
     required String newPassword,
+    String? resetToken,
   }) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/reset-password'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email.trim(), 'newPassword': newPassword, 'platform': 'mobile'}),
+      body: jsonEncode({
+        'email': email.trim(),
+        'newPassword': newPassword,
+        'resetToken': resetToken,
+        'platform': 'mobile',
+      }),
     );
 
     final body = _decodeJson(response);

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'app_strings.dart';
 import 'core/theme/app_theme.dart';
 import 'data/local/hive_boxes.dart';
+import 'features/reports/services/report_notification_service.dart';
 import 'features/splash/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await HiveBoxes.init();
   await L.load();
+  await ReportNotificationService.initialize();
   runApp(const AppScaleApp());
 }
 
@@ -20,6 +22,7 @@ class AppScaleApp extends StatelessWidget {
       valueListenable: L.lang,
       builder: (context, currentLang, child) {
         return MaterialApp(
+          navigatorKey: appNavigatorKey,
           title: 'AppScale',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,

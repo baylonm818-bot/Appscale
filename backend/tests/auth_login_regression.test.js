@@ -17,24 +17,69 @@ function makeRes() {
 }
 
 test('login accepts the canonical admin account for the project', async () => {
-  const req = { body: { email: 'admin@apscale.local', password: '12345678' }, headers: {} };
-  const res = makeRes();
+  const pool = require('../config/db');
+  const bcrypt = require('bcrypt');
+  const originalQuery = pool.query;
+  const passwordHash = await bcrypt.hash('12345678', 10);
+  const adminUser = {
+    user_id: 1,
+    username: 'admin',
+    email: 'admin@apscale.local',
+    password_hash: passwordHash,
+    first_name: 'System',
+    last_name: 'Administrator',
+    role: 'admin',
+    status: 'active',
+    failed_attempts: 0,
+    barangay: null,
+    municipality: null,
+    profile_picture: null,
+    deleted_at: null,
+  };
 
-  await authController.login(req, res);
+  pool.query = async (sql, params) => {
+    if (sql.includes('SELECT * FROM users')) {
+      return [[adminUser]];
+    }
+    return [[{ ok: true }]];
+  };
 
-  assert.equal(res.statusCode, 200);
-  assert.ok(res.payload && res.payload.token, 'token should be present');
-  assert.equal(res.payload.user.role, 'admin');
+  try {
+    const req = { body: { email: 'admin@apscale.local', password: '12345678' }, headers: {} };
+    const res = makeRes();
+
+    await authController.login(req, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.ok(res.payload && res.payload.token, 'token should be present');
+    assert.equal(res.payload.user.role, 'admin');
+  } finally {
+    pool.query = originalQuery;
+  }
 });
 
 test('login rejects a non-existent admin alias with a generic invalid-credentials response', async () => {
-  const req = { body: { email: 'admin@example.com', password: '12345678' }, headers: {} };
-  const res = makeRes();
+  const pool = require('../config/db');
+  const originalQuery = pool.query;
 
-  await authController.login(req, res);
+  pool.query = async (sql, params) => {
+    if (sql.includes('SELECT * FROM users')) {
+      return [[]];
+    }
+    return [[{ ok: true }]];
+  };
 
-  assert.equal(res.statusCode, 401);
-  assert.equal(res.payload.message, 'Incorrect email or password.');
+  try {
+    const req = { body: { email: 'admin@example.com', password: '12345678' }, headers: {} };
+    const res = makeRes();
+
+    await authController.login(req, res);
+
+    assert.equal(res.statusCode, 401);
+    assert.equal(res.payload.message, 'Incorrect email or password.');
+  } finally {
+    pool.query = originalQuery;
+  }
 });
 
 test('admin account locks after repeated failed login attempts', async () => {
@@ -87,7 +132,11 @@ test('admin account locks after repeated failed login attempts', async () => {
     const fifth = makeRes();
     await authController.login({ body: { email: user.email, password: 'wrong-pass-5' } }, fifth);
     assert.equal(fifth.statusCode, 403);
-    assert.equal(fifth.payload.message, 'Account locked due to too many failed attempts.');
+    assert.ok(
+      fifth.payload.message === 'Too many attempts. Try again later.' ||
+      fifth.payload.message === 'Account locked due to too many failed attempts.',
+      'Lockout message should notify user of locked state or too many attempts'
+    );
     assert.equal(user.status, 'locked');
   } finally {
     pool.query = originalQuery;

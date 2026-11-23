@@ -7,6 +7,8 @@ frontend/.env.*
 # Flutter generated files
 flutter/.dart_tool/
 flutter/build/
+flutter/android/build/
+flutter/android/.kotlin/
 flutter/.flutter-plugins
 flutter/.flutter-plugins-dependencies
 flutter/.packages

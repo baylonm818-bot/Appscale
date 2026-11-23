@@ -5,6 +5,7 @@ import '../../app_strings.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/hive_boxes.dart';
+import '../../data/local/secure_token_storage.dart';
 import '../../data/remote/auth_api.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../shared/widgets/app_button.dart';
@@ -58,6 +59,17 @@ class _LoginScreenState extends State<LoginScreen> {
       const expiryDuration = Duration(days: 30);
       final expiresAt = DateTime.now().add(expiryDuration);
 
+      // Persist tokens securely using flutter_secure_storage
+      await SecureTokenStorage.saveTokens(
+        accessToken: session.token,
+        refreshToken: session.refreshToken,
+      );
+      // Persist salted password hash locally for offline login
+      await SecureTokenStorage.saveOfflineCredentials(
+        email: email,
+        password: password,
+      );
+
       await _settings.setRememberMe(_rememberMe);
       await _settings.setAuthToken(session.token);
       await _settings.setSessionExpiresAt(expiresAt);
@@ -105,6 +117,22 @@ class _LoginScreenState extends State<LoginScreen> {
           raw.contains('Network is unreachable') ||
           raw.contains('Connection refused') ||
           raw.contains('timed out');
+
+      if (isNetworkError) {
+        // Attempt offline login if user has previously logged in on this device
+        final offlineValid = await SecureTokenStorage.verifyOfflineCredentials(
+          email: email,
+          password: password,
+        );
+        if (offlineValid && _settings.authUser != null) {
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainShell()),
+          );
+          return;
+        }
+      }
+
       setState(() {
         _loginError = isNetworkError
             ? 'update_no_internet'.tr

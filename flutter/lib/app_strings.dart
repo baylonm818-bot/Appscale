@@ -323,6 +323,14 @@ class L {
     'identity_verified': 'Your identity has been verified. Enter a new password for your account.',
     'hint_new_password': 'Enter a new password (min. 8 characters)',
     'hint_confirm_password': 'Re-enter your password',
+    'incorrect_expired_code': 'Incorrect or expired code.',
+    'check_your_email': 'Check your email',
+    'check_your_phone': 'Check your phone',
+    'send_code_via': 'Send code via',
+    'no_registered_number': 'No registered number. Use email.',
+    'password_changed_title': 'Successful',
+    'password_changed_desc': 'Your password has been changed',
+    'back_to_login': 'Back to Login',
 
     // ── Urgent Referral Dialog ──
     'urgent_attention_needed': 'Urgent attention may be needed',
@@ -664,6 +672,14 @@ class L {
     'identity_verified': 'Kumpirmado ang pagkakakilanlan. Ilagay ang bagong password.',
     'hint_new_password': 'Bagong password (di-bababa sa 8 karakter)',
     'hint_confirm_password': 'Ulitin ang password',
+    'incorrect_expired_code': 'Mali o expired na ang code.',
+    'check_your_email': 'Tingnan ang iyong email',
+    'check_your_phone': 'Tingnan ang iyong telepono',
+    'send_code_via': 'Ipadala ang code sa',
+    'no_registered_number': 'Walang nakarehistrong numero. Gamitin ang email.',
+    'password_changed_title': 'Matagumpay',
+    'password_changed_desc': 'Napalitan na ang iyong password',
+    'back_to_login': 'Bumalik sa Login',
 
     // ── Urgent Referral Dialog ──
     'urgent_attention_needed': 'Kailangan ng agarang pansin',

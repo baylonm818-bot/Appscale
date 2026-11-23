@@ -119,21 +119,21 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.6';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 39);
+    const version = process.env.APP_VERSION || '3.3.8';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 41);
     const notesEn = [
-        "Mother's finger signature touch drawing fixed, required on visits, queued and synced",
-        "Floating rounded SnackBars above bottom navigation and fixed button overlap padding",
-        "Feeding program attendance overhaul with search, compact rows, and progress summary",
-        "Feeding session improvement tracking (weight & status comparison before vs after)",
-        "Referrals active tracking fix, clinical reason display, and duplicate referral prevention"
+        "Tappable download complete notifications opening PDF and Excel reports directly",
+        "Floating in-app snackbar with OPEN action button above export controls",
+        "Overhauled 6-digit OTP verification screen with auto-advance and shake on error",
+        "Enhanced Forgot Password flow with SMS as second verification option",
+        "Security hardening: constant-time login checks, account lockout protection, and secure token storage"
     ];
     const notesTl = [
-        "Pag-ayos sa pirma ng ina gamit ang daliri, kailangan sa pagbisita, at naka-sync",
-        "Lumulutang na abiso (floating snackbar) at tamang espasyo sa ibaba ng listahan",
-        "Mas maayos na attendance sa feeding program na may search at progress summary",
-        "Pagsubaybay sa pag-unlad ng bata sa feeding sessions (timbang at estado bago at matapos)",
-        "Pag-ayos sa referral: hindi na madodoble at may malinaw na dahilan ang bawat bata"
+        "Maaaring pindutin ang abiso ng pag-download upang buksan agad ang mga ulat ng PDF at Excel",
+        "Lumulutang na snackbar na may buton na OPEN sa itaas ng mga pindutan ng pag-export",
+        "Pinahusay na 6-digit OTP screen na may awtomatikong pagsulong at shake animation",
+        "Mas ligtas na pag-reset ng password na may opsyon para sa SMS OTP verification",
+        "Pinatibay na seguridad: proteksyon laban sa pag-atake, lockout pagkatapos ng 5 pagsubok, at secure token storage"
     ];
     const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 

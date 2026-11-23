@@ -14,65 +14,73 @@ class ChildListTile extends StatelessWidget {
   Widget _buildIndicator(String type, String rawStatus) {
     final status = ChildStatusMeta.formatStatus(rawStatus);
     final color = ChildStatusMeta.colorFor(status);
-    String shortText;
+
+    // Full words as requested (e.g. Overweight, not "Overwt")
+    String fullWord;
     switch (status) {
       case 'Severely Underweight':
+        fullWord = 'Severely Underweight';
+        break;
       case 'Severely Stunted':
-        shortText = 'Severe';
+        fullWord = 'Severely Stunted';
         break;
       case 'Underweight':
-        shortText = 'Underwt';
+        fullWord = 'Underweight';
         break;
       case 'Stunted':
-        shortText = 'Stunted';
+        fullWord = 'Stunted';
         break;
       case 'SAM':
-        shortText = 'SAM';
+        fullWord = 'SAM';
         break;
       case 'MAM':
-        shortText = 'MAM';
+        fullWord = 'MAM';
         break;
       case 'Overweight':
-        shortText = 'Overwt';
+        fullWord = 'Overweight';
         break;
       case 'Obese':
-        shortText = 'Obese';
+        fullWord = 'Obese';
         break;
       case 'Normal':
-        shortText = 'Normal';
+        fullWord = 'Normal';
         break;
       case 'Tall':
-        shortText = 'Tall';
+        fullWord = 'Tall';
         break;
       case 'Not weighed':
-        shortText = '--';
+        fullWord = 'Not weighed';
         break;
       default:
-        shortText = status;
+        fullWord = status;
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 5,
-          height: 5,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            '$type · $shortText',
-            style: const TextStyle(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$type: $fullWord',
+            style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: color == AppColors.primaryGreen ? AppColors.darkGreen : color,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -81,42 +89,46 @@ class ChildListTile extends StatelessWidget {
     final overall = ChildOverallStatus.fromChild(child);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border, width: 1.0),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(11),
+              borderRadius: BorderRadius.circular(15),
               child: IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 4px colored strip on the left edge
+                    // Colored strip on the left edge by overall status
                     Container(
-                      width: 4,
+                      width: 5,
                       color: overall.color,
                     ),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
+                        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // Neutral light green avatar
+                            // Avatar
                             Container(
-                              width: 38,
-                              height: 38,
+                              width: 42,
+                              height: 42,
                               decoration: BoxDecoration(
                                 color: AppColors.darkGreen.withValues(alpha: 0.08),
                                 shape: BoxShape.circle,
@@ -127,25 +139,25 @@ class ChildListTile extends StatelessWidget {
                                 style: const TextStyle(
                                   color: AppColors.darkGreen,
                                   fontWeight: FontWeight.w700,
-                                  fontSize: 13,
+                                  fontSize: 14,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            // Info column
+                            const SizedBox(width: 12),
+                            // Details
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // Line 1: Name and Overall Status Badge
+                                  // Line 1: Child Name and One Main Status Chip on the right
                                   Row(
                                     children: [
                                       Expanded(
                                         child: Text(
                                           child.fullName,
                                           style: AppTextStyles.label.copyWith(
-                                            fontSize: 14,
+                                            fontSize: 14.5,
                                             fontWeight: FontWeight.w700,
                                             color: AppColors.textPrimary,
                                           ),
@@ -153,28 +165,28 @@ class ChildListTile extends StatelessWidget {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                      const SizedBox(width: 6),
+                                      const SizedBox(width: 8),
                                       StatusBadge(
                                         label: overall.label,
                                         color: overall.color,
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 2),
-                                  // Line 2: Age · Address (Barangay + Purok)
+                                  const SizedBox(height: 3),
+                                  // Line 2: Age and Purok
                                   Text(
                                     '${child.ageDisplay} · ${child.addressWithBarangay}',
                                     style: AppTextStyles.caption.copyWith(
-                                      fontSize: 11.5,
+                                      fontSize: 12,
                                       color: AppColors.textMuted,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  const SizedBox(height: 5),
-                                  // Line 3: 3 small indicators with wrap to prevent truncation
+                                  const SizedBox(height: 6),
+                                  // Line 3: WFA / HFA / WFH small colored chips in a single wrapped row
                                   Wrap(
-                                    spacing: 8,
+                                    spacing: 6,
                                     runSpacing: 4,
                                     children: [
                                       _buildIndicator('WFA', child.nutritionStatus),
@@ -185,7 +197,7 @@ class ChildListTile extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                             const Icon(
                               Icons.chevron_right,
                               size: 18,

@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/local/app_data_bus.dart';
+import '../../shared/utils/app_notifications.dart';
 import 'profile_dialogs.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -17,6 +18,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _checkingUpdate = false;
+  String? _updateStatusText;
+  Color? _updateStatusColor;
 
   void _onDataChanged() {
     if (mounted) setState(() {});
@@ -35,40 +38,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _handleManualUpdateCheck() async {
-    setState(() => _checkingUpdate = true);
+    setState(() {
+      _checkingUpdate = true;
+      _updateStatusText = null;
+    });
     try {
       final result = await AppUpdateService.checkForUpdateWithDetails();
       if (!mounted) return;
 
       switch (result.status) {
         case AppUpdateStatus.noInternet:
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('update_no_internet'.tr),
-              backgroundColor: AppColors.statRed,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          setState(() {
+            _updateStatusText = 'update_no_internet'.tr;
+            _updateStatusColor = AppColors.statRed;
+          });
+          AppNotificationUI.showError(context, 'update_no_internet'.tr);
           break;
         case AppUpdateStatus.serverUnreachable:
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('update_server_unreachable'.tr),
-              backgroundColor: AppColors.statAmber,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          setState(() {
+            _updateStatusText = 'update_server_unreachable'.tr;
+            _updateStatusColor = AppColors.statAmber;
+          });
+          AppNotificationUI.showWarning(context, 'update_server_unreachable'.tr);
           break;
         case AppUpdateStatus.alreadyLatest:
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('update_already_latest'.tr),
-              backgroundColor: AppColors.primaryGreen,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          setState(() {
+            _updateStatusText = 'update_already_latest'.tr;
+            _updateStatusColor = AppColors.primaryGreen;
+          });
+          AppNotificationUI.showSuccess(context, 'update_already_latest'.tr);
           break;
         case AppUpdateStatus.updateAvailable:
+          setState(() {
+            _updateStatusText = 'update_available_title'.tr;
+            _updateStatusColor = AppColors.statOrange;
+          });
           if (result.info != null) {
             await AppUpdateService.showUpdateDialog(context, result.info!, isManualCheck: true);
           }
@@ -84,7 +88,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.only(bottom: AppSpacing.sm, top: AppSpacing.md),
       child: Text(
         title,
-        style: AppTextStyles.h2.copyWith(fontSize: 15, color: AppColors.textPrimary),
+        style: AppTextStyles.h2.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+        ),
       ),
     );
   }
@@ -93,10 +101,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(children: children),
+    );
+  }
+
+  Widget _buildCircleIcon(IconData icon) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: AppColors.primaryGreen.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: 20, color: AppColors.primaryGreen),
+    );
+  }
+
+  Widget _buildActionRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    BorderRadius? borderRadius,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: borderRadius,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            _buildCircleIcon(icon),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+          ],
+        ),
+      ),
     );
   }
 
@@ -105,86 +178,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('settings_title'.tr),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'settings_title'.tr,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: AppColors.darkGreen,
         foregroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.white),
-        titleTextStyle: const TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'Poppins',
-        ),
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          120,
+        ),
         children: [
           // ── Section 1: Account & Profile ──
           _buildSectionHeader('account_and_profile'.tr),
           _buildCard(
             children: [
-              // Edit Profile
-              InkWell(
+              _buildActionRow(
+                icon: Icons.person_outline,
+                title: 'edit_profile'.tr,
+                subtitle: 'edit_profile_sub'.tr,
                 onTap: () => showEditProfileDialog(context),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person_outline, size: 20, color: AppColors.primaryGreen),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'edit_profile'.tr,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                            ),
-                            Text(
-                              'edit_profile_sub'.tr,
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
-                    ],
-                  ),
-                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               ),
               const Divider(height: 1, color: AppColors.border),
-
-              // Change Password
-              InkWell(
+              _buildActionRow(
+                icon: Icons.lock_outline,
+                title: 'change_password'.tr,
+                subtitle: 'change_password_sub'.tr,
                 onTap: () => showChangePasswordDialog(context),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.lock_outline, size: 20, color: AppColors.primaryGreen),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'change_password'.tr,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                            ),
-                            Text(
-                              'change_password_sub'.tr,
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
-                    ],
-                  ),
-                ),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
               ),
             ],
           ),
@@ -193,45 +229,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSectionHeader('preferences'.tr),
           _buildCard(
             children: [
-              // Language Switcher (EN | TL)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.language, size: 20, color: AppColors.primaryGreen),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'language'.tr,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    _buildCircleIcon(Icons.language),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'language'.tr,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: AppColors.textPrimary,
                             ),
-                            Text(
-                              'language_sub'.tr,
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'language_sub'.tr,
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
-                    SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'en', label: Text('EN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                        ButtonSegment(value: 'tl', label: Text('TL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                      ],
-                      selected: {L.lang.value},
-                      onSelectionChanged: (newSelection) async {
-                        final chosen = newSelection.first;
-                        await L.set(chosen);
-                        setState(() {});
-                      },
-                      style: const ButtonStyle(
-                        visualDensity: VisualDensity.compact,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    const SizedBox(width: 8),
+                    // Fixed width compact segmented control fully inside the card
+                    SizedBox(
+                      width: 104,
+                      height: 36,
+                      child: SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(
+                            value: 'en',
+                            label: Text('EN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                          ButtonSegment(
+                            value: 'tl',
+                            label: Text('TL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                        selected: {L.lang.value},
+                        onSelectionChanged: (newSelection) async {
+                          final chosen = newSelection.first;
+                          await L.set(chosen);
+                          setState(() {});
+                        },
+                        style: ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: WidgetStateProperty.all(EdgeInsets.zero),
+                          backgroundColor: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return AppColors.primaryGreen.withValues(alpha: 0.18);
+                            }
+                            return Colors.transparent;
+                          }),
+                          foregroundColor: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return AppColors.darkGreen;
+                            }
+                            return AppColors.textSecondary;
+                          }),
+                          side: WidgetStateProperty.all(
+                            const BorderSide(color: AppColors.border, width: 1),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -245,33 +313,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildCard(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
                   children: [
-                    const Icon(Icons.system_update_rounded, size: 20, color: AppColors.primaryGreen),
-                    const SizedBox(width: 12),
+                    _buildCircleIcon(Icons.system_update_rounded),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'app_update'.tr,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
-                          Text(
-                            'update_installed_version'.trArgs({'version': AppUpdateService.currentVersion}),
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Text(
+                                'update_installed_version'.trArgs({'version': AppUpdateService.currentVersion}),
+                                style: const TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              if (_updateStatusText != null) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: (_updateStatusColor ?? AppColors.primaryGreen).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    _updateStatusText!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: _updateStatusColor ?? AppColors.primaryGreen,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.12),
-                        foregroundColor: AppColors.primaryGreen,
+                        foregroundColor: AppColors.darkGreen,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        minimumSize: Size.zero,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        minimumSize: const Size(64, 36),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
@@ -280,7 +379,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ? const SizedBox(
                               width: 14,
                               height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGreen),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.darkGreen),
                             )
                           : Text(
                               'update_check_btn'.tr,
@@ -301,19 +400,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.offline_bolt_outlined, size: 20, color: AppColors.primaryGreen),
-                    const SizedBox(width: 12),
+                    _buildCircleIcon(Icons.offline_bolt_outlined),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'storage_mode'.tr,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
+                          const SizedBox(height: 2),
                           Text(
                             'storage_mode_val'.tr,
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 11.5,
+                            ),
                           ),
                         ],
                       ),
@@ -326,19 +433,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.cloud_sync_outlined, size: 20, color: AppColors.primaryGreen),
-                    const SizedBox(width: 12),
+                    _buildCircleIcon(Icons.cloud_sync_outlined),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'sync_protocol'.tr,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
+                          const SizedBox(height: 2),
                           Text(
                             'sync_protocol_val'.tr,
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 11.5,
+                            ),
                           ),
                         ],
                       ),

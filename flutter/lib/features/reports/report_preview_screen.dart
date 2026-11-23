@@ -19,7 +19,7 @@ import 'services/excel_table_data.dart';
 import 'services/report_excel_service.dart';
 import 'services/report_pdf_service.dart';
 import 'services/report_download_service.dart';
-import '../../shared/utils/app_notifications.dart';
+import 'services/report_notification_service.dart';
 
 import '../../data/growth_standards/growth_classifier.dart';
 import '../../data/local/app_data_bus.dart';
@@ -120,30 +120,51 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   static String _fmtDateOnly(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  void _showDownloadSuccess(String savedFileName) {
+  void _showDownloadSuccess(ReportDownloadResult result) {
     if (!mounted) return;
-    PhoneSystemNotification.notify(
-      title: 'Download Complete',
-      message: 'Saved $savedFileName to your Downloads folder.',
+
+    // Show tappable system notification with payload and "Open" action
+    ReportNotificationService.showDownloadNotification(
+      fileName: result.fileName,
+      filePath: result.filePath,
+      mimeType: result.mimeType,
     );
+
+    // Floating in-app snackbar above bottom buttons with OPEN action
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+        backgroundColor: AppColors.primaryGreen,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         content: Row(
           children: [
-            const Icon(Icons.check_circle, color: Colors.white, size: 20),
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Downloaded to Downloads: $savedFileName',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                result.fileName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
               ),
             ),
           ],
         ),
-        backgroundColor: AppColors.primaryGreen,
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'OPEN',
+          textColor: Colors.yellowAccent,
+          onPressed: () {
+            ReportNotificationService.openFile(
+              result.filePath,
+              mimeType: result.mimeType,
+              fileName: result.fileName,
+              context: context,
+            );
+          },
+        ),
+        duration: const Duration(seconds: 5),
       ),
     );
   }
@@ -187,7 +208,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         signatory: signatory,
       );
 
-      final savedFileName = await ReportDownloadService.downloadReport(
+      final downloadResult = await ReportDownloadService.downloadReport(
         sourceFile: file,
         targetFileName: '$fileTitle.pdf',
         mimeType: 'application/pdf',
@@ -195,7 +216,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
       if (mounted) {
         setState(() => _isExporting = false);
-        _showDownloadSuccess(savedFileName);
+        _showDownloadSuccess(downloadResult);
       }
     } catch (e) {
       if (mounted) {
@@ -226,7 +247,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         signatory: signatory,
       );
 
-      final savedFileName = await ReportDownloadService.downloadReport(
+      final downloadResult = await ReportDownloadService.downloadReport(
         sourceFile: file,
         targetFileName: '$fileTitle.xlsx',
         mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -234,7 +255,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
       if (mounted) {
         setState(() => _isExporting = false);
-        _showDownloadSuccess(savedFileName);
+        _showDownloadSuccess(downloadResult);
       }
     } catch (e) {
       if (mounted) {
@@ -322,7 +343,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         );
       }
 
-      final savedFileName = await ReportDownloadService.downloadReport(
+      final downloadResult = await ReportDownloadService.downloadReport(
         sourceFile: file,
         targetFileName: targetFileName,
         mimeType: 'application/pdf',
@@ -330,7 +351,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
       if (mounted) {
         setState(() => _isExporting = false);
-        _showDownloadSuccess(savedFileName);
+        _showDownloadSuccess(downloadResult);
       }
     } catch (e) {
       if (mounted) {
@@ -423,7 +444,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         );
       }
 
-      final savedFileName = await ReportDownloadService.downloadReport(
+      final downloadResult = await ReportDownloadService.downloadReport(
         sourceFile: file,
         targetFileName: targetFileName,
         mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -431,7 +452,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
 
       if (mounted) {
         setState(() => _isExporting = false);
-        _showDownloadSuccess(savedFileName);
+        _showDownloadSuccess(downloadResult);
       }
     } catch (e) {
       if (mounted) {

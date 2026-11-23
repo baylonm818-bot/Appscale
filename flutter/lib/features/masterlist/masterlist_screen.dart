@@ -56,14 +56,19 @@ class MasterlistScreenState extends State<MasterlistScreen> {
   String _childFilterChip = 'All';
   String _motherFilterChip = 'All';
   MasterlistSortOption _sortOption = MasterlistSortOption.severity;
+  bool _isLoading = false;
 
   void setCategory(MasterlistCategory category) {
     setState(() {
+      _isLoading = true;
       _category = category;
       _query = '';
       _filter = const ChildStatusFilter();
       _childFilterChip = 'All';
       _motherFilterChip = 'All';
+    });
+    Future.microtask(() {
+      if (mounted) setState(() => _isLoading = false);
     });
   }
 
@@ -265,7 +270,7 @@ class MasterlistScreenState extends State<MasterlistScreen> {
                   AppSpacing.lg,
                   AppSpacing.md,
                   AppSpacing.lg,
-                  120,
+                  150,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,7 +309,9 @@ class MasterlistScreenState extends State<MasterlistScreen> {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                     ],
-                    if (_category == MasterlistCategory.children)
+                    if (_isLoading)
+                      _buildShimmerList()
+                    else if (_category == MasterlistCategory.children)
                       _buildChildrenList()
                     else
                       _buildMothersList(),
@@ -353,75 +360,54 @@ class MasterlistScreenState extends State<MasterlistScreen> {
               ChildOverallCategory.normal)
           .length;
 
-      Widget wrapWithFade(Widget child) {
-        return ShaderMask(
-          shaderCallback: (Rect bounds) {
-            return const LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Colors.purple,
-                Colors.purple,
-                Colors.purple,
-                Colors.transparent,
-              ],
-              stops: [0.0, 0.05, 0.94, 1.0],
-            ).createShader(bounds);
-          },
-          blendMode: BlendMode.dstIn,
-          child: child,
-        );
-      }
-
-      return wrapWithFade(
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: [
-              _buildChipItem(
-                label: 'All',
-                count: baseChildren.length,
-                isSelected: _childFilterChip == 'All',
-                onTap: () => setState(() => _childFilterChip = 'All'),
-              ),
-              _buildChipItem(
-                label: 'Severe',
-                count: severeCount,
-                isSelected: _childFilterChip == 'Severe',
-                dotColor: AppColors.statRed,
-                onTap: () => setState(() => _childFilterChip = 'Severe'),
-              ),
-              _buildChipItem(
-                label: 'At risk',
-                count: atRiskCount,
-                isSelected: _childFilterChip == 'At risk',
-                dotColor: AppColors.statOrange,
-                onTap: () => setState(() => _childFilterChip = 'At risk'),
-              ),
-              _buildChipItem(
-                label: 'Overweight',
-                count: overweightCount,
-                isSelected: _childFilterChip == 'Overweight',
-                dotColor: AppColors.statBlue,
-                onTap: () => setState(() => _childFilterChip = 'Overweight'),
-              ),
-              _buildChipItem(
-                label: 'Obese',
-                count: obeseCount,
-                isSelected: _childFilterChip == 'Obese',
-                dotColor: AppColors.statPurple,
-                onTap: () => setState(() => _childFilterChip = 'Obese'),
-              ),
-              _buildChipItem(
-                label: 'Normal',
-                count: normalCount,
-                isSelected: _childFilterChip == 'Normal',
-                dotColor: AppColors.primaryGreen,
-                onTap: () => setState(() => _childFilterChip = 'Normal'),
-              ),
-            ],
-          ),
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Row(
+          children: [
+            _buildChipItem(
+              label: 'All',
+              count: baseChildren.length,
+              isSelected: _childFilterChip == 'All',
+              onTap: () => setState(() => _childFilterChip = 'All'),
+            ),
+            _buildChipItem(
+              label: 'Severe',
+              count: severeCount,
+              isSelected: _childFilterChip == 'Severe',
+              dotColor: AppColors.statRed,
+              onTap: () => setState(() => _childFilterChip = 'Severe'),
+            ),
+            _buildChipItem(
+              label: 'At risk',
+              count: atRiskCount,
+              isSelected: _childFilterChip == 'At risk',
+              dotColor: AppColors.statOrange,
+              onTap: () => setState(() => _childFilterChip = 'At risk'),
+            ),
+            _buildChipItem(
+              label: 'Overweight',
+              count: overweightCount,
+              isSelected: _childFilterChip == 'Overweight',
+              dotColor: AppColors.statBlue,
+              onTap: () => setState(() => _childFilterChip = 'Overweight'),
+            ),
+            _buildChipItem(
+              label: 'Obese',
+              count: obeseCount,
+              isSelected: _childFilterChip == 'Obese',
+              dotColor: AppColors.statPurple,
+              onTap: () => setState(() => _childFilterChip = 'Obese'),
+            ),
+            _buildChipItem(
+              label: 'Normal',
+              count: normalCount,
+              isSelected: _childFilterChip == 'Normal',
+              dotColor: AppColors.primaryGreen,
+              onTap: () => setState(() => _childFilterChip = 'Normal'),
+            ),
+          ],
         ),
       );
     } else {
@@ -444,61 +430,40 @@ class MasterlistScreenState extends State<MasterlistScreen> {
               MotherStatusMeta.formatStatus(m.riskStatus) == 'Not visited')
           .length;
 
-      Widget wrapWithFade(Widget child) {
-        return ShaderMask(
-          shaderCallback: (Rect bounds) {
-            return const LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Colors.purple,
-                Colors.purple,
-                Colors.purple,
-                Colors.transparent,
-              ],
-              stops: [0.0, 0.05, 0.94, 1.0],
-            ).createShader(bounds);
-          },
-          blendMode: BlendMode.dstIn,
-          child: child,
-        );
-      }
-
-      return wrapWithFade(
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: [
-              _buildChipItem(
-                label: 'All',
-                count: baseMothers.length,
-                isSelected: _motherFilterChip == 'All',
-                onTap: () => setState(() => _motherFilterChip = 'All'),
-              ),
-              _buildChipItem(
-                label: 'At-risk',
-                count: atRiskCount,
-                isSelected: _motherFilterChip == 'At-risk',
-                dotColor: AppColors.statRed,
-                onTap: () => setState(() => _motherFilterChip = 'At-risk'),
-              ),
-              _buildChipItem(
-                label: 'Normal',
-                count: normalCount,
-                isSelected: _motherFilterChip == 'Normal',
-                dotColor: AppColors.primaryGreen,
-                onTap: () => setState(() => _motherFilterChip = 'Normal'),
-              ),
-              _buildChipItem(
-                label: 'Not visited',
-                count: notVisitedCount,
-                isSelected: _motherFilterChip == 'Not visited',
-                dotColor: AppColors.notWeighed,
-                onTap: () => setState(() => _motherFilterChip = 'Not visited'),
-              ),
-            ],
-          ),
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Row(
+          children: [
+            _buildChipItem(
+              label: 'All',
+              count: baseMothers.length,
+              isSelected: _motherFilterChip == 'All',
+              onTap: () => setState(() => _motherFilterChip = 'All'),
+            ),
+            _buildChipItem(
+              label: 'At-risk',
+              count: atRiskCount,
+              isSelected: _motherFilterChip == 'At-risk',
+              dotColor: AppColors.statRed,
+              onTap: () => setState(() => _motherFilterChip = 'At-risk'),
+            ),
+            _buildChipItem(
+              label: 'Normal',
+              count: normalCount,
+              isSelected: _motherFilterChip == 'Normal',
+              dotColor: AppColors.primaryGreen,
+              onTap: () => setState(() => _motherFilterChip = 'Normal'),
+            ),
+            _buildChipItem(
+              label: 'Not visited',
+              count: notVisitedCount,
+              isSelected: _motherFilterChip == 'Not visited',
+              dotColor: AppColors.notWeighed,
+              onTap: () => setState(() => _motherFilterChip = 'Not visited'),
+            ),
+          ],
         ),
       );
     }
@@ -511,34 +476,47 @@ class MasterlistScreenState extends State<MasterlistScreen> {
     required VoidCallback onTap,
     Color? dotColor,
   }) {
+    final activeColor = dotColor != null
+        ? (dotColor == AppColors.primaryGreen ? AppColors.darkGreen : dotColor)
+        : AppColors.darkGreen;
+
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.darkGreen : Colors.white,
+            color: isSelected ? activeColor : Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected ? AppColors.darkGreen : AppColors.border,
+              color: isSelected ? Colors.transparent : AppColors.border.withValues(alpha: 0.8),
               width: 1.0,
             ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: activeColor.withValues(alpha: 0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (dotColor != null && !isSelected) ...[
                 Container(
-                  width: 6,
-                  height: 6,
+                  width: 7,
+                  height: 7,
                   decoration: BoxDecoration(
                     color: dotColor,
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 5),
+                const SizedBox(width: 6),
               ],
               Text(
                 '$label ($count)',
@@ -546,6 +524,95 @@ class MasterlistScreenState extends State<MasterlistScreen> {
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                   color: isSelected ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return Column(
+      children: List.generate(
+        4,
+        (index) => Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        Container(
+                          width: 60,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 160,
+                      height: 11,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(
+                          width: 55,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 55,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],

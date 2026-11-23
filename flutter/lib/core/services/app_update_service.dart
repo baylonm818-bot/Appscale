@@ -115,13 +115,27 @@ class AppUpdateInfo {
 
   /// Returns the release notes matching the active language without mixing EN and TL.
   String get localizedReleaseNotes {
-    final list = L.isTagalog
-        ? (notesTl.isNotEmpty ? notesTl : notesEn)
-        : (notesEn.isNotEmpty ? notesEn : notesTl);
+    final list = localizedNotesList;
     if (list.isNotEmpty) {
       return list.map((item) => '• $item').join('\n');
     }
     return releaseNotes;
+  }
+
+  /// Returns localized release notes as a clean list of strings without bullet prefixes.
+  List<String> get localizedNotesList {
+    final list = L.isTagalog
+        ? (notesTl.isNotEmpty ? notesTl : notesEn)
+        : (notesEn.isNotEmpty ? notesEn : notesTl);
+    if (list.isNotEmpty) return list;
+    if (releaseNotes.trim().isNotEmpty) {
+      return releaseNotes
+          .split('\n')
+          .map((s) => s.replaceFirst(RegExp(r'^[•\-\*]\s*'), '').trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    return [];
   }
 
   String get fileSizeFormatted {
@@ -135,8 +149,8 @@ class AppUpdateService {
   AppUpdateService._();
 
   /// Current running version of the mobile app
-  static const String currentVersion = '3.3.6';
-  static const int currentVersionCode = 39;
+  static const String currentVersion = '3.3.8';
+  static const int currentVersionCode = 41;
 
   /// Compares two versions numerically (major.minor.patch).
   /// Returns >0 if v1 > v2, <0 if v1 < v2, and 0 if v1 == v2.
@@ -380,18 +394,24 @@ class _UpdateDialogState extends State<_UpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final notes = widget.info.localizedNotesList;
+
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(22),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header: icon, title, version & size chip
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: AppColors.primaryGreen.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
@@ -399,7 +419,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   child: const Icon(
                     Icons.system_update_rounded,
                     color: AppColors.primaryGreen,
-                    size: 26,
+                    size: 24,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -410,18 +430,25 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                       Text(
                         'update_available_title'.tr,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 16.5,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'v${widget.info.latestVersion} ${widget.info.fileSizeFormatted.isNotEmpty ? "(${widget.info.fileSizeFormatted})" : ""}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryGreen,
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'v${widget.info.latestVersion}${widget.info.fileSizeFormatted.isNotEmpty ? " · ${widget.info.fileSizeFormatted}" : ""}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.darkGreen,
+                          ),
                         ),
                       ),
                     ],
@@ -429,43 +456,111 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
+
+            // "What's new" as short bullet list with check icons
             Text(
               'update_whats_new'.tr,
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Container(
-              constraints: const BoxConstraints(maxHeight: 130),
-              padding: const EdgeInsets.all(10),
+              constraints: const BoxConstraints(maxHeight: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
               ),
               child: SingleChildScrollView(
-                child: Text(
-                  widget.info.localizedReleaseNotes,
-                  style: const TextStyle(fontSize: 12, height: 1.45, color: AppColors.textPrimary),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: notes.isNotEmpty
+                      ? notes
+                          .map(
+                            (note) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 2),
+                                    child: Icon(
+                                      Icons.check_circle,
+                                      size: 15,
+                                      color: AppColors.primaryGreen,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      note,
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        height: 1.35,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList()
+                      : [
+                          Text(
+                            widget.info.localizedReleaseNotes,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              height: 1.4,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
                 ),
               ),
             ),
+
+            // Download progress bar and percentage
             if (_isDownloading) ...[
               const SizedBox(height: 16),
-              LinearProgressIndicator(
-                value: _progress > 0 ? _progress : null,
-                backgroundColor: AppColors.border,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  _statusText,
-                  style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: _progress > 0 ? _progress : null,
+                  minHeight: 8,
+                  backgroundColor: AppColors.border,
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
                 ),
               ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      _statusText,
+                      style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    '${(_progress * 100).toInt()}%',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.darkGreen,
+                    ),
+                  ),
+                ],
+              ),
             ],
+
             if (_errorMessage != null) ...[
               const SizedBox(height: 10),
               Text(
@@ -473,31 +568,54 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 style: const TextStyle(fontSize: 12, color: AppColors.statRed),
               ),
             ],
+
             const SizedBox(height: 20),
+
+            // Buttons: "Later" (text) and "Install now" (filled), full width on small screens
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 if (!_isDownloading)
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text('update_later'.tr, style: const TextStyle(color: AppColors.textMuted)),
+                  Expanded(
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        minimumSize: const Size(0, 48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(
+                        'update_later'.tr,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
                   ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                if (!_isDownloading) const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      minimumSize: const Size(0, 48),
+                      elevation: 1,
+                    ),
+                    onPressed: _isDownloading ? null : _startDownload,
+                    child: _isDownloading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                          )
+                        : Text(
+                            'update_install'.tr,
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
                   ),
-                  onPressed: _isDownloading ? null : _startDownload,
-                  child: _isDownloading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : Text('update_install'.tr),
                 ),
               ],
             ),

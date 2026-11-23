@@ -2,21 +2,30 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
+class ReportDownloadResult {
+  final String fileName;
+  final String filePath;
+  final String mimeType;
+
+  const ReportDownloadResult({
+    required this.fileName,
+    required this.filePath,
+    required this.mimeType,
+  });
+
+  @override
+  String toString() => fileName;
+}
+
 /// Service responsible for saving generated reports directly into the device's
 /// public Downloads folder without opening any external sheet or chooser.
-///
-/// Platforms:
-/// - Android 10+ (API 29+): Saves via MediaStore.Downloads (no permissions needed)
-/// - Android 9 and below: Requests WRITE_EXTERNAL_STORAGE permission, saves to /Download
-/// - iOS: Saves to app Documents folder with UIFileSharingEnabled + LSSupportsOpeningDocumentsInPlace
-///   so it appears directly in the Files app.
 class ReportDownloadService {
   static const MethodChannel _channel = MethodChannel('com.example.appscale/downloads');
 
   /// Saves [sourceFile] into the public Downloads directory.
-  /// Returns the final saved file name on success.
+  /// Returns a [ReportDownloadResult] containing final saved file name, file path, and mime type.
   /// Throws [Exception] with user-friendly message on failure.
-  static Future<String> downloadReport({
+  static Future<ReportDownloadResult> downloadReport({
     required File sourceFile,
     required String targetFileName,
     String mimeType = 'application/pdf',
@@ -36,7 +45,15 @@ class ReportDownloadService {
         if (result == null || result.isEmpty) {
           throw Exception('Failed to save file to Downloads');
         }
-        return result;
+
+        final publicFile = File('/storage/emulated/0/Download/$result');
+        final finalPath = publicFile.existsSync() ? publicFile.path : sourceFile.path;
+
+        return ReportDownloadResult(
+          fileName: result,
+          filePath: finalPath,
+          mimeType: mimeType,
+        );
       } on PlatformException catch (e) {
         if (e.code == 'PERMISSION_DENIED') {
           throw Exception('Storage permission was denied. Please allow storage access to save reports.');
@@ -44,8 +61,6 @@ class ReportDownloadService {
         throw Exception('Failed to save report to Downloads: ${e.message ?? e.code}');
       }
     } else if (Platform.isIOS) {
-      // On iOS: save to application documents directory with deduplication.
-      // UIFileSharingEnabled and LSSupportsOpeningDocumentsInPlace make it visible in the Files app.
       final docsDir = await getApplicationDocumentsDirectory();
       final dotIdx = targetFileName.lastIndexOf('.');
       final base = dotIdx > 0 ? targetFileName.substring(0, dotIdx) : targetFileName;
@@ -64,9 +79,12 @@ class ReportDownloadService {
         throw Exception('Failed to verify saved file in Documents folder');
       }
 
-      return candidate.uri.pathSegments.last;
+      return ReportDownloadResult(
+        fileName: candidate.uri.pathSegments.last,
+        filePath: candidate.path,
+        mimeType: mimeType,
+      );
     } else {
-      // Desktop / Other: Fallback to getDownloadsDirectory
       final downloadsDir = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
       final dotIdx = targetFileName.lastIndexOf('.');
       final base = dotIdx > 0 ? targetFileName.substring(0, dotIdx) : targetFileName;
@@ -85,7 +103,11 @@ class ReportDownloadService {
         throw Exception('Failed to write file to Downloads');
       }
 
-      return candidate.uri.pathSegments.last;
+      return ReportDownloadResult(
+        fileName: candidate.uri.pathSegments.last,
+        filePath: candidate.path,
+        mimeType: mimeType,
+      );
     }
   }
 }
