@@ -14,19 +14,19 @@ class DashboardHeader extends StatelessWidget {
   final int unreadNotificationCount;
   final String? profileImageUrl;
   final VoidCallback onNotificationTap;
-  final VoidCallback onSyncTap;
+  final VoidCallback? onSyncTap;
   final VoidCallback? onProfileTap;
 
   const DashboardHeader({
     super.key,
     required this.bnsName,
     required this.barangayName,
-    required this.pendingSyncCount,
+    this.pendingSyncCount = 0,
     this.failedSyncCount = 0,
     this.unreadNotificationCount = 0,
     this.profileImageUrl,
     required this.onNotificationTap,
-    required this.onSyncTap,
+    this.onSyncTap,
     this.onProfileTap,
   });
 
@@ -156,10 +156,6 @@ class DashboardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasFailed = failedSyncCount > 0;
-    final syncLabel = hasFailed
-        ? '$failedSyncCount failed'
-        : (pendingSyncCount == 0 ? '0 pending' : '$pendingSyncCount pending');
     final initials = bnsName.trim().split(RegExp(r'\s+')).length >= 2
         ? (bnsName.trim().split(RegExp(r'\s+'))[0][0] +
                 bnsName.trim().split(RegExp(r'\s+'))[1][0])
@@ -198,89 +194,64 @@ class DashboardHeader extends StatelessWidget {
               ],
             ),
           ),
-          GestureDetector(
-            onTap: onSyncTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: hasFailed
-                    ? AppColors.statRed.withValues(alpha: 0.9)
-                    : Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    hasFailed ? Icons.warning_amber_rounded : Icons.sync,
-                    color: Colors.white,
-                    size: 14,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    syncLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onNotificationTap,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.notifications_outlined,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
-                if (unreadNotificationCount > 0)
-                  Positioned(
-                    top: -2,
-                    right: -2,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.statRed,
+          const SizedBox(width: 12),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: onNotificationTap,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
                         shape: BoxShape.circle,
                       ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        unreadNotificationCount > 9
-                            ? '9+'
-                            : '$unreadNotificationCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          height: 1,
-                        ),
+                      child: const Icon(
+                        Icons.notifications_outlined,
+                        color: Colors.white,
+                        size: 18,
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onProfileTap,
-            child: _buildAvatarWidget(profileImageUrl, initials),
+                    if (unreadNotificationCount > 0)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: AppColors.statRed,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            unreadNotificationCount > 9
+                                ? '9+'
+                                : '$unreadNotificationCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: onProfileTap,
+                child: _buildAvatarWidget(profileImageUrl, initials),
+              ),
+            ],
           ),
         ],
       ),
