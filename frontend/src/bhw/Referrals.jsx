@@ -58,30 +58,24 @@ function Referrals() {
   }
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlStatusParam = searchParams.get('status');
-
-  const normalizeFilterParam = (p) => {
-    if (!p) return null;
-    const lower = p.toLowerCase();
-    if (lower === 'pending') return 'Pending';
-    if (lower === 'received') return 'Received';
-    if (lower === 'ongoing') return 'Ongoing';
-    if (lower === 'completed') return 'Completed';
-    if (lower === 'archived') return 'Archived';
-    if (lower === 'all') return 'all';
-    return null;
-  };
-
-  const initialStatus = normalizeFilterParam(urlStatusParam);
 
   // filters
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'child', 'mother'
-  const [statusFilter, setStatusFilter] = useState(initialStatus || 'all');
-  const [userInteractedWithFilter, setUserInteractedWithFilter] = useState(Boolean(initialStatus));
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [userInteractedWithFilter, setUserInteractedWithFilter] = useState(false);
   const [referrerRoleFilter, setReferrerRoleFilter] = useState('all'); // 'all', 'BHW', 'BNS'
   const [severityFilter, setSeverityFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
+
+  // Ensure default is always 'all' and clean URL query param if present
+  useEffect(() => {
+    if (searchParams.get('status')) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('status');
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, []);
 
   // archive state
   const [rowLoadingId, setRowLoadingId] = useState(null);

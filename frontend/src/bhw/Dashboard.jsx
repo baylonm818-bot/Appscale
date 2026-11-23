@@ -255,7 +255,7 @@ function Dashboard() {
           label="Pending Referrals"
           value={s.pendingReferrals}
           sublabel="Awaiting BHW action"
-          to="/bhw/referrals?status=Pending"
+          to="/bhw/referrals"
           accent="amber"
         />
       </motion.div>

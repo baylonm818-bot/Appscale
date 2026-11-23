@@ -242,35 +242,6 @@ function MedicalRecords() {
     return list;
   }, [children, search, statusFilter, purokFilter, ageFilter]);
 
-  const exportChildrenList = () => {
-    if (!filteredChildren || filteredChildren.length === 0) return;
-    const headers = ['Child ID', 'First Name', 'Last Name', 'Sex', 'Age (Months)', 'Birth Date', 'Guardian Name', 'Guardian Contact', 'Barangay', 'Purok', 'Disability', 'Nutritional Status', 'Last Visit'];
-    const rows = filteredChildren.map(c => [
-      c.child_id,
-      `"${c.first_name || ''}"`,
-      `"${c.last_name || ''}"`,
-      c.sex || '',
-      c.age_in_months || 0,
-      c.birth_date ? c.birth_date.slice(0, 10) : '',
-      `"${c.guardian_name || ''}"`,
-      `"${c.guardian_contact || ''}"`,
-      `"${c.barangay || ''}"`,
-      `"${c.purok || ''}"`,
-      `"${c.disability || 'None'}"`,
-      `"${c.overall_status || 'normal'}"`,
-      c.last_visit ? c.last_visit.slice(0, 10) : '',
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Children_Masterlist_${user.barangay || 'All'}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const filteredMothers = useMemo(() => {
     if (!motherSearch.trim()) return mothers;
     const q = motherSearch.trim().toLowerCase();
