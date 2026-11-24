@@ -4,6 +4,7 @@ import axiosClient from '../api/axiosClient';
 import { useAuth } from '../components/AuthContext';
 import { Calendar, Clock, CheckCircle2, Archive, Search, X, ChevronLeft, ChevronRight, Plus, Sparkles, ArrowRight, FileText, Download, Printer } from 'lucide-react';
 import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
+import ClockTimePicker from '../components/ui/ClockTimePicker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 import { capitalizeWords } from '../utils/i18n';
@@ -932,9 +933,8 @@ function Schedule() {
                         </div>
                         <div>
                           <FormLabel label="Time" />
-                          <input
+                          <ClockTimePicker
                             name="schedule_time"
-                            type="time"
                             value={form.schedule_time}
                             onChange={(e) => setForm({ ...form, schedule_time: e.target.value })}
                             className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"

@@ -360,44 +360,156 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
     if (!consolidationData || consolidationData.length === 0) return;
     const years = consolidationData.map((d) => d.year);
     const bgyName = consolidationBarangay === 'All' ? 'All_Barangays' : consolidationBarangay.replace(/\s+/g, '_');
+    const todayStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    let csv = `CONSOLIDATION OF NUTRITIONAL STATUS - GASAN\n`;
-    csv += `Barangay: ${consolidationBarangay}\n`;
-    csv += `Generated Date: ${new Date().toISOString().slice(0, 10)}\n\n`;
+    let tableHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Consolidation</x:Name>
+                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          body { font-family: Calibri, Arial, sans-serif; }
+          .header-title { font-size: 14pt; font-weight: bold; color: #1b5e20; text-align: center; }
+          .header-sub { font-size: 10pt; color: #475569; text-align: center; margin-bottom: 12px; }
+          table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+          th { background-color: #2e7d32; color: #ffffff; font-weight: bold; font-size: 10.5pt; text-align: center; border: 1px solid #1b5e20; padding: 8px 12px; }
+          td { font-size: 10pt; border: 1px solid #cbd5e1; padding: 7px 10px; vertical-align: middle; }
+          .sec-header { background-color: #e8f5e9; color: #1b5e20; font-weight: bold; font-size: 11pt; border: 1px solid #a5d6a7; padding: 8px 10px; }
+          .bold { font-weight: bold; }
+          .center { text-align: center; }
+          .right { text-align: right; }
+          .danger { color: #b91c1c; font-weight: bold; }
+          .zebra { background-color: #f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="header-title">REPUBLIC OF THE PHILIPPINES · MUNICIPALITY OF GASAN</div>
+        <div class="header-title" style="font-size: 12pt; color: #2e7d32;">OPERATION TIMBANG PLUS (OPT+) CONSOLIDATION OF NUTRITIONAL STATUS</div>
+        <div class="header-sub">Barangay: <strong>${consolidationBarangay}</strong> | Comparative Coverage: <strong>${years.join(' - ')}</strong> | Generated: ${todayStr}</div>
 
-    // 1. WFA
-    csv += `1. WEIGHT FOR AGE (WFA)\n`;
-    csv += `Indicator,${years.join(',')}\n`;
-    csv += `Total Population,${consolidationData.map((d) => d.total_population).join(',')}\n`;
-    csv += `Total Weighed,${consolidationData.map((d) => d.total_weighed).join(',')}\n`;
-    csv += `% Weighed,${consolidationData.map((d) => `${d.weighed_pct}%`).join(',')}\n`;
-    csv += `Normal,${consolidationData.map((d) => `"${d.wfa.normal.count} (${d.wfa.normal.pct}%)"`).join(',')}\n`;
-    csv += `Underweight,${consolidationData.map((d) => `"${d.wfa.underweight.count} (${d.wfa.underweight.pct}%)"`).join(',')}\n`;
-    csv += `Severely Underweight,${consolidationData.map((d) => `"${d.wfa.severely_underweight.count} (${d.wfa.severely_underweight.pct}%)"`).join(',')}\n`;
-    csv += `Overweight,${consolidationData.map((d) => `"${d.wfa.overweight.count} (${d.wfa.overweight.pct}%)"`).join(',')}\n\n`;
+        <table>
+          <colgroup>
+            <col width="300" style="width: 300px;" />
+            ${years.map(() => '<col width="160" style="width: 160px;" />').join('')}
+          </colgroup>
 
-    // 2. WFH
-    csv += `2. WEIGHT FOR LENGTH/HEIGHT (WFH)\n`;
-    csv += `Classification,${years.join(',')}\n`;
-    csv += `Normal,${consolidationData.map((d) => `"${d.wfh.normal.count} (${d.wfh.normal.pct}%)"`).join(',')}\n`;
-    csv += `Wasted,${consolidationData.map((d) => `"${d.wfh.wasted.count} (${d.wfh.wasted.pct}%)"`).join(',')}\n`;
-    csv += `Severely Wasted,${consolidationData.map((d) => `"${d.wfh.severely_wasted.count} (${d.wfh.severely_wasted.pct}%)"`).join(',')}\n`;
-    csv += `Overweight,${consolidationData.map((d) => `"${d.wfh.overweight.count} (${d.wfh.overweight.pct}%)"`).join(',')}\n`;
-    csv += `Obese,${consolidationData.map((d) => `"${d.wfh.obese.count} (${d.wfh.obese.pct}%)"`).join(',')}\n\n`;
+          <!-- 1. WFA -->
+          <thead>
+            <tr>
+              <th colspan="${years.length + 1}" class="sec-header">1. WEIGHT FOR AGE (WFA) — COMPARATIVE BREAKDOWN</th>
+            </tr>
+            <tr>
+              <th style="text-align: left; width: 300px;">Indicator / Nutritional Status</th>
+              ${years.map((y) => `<th style="width: 160px;">Year ${y}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="zebra">
+              <td class="bold">Total Target Population</td>
+              ${consolidationData.map((d) => `<td class="center bold">${d.total_population}</td>`).join('')}
+            </tr>
+            <tr>
+              <td class="bold">Total Weighed / Measured</td>
+              ${consolidationData.map((d) => `<td class="center bold">${d.total_weighed}</td>`).join('')}
+            </tr>
+            <tr class="zebra">
+              <td class="bold">% Weighed Coverage</td>
+              ${consolidationData.map((d) => `<td class="center bold" style="color:#1b5e20;">${d.weighed_pct}%</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Normal</td>
+              ${consolidationData.map((d) => `<td class="center">${d.wfa.normal.count} (${d.wfa.normal.pct}%)</td>`).join('')}
+            </tr>
+            <tr class="zebra">
+              <td>Underweight</td>
+              ${consolidationData.map((d) => `<td class="center">${d.wfa.underweight.count} (${d.wfa.underweight.pct}%)</td>`).join('')}
+            </tr>
+            <tr>
+              <td class="danger">Severely Underweight</td>
+              ${consolidationData.map((d) => `<td class="center danger">${d.wfa.severely_underweight.count} (${d.wfa.severely_underweight.pct}%)</td>`).join('')}
+            </tr>
+            <tr class="zebra">
+              <td>Overweight</td>
+              ${consolidationData.map((d) => `<td class="center">${d.wfa.overweight.count} (${d.wfa.overweight.pct}%)</td>`).join('')}
+            </tr>
 
-    // 3. HFA
-    csv += `3. LENGTH/HEIGHT FOR AGE (HFA)\n`;
-    csv += `Classification,${years.join(',')}\n`;
-    csv += `Normal,${consolidationData.map((d) => `"${d.hfa.normal.count} (${d.hfa.normal.pct}%)"`).join(',')}\n`;
-    csv += `Stunted,${consolidationData.map((d) => `"${d.hfa.stunted.count} (${d.hfa.stunted.pct}%)"`).join(',')}\n`;
-    csv += `Severely Stunted,${consolidationData.map((d) => `"${d.hfa.severely_stunted.count} (${d.hfa.severely_stunted.pct}%)"`).join(',')}\n`;
-    csv += `Tall,${consolidationData.map((d) => `"${d.hfa.tall.count} (${d.hfa.tall.pct}%)"`).join(',')}\n\n`;
+            <!-- 2. WFH -->
+            <tr><td colspan="${years.length + 1}" style="border: none; height: 14px;"></td></tr>
+            <tr>
+              <th colspan="${years.length + 1}" class="sec-header">2. WEIGHT FOR LENGTH/HEIGHT (WFH) — WASTING &amp; OBESITY</th>
+            </tr>
+            <tr>
+              <th style="text-align: left;">Classification</th>
+              ${years.map((y) => `<th>Year ${y}</th>`).join('')}
+            </tr>
+            <tr>
+              <td>Normal</td>
+              ${consolidationData.map((d) => `<td class="center">${d.wfh.normal.count} (${d.wfh.normal.pct}%)</td>`).join('')}
+            </tr>
+            <tr class="zebra">
+              <td>Wasted (MAM)</td>
+              ${consolidationData.map((d) => `<td class="center">${d.wfh.wasted.count} (${d.wfh.wasted.pct}%)</td>`).join('')}
+            </tr>
+            <tr>
+              <td class="danger">Severely Wasted (SAM)</td>
+              ${consolidationData.map((d) => `<td class="center danger">${d.wfh.severely_wasted.count} (${d.wfh.severely_wasted.pct}%)</td>`).join('')}
+            </tr>
+            <tr class="zebra">
+              <td>Overweight</td>
+              ${consolidationData.map((d) => `<td class="center">${d.wfh.overweight.count} (${d.wfh.overweight.pct}%)</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Obese</td>
+              ${consolidationData.map((d) => `<td class="center">${d.wfh.obese.count} (${d.wfh.obese.pct}%)</td>`).join('')}
+            </tr>
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            <!-- 3. HFA -->
+            <tr><td colspan="${years.length + 1}" style="border: none; height: 14px;"></td></tr>
+            <tr>
+              <th colspan="${years.length + 1}" class="sec-header">3. LENGTH/HEIGHT FOR AGE (HFA) — STUNTING</th>
+            </tr>
+            <tr>
+              <th style="text-align: left;">Classification</th>
+              ${years.map((y) => `<th>Year ${y}</th>`).join('')}
+            </tr>
+            <tr>
+              <td>Normal</td>
+              ${consolidationData.map((d) => `<td class="center">${d.hfa.normal.count} (${d.hfa.normal.pct}%)</td>`).join('')}
+            </tr>
+            <tr class="zebra">
+              <td>Stunted</td>
+              ${consolidationData.map((d) => `<td class="center">${d.hfa.stunted.count} (${d.hfa.stunted.pct}%)</td>`).join('')}
+            </tr>
+            <tr>
+              <td class="danger">Severely Stunted</td>
+              ${consolidationData.map((d) => `<td class="center danger">${d.hfa.severely_stunted.count} (${d.hfa.severely_stunted.pct}%)</td>`).join('')}
+            </tr>
+            <tr class="zebra">
+              <td>Tall</td>
+              ${consolidationData.map((d) => `<td class="center">${d.hfa.tall.count} (${d.hfa.tall.pct}%)</td>`).join('')}
+            </tr>
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Nutrition_Consolidation_${bgyName}_${years.join('_')}.csv`;
+    a.download = `OPT_Plus_Consolidation_${bgyName}_${years.join('_')}.xls`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -542,24 +654,87 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
 
   const handleExportMonitoringExcel = () => {
     if (!monitoringMatrix || monitoringMatrix.length === 0) return;
-    let csv = `BNS MONTHLY WEIGHT MONITORING CHART - YEAR ${monitoringYear}\n`;
-    csv += `Municipality of Gasan, Marinduque\n\n`;
+    const todayStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    csv += `Barangay,Target,${MONTH_NAMES.join(',')},Annual Avg,Annual %\n`;
+    let tableHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Monthly_Monitoring</x:Name>
+                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          body { font-family: Calibri, Arial, sans-serif; }
+          .title { font-size: 14pt; font-weight: bold; color: #1b5e20; text-align: center; }
+          .sub { font-size: 10pt; color: #475569; text-align: center; margin-bottom: 12px; }
+          table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+          th { background-color: #2e7d32; color: #ffffff; font-weight: bold; font-size: 10pt; text-align: center; border: 1px solid #1b5e20; padding: 8px; }
+          td { font-size: 9.5pt; border: 1px solid #cbd5e1; padding: 6px 8px; vertical-align: middle; }
+          .bold { font-weight: bold; }
+          .center { text-align: center; }
+          .right { text-align: right; }
+          .zebra { background-color: #f8fafc; }
+          .total-row { background-color: #e8f5e9; font-weight: bold; border-top: 2px solid #2e7d32; }
+        </style>
+      </head>
+      <body>
+        <div class="title">BNS MONTHLY WEIGHT MONITORING CHART — YEAR ${monitoringYear}</div>
+        <div class="sub">Municipality of Gasan, Marinduque | Generated: ${todayStr}</div>
 
-    monitoringMatrix.forEach((r) => {
-      const monthVals = r.months.map((m) => `"${m.weighed}/${m.target} (${m.percentage}%)"`);
-      csv += `"${r.barangay}",${r.target},${monthVals.join(',')},${r.rowTotal.avgWeighed},"${r.rowTotal.percentage}%"\n`;
-    });
+        <table>
+          <colgroup>
+            <col width="180" style="width: 180px;" />
+            <col width="80" style="width: 80px;" />
+            ${MONTH_NAMES.map(() => '<col width="110" style="width: 110px;" />').join('')}
+            <col width="90" style="width: 90px;" />
+            <col width="85" style="width: 85px;" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th style="width: 180px; text-align: left;">Barangay</th>
+              <th style="width: 80px;">Target</th>
+              ${MONTH_NAMES.map((m) => `<th style="width: 110px;">${m}</th>`).join('')}
+              <th style="width: 90px;">Annual Avg</th>
+              <th style="width: 85px;">Annual %</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${monitoringMatrix.map((r, i) => `
+              <tr class="${i % 2 === 1 ? 'zebra' : ''}">
+                <td class="bold">${r.barangay}</td>
+                <td class="center">${r.target}</td>
+                ${r.months.map((m) => `<td class="center">${m.weighed}/${m.target} (${m.percentage}%)</td>`).join('')}
+                <td class="center bold">${r.rowTotal.avgWeighed}</td>
+                <td class="center bold" style="color: #1b5e20;">${r.rowTotal.percentage}%</td>
+              </tr>
+            `).join('')}
+            <tr class="total-row">
+              <td class="bold">MUNICIPAL TOTAL</td>
+              <td class="center bold">-</td>
+              ${monitoringColumnTotals.map((c) => `<td class="center bold">${c.totalWeighed}/${c.totalTarget} (${c.percentage}%)</td>`).join('')}
+              <td class="center bold">-</td>
+              <td class="center bold">-</td>
+            </tr>
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
 
-    const colTotalsVals = monitoringColumnTotals.map((c) => `"${c.totalWeighed}/${c.totalTarget} (${c.percentage}%)"`);
-    csv += `"MUNICIPAL TOTAL",-,${colTotalsVals.join(',')},-,-\n`;
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Monthly_Weight_Monitoring_${monitoringYear}.csv`;
+    a.download = `Monthly_Weight_Monitoring_${monitoringYear}.xls`;
     a.click();
     URL.revokeObjectURL(url);
   };

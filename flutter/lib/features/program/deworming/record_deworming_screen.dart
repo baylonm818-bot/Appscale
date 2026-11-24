@@ -283,6 +283,7 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
 
               DropdownButtonFormField<String>(
                 initialValue: _drugName,
+                isExpanded: true,
                 decoration: InputDecoration(
                   labelText: 'Deworming Drug & Dosage',
                   filled: true,
@@ -294,11 +295,17 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                 items: const [
                   DropdownMenuItem(
                     value: 'Albendazole 400mg',
-                    child: Text('Albendazole 400mg (Single Chewable Tablet)'),
+                    child: Text(
+                      'Albendazole 400mg (Single Chewable Tablet)',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   DropdownMenuItem(
                     value: 'Mebendazole 500mg',
-                    child: Text('Mebendazole 500mg (Single Tablet)'),
+                    child: Text(
+                      'Mebendazole 500mg (Single Tablet)',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
                 onChanged: (val) {
@@ -310,6 +317,7 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
 
               DropdownButtonFormField<String>(
                 initialValue: _round,
+                isExpanded: true,
                 decoration: InputDecoration(
                   labelText: 'Campaign Round',
                   filled: true,
@@ -321,11 +329,17 @@ class _RecordDewormingScreenState extends State<RecordDewormingScreen> {
                 items: const [
                   DropdownMenuItem(
                     value: '1st Round (Jan - Jun)',
-                    child: Text('1st Round (Jan - Jun)'),
+                    child: Text(
+                      '1st Round (Jan - Jun)',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   DropdownMenuItem(
                     value: '2nd Round (Jul - Dec)',
-                    child: Text('2nd Round (Jul - Dec)'),
+                    child: Text(
+                      '2nd Round (Jul - Dec)',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   DropdownMenuItem(
                     value: 'Catch-up',

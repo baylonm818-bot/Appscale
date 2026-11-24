@@ -6,7 +6,6 @@ import '../../../data/local/measurement_repository.dart';
 import '../../../data/local/referral_repository.dart';
 import '../../../data/models/child.dart';
 import '../../masterlist/widgets/status_badge.dart';
-import '../../referrals/widgets/referral_detail_sheet.dart';
 import '../../../shared/utils/app_date_format.dart';
 
 class ChildProfileHeader extends StatelessWidget {
@@ -391,83 +390,6 @@ class _MeasureButton extends StatelessWidget {
                   color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ReferralButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _ReferralButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.statOrange,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(20),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.assignment_turned_in_outlined, color: Colors.white, size: 14),
-              SizedBox(width: 3),
-              Text(
-                'Refer',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ViewReferralButton extends StatelessWidget {
-  final String status;
-  final DateTime date;
-  final VoidCallback onPressed;
-
-  const _ViewReferralButton({
-    required this.status,
-    required this.date,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.22),
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.visibility_outlined, color: Colors.white, size: 14),
-              const SizedBox(width: 4),
-              Text(
-                'View referral ($status)',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

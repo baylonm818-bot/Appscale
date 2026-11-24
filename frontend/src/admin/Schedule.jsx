@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
+import ClockTimePicker from '../components/ui/ClockTimePicker';
 import { CountUp, modalVariants, backdropVariants, staggerContainer } from '../components/ui/motion';
 import { 
   Calendar as CalendarIcon, 
@@ -1017,7 +1018,12 @@ function Schedule() {
                   </div>
                   <div>
                     <FormLabel label="Time" />
-                    <input name="schedule_time" type="time" value={form.schedule_time} onChange={handleChange} className={fieldCls} />
+                    <ClockTimePicker
+                      name="schedule_time"
+                      value={form.schedule_time}
+                      onChange={handleChange}
+                      className={fieldCls}
+                    />
                   </div>
                 </div>
 

@@ -904,12 +904,16 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                matrix.title,
-                style: AppTextStyles.label.copyWith(fontSize: 12, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  matrix.title,
+                  style: AppTextStyles.label.copyWith(fontSize: 12, fontWeight: FontWeight.bold),
+                  softWrap: true,
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 'Barangay: ${matrix.barangay}',
                 style: AppTextStyles.body.copyWith(fontSize: 11, color: AppColors.textMuted),
@@ -2106,12 +2110,16 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             Padding(
               padding: const EdgeInsets.all(14),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    widget.reportType.title,
-                    style: AppTextStyles.label.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      widget.reportType.title,
+                      style: AppTextStyles.label.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+                      softWrap: true,
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     'Barangay $_currentBarangay',
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.darkGreen),

@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Baby, Heart, X, MapPin, ChevronDown, ChevronLeft, ChevronRight, Filter, Check, Utensils, AlertCircle } from 'lucide-react';
+import { Search, Baby, Heart, X, MapPin, ChevronDown, ChevronLeft, ChevronRight, Filter, Check, Utensils, AlertCircle, Printer, FileSpreadsheet } from 'lucide-react';
+import ReportPreviewModal from '../components/ui/ReportPreviewModal';
 import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 
 /* ── Custom Popover Select (always drops DOWN with clean scrollbar) ── */
@@ -371,6 +372,151 @@ function Masterlist() {
     setCurrentPage(1);
   };
 
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  const handleExportMasterlistExcel = () => {
+    if (!filteredRecords || filteredRecords.length === 0) return;
+    const isMothers = typeFilter === 'mother';
+    const bgyName = barangayFilter === 'all' ? 'All_Barangays' : barangayFilter.replace(/\s+/g, '_');
+    const todayStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    let tableHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>${isMothers ? 'Mothers_Masterlist' : 'Children_Masterlist'}</x:Name>
+                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          body { font-family: Calibri, Arial, sans-serif; }
+          .title { font-size: 14pt; font-weight: bold; color: #1b5e20; text-align: center; }
+          .sub { font-size: 10pt; color: #475569; text-align: center; margin-bottom: 12px; }
+          table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+          th { background-color: #2e7d32; color: #ffffff; font-weight: bold; font-size: 10pt; text-align: center; border: 1px solid #1b5e20; padding: 8px 10px; }
+          td { font-size: 9.5pt; border: 1px solid #cbd5e1; padding: 6px 10px; vertical-align: middle; }
+          .bold { font-weight: bold; }
+          .center { text-align: center; }
+          .zebra { background-color: #f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="title">REPUBLIC OF THE PHILIPPINES · MUNICIPALITY OF GASAN</div>
+        <div class="title" style="font-size: 12pt; color: #2e7d32;">
+          ${isMothers ? 'MATERNAL HEALTH & PREGNANT/LACTATING MASTERLIST' : 'CHILD BENEFICIARY & NUTRITIONAL STATUS MASTERLIST'}
+        </div>
+        <div class="sub">Barangay: <strong>${barangayFilter === 'all' ? 'All Barangays' : barangayFilter}</strong> | Generated: ${todayStr} | Total Records: <strong>${filteredRecords.length}</strong></div>
+
+        <table>
+          ${!isMothers ? `
+            <colgroup>
+              <col width="50" style="width: 50px;" />
+              <col width="220" style="width: 220px;" />
+              <col width="70" style="width: 70px;" />
+              <col width="80" style="width: 80px;" />
+              <col width="100" style="width: 100px;" />
+              <col width="200" style="width: 200px;" />
+              <col width="120" style="width: 120px;" />
+              <col width="130" style="width: 130px;" />
+              <col width="90" style="width: 90px;" />
+              <col width="100" style="width: 100px;" />
+              <col width="160" style="width: 160px;" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="width: 50px;">#</th>
+                <th style="width: 220px; text-align: left;">Child Legal Name</th>
+                <th style="width: 70px;">Sex</th>
+                <th style="width: 80px;">Age (Mos)</th>
+                <th style="width: 100px;">Birth Date</th>
+                <th style="width: 200px; text-align: left;">Mother / Guardian</th>
+                <th style="width: 120px;">Contact No.</th>
+                <th style="width: 130px;">Barangay</th>
+                <th style="width: 90px;">Purok</th>
+                <th style="width: 100px;">Disability</th>
+                <th style="width: 160px;">Nutritional Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredRecords.map((c, i) => `
+                <tr class="${i % 2 === 1 ? 'zebra' : ''}">
+                  <td class="center font-semibold">${i + 1}</td>
+                  <td class="bold">${c.fullName}</td>
+                  <td class="center">${c.displaySex}</td>
+                  <td class="center bold">${c.age_in_months ?? c.ageMonths ?? '—'}</td>
+                  <td class="center">${c.birth_date ? String(c.birth_date).slice(0, 10) : '—'}</td>
+                  <td>${c.guardian_name || '—'}</td>
+                  <td class="center">${c.guardian_contact || '—'}</td>
+                  <td class="center">${c.barangay}</td>
+                  <td class="center">${c.purok || '—'}</td>
+                  <td class="center">${c.disability || 'None'}</td>
+                  <td class="center bold">${(c.displayStatus || 'No Record').replace(/_/g, ' ')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          ` : `
+            <colgroup>
+              <col width="50" style="width: 50px;" />
+              <col width="240" style="width: 240px;" />
+              <col width="70" style="width: 70px;" />
+              <col width="140" style="width: 140px;" />
+              <col width="100" style="width: 100px;" />
+              <col width="130" style="width: 130px;" />
+              <col width="90" style="width: 90px;" />
+              <col width="100" style="width: 100px;" />
+              <col width="180" style="width: 180px;" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="width: 50px;">#</th>
+                <th style="width: 240px; text-align: left;">Mother Full Name</th>
+                <th style="width: 70px;">Age</th>
+                <th style="width: 140px;">Barangay</th>
+                <th style="width: 100px;">Purok</th>
+                <th style="width: 130px;">Contact No.</th>
+                <th style="width: 90px;">Children</th>
+                <th style="width: 100px;">Status</th>
+                <th style="width: 180px;">Breastfeeding Practice</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredRecords.map((m, i) => `
+                <tr class="${i % 2 === 1 ? 'zebra' : ''}">
+                  <td class="center font-semibold">${i + 1}</td>
+                  <td class="bold">${m.fullName}</td>
+                  <td class="center bold">${m.age ?? '—'}</td>
+                  <td class="center">${m.barangay}</td>
+                  <td class="center">${m.purok || '—'}</td>
+                  <td class="center">${m.contact_number || m.contact || '—'}</td>
+                  <td class="center bold">${m.children_count ?? 0}</td>
+                  <td class="center bold">${m.displayStatus || 'Active'}</td>
+                  <td class="center">${m.breastfeeding_practice || m.feeding_practice || 'Exclusive'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          `}
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${isMothers ? 'Maternal_Health_Masterlist' : 'Child_Beneficiary_Masterlist'}_${bgyName}_${new Date().getFullYear()}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   /* ── Loading state ── */
   if (loading) {
     return (
@@ -602,6 +748,25 @@ function Masterlist() {
                   Clear Filters
                 </button>
               )}
+
+              {/* Action Buttons: Print PDF & Export Excel */}
+              <button
+                type="button"
+                onClick={() => setIsReportModalOpen(true)}
+                className="px-3.5 py-2 bg-[#1b5e20] hover:bg-[#154a1a] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+              >
+                <Printer size={15} />
+                <span>Print PDF / View</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportMasterlistExcel}
+                className="px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+              >
+                <FileSpreadsheet size={15} className="text-emerald-600" />
+                <span>Export Excel</span>
+              </button>
             </div>
           </div>
 
@@ -1126,6 +1291,19 @@ function Masterlist() {
         </AnimatePresence>,
         document.body
       )}
+
+      {/* Official Masterlist Report Preview Modal with 5-Logo Header & PDF Print */}
+      <ReportPreviewModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        reportData={{
+          items: filteredRecords,
+          isMothers: typeFilter === 'mother',
+        }}
+        title={`Official ${typeFilter === 'mother' ? 'Maternal Health' : 'Child Beneficiary'} Masterlist`}
+        barangay={barangayFilter === 'all' ? 'All Barangays' : barangayFilter}
+        onExportExcel={handleExportMasterlistExcel}
+      />
     </div>
   );
 }
