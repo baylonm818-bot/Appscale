@@ -124,7 +124,7 @@ void main() {
         () => AppUpdateService.downloadAndInstall(
           downloadUrl: 'http://example.com/apk',
           targetVersion: '3.1.0',
-          onProgress: (_, __, ___) {},
+          onProgress: (received, total, percent) {},
         ),
         throwsA(isA<Exception>()),
       );
