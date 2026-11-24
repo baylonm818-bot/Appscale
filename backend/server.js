@@ -119,23 +119,21 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.9';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 42);
+    const version = process.env.APP_VERSION || '3.3.10';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 43);
     const notesEn = [
-        "Clean profile headers: removed referral clutter and eliminated button overflow",
-        "Refer action now safely placed inside the three-dot menu when needed",
-        "Visit history shows labeled rows (Observation, Concern, Feeding, Referral) and accurate status badges",
-        "Mother's Signature Attached badge on counseling visits with drawing and offline sync",
-        "Refined language selector with fixed width and one-line settings subtitles",
-        "Pinned search bar and filter chips in Masterlist with shortened, 3-column child cards"
+        "Report download snackbar auto-dismisses after 5 seconds with close (X) button",
+        "Positioned as floating snackbar above bottom navigation without covering action buttons",
+        "Full filename rendered on two lines with prominent OPEN action",
+        "Tapping OPEN immediately dismisses snackbar and opens PDF/Excel directly in viewer",
+        "Automatic dismissal on screen exit and route navigation"
     ];
     const notesTl = [
-        "Malinis na profile headers: inalis ang kalat ng referral at overflow sa header",
-        "Ang opsyon sa pag-refer ay inilagay sa loob ng three-dot menu kapag kinakailangan",
-        "Talaan ng pagbisita na may nakalinyang impormasyon at tamang kulay ng badge",
-        "Tatak ng Lagda ng Ina sa mga pagbisita na may maayos na drawing at offline sync",
-        "Maayos na pagpili ng wika na may nakatakdang lapad at malinaw na mga subtitle sa settings",
-        "Naka-pin na search bar at filter chips sa Masterlist na may pinaikling 3-column na card ng bata"
+        "Ang snackbar ng pag-download ng ulat ay kusang nawawala pagkatapos ng 5 segundo na may buton sa pagsara (X)",
+        "Naka-posisyon bilang lumulutang na snackbar sa itaas ng nabigasyon nang hindi natatakpan ang mga buton",
+        "Buong pangalan ng file sa dalawang linya na may malinaw na buton na OPEN",
+        "Ang pagpindot sa OPEN ay agad na nagsasara ng snackbar at direktang nagbubukas ng PDF/Excel sa viewer",
+        "Awtomatikong pagsasara kapag umalis sa screen o lumipat ng pahina"
     ];
     const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 

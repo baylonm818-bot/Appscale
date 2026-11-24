@@ -264,7 +264,7 @@ class ReportNotificationService {
     ScaffoldMessenger.of(ctx).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 95),
         backgroundColor: color,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         content: Row(
@@ -274,6 +274,8 @@ class ReportNotificationService {
             Expanded(
               child: Text(
                 message,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -281,9 +283,20 @@ class ReportNotificationService {
                 ),
               ),
             ),
+            const SizedBox(width: 4),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                ScaffoldMessenger.of(ctx).hideCurrentSnackBar();
+              },
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(Icons.close, color: Colors.white70, size: 18),
+              ),
+            ),
           ],
         ),
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 5),
       ),
     );
   }

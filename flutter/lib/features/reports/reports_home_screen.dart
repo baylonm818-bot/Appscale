@@ -33,6 +33,12 @@ class _ReportsHomeScreenState extends State<ReportsHomeScreen> {
   String _selectedCategory = 'Consolidation reports';
   ReportTypeInfo _selectedReport = ReportTypes.consolidation0to23;
 
+  @override
+  void dispose() {
+    ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+    super.dispose();
+  }
+
   int get _pendingRecordsCount =>
       _childRepo.pendingCount +
       _measurementRepo.pendingCount +
@@ -234,10 +240,15 @@ class _ReportsHomeScreenState extends State<ReportsHomeScreen> {
                 
                 AppButton(
                   label: 'Generate & Preview Report',
-                  onPressed: () => Navigator.push(
-                    context,
-                    appPageRoute(ReportPreviewScreen(reportType: _selectedReport)),
-                  ),
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.maybeOf(context);
+                    messenger?.hideCurrentSnackBar();
+                    await Navigator.push(
+                      context,
+                      appPageRoute(ReportPreviewScreen(reportType: _selectedReport)),
+                    );
+                    messenger?.hideCurrentSnackBar();
+                  },
                 ),
                 const SizedBox(height: 100),
               ],

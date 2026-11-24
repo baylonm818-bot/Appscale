@@ -54,6 +54,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   @override
   void dispose() {
     AppDataBus.version.removeListener(_onDataChanged);
+    ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
     super.dispose();
   }
 
@@ -130,41 +131,75 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       mimeType: result.mimeType,
     );
 
-    // Floating in-app snackbar above bottom buttons with OPEN action
+    // Call hideCurrentSnackBar() before showing a new one, so they never stack
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    // Floating in-app snackbar above bottom buttons with OPEN action and Close (X) icon
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 95),
         backgroundColor: AppColors.primaryGreen,
+        duration: const Duration(seconds: 5), // auto-dismiss after 5 seconds
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         content: Row(
           children: [
             const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 result.fileName,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
+                  color: Colors.white,
+                  height: 1.25,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            TextButton(
+              onPressed: () {
+                // Hide the snackbar immediately when OPEN is tapped
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                ReportNotificationService.openFile(
+                  result.filePath,
+                  mimeType: result.mimeType,
+                  fileName: result.fileName,
+                  context: context,
+                );
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.yellowAccent,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                'OPEN',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                // Dismiss manually
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(Icons.close, color: Colors.white70, size: 18),
               ),
             ),
           ],
         ),
-        action: SnackBarAction(
-          label: 'OPEN',
-          textColor: Colors.yellowAccent,
-          onPressed: () {
-            ReportNotificationService.openFile(
-              result.filePath,
-              mimeType: result.mimeType,
-              fileName: result.fileName,
-              context: context,
-            );
-          },
-        ),
-        duration: const Duration(seconds: 5),
       ),
     );
   }
@@ -176,15 +211,22 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       SnackBar(
         content: Text(
           userMessage,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 13),
         ),
         backgroundColor: AppColors.statRed,
-        duration: const Duration(seconds: 6),
+        duration: const Duration(seconds: 5),
         behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 95),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         action: SnackBarAction(
           label: 'Retry',
           textColor: Colors.white,
-          onPressed: onRetry,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            onRetry();
+          },
         ),
       ),
     );
@@ -511,7 +553,12 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, _, _) {
-        return Scaffold(
+        return PopScope(
+          canPop: true,
+          onPopInvokedWithResult: (didPop, result) {
+            ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+          },
+          child: Scaffold(
           backgroundColor: AppColors.background,
           // ── Sticky bottom action bar ────────────────────────────────────
           bottomNavigationBar: SafeArea(
@@ -809,9 +856,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                 ),
             ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 
   Widget _buildConsolidationPreview() {
