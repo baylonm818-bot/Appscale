@@ -151,9 +151,9 @@ function UserManagement() {
     setShowModal(true);
   };
 
-  const openEditModal = (u) => {
+  const openEditModal = (u, editable = true) => {
     setEditingUser(u);
-    setViewOnly(true);
+    setViewOnly(!editable);
     setForm({
       first_name: u.first_name || '',
       middle_initial: u.middle_initial || '',
@@ -526,10 +526,11 @@ function UserManagement() {
                       <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                         <button
                           type="button"
-                          onClick={() => openEditModal(u)}
+                          onClick={() => openEditModal(u, true)}
+                          title="Edit User Details"
                           className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#2e7d32] border border-green-200 bg-green-50 hover:bg-green-100 transition shadow-2xs whitespace-nowrap"
                         >
-                          View
+                          Edit
                         </button>
 
                         {showArchive ? (
