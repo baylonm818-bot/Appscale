@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { motion } from 'framer-motion';
-import { Users, Baby, Heart, MapPin, Calendar, ArrowRight, AlertTriangle, CheckCircle2, Utensils } from 'lucide-react';
+import { Users, Baby, Heart, MapPin, Calendar, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { CountUp, ShimmerSkeleton, staggerContainer } from '../components/ui/motion';
 
@@ -130,9 +130,6 @@ function CustomBarTooltip({ active, payload, label }) {
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
-  const [feedingStats, setFeedingStats] = useState(null);  // Step 10
-  const [yearStats, setYearStats] = useState(null);         // Step 10
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear()); // Step 10
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState('3M');
@@ -143,16 +140,10 @@ function Dashboard() {
     let isMounted = true;
     const fetchStats = async () => {
       try {
-        const [statsRes, feedingRes] = await Promise.all([
-          axiosClient.get(`/dashboard/admin/stats?range=${timeRange}`).catch((e) => {
-            console.warn('Admin stats error:', e);
-            return null;
-          }),
-          axiosClient.get('/dashboard/admin/feeding-stats').catch((e) => {
-            console.warn('Feeding stats error:', e);
-            return null;
-          }),
-        ]);
+        const statsRes = await axiosClient.get(`/dashboard/admin/stats?range=${timeRange}`).catch((e) => {
+          console.warn('Admin stats error:', e);
+          return null;
+        });
 
         if (!isMounted) return;
 
@@ -171,10 +162,6 @@ function Dashboard() {
         } else {
           setError('Failed to load dashboard statistics.');
         }
-
-        if (feedingRes && feedingRes.data) {
-          setFeedingStats(feedingRes.data);
-        }
       } catch (err) {
         console.error('Dashboard fetch error:', err);
         if (isMounted) setError('Failed to load dashboard statistics.');
@@ -185,19 +172,6 @@ function Dashboard() {
     fetchStats();
     return () => { isMounted = false; };
   }, [timeRange]);
-
-  // Step 10: fetch per-year nutrition view when selectedYear changes
-  useEffect(() => {
-    let isMounted = true;
-    axiosClient.get(`/dashboard/admin/nutrition-by-year?year=${selectedYear}`)
-      .then((res) => {
-        if (isMounted) setYearStats(res.data || null);
-      })
-      .catch(() => {
-        if (isMounted) setYearStats(null);
-      });
-    return () => { isMounted = false; };
-  }, [selectedYear]);
 
 
   if (loading) {
@@ -519,260 +493,29 @@ function Dashboard() {
         </div>
       </motion.div>
 
-      {/* ── Step 10: Enhanced Feeding Program Overview ── */}
-      {feedingStats && (
-        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
-                  <Utensils size={16} />
-                </div>
-                <h3 className="font-bold text-gray-900 text-base">Feeding Program Overview</h3>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Comprehensive tracking of children enrolled, recovery outcomes, and barangay performance
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 self-start sm:self-auto bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live Feeding Program Data
-            </div>
+      {/* ── Nutrition Corner Quick Access ── */}
+      <motion.div
+        variants={itemVariants}
+        className="rounded-2xl p-6 bg-linear-to-r from-emerald-50 via-teal-50 to-green-50 border border-emerald-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs"
+      >
+        <div className="flex items-start gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <Heart size={22} />
           </div>
-
-          {/* Top Key Metric Cards (Enrolled, Reached Normal within Schedule, Reached Normal in Barangay) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* 1. Enrolled in Feeding */}
-            <div className="rounded-2xl bg-emerald-50/80 border border-emerald-200/80 p-5 text-left shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Enrolled in Feeding</span>
-                <span className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
-                  <Baby size={18} />
-                </span>
-              </div>
-              <p className="text-3xl font-black text-emerald-900 mt-2">
-                <CountUp value={feedingStats.enrolled || 0} />
-              </p>
-              <div className="mt-2 pt-2 border-t border-emerald-100/80 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span>Beneficiaries actively enrolled in feeding program</span>
-              </div>
-            </div>
-
-            {/* 2. Reached Normal (Within Feeding Schedule) */}
-            <div className="rounded-2xl bg-blue-50/80 border border-blue-200/80 p-5 text-left shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Reached Normal (Within Schedule)</span>
-                <span className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700">
-                  <CheckCircle2 size={18} />
-                </span>
-              </div>
-              <p className="text-3xl font-black text-blue-900 mt-2">
-                <CountUp value={feedingStats.reached_normal_in_feeding || 0} />
-              </p>
-              <div className="mt-2 pt-2 border-t border-blue-100/80 flex items-center gap-1.5 text-[11px] text-blue-700 font-medium">
-                <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                <span>
-                  {feedingStats.enrolled > 0
-                    ? `${Math.round(((feedingStats.reached_normal_in_feeding || 0) / feedingStats.enrolled) * 100)}% recovered within feeding schedule`
-                    : 'Normalized within program timeline'}
-                </span>
-              </div>
-            </div>
-
-            {/* 3. Reached Normal Nutritional Status in Barangay */}
-            <div className="rounded-2xl bg-teal-50/80 border border-teal-200/80 p-5 text-left shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-teal-800 uppercase tracking-wider">Reached Normal (In Barangay)</span>
-                <span className="w-9 h-9 rounded-xl bg-teal-100 flex items-center justify-center text-teal-700">
-                  <Heart size={18} />
-                </span>
-              </div>
-              <p className="text-3xl font-black text-teal-900 mt-2">
-                <CountUp value={feedingStats.achieved_normal_in_barangay || 0} />
-              </p>
-              <div className="mt-2 pt-2 border-t border-teal-100/80 flex items-center gap-1.5 text-[11px] text-teal-700 font-medium">
-                <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
-                <span>All active children with normal nutritional status in barangays</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Visual Outcome Progress Bar */}
-          <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between text-xs font-bold text-gray-700">
-              <span>Overall Feeding Outcome Breakdown</span>
-              <span className="text-emerald-700">
-                {feedingStats.enrolled > 0
-                  ? `${Math.round(((feedingStats.reached_normal_in_feeding || 0) / feedingStats.enrolled) * 100)}% Normalized`
-                  : '0%'}
-              </span>
-            </div>
-            {/* Multi-segment Bar */}
-            <div className="w-full h-3 rounded-full bg-gray-200 overflow-hidden flex">
-              <div
-                style={{ width: `${feedingStats.enrolled > 0 ? ((feedingStats.reached_normal_in_feeding || 0) / feedingStats.enrolled) * 100 : 0}%` }}
-                className="bg-emerald-500 transition-all duration-500"
-                title={`Normal: ${feedingStats.reached_normal_in_feeding || 0}`}
-              />
-              <div
-                style={{ width: `${feedingStats.enrolled > 0 ? ((feedingStats.mam_count || 0) / feedingStats.enrolled) * 100 : 0}%` }}
-                className="bg-amber-400 transition-all duration-500"
-                title={`MAM: ${feedingStats.mam_count || 0}`}
-              />
-              <div
-                style={{ width: `${feedingStats.enrolled > 0 ? ((feedingStats.sam_count || 0) / feedingStats.enrolled) * 100 : 0}%` }}
-                className="bg-red-500 transition-all duration-500"
-                title={`SAM: ${feedingStats.sam_count || 0}`}
-              />
-              <div
-                style={{ width: `${feedingStats.enrolled > 0 ? ((feedingStats.overweight_obese_count || 0) / feedingStats.enrolled) * 100 : 0}%` }}
-                className="bg-purple-400 transition-all duration-500"
-                title={`Overweight / Obese: ${feedingStats.overweight_obese_count || 0}`}
-              />
-            </div>
-            {/* Legend */}
-            <div className="flex flex-wrap items-center gap-4 text-xs font-medium pt-1 text-gray-600">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-                <span>Normal ({feedingStats.reached_normal_in_feeding || 0})</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
-                <span>MAM ({feedingStats.mam_count || 0})</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
-                <span>SAM ({feedingStats.sam_count || 0})</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-400 shrink-0" />
-                <span>Overweight / Obese ({feedingStats.overweight_obese_count || 0})</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Barangay Ranking Table (Alin ang may mas maraming bata sa feeding) */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                <MapPin size={15} className="text-emerald-700" />
-                Barangay Feeding Distribution & Performance
-              </h4>
-              <span className="text-xs text-gray-400 font-medium">Ranked by enrolled beneficiaries</span>
-            </div>
-
-            <div className="rounded-xl border border-gray-200 overflow-hidden">
-              <table className="w-full text-xs">
-                <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-2.5 text-left">Barangay</th>
-                    <th className="px-3 py-2.5 text-center">In Feeding</th>
-                    <th className="px-3 py-2.5 text-center text-emerald-700 bg-emerald-50/50">Reached Normal</th>
-                    <th className="px-3 py-2.5 text-center text-amber-700 bg-amber-50/50">Under Intervention</th>
-                    <th className="px-3 py-2.5 text-center text-red-700 bg-red-50/50">Critical (SAM)</th>
-                    <th className="px-4 py-2.5 text-right">Attendance Logs</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {feedingStats.barangay_ranking && feedingStats.barangay_ranking.length > 0 ? (
-                    feedingStats.barangay_ranking.map((row, idx) => (
-                      <tr key={row.barangay} className="hover:bg-gray-50/80 transition-colors">
-                        <td className="px-4 py-2.5 font-bold text-gray-900 flex items-center gap-1.5">
-                          {idx === 0 && <span className="text-amber-500 font-black">🥇</span>}
-                          {idx === 1 && <span className="text-gray-400 font-black">🥈</span>}
-                          {idx === 2 && <span className="text-amber-700 font-black">🥉</span>}
-                          Barangay {row.barangay}
-                        </td>
-                        <td className="px-3 py-2.5 text-center font-bold text-gray-800">
-                          <span className="inline-block px-2 py-0.5 rounded-full bg-gray-100">
-                            {row.enrolled}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5 text-center font-bold text-emerald-700 bg-emerald-50/30">
-                          {row.reached_normal}
-                        </td>
-                        <td className="px-3 py-2.5 text-center font-bold text-amber-700 bg-amber-50/30">
-                          {row.not_normal}
-                        </td>
-                        <td className="px-3 py-2.5 text-center font-bold text-red-600 bg-red-50/30">
-                          {row.sam_count > 0 ? (
-                            <span className="inline-block px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">
-                              {row.sam_count}
-                            </span>
-                          ) : (
-                            <span className="text-gray-300">0</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-medium text-gray-600">
-                          {row.attendance_total} logs
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
-                        No feeding records found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* ── Step 10: Per-Year Nutritional Status Chart ── */}
-      <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
-            <h3 className="font-bold text-gray-900 text-base">Nutritional Status by Year</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Monthly breakdown of nutrition records for the selected year</p>
+            <h4 className="font-bold text-gray-900 text-base">Nutrition Corner & OPT Plus Consolidation</h4>
+            <p className="text-xs text-gray-600 mt-1 max-w-xl leading-relaxed">
+              Tingnan ang 3-taong consolidated status (WFA, WFH, HFA), buwanang monitoring matrix, feeding programs, at mag-export ng opisyal na ulat sa PDF at Excel.
+            </p>
           </div>
-          {/* Year picker */}
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="text-xs font-semibold border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 text-gray-700 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-          >
-            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((yr) => (
-              <option key={yr} value={yr}>{yr}</option>
-            ))}
-          </select>
         </div>
-        {yearStats && Array.isArray(yearStats.months) ? (
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={yearStats.months.map((m) => ({
-              name: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m.month - 1],
-              Normal: m.normal,
-              MAM: m.mam,
-              SAM: m.sam,
-              Underweight: m.underweight,
-              Stunted: m.stunted,
-            }))} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} />
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10 }} />
-              <Bar dataKey="Normal" fill="#10b981" radius={[4,4,0,0]} />
-              <Bar dataKey="MAM" fill="#f59e0b" radius={[4,4,0,0]} />
-              <Bar dataKey="SAM" fill="#ef4444" radius={[4,4,0,0]} />
-              <Bar dataKey="Underweight" fill="#f97316" radius={[4,4,0,0]} />
-              <Bar dataKey="Stunted" fill="#8b5cf6" radius={[4,4,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="h-[220px] flex items-center justify-center text-gray-400 text-sm">Loading chart…</div>
-        )}
-        <div className="flex flex-wrap gap-3 mt-4 text-[11px] font-medium text-gray-500">
-          {[['Normal','#10b981'],['MAM','#f59e0b'],['SAM','#ef4444'],['Underweight','#f97316'],['Stunted','#8b5cf6']].map(([label, color]) => (
-            <span key={label} className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: color }} />
-              {label}
-            </span>
-          ))}
-        </div>
+        <Link
+          to="/admin/nutrition-corner"
+          className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2e7d32] hover:bg-[#1b5e20] text-white text-xs font-bold shadow-xs hover:shadow-md transition-all"
+        >
+          <span>Buksan ang Nutrition Corner</span>
+          <ArrowRight size={14} />
+        </Link>
       </motion.div>
 
     </motion.div>
