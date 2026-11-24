@@ -18,12 +18,14 @@ import {
   X,
   Shield,
   PenLine,
+  HeartPulse,
 } from 'lucide-react';
 
 const menuItems = [
   { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'User Management', path: '/admin/users', icon: Users },
   { name: 'Master List', path: '/admin/masterlist', icon: ClipboardList },
+  { name: 'Nutrition Corner', path: '/admin/nutrition-corner', icon: HeartPulse },
   { name: 'Schedule', path: '/admin/schedule', icon: Calendar },
   { name: 'System Logs', path: '/admin/system-logs', icon: Shield },
   { name: 'Signatories', path: '/admin/signatories', icon: PenLine },

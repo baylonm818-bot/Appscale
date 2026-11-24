@@ -266,6 +266,124 @@ async function ensureAppSchema(pool) {
       }
     }
 
+    // 10. Ensure `nutrition_school_data` table exists
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS \`nutrition_school_data\` (
+          \`id\`             INT AUTO_INCREMENT PRIMARY KEY,
+          \`school_year\`    VARCHAR(20) NOT NULL,
+          \`barangay\`       VARCHAR(100) NOT NULL DEFAULT 'All Barangays',
+          \`total_enrolled\` INT NOT NULL DEFAULT 0,
+          \`total_measured\` INT NOT NULL DEFAULT 0,
+          \`normal\`         INT NOT NULL DEFAULT 0,
+          \`wasted\`         INT NOT NULL DEFAULT 0,
+          \`severely_wasted\` INT NOT NULL DEFAULT 0,
+          \`overweight\`     INT NOT NULL DEFAULT 0,
+          \`obese\`          INT NOT NULL DEFAULT 0,
+          \`updated_by\`     INT NULL,
+          \`updated_at\`     DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY \`uq_school_year_bgy\` (\`school_year\`, \`barangay\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+
+      const [[{ schCnt }]] = await pool.query(`SELECT COUNT(*) AS schCnt FROM \`nutrition_school_data\``);
+      if (Number(schCnt) === 0) {
+        const initialSchoolData = [
+          ['2022-2023', 'All Barangays', 1250, 1210, 1080, 75, 25, 20, 10],
+          ['2023-2024', 'All Barangays', 1290, 1265, 1140, 68, 22, 23, 12],
+          ['2024-2025', 'All Barangays', 1320, 1300, 1195, 55, 18, 21, 11],
+        ];
+        for (const row of initialSchoolData) {
+          await pool.query(
+            `INSERT IGNORE INTO \`nutrition_school_data\` (school_year, barangay, total_enrolled, total_measured, normal, wasted, severely_wasted, overweight, obese) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            row
+          );
+        }
+        console.log('[Schema] Seeded default school children nutrition data.');
+      }
+    } catch (e) {
+      console.warn('[Schema] nutrition_school_data init warning:', e.message);
+    }
+
+    // 11. Ensure `nutrition_corner_programs` table exists
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS \`nutrition_corner_programs\` (
+          \`id\`              INT AUTO_INCREMENT PRIMARY KEY,
+          \`section\`         ENUM('nutrition_specific', 'nutrition_sensitive', 'enabling') NOT NULL,
+          \`title\`           VARCHAR(255) NOT NULL,
+          \`description\`     TEXT NULL,
+          \`coverage_metric\` VARCHAR(100) NULL,
+          \`sort_order\`      INT NOT NULL DEFAULT 0,
+          \`is_active\`       TINYINT(1) NOT NULL DEFAULT 1,
+          \`created_at\`      DATETIME DEFAULT CURRENT_TIMESTAMP,
+          \`updated_at\`      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+
+      const [[{ progCnt }]] = await pool.query(`SELECT COUNT(*) AS progCnt FROM \`nutrition_corner_programs\``);
+      if (Number(progCnt) === 0) {
+        const defaultPrograms = [
+          ['nutrition_specific', 'Infant and Young Child Feeding (IYCF) & Dietary Supplementation', 'Targeted supplementary feeding for undernourished children and promotion of optimal infant feeding practices.', 'feeding', 1],
+          ['nutrition_specific', 'National Micronutrient Supplementation Program (Vitamin A)', 'Semi-annual Vitamin A capsule administration to children 6-59 months to prevent xerophthalmia and boost immunity.', 'vitamin_a', 2],
+          ['nutrition_specific', 'National Deworming Program', 'Bi-annual mass deworming tablet administration for children 12-59 months to prevent soil-transmitted helminth infections.', 'deworming', 3],
+          ['nutrition_specific', 'Operation Timbang Plus (OPT Plus) & Routine Growth Monitoring', 'Comprehensive annual and monthly weighing and height measurement of children 0-59 months to identify malnutrition.', null, 4],
+          ['nutrition_sensitive', 'Gulayan sa Barangay & Community Food Gardens', 'Promoting household backyard gardens, bio-intensive vegetable production, and organic farming to ensure dietary diversity.', null, 1],
+          ['nutrition_sensitive', 'Water, Sanitation, and Hygiene (WASH) Program', 'Access to safe drinking water, sanitary toilets, and hygiene education to reduce enteric infections and undernutrition.', null, 2],
+          ['nutrition_sensitive', 'Adolescent Nutrition & Maternal Health Education', 'Nutrition education sessions, iron-folic acid supplementation, and reproductive health counseling.', null, 3],
+          ['enabling', 'Barangay Nutrition Action Plan (BNAP) Formulation & Mobilization', 'Multi-sectoral local nutrition committee planning, resource allocation, and community nutrition mobilization.', null, 1],
+          ['enabling', 'Nutrition in Emergencies (NiEm) Preparedness & Response', 'Readiness protocol for nutrition assessment, infant feeding in emergencies, and relief food assistance during calamities.', null, 2],
+          ['enabling', 'Nutrition Policy Advocacy & Local Legislation', 'Adoption of municipal ordinances and barangay resolutions supporting nutrition, food safety, and healthy school environments.', null, 3],
+        ];
+        for (const p of defaultPrograms) {
+          await pool.query(
+            `INSERT INTO \`nutrition_corner_programs\` (section, title, description, coverage_metric, sort_order) VALUES (?, ?, ?, ?, ?)`,
+            p
+          );
+        }
+        console.log('[Schema] Seeded default nutrition corner programs.');
+      }
+    } catch (e) {
+      console.warn('[Schema] nutrition_corner_programs init warning:', e.message);
+    }
+
+    // 12. Ensure `nutrition_corner_laws` table exists
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS \`nutrition_corner_laws\` (
+          \`id\`          INT AUTO_INCREMENT PRIMARY KEY,
+          \`title\`       VARCHAR(255) NOT NULL,
+          \`legal_basis\` VARCHAR(150) NOT NULL,
+          \`description\` TEXT NULL,
+          \`file_url\`    VARCHAR(255) NULL,
+          \`category\`    VARCHAR(100) NULL DEFAULT 'National Law',
+          \`sort_order\`  INT NOT NULL DEFAULT 0,
+          \`created_at\`  DATETIME DEFAULT CURRENT_TIMESTAMP,
+          \`updated_at\`  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+
+      const [[{ lawsCnt }]] = await pool.query(`SELECT COUNT(*) AS lawsCnt FROM \`nutrition_corner_laws\``);
+      if (Number(lawsCnt) === 0) {
+        const defaultLaws = [
+          ['Expanded Breastfeeding Promotion Act of 2009', 'Republic Act No. 10028', 'Mandates the establishment of lactation stations in workplaces and public establishments, lactation breaks for nursing mothers, and comprehensive breastfeeding education.', null, 'National Law', 1],
+          ['Masustansyang Pagkain para sa Batang Pilipino Act and its IRR', 'Republic Act No. 11037', 'Establishes the National Feeding Program for undernourished children in public day care, kindergarten, and elementary schools to combat hunger and undernutrition.', null, 'National Law', 2],
+          ['Act for Salt Iodization Nationwide (ASIN Law)', 'Republic Act No. 8172', 'Promotes the practice of salt iodization nationwide to eliminate Iodine Deficiency Disorders (IDD) and mandates all food-grade salt producers to iodize salt.', null, 'National Law', 3],
+          ['Philippine Food Fortification Act of 2000', 'Republic Act No. 8976', 'Mandates the mandatory fortification of staple foods including rice with iron, wheat flour with vitamin A and iron, and refined sugar and cooking oil with vitamin A.', null, 'National Law', 4],
+          ['National Code of Marketing of Breastmilk Substitutes (Milk Code)', 'Executive Order No. 51', 'Protects and promotes breastfeeding by regulating the marketing, distribution, and promotion of breastmilk substitutes, feeding bottles, and teats.', null, 'Executive Order', 5],
+        ];
+        for (const l of defaultLaws) {
+          await pool.query(
+            `INSERT INTO \`nutrition_corner_laws\` (title, legal_basis, description, file_url, category, sort_order) VALUES (?, ?, ?, ?, ?, ?)`,
+            l
+          );
+        }
+        console.log('[Schema] Seeded reference nutrition laws.');
+      }
+    } catch (e) {
+      console.warn('[Schema] nutrition_corner_laws init warning:', e.message);
+    }
+
     console.log('[Schema] All database schema migrations verified successfully.');
   } catch (err) {
     console.warn('[Schema] ensureAppSchema warning:', err.message);

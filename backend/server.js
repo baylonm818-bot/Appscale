@@ -25,6 +25,7 @@ const bhwNotificationRoutes = require('./routes/bhwNotificationRoutes');
 const bhwProfileRoutes = require('./routes/bhwProfileRoutes');
 const mobileBeneficiaryRoutes = require('./routes/mobileBeneficiaryRoutes');
 const purokRoutes = require('./routes/purokRoutes');
+const nutritionCornerRoutes = require('./routes/nutritionCornerRoutes');
 
 
 const app = express();
@@ -119,23 +120,25 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.12';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 45);
+    const version = process.env.APP_VERSION || '3.3.13';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 46);
     const notesEn = [
-        "Print Calendar of Schedule: export and print monthly activity calendar with program markers and table",
-        "Offline PDF generation with A4 landscape grid, color and text markers, legend, and signatory lines",
-        "Save to Downloads with tappable download notification and 5-second floating snackbar",
-        "Horizontal scrolling for schedule filter chips with no text clipping",
-        "Compact calendar month header and clear program color dots legend",
-        "Venue is now strictly required when setting a schedule and displayed in event cards and PDF"
+        "Home Dashboard: compact greeting, sync status pill, non-overlapping notification badge, and barangay logo avatar",
+        "Redesigned clean white stat cards with subtle top accent bars and circular icon containers",
+        "Clarified SAM (severe wasting) count and consolidated severe indicators in Nutritional Status card",
+        "Added Today card with today's scheduled activities, children due for weighing, and quick schedule link",
+        "Added year selector and nutritional status comparison chart (WFA, WFH, HFA) on dashboard",
+        "Tappable nutritional status rows navigating to filtered masterlist",
+        "Web Portal: Added Nutrition Corner menu (Consolidation of Nutritional Status, BNS Monthly Weight Monitoring Chart, Programs, Laws and References)"
     ];
     const notesTl = [
-        "Pag-print ng Kalendaryo ng Iskedyul: pag-export at pag-print ng buwanang kalendaryo na may mga marker at talaan",
-        "Offline na paggawa ng PDF sa A4 landscape grid, may kulay at text marker, legend, at lagda",
-        "Direktang pag-save sa Downloads na may abiso at 5-segundong lumulutang na snackbar",
-        "Pahalang na pag-scroll sa mga filter chip nang walang napuputol na teksto",
-        "Pinaikling header ng buwan at malinaw na gabay sa kulay ng mga programa",
-        "Kinakailangan na ang lugar o venue sa pagtatakda ng iskedyul at makikita sa listahan at PDF"
+        "Home Dashboard: pinaikling pagbati, sync status pill, maayos na notification badge, at logo ng barangay",
+        "Puting stat cards na may banayad na kulay na accent bar at bilog na lalagyan ng icon",
+        "Pinaayos na bilang para sa SAM (severe wasting) at consolidated severe indicators",
+        "Bagong Today card para sa mga aktibidad ngayong araw, mga batang dapat timbangin, at link sa iskedyul",
+        "Taunang tagapili at tsart ng katayuan sa nutrisyon (WFA, WFH, HFA)",
+        "Napipindot na listahan ng katayuan sa nutrisyon patungo sa na-filter na masterlist",
+        "Web Portal: Bagong Nutrition Corner (Consolidation, Buwanang Weight Monitoring, Mga Programa, at Batas)"
     ];
     const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 
@@ -168,6 +171,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 // Step 9: System activity logs (admin-only)
 app.use('/api/admin', adminLogRoutes);
+// Nutrition Corner (Consolidation, Weight Monitoring Matrix, Programs, Laws)
+app.use('/api/nutrition-corner', nutritionCornerRoutes);
 
 app.use('/api/bhw', bhwDashboardRoutes);
 app.use('/api/bhw/schedule' , bhwScheduleRoutes);

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/local/child_repository.dart';
 import '../../../data/models/child.dart';
@@ -11,6 +10,7 @@ import '../../masterlist/utils/child_status_meta.dart';
 import '../models/dashboard_models.dart';
 import '../../../data/local/program_schedule_repository.dart';
 
+import '../../../data/models/program_schedule.dart';
 import '../../../shared/utils/app_date_format.dart';
 
 class DashboardRepository {
@@ -45,7 +45,6 @@ class DashboardRepository {
     final measRepo = MeasurementRepository();
     final counts = computeNutritionCounts(activeChildren, measRepo);
     final samCases = counts.samCases;
-    final severeCount = counts.severeCount;
 
     final enrolledCount = FeedingEnrollmentRepository()
         .getEnrolledChildren(_currentBarangay)
@@ -60,44 +59,41 @@ class DashboardRepository {
 
     return [
       StatCardData(
-        label: 'stat_children_0_59'.tr,
+        label: 'Children 0-59 mos',
         value: '${activeChildren.length}',
         subtitle: dueForWeighingCount > 0
-            ? 'due_for_weighing_count'.trArgs({'count': '$dueForWeighingCount'})
+            ? '$dueForWeighingCount due for weighing'
             : (childrenThisMonth > 0
-                ? 'new_this_month_count'.trArgs({'count': '$childrenThisMonth'})
-                : 'all_up_to_date'.tr),
-        accentColor: const Color(0xFF1B5E20), // dark green
+                ? '$childrenThisMonth registered this month'
+                : 'All children up to date'),
+        accentColor: const Color(0xFF2E7D32), // green
         icon: Icons.child_care_rounded,
       ),
-
       StatCardData(
-        label: 'stat_lactating_mothers'.tr,
+        label: 'Lactating Mothers',
         value: '${activeMothers.length}',
         subtitle: mothersThisMonth > 0
-            ? 'new_this_month_count'.trArgs({'count': '$mothersThisMonth'})
-            : 'no_new_this_month'.tr,
-        accentColor: const Color(0xFF00796B), // teal
+            ? '$mothersThisMonth enrolled this month'
+            : 'All profiles active',
+        accentColor: const Color(0xFF00897B), // teal
         icon: Icons.pregnant_woman_rounded,
       ),
       StatCardData(
-        label: 'stat_sam_cases'.tr,
+        label: 'SAM (severe wasting)',
         value: '$samCases',
         subtitle: samCases > 0
-            ? 'sam_wasting_severe'.trArgs({'sam': '$samCases', 'severe': '$severeCount'})
-            : (severeCount > 0
-                ? 'severe_no_acute'.trArgs({'severe': '$severeCount'})
-                : 'no_active_cases'.tr),
-        accentColor: const Color(0xFFC62828), // deep red / terracotta
+            ? '$samCases acute wasting cases'
+            : 'No active SAM cases',
+        accentColor: const Color(0xFFE53935), // red
         icon: Icons.warning_amber_rounded,
       ),
       StatCardData(
-        label: 'stat_feeding_program'.tr,
+        label: 'Feeding Program',
         value: '$enrolledCount',
         subtitle: enrolledCount > 0
-            ? 'enrolled_count'.trArgs({'count': '$enrolledCount'})
-            : 'none_enrolled'.tr,
-        accentColor: const Color(0xFF558B2F), // olive / moss green
+            ? '$enrolledCount beneficiaries enrolled'
+            : 'No active beneficiaries',
+        accentColor: const Color(0xFF689F38), // olive
         icon: Icons.restaurant_menu_rounded,
       ),
     ];
@@ -237,6 +233,206 @@ class DashboardRepository {
           ),
         )
         .toList();
+  }
+
+  List<ProgramSchedule> getTodayActivities() {
+    final now = DateTime.now();
+    return ProgramScheduleRepository()
+        .getAllForBarangay(_currentBarangay)
+        .where((s) => s.date.year == now.year && s.date.month == now.month && s.date.day == now.day)
+        .toList();
+  }
+
+  int getDueForWeighingCount() {
+    final activeChildren = _childRepo
+        .getByBarangay(_currentBarangay)
+        .where((c) => c.isActive)
+        .toList();
+    final now = DateTime.now();
+    final measRepo = MeasurementRepository();
+    return activeChildren.where((c) {
+      final m = measRepo.getLatestPlausible(c.id);
+      if (m == null) return true;
+      return m.isDueForWeighing(now, childAgeMonths: c.ageInMonths);
+    }).length;
+  }
+
+  List<NutritionStatusItem> getNutritionBreakdownForYear(int year) {
+    final allChildren = _childRepo
+        .getByBarangay(_currentBarangay)
+        .where((c) => c.isActive)
+        .toList();
+
+    final counts = computeNutritionCountsForYear(allChildren, year);
+
+    final statusMap = <String, int>{
+      'Normal': counts.normalCount,
+      'At risk': counts.atRiskCount,
+      'Severe (any indicator)': counts.severeCount,
+      'Overweight': counts.overweightCount,
+      'Obese': counts.obeseCount,
+      'Not weighed': counts.notWeighedCount,
+    };
+
+    const order = [
+      'Normal',
+      'At risk',
+      'Severe (any indicator)',
+      'Overweight',
+      'Obese',
+      'Not weighed',
+    ];
+
+    final total = allChildren.length;
+    const coreCategories = {
+      'Normal',
+      'At risk',
+      'Severe (any indicator)',
+      'Overweight',
+      'Not weighed',
+    };
+
+    return order
+        .where((s) => coreCategories.contains(s) || (statusMap[s] ?? 0) > 0)
+        .map(
+          (s) => NutritionStatusItem(
+            label: s,
+            count: statusMap[s] ?? 0,
+            percent: total > 0
+                ? (((statusMap[s] ?? 0) / total) * 100).clamp(0, 100)
+                : 0,
+            color: ChildStatusMeta.colorFor(s),
+          ),
+        )
+        .toList();
+  }
+
+  NutritionCounts computeNutritionCountsForYear(
+    List<Child> activeChildren,
+    int year, [
+    MeasurementRepository? repo,
+  ]) {
+    final measRepo = repo ?? MeasurementRepository();
+    int samCases = 0;
+    int severeCount = 0;
+    int atRiskCount = 0;
+    int obeseCount = 0;
+    int overweightCount = 0;
+    int normalCount = 0;
+    int notWeighedCount = 0;
+
+    final endOfYear = DateTime(year, 12, 31, 23, 59, 59);
+
+    for (final c in activeChildren) {
+      final childMeas = measRepo
+          .getForChild(c.id)
+          .where((m) => m.isPlausible && !m.date.isAfter(endOfYear))
+          .toList();
+      final m = childMeas.isNotEmpty ? childMeas.first : null;
+      if (m == null) {
+        notWeighedCount++;
+        continue;
+      }
+
+      final isSam = m.effectiveWastingStatus == 'SAM';
+      if (isSam) samCases++;
+
+      final isSevere = isSam ||
+          m.heightForAgeStatus == 'Severely Stunted' ||
+          m.weightForAgeStatus == 'Severely Underweight';
+
+      if (isSevere) {
+        severeCount++;
+        continue;
+      }
+
+      final isAtRisk = m.effectiveWastingStatus == 'MAM' ||
+          m.heightForAgeStatus == 'Stunted' ||
+          m.weightForAgeStatus == 'Underweight';
+
+      if (isAtRisk) {
+        atRiskCount++;
+        continue;
+      }
+
+      final isObese = m.effectiveWastingStatus == 'Obese' ||
+          m.customBmiStatus == 'Obese';
+
+      if (isObese) {
+        obeseCount++;
+        continue;
+      }
+
+      final isOverweight = m.effectiveWastingStatus == 'Overweight' ||
+          m.weightForAgeStatus == 'Overweight' ||
+          m.customBmiStatus == 'Overweight';
+
+      if (isOverweight) {
+        overweightCount++;
+        continue;
+      }
+
+      normalCount++;
+    }
+
+    return NutritionCounts(
+      totalChildren: activeChildren.length,
+      samCases: samCases,
+      severeCount: severeCount,
+      atRiskCount: atRiskCount,
+      obeseCount: obeseCount,
+      overweightCount: overweightCount,
+      normalCount: normalCount,
+      notWeighedCount: notWeighedCount,
+    );
+  }
+
+  List<YearlyNutritionBreakdown> getYearlyNutritionComparison(String indicator) {
+    final nowYear = DateTime.now().year;
+    final years = [nowYear - 2, nowYear - 1, nowYear];
+    final activeChildren = _childRepo
+        .getByBarangay(_currentBarangay)
+        .where((c) => c.isActive)
+        .toList();
+    final measRepo = MeasurementRepository();
+
+    return years.map((y) {
+      final endOfYear = DateTime(y, 12, 31, 23, 59, 59);
+      final counts = <String, int>{};
+      int total = 0;
+
+      for (final c in activeChildren) {
+        final childMeas = measRepo
+            .getForChild(c.id)
+            .where((m) => m.isPlausible && !m.date.isAfter(endOfYear))
+            .toList();
+        final m = childMeas.isNotEmpty ? childMeas.first : null;
+        if (m == null) continue;
+
+        total++;
+        String cat = 'Normal';
+        if (indicator == 'WFA') {
+          cat = m.weightForAgeStatus;
+        } else if (indicator == 'WFH') {
+          cat = m.effectiveWastingStatus;
+        } else if (indicator == 'HFA') {
+          cat = m.heightForAgeStatus;
+        }
+        counts[cat] = (counts[cat] ?? 0) + 1;
+      }
+
+      final percents = <String, double>{};
+      counts.forEach((k, v) {
+        percents[k] = total > 0 ? (v / total) * 100 : 0.0;
+      });
+
+      return YearlyNutritionBreakdown(
+        year: y,
+        totalWeighed: total,
+        counts: counts,
+        percents: percents,
+      );
+    }).toList();
   }
 
   List<UpcomingActivityData> getUpcomingActivities() {

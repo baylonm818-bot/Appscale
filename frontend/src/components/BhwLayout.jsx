@@ -17,6 +17,7 @@ import {
   LogOut,
   Menu,
   X,
+  HeartPulse,
 } from 'lucide-react';
 
 const menuItems = [
@@ -24,6 +25,7 @@ const menuItems = [
   { name: 'Need Attention', path: '/bhw/need-attention', icon: AlertCircle },
   { name: 'Referrals', path: '/bhw/referrals', icon: AlertCircle },
   { name: 'Medical Records', path: '/bhw/medical-records', icon: FileText },
+  { name: 'Nutrition Corner', path: '/bhw/nutrition-corner', icon: HeartPulse },
   { name: 'Schedule', path: '/bhw/schedule', icon: Calendar },
   { name: 'My Profile', path: '/bhw/profile', icon: UserCircle },
 ];

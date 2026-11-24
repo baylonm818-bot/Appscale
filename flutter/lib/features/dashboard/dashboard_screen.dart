@@ -5,6 +5,7 @@ import 'data/dashboard_repository.dart';
 import 'widgets/dashboard_header.dart';
 import 'widgets/nutrition_status_card.dart';
 import 'widgets/recent_activity_card.dart';
+import 'widgets/today_card.dart';
 import 'widgets/upcoming_activities_card.dart';
 import '../../shared/widgets/responsive_stat_grid.dart';
 import '../../data/local/app_data_bus.dart';
@@ -30,7 +31,13 @@ import '../masterlist/widgets/masterlist_header.dart';
 class DashboardBody extends StatefulWidget {
   final void Function(MasterlistCategory category, {String? filterChip})?
   onNavigateToMasterlist;
-  const DashboardBody({super.key, this.onNavigateToMasterlist});
+  final VoidCallback? onNavigateToSchedule;
+
+  const DashboardBody({
+    super.key,
+    this.onNavigateToMasterlist,
+    this.onNavigateToSchedule,
+  });
 
   @override
   State<DashboardBody> createState() => _DashboardBodyState();
@@ -45,6 +52,8 @@ class _DashboardBodyState extends State<DashboardBody> {
   final _measurementRepo = MeasurementRepository();
   final _referralRepo = ReferralRepository();
   final _settings = SettingsRepository();
+
+  int _selectedYear = DateTime.now().year;
 
   String get _currentBarangay =>
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
@@ -66,13 +75,47 @@ class _DashboardBodyState extends State<DashboardBody> {
     super.dispose();
   }
 
+  void _handleCategoryTap(String statusLabel) {
+    String chip = 'All';
+    final lower = statusLabel.toLowerCase();
+    if (lower.contains('severe')) {
+      chip = 'Severe';
+    } else if (lower.contains('risk') ||
+        lower.contains('underweight') ||
+        lower.contains('wasted') ||
+        lower.contains('stunted')) {
+      chip = 'At risk';
+    } else if (lower.contains('overweight')) {
+      chip = 'Overweight';
+    } else if (lower.contains('obese')) {
+      chip = 'Obese';
+    } else if (lower.contains('normal')) {
+      chip = 'Normal';
+    }
+    widget.onNavigateToMasterlist?.call(
+      MasterlistCategory.children,
+      filterChip: chip,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, value, childWidget) {
         final stats = _dashboardRepo.getStatCards();
-        final nutrition = _dashboardRepo.getNutritionBreakdown();
+        final nutrition = _dashboardRepo.getNutritionBreakdownForYear(_selectedYear);
+        final activeChildren = _childRepo
+            .getByBarangay(_currentBarangay)
+            .where((c) => c.isActive)
+            .toList();
+        final counts = _dashboardRepo.computeNutritionCountsForYear(
+          activeChildren,
+          _selectedYear,
+        );
+
+        final todayActivities = _dashboardRepo.getTodayActivities();
+        final dueForWeighingCount = _dashboardRepo.getDueForWeighingCount();
         final upcoming = _dashboardRepo.getUpcomingActivities();
         final recent = _activityRepo.getRecent();
         final unreadNotifs = _notificationRepo.getUnreadCount();
@@ -120,11 +163,11 @@ class _DashboardBodyState extends State<DashboardBody> {
                     ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. Stat cards (2x2)
+                    // 1. Stat cards (2x2) with white background & colored icon circles
                     ResponsiveStatGrid(
                       items: stats,
                       onTaps: [
@@ -144,14 +187,36 @@ class _DashboardBodyState extends State<DashboardBody> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    // 2. Nutritional Status (Weight-for-Age)
-                    NutritionStatusCard(items: nutrition),
-                    const SizedBox(height: 12),
-                    // 3. Upcoming Activities (Nearest schedule)
+                    const SizedBox(height: 14),
+
+                    // 2. Today Card (Activities & Due for weighing)
+                    TodayCard(
+                      todayActivities: todayActivities,
+                      dueForWeighingCount: dueForWeighingCount,
+                      onViewSchedule: () => widget.onNavigateToSchedule?.call(),
+                      onWeighingTap: () => widget.onNavigateToMasterlist?.call(
+                        MasterlistCategory.children,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 3. Nutritional Status (WHO) Card with Year selector, Severe callout, & By-Year chart
+                    NutritionStatusCard(
+                      items: nutrition,
+                      severeCount: counts.severeCount,
+                      selectedYear: _selectedYear,
+                      onYearChanged: (y) => setState(() => _selectedYear = y),
+                      onTapCategory: _handleCategoryTap,
+                      getYearlyComparison: (ind) =>
+                          _dashboardRepo.getYearlyNutritionComparison(ind),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 4. Upcoming Activities (Nearest schedule)
                     UpcomingActivitiesCard(activities: upcoming),
-                    const SizedBox(height: 12),
-                    // 4. Recent Activity (Last 3 entries)
+                    const SizedBox(height: 14),
+
+                    // 5. Recent Activity (Last entries)
                     RecentActivityCard(entries: recent),
                   ],
                 ),
