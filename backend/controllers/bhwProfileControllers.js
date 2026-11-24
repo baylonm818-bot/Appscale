@@ -4,7 +4,7 @@ const { validateContactNumber } = require('../utils/contactValidation');
 
 function canAccessProfile(req, targetId) {
   const requesterId = Number(req.user?.user_id);
-  const target = Number(targetId);
+  const target = (!targetId || targetId === 'me') ? requesterId : Number(targetId);
   const role = String(req.user?.role || '').toLowerCase();
   return role === 'admin' || requesterId === target;
 }
@@ -54,7 +54,8 @@ async function attachUserStats(user) {
 }
 
 exports.getProfile = async (req, res) => {
-  const { id } = req.params;
+  const rawId = req.params.id;
+  const id = (!rawId || rawId === 'me') ? req.user?.user_id : rawId;
 
   if (!canAccessProfile(req, id)) {
     return res.status(403).json({ message: 'Forbidden. You are not authorized to view this profile.' });
