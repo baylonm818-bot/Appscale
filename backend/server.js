@@ -119,21 +119,23 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.10';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 43);
+    const version = process.env.APP_VERSION || '3.3.11';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 44);
     const notesEn = [
-        "Report download snackbar auto-dismisses after 5 seconds with close (X) button",
-        "Positioned as floating snackbar above bottom navigation without covering action buttons",
-        "Full filename rendered on two lines with prominent OPEN action",
-        "Tapping OPEN immediately dismisses snackbar and opens PDF/Excel directly in viewer",
-        "Automatic dismissal on screen exit and route navigation"
+        "Print Calendar of Schedule: export and print monthly activity calendar with program markers and table",
+        "Offline PDF generation with A4 landscape grid, color and text markers, legend, and signatory lines",
+        "Save to Downloads with tappable download notification and 5-second floating snackbar",
+        "Horizontal scrolling for schedule filter chips with no text clipping",
+        "Compact calendar month header and clear program color dots legend",
+        "Venue is now strictly required when setting a schedule and displayed in event cards and PDF"
     ];
     const notesTl = [
-        "Ang snackbar ng pag-download ng ulat ay kusang nawawala pagkatapos ng 5 segundo na may buton sa pagsara (X)",
-        "Naka-posisyon bilang lumulutang na snackbar sa itaas ng nabigasyon nang hindi natatakpan ang mga buton",
-        "Buong pangalan ng file sa dalawang linya na may malinaw na buton na OPEN",
-        "Ang pagpindot sa OPEN ay agad na nagsasara ng snackbar at direktang nagbubukas ng PDF/Excel sa viewer",
-        "Awtomatikong pagsasara kapag umalis sa screen o lumipat ng pahina"
+        "Pag-print ng Kalendaryo ng Iskedyul: pag-export at pag-print ng buwanang kalendaryo na may mga marker at talaan",
+        "Offline na paggawa ng PDF sa A4 landscape grid, may kulay at text marker, legend, at lagda",
+        "Direktang pag-save sa Downloads na may abiso at 5-segundong lumulutang na snackbar",
+        "Pahalang na pag-scroll sa mga filter chip nang walang napuputol na teksto",
+        "Pinaikling header ng buwan at malinaw na gabay sa kulay ng mga programa",
+        "Kinakailangan na ang lugar o venue sa pagtatakda ng iskedyul at makikita sa listahan at PDF"
     ];
     const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 

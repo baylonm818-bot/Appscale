@@ -113,6 +113,32 @@ class ReportSignatory {
     return 'Municipal Nutrition Action Officer (MNAO)';
   }
 
+  /// Dynamic Noted By name
+  String get notedByName {
+    for (final it in items) {
+      if (it.roleTitle.toUpperCase().contains('NOTED')) {
+        return it.name;
+      }
+    }
+    if (punongBarangayName.isNotEmpty) return punongBarangayName;
+    if (mnaoAdminAideName.isNotEmpty) return mnaoAdminAideName;
+    if (dnpcName.isNotEmpty) return dnpcName;
+    return approvedByName;
+  }
+
+  /// Dynamic Noted By position
+  String get notedByPosition {
+    for (final it in items) {
+      if (it.roleTitle.toUpperCase().contains('NOTED')) {
+        return it.position;
+      }
+    }
+    if (punongBarangayName.isNotEmpty) return punongBarangayPosition;
+    if (mnaoAdminAideName.isNotEmpty) return mnaoAdminAidePosition;
+    if (dnpcName.isNotEmpty) return dnpcPosition;
+    return approvedByPosition;
+  }
+
   ReportSignatory copyWith({
     String? barangay,
     String? bnsName,

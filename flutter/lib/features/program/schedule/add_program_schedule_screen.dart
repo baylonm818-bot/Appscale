@@ -86,17 +86,22 @@ class _AddProgramScheduleScreenState extends State<AddProgramScheduleScreen> {
         t == 'Operation Timbang Plus Weighing';
   }
 
-  bool get _isFormValid =>
-      _titleController.text.trim().isNotEmpty &&
-      _date != null &&
-      _locationController.text.trim().isNotEmpty;
-
   Future<void> _save() async {
-    if (!_isFormValid) {
+    if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please provide a title, date, and venue'),
-        ),
+        const SnackBar(content: Text('Please enter an activity title')),
+      );
+      return;
+    }
+    if (_date == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a scheduled date')),
+      );
+      return;
+    }
+    if (_locationController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A venue is required when setting a schedule')),
       );
       return;
     }

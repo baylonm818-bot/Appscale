@@ -14,6 +14,7 @@ import 'counseling/lactating_mothers_counseling_screen.dart';
 import 'deworming/deworming_screen.dart';
 import 'feeding/feeding_program_screen.dart';
 import 'schedule/add_program_schedule_screen.dart';
+import 'schedule/widgets/print_schedule_bottom_sheet.dart';
 import 'vitamin_a/vitamin_a_screen.dart';
 import 'widgets/program_tile.dart';
 
@@ -272,7 +273,25 @@ class _ProgramScreenState extends State<ProgramScreen> {
                   ),
                   Row(
                     children: [
-                      
+                      IconButton(
+                        icon: const Icon(Icons.print_outlined, color: AppColors.darkGreen, size: 20),
+                        tooltip: 'Print schedule',
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.12),
+                          padding: const EdgeInsets.all(8),
+                          minimumSize: const Size(36, 36),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () {
+                          PrintScheduleBottomSheet.show(
+                            context: context,
+                            initialMonth: _calendarMonth,
+                            initialFilter: _selectedFilter,
+                            barangay: _currentBarangay,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.darkGreen,
@@ -318,6 +337,8 @@ class _ProgramScreenState extends State<ProgramScreen> {
               const SizedBox(height: AppSpacing.sm),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: Row(
                   children:
                       [
@@ -332,7 +353,11 @@ class _ProgramScreenState extends State<ProgramScreen> {
                           padding: const EdgeInsets.only(right: 8),
                           child: FilterChip(
                             selected: isSel,
-                            label: Text(filter),
+                            label: Text(
+                              filter,
+                              softWrap: false,
+                              overflow: TextOverflow.visible,
+                            ),
                             labelStyle: TextStyle(
                               fontSize: 12,
                               color: isSel
@@ -394,13 +419,13 @@ class _ProgramScreenState extends State<ProgramScreen> {
             s.date.day == selectedDay.day).toList();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 100),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 140),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Month navigation header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -410,6 +435,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
+                  visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.chevron_left, color: AppColors.darkGreen),
                   onPressed: () {
                     setState(() {
@@ -423,6 +449,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
                   style: AppTextStyles.h2.copyWith(fontSize: 15, color: AppColors.textPrimary),
                 ),
                 IconButton(
+                  visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.chevron_right, color: AppColors.darkGreen),
                   onPressed: () {
                     setState(() {
@@ -434,11 +461,11 @@ class _ProgramScreenState extends State<ProgramScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
 
           // Days of week header
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(10),
@@ -472,7 +499,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
               crossAxisCount: 7,
               crossAxisSpacing: 4,
               mainAxisSpacing: 4,
-              childAspectRatio: 0.95,
+              childAspectRatio: 1.15,
             ),
             itemBuilder: (context, index) {
               if (index < leadingEmptyDays) {
@@ -569,7 +596,27 @@ class _ProgramScreenState extends State<ProgramScreen> {
               );
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+
+          // Small legend under the calendar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildCalendarLegendDot(AppColors.primaryGreen, 'Feeding'),
+                _buildCalendarLegendDot(AppColors.statAmber, 'Vitamin A'),
+                _buildCalendarLegendDot(AppColors.statOrange, 'Deworming'),
+                _buildCalendarLegendDot(Colors.blueAccent, 'OPT Plus'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
 
           // Selected Day or Month Events Header
           Row(
@@ -768,14 +815,18 @@ class _ProgramScreenState extends State<ProgramScreen> {
                     const SizedBox(width: 12),
                     const Icon(
                       Icons.location_on_outlined,
-                      size: 12,
-                      color: AppColors.textMuted,
+                      size: 13,
+                      color: AppColors.primaryGreen,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        s.location,
-                        style: AppTextStyles.caption.copyWith(fontSize: 11),
+                        s.location.isNotEmpty ? 'Venue: ${s.location}' : 'Venue: TBA',
+                        style: AppTextStyles.caption.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -807,6 +858,28 @@ class _ProgramScreenState extends State<ProgramScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCalendarLegendDot(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 }
