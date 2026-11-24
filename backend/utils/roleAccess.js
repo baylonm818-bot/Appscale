@@ -182,15 +182,23 @@ function ensureSingleActiveRolePerBarangay({ users = [], role, barangay }) {
     return { allowed: true, message: 'ok' };
   }
 
-  const hasActiveSameRole = (users || []).some((user) => {
+  const activeMatchingUsers = (users || []).filter((user) => {
     const userRole = normalizeRole(user.role);
     const userBarangay = String(user.barangay || '').trim();
     const isSameBarangay = sameBarangay(userBarangay, normalizedBarangay);
     return userRole === targetRole && isSameBarangay && isUserActiveForLogin(user);
   });
 
-  if (hasActiveSameRole) {
+  const maxAllowed = targetRole === 'bns' ? 3 : 1;
+
+  if (activeMatchingUsers.length >= maxAllowed) {
     const label = targetRole.toUpperCase();
+    if (targetRole === 'bns') {
+      return {
+        allowed: false,
+        message: `This barangay already has 3 active BNS accounts (maximum reached). Deactivate or lock an existing BNS before adding another.`,
+      };
+    }
     return {
       allowed: false,
       message: `This barangay already has an active ${label}. Deactivate or lock the existing ${label} before adding a replacement.`,

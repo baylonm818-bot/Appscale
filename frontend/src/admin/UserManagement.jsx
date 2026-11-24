@@ -173,20 +173,23 @@ function UserManagement() {
   };
 
   const normalizedSelectedBarangay = (form.barangay || '').trim().toLowerCase();
-  const isBnsTaken = !!form.barangay && users.some((u) =>
+  const activeBnsInBarangay = users.filter((u) =>
     u.role === 'bns' &&
     u.status === 'active' &&
     !u.deleted_at &&
     u.user_id !== editingUser?.user_id &&
     (u.barangay || '').trim().toLowerCase() === normalizedSelectedBarangay
   );
-  const isBhwTaken = !!form.barangay && users.some((u) =>
+  const activeBhwInBarangay = users.filter((u) =>
     u.role === 'bhw' &&
     u.status === 'active' &&
     !u.deleted_at &&
     u.user_id !== editingUser?.user_id &&
     (u.barangay || '').trim().toLowerCase() === normalizedSelectedBarangay
   );
+
+  const isBnsTaken = !!form.barangay && activeBnsInBarangay.length >= 3;
+  const isBhwTaken = !!form.barangay && activeBhwInBarangay.length >= 1;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -198,20 +201,23 @@ function UserManagement() {
 
     if (name === 'barangay') {
       const normalizedBarangay = (value || '').trim().toLowerCase();
-      const bnsTaken = !!value && users.some((u) =>
+      const bnsCount = users.filter((u) =>
         u.role === 'bns' &&
         u.status === 'active' &&
         !u.deleted_at &&
         u.user_id !== editingUser?.user_id &&
         (u.barangay || '').trim().toLowerCase() === normalizedBarangay
-      );
-      const bhwTaken = !!value && users.some((u) =>
+      ).length;
+      const bhwCount = users.filter((u) =>
         u.role === 'bhw' &&
         u.status === 'active' &&
         !u.deleted_at &&
         u.user_id !== editingUser?.user_id &&
         (u.barangay || '').trim().toLowerCase() === normalizedBarangay
-      );
+      ).length;
+
+      const bnsTaken = !!value && bnsCount >= 3;
+      const bhwTaken = !!value && bhwCount >= 1;
 
       let nextRole = form.role;
       if (form.role === 'bhw' && bhwTaken && !bnsTaken) {
@@ -258,7 +264,7 @@ function UserManagement() {
     setSaving(true);
     try {
       if (form.role === 'bns' && isBnsTaken) {
-        setFormError(`Barangay ${form.barangay} already has an active BNS.`);
+        setFormError(`Barangay ${form.barangay} already has the maximum of 3 active BNS.`);
         setSaving(false);
         return;
       }
@@ -633,25 +639,25 @@ function UserManagement() {
                       Barangay Health Worker (BHW){isBhwTaken ? ' (Already assigned)' : ''}
                     </option>
                     <option value="bns" disabled={isBnsTaken}>
-                      Barangay Nutrition Scholar (BNS){isBnsTaken ? ' (Already assigned)' : ''}
+                      Barangay Nutrition Scholar (BNS)
+                      {isBnsTaken
+                        ? ' (Max 3 reached)'
+                        : activeBnsInBarangay.length > 0
+                        ? ` (${activeBnsInBarangay.length}/3 assigned)`
+                        : ''}
                     </option>
                   </select>
 
                   {form.barangay && (
                     <div className="mt-1.5 space-y-1">
-                      {isBhwTaken && !isBnsTaken && (
+                      {form.role === 'bhw' && isBhwTaken && (
                         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
                           BHW is already assigned to {form.barangay}.
                         </p>
                       )}
-                      {isBnsTaken && !isBhwTaken && (
+                      {form.role === 'bns' && isBnsTaken && (
                         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-                          BNS is already assigned to {form.barangay}.
-                        </p>
-                      )}
-                      {isBhwTaken && isBnsTaken && (
-                        <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
-                          Both BNS and BHW are already assigned to {form.barangay}.
+                          Barangay {form.barangay} already reached the maximum of 3 active BNS.
                         </p>
                       )}
                     </div>

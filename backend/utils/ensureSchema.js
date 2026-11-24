@@ -384,6 +384,27 @@ async function ensureAppSchema(pool) {
       console.warn('[Schema] nutrition_corner_laws init warning:', e.message);
     }
 
+    // 13. Ensure `active_role_key` on `users` table only restricts BHW (allowing up to 3 BNS enforced by application logic)
+    try {
+      const [cols] = await pool.query(`
+        SELECT GENERATION_EXPRESSION FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'active_role_key'
+      `);
+      if (cols.length > 0 && String(cols[0].GENERATION_EXPRESSION || '').toLowerCase().includes('bns')) {
+        try { await pool.query('ALTER TABLE users DROP INDEX uq_active_barangay_role'); } catch (_) {}
+        try { await pool.query('ALTER TABLE users DROP COLUMN active_role_key'); } catch (_) {}
+        await pool.query(`
+          ALTER TABLE users ADD COLUMN active_role_key VARCHAR(150) GENERATED ALWAYS AS (
+            IF(status = 'active' AND deleted_at IS NULL AND role = 'bhw', CONCAT(LOWER(TRIM(barangay)), ':bhw'), NULL)
+          ) VIRTUAL
+        `);
+        await pool.query('ALTER TABLE users ADD UNIQUE KEY uq_active_barangay_role (active_role_key)');
+        console.log('[Schema] Updated users.active_role_key to restrict BHW only (allowing up to 3 BNS).');
+      }
+    } catch (e) {
+      console.warn('[Schema] active_role_key check warning:', e.message);
+    }
+
     console.log('[Schema] All database schema migrations verified successfully.');
   } catch (err) {
     console.warn('[Schema] ensureAppSchema warning:', err.message);

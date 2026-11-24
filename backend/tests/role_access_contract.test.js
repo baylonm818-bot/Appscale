@@ -167,7 +167,7 @@ test('Creator sees their own schedule, but admin does not see partner-created sc
   }), false);
 });
 
-test('A barangay can only have one active BNS and one active BHW', () => {
+test('A barangay can have up to 3 active BNS and one active BHW', () => {
   const { ensureSingleActiveRolePerBarangay } = require('../utils/roleAccess');
 
   const users = [
@@ -175,14 +175,27 @@ test('A barangay can only have one active BNS and one active BHW', () => {
     { role: 'bhw', barangay: 'Tiguion', status: 'active', deleted_at: null },
   ];
 
+  // 2nd BNS is allowed
   assert.deepEqual(ensureSingleActiveRolePerBarangay({ users, role: 'bns', barangay: 'Tiguion' }), {
-    allowed: false,
-    message: 'This barangay already has an active BNS. Deactivate or lock the existing BNS before adding a replacement.',
+    allowed: true,
+    message: 'ok',
   });
 
+  // 2nd BHW is rejected
   assert.deepEqual(ensureSingleActiveRolePerBarangay({ users, role: 'bhw', barangay: 'Tiguion' }), {
     allowed: false,
     message: 'This barangay already has an active BHW. Deactivate or lock the existing BHW before adding a replacement.',
+  });
+
+  // When 3 BNS already exist, 4th BNS is rejected
+  const threeBnsUsers = [
+    { role: 'bns', barangay: 'Tiguion', status: 'active', deleted_at: null },
+    { role: 'bns', barangay: 'Tiguion', status: 'active', deleted_at: null },
+    { role: 'bns', barangay: 'Tiguion', status: 'active', deleted_at: null },
+  ];
+  assert.deepEqual(ensureSingleActiveRolePerBarangay({ users: threeBnsUsers, role: 'bns', barangay: 'Tiguion' }), {
+    allowed: false,
+    message: 'This barangay already has 3 active BNS accounts (maximum reached). Deactivate or lock an existing BNS before adding another.',
   });
 
   assert.deepEqual(ensureSingleActiveRolePerBarangay({
