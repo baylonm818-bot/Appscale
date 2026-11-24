@@ -523,7 +523,14 @@ class MasterlistScreenState extends State<MasterlistScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (dotColor != null && !isSelected) ...[
+              if (isSelected) ...[
+                const Icon(
+                  Icons.check,
+                  size: 14,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 5),
+              ] else if (dotColor != null) ...[
                 Container(
                   width: 7,
                   height: 7,

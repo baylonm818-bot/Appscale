@@ -119,8 +119,8 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.11';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 44);
+    const version = process.env.APP_VERSION || '3.3.12';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 45);
     const notesEn = [
         "Print Calendar of Schedule: export and print monthly activity calendar with program markers and table",
         "Offline PDF generation with A4 landscape grid, color and text markers, legend, and signatory lines",

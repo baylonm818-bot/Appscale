@@ -9,7 +9,7 @@ import '../../data/models/child.dart';
 import '../../data/local/measurement_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/report_signatory_repository.dart';
-import '../../shared/utils/app_pickers.dart';
+import '../../shared/utils/app_month_year_picker.dart';
 import '../../data/models/report_signatory.dart';
 import 'report_types.dart';
 import '../../shared/utils/barangay_assets.dart';
@@ -98,11 +98,9 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       ReportSignatoryRepository().resolveForUser(_settings.authUser);
 
   Future<void> _pickPeriod() async {
-    final picked = await showAppDatePicker(
-      context: context,
+    final picked = await showAppMonthYearPicker(
+      context,
       initialDate: _period,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
     );
     if (picked != null) {
       setState(() => _period = DateTime(picked.year, picked.month));

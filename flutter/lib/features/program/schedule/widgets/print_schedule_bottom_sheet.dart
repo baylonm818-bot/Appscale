@@ -4,7 +4,7 @@ import '../../../../data/local/hive_boxes.dart';
 import '../../../../data/local/program_schedule_repository.dart';
 import '../../../../data/local/report_signatory_repository.dart';
 import '../../../../data/models/program_schedule.dart';
-import '../../../../shared/utils/app_pickers.dart';
+import '../../../../shared/utils/app_month_year_picker.dart';
 import '../services/calendar_schedule_pdf_service.dart';
 
 class PrintScheduleBottomSheet extends StatefulWidget {
@@ -50,7 +50,7 @@ class _PrintScheduleBottomSheetState extends State<PrintScheduleBottomSheet> {
   late DateTime _selectedMonth;
   late String _selectedFilter;
   String _selectedLayout = 'Calendar + list';
-  bool _isCustomRange = false;
+  String _periodMode = 'Month'; // 'Month', 'Whole year', 'Date range'
   DateTime? _customStartDate;
   DateTime? _customEndDate;
   bool _isLoading = false;
@@ -78,10 +78,12 @@ class _PrintScheduleBottomSheetState extends State<PrintScheduleBottomSheet> {
     final all = _scheduleRepo.getAllForBarangay(widget.barangay);
     return all.where((s) {
       // Date filter
-      if (_isCustomRange && _customStartDate != null && _customEndDate != null) {
+      if (_periodMode == 'Date range' && _customStartDate != null && _customEndDate != null) {
         final start = DateTime(_customStartDate!.year, _customStartDate!.month, _customStartDate!.day);
         final end = DateTime(_customEndDate!.year, _customEndDate!.month, _customEndDate!.day, 23, 59, 59);
         if (s.date.isBefore(start) || s.date.isAfter(end)) return false;
+      } else if (_periodMode == 'Whole year') {
+        if (s.date.year != _selectedMonth.year) return false;
       } else {
         if (s.date.year != _selectedMonth.year || s.date.month != _selectedMonth.month) {
           return false;
@@ -98,16 +100,13 @@ class _PrintScheduleBottomSheetState extends State<PrintScheduleBottomSheet> {
   }
 
   Future<void> _pickMonth() async {
-    final picked = await showAppDatePicker(
-      context: context,
+    final picked = await showAppMonthYearPicker(
+      context,
       initialDate: _selectedMonth,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
     );
     if (picked != null) {
       setState(() {
-        _isCustomRange = false;
-        _selectedMonth = DateTime(picked.year, picked.month, 1);
+        _selectedMonth = picked;
       });
     }
   }
@@ -139,7 +138,7 @@ class _PrintScheduleBottomSheetState extends State<PrintScheduleBottomSheet> {
 
     if (pickedRange != null) {
       setState(() {
-        _isCustomRange = true;
+        _periodMode = 'Date range';
         _customStartDate = pickedRange.start;
         _customEndDate = pickedRange.end;
       });
@@ -151,9 +150,11 @@ class _PrintScheduleBottomSheetState extends State<PrintScheduleBottomSheet> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          _isCustomRange
+          _periodMode == 'Date range'
               ? 'No schedules found in the selected date range.'
-              : 'No schedules in this month',
+              : (_periodMode == 'Whole year'
+                  ? 'No schedules found in year ${_selectedMonth.year}.'
+                  : 'No schedules in this month'),
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         backgroundColor: Colors.orange.shade800,
@@ -180,6 +181,7 @@ class _PrintScheduleBottomSheetState extends State<PrintScheduleBottomSheet> {
       final bnsName = '$firstName $lastName'.trim();
       final purok = authUser?['purok']?.toString() ?? '';
       final signatory = _signatoryRepo.resolveForUser(authUser);
+      final isWholeYear = _periodMode == 'Whole year';
 
       if (action == 'save') {
         final navigator = Navigator.of(context);
@@ -195,6 +197,7 @@ class _PrintScheduleBottomSheetState extends State<PrintScheduleBottomSheet> {
           bnsName: bnsName.isNotEmpty ? bnsName : null,
           purok: purok.isNotEmpty ? purok : null,
           signatory: signatory,
+          isWholeYear: isWholeYear,
         );
         if (mounted) {
           navigator.pop();
@@ -210,6 +213,7 @@ class _PrintScheduleBottomSheetState extends State<PrintScheduleBottomSheet> {
           bnsName: bnsName.isNotEmpty ? bnsName : null,
           purok: purok.isNotEmpty ? purok : null,
           signatory: signatory,
+          isWholeYear: isWholeYear,
         );
       } else if (action == 'share') {
         await _pdfService.shareSchedule(
@@ -222,6 +226,7 @@ class _PrintScheduleBottomSheetState extends State<PrintScheduleBottomSheet> {
           bnsName: bnsName.isNotEmpty ? bnsName : null,
           purok: purok.isNotEmpty ? purok : null,
           signatory: signatory,
+          isWholeYear: isWholeYear,
         );
       }
     } catch (e) {
@@ -329,68 +334,169 @@ class _PrintScheduleBottomSheetState extends State<PrintScheduleBottomSheet> {
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: _pickMonth,
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: !_isCustomRange ? AppColors.lightGreenBg : AppColors.surface,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: !_isCustomRange ? AppColors.primaryGreen : AppColors.border,
-                          width: !_isCustomRange ? 1.4 : 1.0,
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: ['Month', 'Whole year', 'Date range'].map((mode) {
+                  final isSel = _periodMode == mode;
+                  return Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _periodMode = mode;
+                          if (mode == 'Date range' && _customStartDate == null) {
+                            _customStartDate = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+                            _customEndDate = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
+                          }
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 7),
+                        decoration: BoxDecoration(
+                          color: isSel ? Colors.white : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: isSel
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          mode,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                            color: isSel ? AppColors.darkGreen : AppColors.textSecondary,
+                          ),
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_month,
-                            size: 16,
-                            color: !_isCustomRange ? AppColors.primaryGreen : AppColors.textMuted,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Period selector active view
+            if (_periodMode == 'Month')
+              InkWell(
+                onTap: _pickMonth,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightGreenBg,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primaryGreen, width: 1.2),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_month, size: 16, color: AppColors.primaryGreen),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          monthLabel,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.darkGreen,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              monthLabel,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: !_isCustomRange ? AppColors.darkGreen : AppColors.textPrimary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.textMuted),
-                        ],
+                        ),
+                      ),
+                      const Text(
+                        'Change',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primaryGreen),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (_periodMode == 'Whole year')
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.lightGreenBg,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primaryGreen, width: 1.2),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left, color: AppColors.darkGreen),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        setState(() {
+                          _selectedMonth = DateTime(_selectedMonth.year - 1, 1, 1);
+                        });
+                      },
+                    ),
+                    Text(
+                      'Whole Year ${_selectedMonth.year}',
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.darkGreen,
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: _pickCustomRange,
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor: _isCustomRange ? AppColors.darkGreen : AppColors.textSecondary,
-                    side: BorderSide(
-                      color: _isCustomRange ? AppColors.darkGreen : AppColors.border,
-                      width: _isCustomRange ? 1.4 : 1.0,
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right, color: AppColors.darkGreen),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        setState(() {
+                          _selectedMonth = DateTime(_selectedMonth.year + 1, 1, 1);
+                        });
+                      },
                     ),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+                  ],
+                ),
+              )
+            else
+              InkWell(
+                onTap: _pickCustomRange,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightGreenBg,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primaryGreen, width: 1.2),
                   ),
-                  icon: const Icon(Icons.date_range, size: 15),
-                  label: Text(
-                    _isCustomRange ? 'Custom Range' : 'Date Range',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.date_range, size: 16, color: AppColors.primaryGreen),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _customStartDate != null && _customEndDate != null
+                              ? '${_customStartDate!.day} ${_monthNames[_customStartDate!.month - 1].substring(0, 3)} - ${_customEndDate!.day} ${_monthNames[_customEndDate!.month - 1].substring(0, 3)} ${_customEndDate!.year}'
+                              : 'Select Custom Date Range',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.darkGreen,
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        'Change',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primaryGreen),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
             const SizedBox(height: 14),
 
             // ── 2. Program Filter ──────────────────────────────────────────

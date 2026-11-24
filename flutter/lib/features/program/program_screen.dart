@@ -8,6 +8,7 @@ import '../../data/local/program_schedule_repository.dart';
 import '../../data/local/referral_repository.dart';
 import '../../data/models/program_schedule.dart';
 import '../../shared/utils/app_date_format.dart';
+import '../../shared/utils/app_month_year_picker.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../referrals/referrals_overview_screen.dart';
 import 'counseling/lactating_mothers_counseling_screen.dart';
@@ -420,47 +421,91 @@ class _ProgramScreenState extends State<ProgramScreen> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 140),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Month navigation header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity != null) {
+            if (details.primaryVelocity! < -150) {
+              // Swiped left -> next month
+              setState(() {
+                _calendarMonth = DateTime(year, month + 1, 1);
+                _selectedCalendarDay = null;
+              });
+            } else if (details.primaryVelocity! > 150) {
+              // Swiped right -> prev month
+              setState(() {
+                _calendarMonth = DateTime(year, month - 1, 1);
+                _selectedCalendarDay = null;
+              });
+            }
+          }
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Month navigation header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.chevron_left, color: AppColors.darkGreen),
+                    onPressed: () {
+                      setState(() {
+                        _calendarMonth = DateTime(year, month - 1, 1);
+                        _selectedCalendarDay = null;
+                      });
+                    },
+                  ),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showAppMonthYearPicker(
+                        context,
+                        initialDate: _calendarMonth,
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          _calendarMonth = picked;
+                          _selectedCalendarDay = null;
+                        });
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${monthNames[month - 1]} $year',
+                            style: AppTextStyles.h2.copyWith(fontSize: 15, color: AppColors.textPrimary),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.darkGreen),
+                        ],
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.chevron_right, color: AppColors.darkGreen),
+                    onPressed: () {
+                      setState(() {
+                        _calendarMonth = DateTime(year, month + 1, 1);
+                        _selectedCalendarDay = null;
+                      });
+                    },
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.chevron_left, color: AppColors.darkGreen),
-                  onPressed: () {
-                    setState(() {
-                      _calendarMonth = DateTime(year, month - 1, 1);
-                      _selectedCalendarDay = null;
-                    });
-                  },
-                ),
-                Text(
-                  '${monthNames[month - 1]} $year',
-                  style: AppTextStyles.h2.copyWith(fontSize: 15, color: AppColors.textPrimary),
-                ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.chevron_right, color: AppColors.darkGreen),
-                  onPressed: () {
-                    setState(() {
-                      _calendarMonth = DateTime(year, month + 1, 1);
-                      _selectedCalendarDay = null;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 6),
 
           // Days of week header
@@ -659,8 +704,9 @@ class _ProgramScreenState extends State<ProgramScreen> {
                 )),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildScheduleCard(ProgramSchedule s) {
     Color typeColor;

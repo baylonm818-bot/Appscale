@@ -6,6 +6,38 @@ class AppDateFormat {
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
   ];
 
+  static const List<String> _fullMonths = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  /// Format as "November 2026"
+  static String formatMonthYear(DateTime? date) {
+    if (date == null) return '';
+    final monthStr = (date.month >= 1 && date.month <= 12)
+        ? _fullMonths[date.month - 1]
+        : '';
+    return '$monthStr ${date.year}';
+  }
+
+  /// Format as "Nov 24"
+  static String formatMonthDay(DateTime? date) {
+    if (date == null) return '';
+    final monthStr = (date.month >= 1 && date.month <= 12)
+        ? _months[date.month - 1]
+        : '';
+    return '$monthStr ${date.day}';
+  }
+
+  /// Format as "8:30 AM"
+  static String formatTimeOfDay(DateTime? date) {
+    if (date == null) return '';
+    final hour = date.hour == 0 ? 12 : (date.hour > 12 ? date.hour - 12 : date.hour);
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+    final minuteStr = date.minute.toString().padLeft(2, '0');
+    return '$hour:$minuteStr $period';
+  }
+
   /// Standard app-wide date format: "Oct 13, 2026"
   static String format(DateTime? date) {
     if (date == null) return '';

@@ -94,7 +94,6 @@ class VisitTile extends StatelessWidget {
         ? _toSentenceCase(visit.breastfeedingPractice!)
         : 'Not recorded';
 
-    final referralText = visit.isReferralNeeded ? 'Yes' : 'No';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -168,11 +167,6 @@ class VisitTile extends StatelessWidget {
                       _buildLabeledRow('Observation', observationText),
                       _buildLabeledRow('Concern', concernText),
                       _buildLabeledRow('Feeding', feedingText),
-                      _buildLabeledRow(
-                        'Referral needed',
-                        referralText,
-                        valueColor: visit.isReferralNeeded ? AppColors.statOrange : null,
-                      ),
                     ],
                     if (visit.signature != null && visit.signature!.isNotEmpty) ...[
                       const SizedBox(height: 8),

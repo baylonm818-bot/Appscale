@@ -30,11 +30,12 @@ class ChildListTile extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           status,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
+          softWrap: true,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 11.5,
+            height: 1.15,
             fontWeight: FontWeight.w700,
             color: color == AppColors.primaryGreen ? AppColors.darkGreen : color,
           ),
@@ -81,93 +82,93 @@ class ChildListTile extends StatelessWidget {
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Avatar
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: AppColors.darkGreen.withValues(alpha: 0.08),
-                                shape: BoxShape.circle,
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                child.initials,
-                                style: const TextStyle(
-                                  color: AppColors.darkGreen,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                // Avatar
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.darkGreen.withValues(alpha: 0.08),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    child.initials,
+                                    style: const TextStyle(
+                                      color: AppColors.darkGreen,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            // Details
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Line 1: Child Name and One Main Status Chip on the right
-                                  Row(
+                                const SizedBox(width: 12),
+                                // Details
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Expanded(
-                                        child: Text(
-                                          child.fullName,
-                                          style: AppTextStyles.label.copyWith(
-                                            fontSize: 14.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                      Text(
+                                        child.fullName,
+                                        style: AppTextStyles.label.copyWith(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textPrimary,
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      const SizedBox(width: 8),
-                                      StatusBadge(
-                                        label: overall.label,
-                                        color: overall.color,
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        '${child.ageDisplay} · ${child.formattedAddress.isNotEmpty ? child.formattedAddress : "Purok"}',
+                                        style: AppTextStyles.caption.copyWith(
+                                          fontSize: 12,
+                                          color: AppColors.textMuted,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 3),
-                                  // Line 2: Age and Purok (without barangay name)
-                                  Text(
-                                    '${child.ageDisplay} · ${child.formattedAddress.isNotEmpty ? child.formattedAddress : "Purok"}',
-                                    style: AppTextStyles.caption.copyWith(
-                                      fontSize: 12,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  // Line 3: Single row of three equal columns (WFA, HFA, WFH)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.background,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(child: _buildColumn('WFA', child.nutritionStatus)),
-                                        Container(width: 1, height: 22, color: AppColors.border),
-                                        Expanded(child: _buildColumn('HFA', child.stuntingStatus)),
-                                        Container(width: 1, height: 22, color: AppColors.border),
-                                        Expanded(child: _buildColumn('WFH', child.wastingStatus)),
-                                      ],
-                                    ),
-                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                StatusBadge(
+                                  label: overall.label,
+                                  color: overall.color,
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.chevron_right,
+                                  size: 18,
+                                  color: AppColors.textMuted,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            // Full card-width WFA, HFA, WFH row
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(child: _buildColumn('WFA', child.nutritionStatus)),
+                                  Container(width: 1, height: 26, color: AppColors.border),
+                                  Expanded(child: _buildColumn('HFA', child.stuntingStatus)),
+                                  Container(width: 1, height: 26, color: AppColors.border),
+                                  Expanded(child: _buildColumn('WFH', child.wastingStatus)),
                                 ],
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.chevron_right,
-                              size: 18,
-                              color: AppColors.textMuted,
                             ),
                           ],
                         ),

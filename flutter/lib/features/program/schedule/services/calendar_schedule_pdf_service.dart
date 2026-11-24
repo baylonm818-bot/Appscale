@@ -98,6 +98,7 @@ class CalendarSchedulePdfService {
     ReportSignatory? signatory,
     DateTime? startDate,
     DateTime? endDate,
+    bool isWholeYear = false,
   }) async {
     final theme = await _loadDocTheme();
     final doc = pw.Document(theme: theme);
@@ -109,9 +110,11 @@ class CalendarSchedulePdfService {
     final isCustomRange = startDate != null && endDate != null &&
         (startDate.month != endDate.month || startDate.year != endDate.year);
 
-    final headerTitle = isCustomRange
-        ? 'Calendar of Activities - ${startDate.day} ${_monthNames[startDate.month - 1].substring(0, 3)} ${startDate.year} to ${endDate.day} ${_monthNames[endDate.month - 1].substring(0, 3)} ${endDate.year}'
-        : 'Calendar of Activities - $monthName $year';
+    final headerTitle = isWholeYear
+        ? 'Calendar of Activities - Year $year'
+        : (isCustomRange
+            ? 'Calendar of Activities - ${startDate.day} ${_monthNames[startDate.month - 1].substring(0, 3)} ${startDate.year} to ${endDate.day} ${_monthNames[endDate.month - 1].substring(0, 3)} ${endDate.year}'
+            : 'Calendar of Activities - $monthName $year');
 
     final purokPart = (purok != null && purok.trim().isNotEmpty) ? ' - Purok ${purok.trim()}' : '';
     final locationSubtitle = 'Barangay $barangay$purokPart';
@@ -245,111 +248,130 @@ class CalendarSchedulePdfService {
 
           // ── Calendar Grid ─────────────────────────────────────────────────
           if (showCalendar) {
-            content.add(
-              pw.Container(
-                margin: const pw.EdgeInsets.only(bottom: 12),
-                child: pw.Table(
-                  border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-                  columnWidths: const {
-                    0: pw.FlexColumnWidth(1),
-                    1: pw.FlexColumnWidth(1),
-                    2: pw.FlexColumnWidth(1),
-                    3: pw.FlexColumnWidth(1),
-                    4: pw.FlexColumnWidth(1),
-                    5: pw.FlexColumnWidth(1),
-                    6: pw.FlexColumnWidth(1),
-                  },
-                  children: [
-                    // Day headers: Sun - Sat
-                    pw.TableRow(
-                      decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-                      children: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d) {
-                        final isSun = d == 'SUN';
-                        return pw.Container(
-                          padding: const pw.EdgeInsets.symmetric(vertical: 4),
-                          alignment: pw.Alignment.center,
-                          child: pw.Text(
-                            d,
-                            style: pw.TextStyle(
-                              fontSize: 8,
-                              fontWeight: pw.FontWeight.bold,
-                              color: isSun ? PdfColors.red800 : PdfColors.grey800,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-
-                    // Week rows
-                    for (int w = 0; w < totalWeeks; w++)
+            if (isWholeYear) {
+              content.add(
+                pw.Container(
+                  margin: const pw.EdgeInsets.only(bottom: 10),
+                  child: pw.Table(
+                    children: [
+                      for (int r = 0; r < 3; r++)
+                        pw.TableRow(
+                          children: [
+                            for (int c = 0; c < 4; c++)
+                              _buildMiniMonth(year, r * 4 + c + 1, schedules),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            } else {
+              content.add(
+                pw.Container(
+                  margin: const pw.EdgeInsets.only(bottom: 12),
+                  child: pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+                    columnWidths: const {
+                      0: pw.FlexColumnWidth(1),
+                      1: pw.FlexColumnWidth(1),
+                      2: pw.FlexColumnWidth(1),
+                      3: pw.FlexColumnWidth(1),
+                      4: pw.FlexColumnWidth(1),
+                      5: pw.FlexColumnWidth(1),
+                      6: pw.FlexColumnWidth(1),
+                    },
+                    children: [
+                      // Day headers: Sun - Sat
                       pw.TableRow(
-                        children: List.generate(7, (col) {
-                          final cellIndex = w * 7 + col;
-                          if (cellIndex < leadingEmptyDays || cellIndex >= totalCells) {
-                            return pw.Container(
-                              color: PdfColors.grey50,
-                              constraints: const pw.BoxConstraints(minHeight: 46),
-                            );
-                          }
-
-                          final dayNum = cellIndex - leadingEmptyDays + 1;
-                          final daySchedules = schedules.where((s) =>
-                              s.date.year == year &&
-                              s.date.month == month &&
-                              s.date.day == dayNum).toList();
-
+                        decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                        children: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d) {
+                          final isSun = d == 'SUN';
                           return pw.Container(
-                            padding: const pw.EdgeInsets.all(2.5),
-                            constraints: const pw.BoxConstraints(minHeight: 46),
-                            child: pw.Column(
-                              crossAxisAlignment: pw.CrossAxisAlignment.start,
-                              children: [
-                                pw.Row(
-                                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    if (daySchedules.isNotEmpty)
-                                      pw.Container(
-                                        padding: const pw.EdgeInsets.symmetric(horizontal: 2.5, vertical: 0.5),
-                                        decoration: pw.BoxDecoration(
-                                          color: PdfColor.fromInt(0xFF1B5E20),
-                                          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
-                                        ),
-                                        child: pw.Text(
-                                          '${daySchedules.length} act',
-                                          style: const pw.TextStyle(fontSize: 5, color: PdfColors.white),
-                                        ),
-                                      )
-                                    else
-                                      pw.SizedBox(),
-                                    pw.Text(
-                                      '$dayNum',
-                                      style: pw.TextStyle(
-                                        fontSize: 7.5,
-                                        fontWeight: pw.FontWeight.bold,
-                                        color: col == 0 ? PdfColors.red800 : PdfColors.grey900,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                pw.SizedBox(height: 2),
-                                ...daySchedules.take(3).map((s) => _buildDayScheduleCellBadge(s)),
-                                if (daySchedules.length > 3)
-                                  pw.Padding(
-                                    padding: const pw.EdgeInsets.only(top: 1),
-                                    child: pw.Text(
-                                      '+${daySchedules.length - 3} more',
-                                      style: const pw.TextStyle(fontSize: 5, color: PdfColors.grey700),
-                                    ),
-                                  ),
-                              ],
+                            padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                            alignment: pw.Alignment.center,
+                            child: pw.Text(
+                              d,
+                              style: pw.TextStyle(
+                                fontSize: 8,
+                                fontWeight: pw.FontWeight.bold,
+                                color: isSun ? PdfColors.red800 : PdfColors.grey800,
+                              ),
                             ),
                           );
-                        }),
+                        }).toList(),
                       ),
-                  ],
+
+                      // Week rows
+                      for (int w = 0; w < totalWeeks; w++)
+                        pw.TableRow(
+                          children: List.generate(7, (col) {
+                            final cellIndex = w * 7 + col;
+                            if (cellIndex < leadingEmptyDays || cellIndex >= totalCells) {
+                              return pw.Container(
+                                color: PdfColors.grey50,
+                                constraints: const pw.BoxConstraints(minHeight: 46),
+                              );
+                            }
+
+                            final dayNum = cellIndex - leadingEmptyDays + 1;
+                            final daySchedules = schedules.where((s) =>
+                                s.date.year == year &&
+                                s.date.month == month &&
+                                s.date.day == dayNum).toList();
+
+                            return pw.Container(
+                              padding: const pw.EdgeInsets.all(2.5),
+                              constraints: const pw.BoxConstraints(minHeight: 46),
+                              child: pw.Column(
+                                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                children: [
+                                  pw.Row(
+                                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      if (daySchedules.isNotEmpty)
+                                        pw.Container(
+                                          padding: const pw.EdgeInsets.symmetric(horizontal: 2.5, vertical: 0.5),
+                                          decoration: pw.BoxDecoration(
+                                            color: PdfColor.fromInt(0xFF1B5E20),
+                                            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+                                          ),
+                                          child: pw.Text(
+                                            '${daySchedules.length} act',
+                                            style: const pw.TextStyle(fontSize: 5, color: PdfColors.white),
+                                          ),
+                                        )
+                                      else
+                                        pw.SizedBox(),
+                                      pw.Text(
+                                        '$dayNum',
+                                        style: pw.TextStyle(
+                                          fontSize: 7.5,
+                                          fontWeight: pw.FontWeight.bold,
+                                          color: col == 0 ? PdfColors.red800 : PdfColors.grey900,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  pw.SizedBox(height: 2),
+                                  ...daySchedules.take(3).map((s) => _buildDayScheduleCellBadge(s)),
+                                  if (daySchedules.length > 3)
+                                    pw.Padding(
+                                      padding: const pw.EdgeInsets.only(top: 1),
+                                      child: pw.Text(
+                                        '+${daySchedules.length - 3} more',
+                                        style: const pw.TextStyle(fontSize: 5, color: PdfColors.grey700),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            );
+              );
+            }
           }
 
           // ── Activities Table ──────────────────────────────────────────────
@@ -552,6 +574,100 @@ class CalendarSchedulePdfService {
     );
   }
 
+  static pw.Widget _buildMiniMonth(int yr, int m, List<ProgramSchedule> allSchedules) {
+    final firstDay = DateTime(yr, m, 1);
+    final daysInM = DateTime(yr, m + 1, 0).day;
+    final leading = firstDay.weekday % 7;
+    final totalC = leading + daysInM;
+    final weeks = (totalC + 6) ~/ 7;
+
+    return pw.Container(
+      margin: const pw.EdgeInsets.all(2),
+      padding: const pw.EdgeInsets.all(3.5),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(3)),
+        border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Container(
+            alignment: pw.Alignment.center,
+            padding: const pw.EdgeInsets.only(bottom: 2),
+            child: pw.Text(
+              _monthNames[m - 1].toUpperCase(),
+              style: pw.TextStyle(
+                fontSize: 6.5,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColor.fromInt(0xFF1B5E20),
+              ),
+            ),
+          ),
+          pw.Table(
+            children: [
+              pw.TableRow(
+                children: ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d) => pw.Container(
+                  alignment: pw.Alignment.center,
+                  padding: const pw.EdgeInsets.only(bottom: 1),
+                  child: pw.Text(
+                    d,
+                    style: pw.TextStyle(
+                      fontSize: 4.8,
+                      fontWeight: pw.FontWeight.bold,
+                      color: d == 'S' ? PdfColors.red800 : PdfColors.grey700,
+                    ),
+                  ),
+                )).toList(),
+              ),
+              for (int w = 0; w < weeks; w++)
+                pw.TableRow(
+                  children: List.generate(7, (col) {
+                    final idx = w * 7 + col;
+                    if (idx < leading || idx >= totalC) {
+                      return pw.SizedBox();
+                    }
+                    final dayN = idx - leading + 1;
+                    final dayScheds = allSchedules.where((s) =>
+                        s.date.year == yr && s.date.month == m && s.date.day == dayN).toList();
+                    final hasSched = dayScheds.isNotEmpty;
+
+                    return pw.Container(
+                      alignment: pw.Alignment.center,
+                      padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
+                      child: hasSched
+                          ? pw.Container(
+                              padding: const pw.EdgeInsets.symmetric(horizontal: 1.5, vertical: 0.4),
+                              decoration: const pw.BoxDecoration(
+                                color: PdfColors.green800,
+                                borderRadius: pw.BorderRadius.all(pw.Radius.circular(1.5)),
+                              ),
+                              child: pw.Text(
+                                '$dayN',
+                                style: pw.TextStyle(
+                                  fontSize: 4.5,
+                                  color: PdfColors.white,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
+                              ),
+                            )
+                          : pw.Text(
+                              '$dayN',
+                              style: pw.TextStyle(
+                                fontSize: 4.8,
+                                color: col == 0 ? PdfColors.red700 : PdfColors.grey800,
+                              ),
+                            ),
+                    );
+                  }),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   static pw.Widget _buildDayScheduleCellBadge(ProgramSchedule s) {
     final marker = _markerFor(s.programType);
     final color = _colorFor(s.programType);
@@ -605,6 +721,7 @@ class CalendarSchedulePdfService {
     String? bnsName,
     String? purok,
     ReportSignatory? signatory,
+    bool isWholeYear = false,
   }) async {
     final pdfBytes = await generatePdfBytes(
       barangay: barangay,
@@ -616,11 +733,14 @@ class CalendarSchedulePdfService {
       bnsName: bnsName,
       purok: purok,
       signatory: signatory,
+      isWholeYear: isWholeYear,
     );
 
     final sanitizedBarangay = barangay.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
     final monthStr = month.toString().padLeft(2, '0');
-    final targetFileName = 'calendar_schedule_${year}_${monthStr}_$sanitizedBarangay.pdf';
+    final targetFileName = isWholeYear
+        ? 'calendar_schedule_${year}_whole_year_$sanitizedBarangay.pdf'
+        : 'calendar_schedule_${year}_${monthStr}_$sanitizedBarangay.pdf';
 
     // Write to temporary local file
     final tempDir = await getTemporaryDirectory();
@@ -729,6 +849,7 @@ class CalendarSchedulePdfService {
     String? bnsName,
     String? purok,
     ReportSignatory? signatory,
+    bool isWholeYear = false,
   }) async {
     final pdfBytes = await generatePdfBytes(
       barangay: barangay,
@@ -740,11 +861,14 @@ class CalendarSchedulePdfService {
       bnsName: bnsName,
       purok: purok,
       signatory: signatory,
+      isWholeYear: isWholeYear,
     );
 
     final sanitizedBarangay = barangay.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
     final monthStr = month.toString().padLeft(2, '0');
-    final docName = 'calendar_schedule_${year}_${monthStr}_$sanitizedBarangay';
+    final docName = isWholeYear
+        ? 'calendar_schedule_${year}_whole_year_$sanitizedBarangay'
+        : 'calendar_schedule_${year}_${monthStr}_$sanitizedBarangay';
 
     await Printing.layoutPdf(
       onLayout: (format) async => pdfBytes,
@@ -763,6 +887,7 @@ class CalendarSchedulePdfService {
     String? bnsName,
     String? purok,
     ReportSignatory? signatory,
+    bool isWholeYear = false,
   }) async {
     final pdfBytes = await generatePdfBytes(
       barangay: barangay,
@@ -774,11 +899,14 @@ class CalendarSchedulePdfService {
       bnsName: bnsName,
       purok: purok,
       signatory: signatory,
+      isWholeYear: isWholeYear,
     );
 
     final sanitizedBarangay = barangay.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
     final monthStr = month.toString().padLeft(2, '0');
-    final fileName = 'calendar_schedule_${year}_${monthStr}_$sanitizedBarangay.pdf';
+    final fileName = isWholeYear
+        ? 'calendar_schedule_${year}_whole_year_$sanitizedBarangay.pdf'
+        : 'calendar_schedule_${year}_${monthStr}_$sanitizedBarangay.pdf';
 
     await Printing.sharePdf(
       bytes: pdfBytes,
