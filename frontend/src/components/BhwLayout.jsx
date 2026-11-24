@@ -223,6 +223,12 @@ function BHWLayout() {
         <p className="text-xs text-gray-400">Manage account information and security</p>
       </div>
     ),
+    '/bhw/nutrition-corner': (
+      <div className="mb-1 px-4">
+        <h2 className="text-xl font-bold text-gray-800">Nutrition Corner</h2>
+        <p className="text-xs text-gray-400">Nutritional status consolidation, monthly weight monitoring, programs & statutory references</p>
+      </div>
+    ),
   };
 
   const currentTitle = pageTitles[location.pathname] || '';

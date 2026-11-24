@@ -74,11 +74,8 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
   const [consolidationYear, setConsolidationYear] = useState(() => new Date().getFullYear());
   const [consolidationBarangay, setConsolidationBarangay] = useState(() => (!isAdmin && userBarangay ? userBarangay : 'All'));
   const [consolidationData, setConsolidationData] = useState(null);
-  const [schoolData, setSchoolData] = useState([]);
   const [consolidationLoading, setConsolidationLoading] = useState(false);
   const [signatories, setSignatories] = useState([]);
-  const [showSchoolEditModal, setShowSchoolEditModal] = useState(false);
-  const [selectedSchoolItem, setSelectedSchoolItem] = useState(null);
 
   // Tab B State
   const [monitoringYear, setMonitoringYear] = useState(() => new Date().getFullYear());
@@ -144,7 +141,6 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
         },
       });
       setConsolidationData(res.data?.consolidation || []);
-      setSchoolData(res.data?.schoolData || []);
     } catch {
       showAlert('error', 'Failed to load nutritional status consolidation.');
     } finally {
@@ -247,18 +243,6 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
     }));
   }, [consolidationData]);
 
-  const schoolChartData = useMemo(() => {
-    if (!schoolData) return [];
-    return schoolData.map((d) => ({
-      year: d.school_year,
-      Normal: d.normal,
-      Wasted: d.wasted,
-      'Severely Wasted': d.severely_wasted,
-      Overweight: d.overweight,
-      Obese: d.obese,
-    }));
-  }, [schoolData]);
-
   // ─────────────────────────────────────────────────────────────
   // Tab A: Print & Export
   // ─────────────────────────────────────────────────────────────
@@ -351,25 +335,6 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
     </tbody>
   </table>
 
-  <div class="section-title">4. School Children Nutritional Status</div>
-  <table>
-    <thead>
-      <tr>
-        <th>Classification</th>
-        ${schoolData.map((s) => `<th class="text-center">${s.school_year}</th>`).join('')}
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td><strong>Total Enrolled</strong></td>${schoolData.map((s) => `<td class="text-center">${s.total_enrolled}</td>`).join('')}</tr>
-      <tr><td><strong>Total Measured</strong></td>${schoolData.map((s) => `<td class="text-center">${s.total_measured}</td>`).join('')}</tr>
-      <tr><td>Normal</td>${schoolData.map((s) => `<td class="text-center">${s.normal}</td>`).join('')}</tr>
-      <tr><td>Wasted</td>${schoolData.map((s) => `<td class="text-center">${s.wasted}</td>`).join('')}</tr>
-      <tr><td>Severely Wasted</td>${schoolData.map((s) => `<td class="text-center font-bold" style="color:#b91c1c;">${s.severely_wasted}</td>`).join('')}</tr>
-      <tr><td>Overweight</td>${schoolData.map((s) => `<td class="text-center">${s.overweight}</td>`).join('')}</tr>
-      <tr><td>Obese</td>${schoolData.map((s) => `<td class="text-center">${s.obese}</td>`).join('')}</tr>
-    </tbody>
-  </table>
-
   <div class="signatures">
     ${signatories.map((sig) => `
       <div class="sig-col">
@@ -427,17 +392,6 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
     csv += `Stunted,${consolidationData.map((d) => `"${d.hfa.stunted.count} (${d.hfa.stunted.pct}%)"`).join(',')}\n`;
     csv += `Severely Stunted,${consolidationData.map((d) => `"${d.hfa.severely_stunted.count} (${d.hfa.severely_stunted.pct}%)"`).join(',')}\n`;
     csv += `Tall,${consolidationData.map((d) => `"${d.hfa.tall.count} (${d.hfa.tall.pct}%)"`).join(',')}\n\n`;
-
-    // 4. School
-    csv += `4. SCHOOL CHILDREN NUTRITIONAL STATUS\n`;
-    csv += `Classification,${schoolData.map((s) => s.school_year).join(',')}\n`;
-    csv += `Total Enrolled,${schoolData.map((s) => s.total_enrolled).join(',')}\n`;
-    csv += `Total Measured,${schoolData.map((s) => s.total_measured).join(',')}\n`;
-    csv += `Normal,${schoolData.map((s) => s.normal).join(',')}\n`;
-    csv += `Wasted,${schoolData.map((s) => s.wasted).join(',')}\n`;
-    csv += `Severely Wasted,${schoolData.map((s) => s.severely_wasted).join(',')}\n`;
-    csv += `Overweight,${schoolData.map((s) => s.overweight).join(',')}\n`;
-    csv += `Obese,${schoolData.map((s) => s.obese).join(',')}\n`;
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -671,51 +625,21 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
     }
   };
 
-  const handleSaveSchoolData = async (e) => {
-    e.preventDefault();
-    if (!selectedSchoolItem) return;
-    try {
-      await axiosClient.post('/nutrition-corner/school-data', selectedSchoolItem);
-      showAlert('success', 'School children data saved successfully.');
-      setShowSchoolEditModal(false);
-      fetchConsolidation();
-    } catch {
-      showAlert('error', 'Failed to save school children data.');
-    }
-  };
-
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Top Banner / Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
-              <HeartPulse size={24} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Nutrition Corner</h1>
-              <p className="text-xs sm:text-sm text-slate-500">
-                Nutritional status consolidation, monthly weight monitoring, programs & statutory references
-              </p>
-            </div>
-          </div>
+    <div className="space-y-6">
+      {/* Global Notification Alert */}
+      {alertMsg.text && (
+        <div
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-sm ${
+            alertMsg.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              : 'bg-rose-50 text-rose-800 border border-rose-200'
+          }`}
+        >
+          {alertMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+          {alertMsg.text}
         </div>
-
-        {/* Global Notification Alert */}
-        {alertMsg.text && (
-          <div
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-sm ${
-              alertMsg.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                : 'bg-rose-50 text-rose-800 border border-rose-200'
-            }`}
-          >
-            {alertMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-            {alertMsg.text}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Tabs Navigation */}
       <div className="flex border-b border-slate-200 overflow-x-auto gap-2 text-sm font-medium">
@@ -1122,116 +1046,6 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
                             <td key={d.year} className="py-2 px-3 text-center">
                               {d.hfa.tall.count} <span className="text-slate-400 text-xs font-normal">({d.hfa.tall.pct}%)</span>
                             </td>
-                          ))}
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-
-              {/* Indicator 4: School Children */}
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-                  <div>
-                    <h2 className="text-base font-bold text-slate-800">4. School Children Nutritional Status</h2>
-                    <p className="text-xs text-slate-500">Elementary school children nutritional status (DepEd SY tracking)</p>
-                  </div>
-                  {isAdmin && (
-                    <button
-                      onClick={() => {
-                        setSelectedSchoolItem(schoolData[0] || {
-                          school_year: '2024-2025',
-                          barangay: consolidationBarangay === 'All' ? 'All Barangays' : consolidationBarangay,
-                          total_enrolled: 1200,
-                          total_measured: 1180,
-                          normal: 1050,
-                          wasted: 60,
-                          severely_wasted: 20,
-                          overweight: 30,
-                          obese: 20,
-                        });
-                        setShowSchoolEditModal(true);
-                      }}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
-                    >
-                      <Edit size={14} />
-                      <span>Edit School Data</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  {/* Left: Recharts Bar Chart */}
-                  <div className="lg:col-span-6 h-64 sm:h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={schoolChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                        <XAxis dataKey="year" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip />
-                        <Legend wrapperStyle={{ fontSize: 11 }} />
-                        <Bar dataKey="Normal" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Wasted" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Severely Wasted" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Overweight" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Obese" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Right: Table */}
-                  <div className="lg:col-span-6 overflow-x-auto">
-                    <table className="w-full text-xs sm:text-sm text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 text-slate-600 border-b border-slate-200">
-                          <th className="py-2.5 px-3 font-semibold">Classification</th>
-                          {schoolData.map((s) => (
-                            <th key={s.school_year} className="py-2.5 px-3 text-center font-bold text-slate-700">{s.school_year}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 text-slate-700">
-                        <tr className="bg-slate-50/50 font-semibold">
-                          <td className="py-2 px-3">Total Enrolled</td>
-                          {schoolData.map((s) => (
-                            <td key={s.school_year} className="py-2 px-3 text-center">{s.total_enrolled}</td>
-                          ))}
-                        </tr>
-                        <tr className="bg-slate-50/50 font-semibold">
-                          <td className="py-2 px-3">Total Measured</td>
-                          {schoolData.map((s) => (
-                            <td key={s.school_year} className="py-2 px-3 text-center">{s.total_measured}</td>
-                          ))}
-                        </tr>
-                        <tr>
-                          <td className="py-2 px-3">Normal</td>
-                          {schoolData.map((s) => (
-                            <td key={s.school_year} className="py-2 px-3 text-center">{s.normal}</td>
-                          ))}
-                        </tr>
-                        <tr>
-                          <td className="py-2 px-3">Wasted</td>
-                          {schoolData.map((s) => (
-                            <td key={s.school_year} className="py-2 px-3 text-center">{s.wasted}</td>
-                          ))}
-                        </tr>
-                        <tr>
-                          <td className="py-2 px-3 text-rose-700 font-semibold">Severely Wasted</td>
-                          {schoolData.map((s) => (
-                            <td key={s.school_year} className="py-2 px-3 text-center font-bold text-rose-700">{s.severely_wasted}</td>
-                          ))}
-                        </tr>
-                        <tr>
-                          <td className="py-2 px-3">Overweight</td>
-                          {schoolData.map((s) => (
-                            <td key={s.school_year} className="py-2 px-3 text-center">{s.overweight}</td>
-                          ))}
-                        </tr>
-                        <tr>
-                          <td className="py-2 px-3">Obese</td>
-                          {schoolData.map((s) => (
-                            <td key={s.school_year} className="py-2 px-3 text-center">{s.obese}</td>
                           ))}
                         </tr>
                       </tbody>
@@ -1825,138 +1639,7 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────
-          MODAL: EDIT SCHOOL CHILDREN DATA (Admin only)
-      ───────────────────────────────────────────────────────────── */}
-      {showSchoolEditModal && selectedSchoolItem && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-800">Edit School Children Nutritional Data</h3>
-              <button
-                onClick={() => setShowSchoolEditModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
-              >
-                <X size={18} />
-              </button>
-            </div>
 
-            <form onSubmit={handleSaveSchoolData} className="p-5 space-y-4 text-xs sm:text-sm">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">School Year</label>
-                  <input
-                    type="text"
-                    value={selectedSchoolItem.school_year}
-                    onChange={(e) => setSelectedSchoolItem({ ...selectedSchoolItem, school_year: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 font-semibold"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Barangay</label>
-                  <input
-                    type="text"
-                    value={selectedSchoolItem.barangay || 'All Barangays'}
-                    disabled
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-100 text-slate-500 font-semibold"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Total Enrolled</label>
-                  <input
-                    type="number"
-                    value={selectedSchoolItem.total_enrolled}
-                    onChange={(e) => setSelectedSchoolItem({ ...selectedSchoolItem, total_enrolled: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Total Measured</label>
-                  <input
-                    type="number"
-                    value={selectedSchoolItem.total_measured}
-                    onChange={(e) => setSelectedSchoolItem({ ...selectedSchoolItem, total_measured: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Normal</label>
-                  <input
-                    type="number"
-                    value={selectedSchoolItem.normal}
-                    onChange={(e) => setSelectedSchoolItem({ ...selectedSchoolItem, normal: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Wasted</label>
-                  <input
-                    type="number"
-                    value={selectedSchoolItem.wasted}
-                    onChange={(e) => setSelectedSchoolItem({ ...selectedSchoolItem, wasted: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1 text-rose-700">Severely Wasted</label>
-                  <input
-                    type="number"
-                    value={selectedSchoolItem.severely_wasted}
-                    onChange={(e) => setSelectedSchoolItem({ ...selectedSchoolItem, severely_wasted: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-rose-700"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Overweight</label>
-                  <input
-                    type="number"
-                    value={selectedSchoolItem.overweight}
-                    onChange={(e) => setSelectedSchoolItem({ ...selectedSchoolItem, overweight: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Obese</label>
-                  <input
-                    type="number"
-                    value={selectedSchoolItem.obese}
-                    onChange={(e) => setSelectedSchoolItem({ ...selectedSchoolItem, obese: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowSchoolEditModal(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 font-semibold hover:bg-slate-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-semibold transition"
-                >
-                  Save Data
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* ─────────────────────────────────────────────────────────────
           MODAL: ADD / EDIT PROGRAM (Admin only)
