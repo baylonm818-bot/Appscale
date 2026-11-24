@@ -120,25 +120,19 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.13';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 46);
+    const version = process.env.APP_VERSION || '3.3.14';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 47);
     const notesEn = [
-        "Home Dashboard: compact greeting, sync status pill, non-overlapping notification badge, and barangay logo avatar",
-        "Redesigned clean white stat cards with subtle top accent bars and circular icon containers",
-        "Clarified SAM (severe wasting) count and consolidated severe indicators in Nutritional Status card",
-        "Added Today card with today's scheduled activities, children due for weighing, and quick schedule link",
-        "Added year selector and nutritional status comparison chart (WFA, WFH, HFA) on dashboard",
-        "Tappable nutritional status rows navigating to filtered masterlist",
-        "Web Portal: Added Nutrition Corner menu (Consolidation of Nutritional Status, BNS Monthly Weight Monitoring Chart, Programs, Laws and References)"
+        "Programs & Schedule: Print & Export calendar of schedule with layout options (Calendar + List, List only, Calendar only)",
+        "Restored classic Home Dashboard with solid stat cards and WHO Nutritional Status bars",
+        "Clean Child and Mother Profiles with stable history cards and reliable sync",
+        "General stability and offline data improvements"
     ];
     const notesTl = [
-        "Home Dashboard: pinaikling pagbati, sync status pill, maayos na notification badge, at logo ng barangay",
-        "Puting stat cards na may banayad na kulay na accent bar at bilog na lalagyan ng icon",
-        "Pinaayos na bilang para sa SAM (severe wasting) at consolidated severe indicators",
-        "Bagong Today card para sa mga aktibidad ngayong araw, mga batang dapat timbangin, at link sa iskedyul",
-        "Taunang tagapili at tsart ng katayuan sa nutrisyon (WFA, WFH, HFA)",
-        "Napipindot na listahan ng katayuan sa nutrisyon patungo sa na-filter na masterlist",
-        "Web Portal: Bagong Nutrition Corner (Consolidation, Buwanang Weight Monitoring, Mga Programa, at Batas)"
+        "Mga Programa at Iskedyul: Pag-print at pag-export ng kalendaryo ng iskedyul (Calendar + List, List lamang, Calendar lamang)",
+        "Ibinalik ang klasikong Home Dashboard na may solid stat cards at WHO Nutritional Status bars",
+        "Maayos na Profile ng Bata at Ina na may matatag na history cards at maaasahang pag-sync",
+        "Pangkalahatang katatagan at pagpapabuti sa offline data"
     ];
     const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 
