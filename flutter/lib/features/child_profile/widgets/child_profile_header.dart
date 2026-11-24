@@ -6,6 +6,7 @@ import '../../../data/local/measurement_repository.dart';
 import '../../../data/local/referral_repository.dart';
 import '../../../data/models/child.dart';
 import '../../masterlist/widgets/status_badge.dart';
+import '../../referrals/widgets/referral_detail_sheet.dart';
 import '../../../shared/utils/app_date_format.dart';
 
 class ChildProfileHeader extends StatelessWidget {
@@ -100,19 +101,19 @@ class ChildProfileHeader extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               if (isActive && !child.isTransferPending) ...[
                 _MeasureButton(onPressed: onMeasurePressed),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
               ],
               _OverflowMenu(
                 isActive: isActive,
                 isTransferPending: child.isTransferPending,
-                onEditPressed: onEditPressed,
-                onStatusActionPressed: onStatusActionPressed,
-                showReferAction: isActive &&
+                canRefer: isActive &&
                     !child.isTransferPending &&
                     activeReferral == null &&
                     referralStatus.showReferButton &&
                     onReferralPressed != null,
-                onReferPressed: onReferralPressed,
+                onEditPressed: onEditPressed,
+                onStatusActionPressed: onStatusActionPressed,
+                onReferralPressed: onReferralPressed,
               ),
             ],
           ),
@@ -276,18 +277,18 @@ class ChildProfileHeader extends StatelessWidget {
 class _OverflowMenu extends StatelessWidget {
   final bool isActive;
   final bool isTransferPending;
+  final bool canRefer;
   final VoidCallback onEditPressed;
   final VoidCallback onStatusActionPressed;
-  final bool showReferAction;
-  final VoidCallback? onReferPressed;
+  final VoidCallback? onReferralPressed;
 
   const _OverflowMenu({
     required this.isActive,
     this.isTransferPending = false,
+    this.canRefer = false,
     required this.onEditPressed,
     required this.onStatusActionPressed,
-    this.showReferAction = false,
-    this.onReferPressed,
+    this.onReferralPressed,
   });
 
   @override
@@ -303,26 +304,11 @@ class _OverflowMenu extends StatelessWidget {
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (value) {
-        if (value == 'refer') onReferPressed?.call();
         if (value == 'edit') onEditPressed();
         if (value == 'status') onStatusActionPressed();
+        if (value == 'refer') onReferralPressed?.call();
       },
       itemBuilder: (context) => [
-        if (showReferAction)
-          const PopupMenuItem(
-            value: 'refer',
-            child: Row(
-              children: [
-                Icon(
-                  Icons.assignment_turned_in_outlined,
-                  size: 18,
-                  color: AppColors.statOrange,
-                ),
-                SizedBox(width: 10),
-                Text('Refer child to BHW'),
-              ],
-            ),
-          ),
         if (!isTransferPending)
           const PopupMenuItem(
             value: 'edit',
@@ -335,6 +321,21 @@ class _OverflowMenu extends StatelessWidget {
                 ),
                 SizedBox(width: 10),
                 Text('Edit profile'),
+              ],
+            ),
+          ),
+        if (canRefer)
+          const PopupMenuItem(
+            value: 'refer',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.assignment_turned_in_outlined,
+                  size: 18,
+                  color: AppColors.statOrange,
+                ),
+                SizedBox(width: 10),
+                Text('Refer to BHW'),
               ],
             ),
           ),
@@ -390,6 +391,83 @@ class _MeasureButton extends StatelessWidget {
                   color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReferralButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _ReferralButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.statOrange,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(20),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.assignment_turned_in_outlined, color: Colors.white, size: 14),
+              SizedBox(width: 3),
+              Text(
+                'Refer',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ViewReferralButton extends StatelessWidget {
+  final String status;
+  final DateTime date;
+  final VoidCallback onPressed;
+
+  const _ViewReferralButton({
+    required this.status,
+    required this.date,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.22),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.visibility_outlined, color: Colors.white, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                'View referral ($status)',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

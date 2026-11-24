@@ -1,7 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../app_strings.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../shared/utils/barangay_assets.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_gradient_header.dart';
 
 class DashboardHeader extends StatelessWidget {
@@ -28,58 +31,125 @@ class DashboardHeader extends StatelessWidget {
     this.onProfileTap,
   });
 
-  /// Normalizes profile picture URL to handle server paths and fallbacks
   static String? normalizeProfileImageUrl(String? value) {
     if (value == null || value.trim().isEmpty) return null;
     final resolved = ApiConstants.resolveMediaUrl(value);
     return resolved.isNotEmpty ? resolved : null;
   }
 
-  Widget _buildBarangayAvatar() {
-    final cleanBarangay = barangayName.replaceFirst(RegExp(r'^Barangay\s+', caseSensitive: false), '').trim();
-    final sealAssetPath = getBarangaySealAssetPath(cleanBarangay);
-
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+  Widget _buildAvatarWidget(String? rawUrl, String initials) {
+    if (rawUrl == null || rawUrl.trim().isEmpty) {
+      return CircleAvatar(
+        radius: 18,
+        backgroundColor: Colors.white,
+        child: Text(
+          initials,
+          style: const TextStyle(
+            color: AppColors.darkGreen,
+            fontWeight: FontWeight.w700,
           ),
-        ],
-      ),
-      child: ClipOval(
-        child: Image.asset(
-          sealAssetPath,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _buildFallbackProfileAvatar(),
         ),
-      ),
-    );
-  }
+      );
+    }
 
-  Widget _buildFallbackProfileAvatar() {
-    final initials = bnsName.trim().split(RegExp(r'\s+')).length >= 2
-        ? (bnsName.trim().split(RegExp(r'\s+'))[0][0] +
-                bnsName.trim().split(RegExp(r'\s+'))[1][0])
-            .toUpperCase()
-        : (bnsName.trim().isNotEmpty ? bnsName.trim()[0].toUpperCase() : 'B');
+    final trimmed = rawUrl.trim();
+    final isLocalPath = trimmed.contains('profile_photos') ||
+        trimmed.startsWith('/data/') ||
+        trimmed.startsWith('/storage/') ||
+        trimmed.startsWith('/var/') ||
+        trimmed.startsWith('file://') ||
+        (Platform.isWindows && (trimmed.contains(r':\') || trimmed.contains(':/'))) ||
+        (trimmed.startsWith('/') &&
+            !trimmed.startsWith('/uploads/') &&
+            !trimmed.startsWith('/profile-pictures/'));
 
-    return Container(
-      alignment: Alignment.center,
-      color: Colors.white,
+    if (isLocalPath) {
+      final cleanPath = trimmed.replaceFirst(RegExp(r'^file://'), '');
+      final file = File(cleanPath);
+      if (file.existsSync()) {
+        return ClipOval(
+          child: Image.file(
+            file,
+            width: 36,
+            height: 36,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.white,
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: AppColors.darkGreen,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    if (trimmed.startsWith('data:')) {
+      try {
+        final commaIdx = trimmed.indexOf(',');
+        if (commaIdx != -1) {
+          final bytes = base64Decode(trimmed.substring(commaIdx + 1));
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              width: 36,
+              height: 36,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.white,
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    color: AppColors.darkGreen,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('[DashboardHeader] Base64 avatar decode error: $e');
+      }
+    }
+
+    final networkUrl = normalizeProfileImageUrl(trimmed);
+    if (networkUrl != null && (networkUrl.startsWith('http://') || networkUrl.startsWith('https://'))) {
+      return ClipOval(
+        child: Image.network(
+          networkUrl,
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.white,
+            child: Text(
+              initials,
+              style: const TextStyle(
+                color: AppColors.darkGreen,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 18,
+      backgroundColor: Colors.white,
       child: Text(
         initials,
         style: const TextStyle(
           color: AppColors.darkGreen,
           fontWeight: FontWeight.w700,
-          fontSize: 14,
         ),
       ),
     );
@@ -87,139 +157,102 @@ class DashboardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final initials = bnsName.trim().split(RegExp(r'\s+')).length >= 2
+        ? (bnsName.trim().split(RegExp(r'\s+'))[0][0] +
+                bnsName.trim().split(RegExp(r'\s+'))[1][0])
+            .toUpperCase()
+        : (bnsName.trim().isNotEmpty ? bnsName.trim()[0].toUpperCase() : '?');
+
     return AppGradientHeader(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Compact greeting & Barangay Name & Sync Status Pill
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Welcome, $bnsName',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
+                  'welcome'.tr,
+                  style: AppTextStyles.body.copyWith(
+                    color: Colors.white70,
+                    fontSize: 15,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                Text(
+                  bnsName,
+                  style: AppTextStyles.h1.copyWith(
+                    color: Colors.white,
+                    fontSize: 25,
+                  ),
+                ),
                 Text(
                   barangayName,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-                // Sync status pill ("0 pending")
-                InkWell(
-                  onTap: onSyncTap,
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                    decoration: BoxDecoration(
-                      color: pendingSyncCount > 0
-                          ? AppColors.statOrange.withValues(alpha: 0.25)
-                          : Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: pendingSyncCount > 0
-                            ? AppColors.statOrange.withValues(alpha: 0.6)
-                            : Colors.white.withValues(alpha: 0.35),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          pendingSyncCount > 0 ? Icons.sync_problem : Icons.cloud_done_outlined,
-                          size: 13,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          '$pendingSyncCount pending',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                  style: AppTextStyles.body.copyWith(
+                    color: Colors.white70,
+                    fontSize: 14,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 12),
-
-          // 2. Notification bell with non-overlapping badge
-          GestureDetector(
-            onTap: onNotificationTap,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                shape: BoxShape.circle,
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [
-                  const Icon(
-                    Icons.notifications_outlined,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  if (unreadNotificationCount > 0)
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: AppColors.statRed,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.darkGreen, width: 1.5),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 15,
-                          minHeight: 15,
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          unreadNotificationCount > 9 ? '9+' : '$unreadNotificationCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w700,
-                            height: 1,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: onNotificationTap,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.notifications_outlined,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                    if (unreadNotificationCount > 0)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: AppColors.statRed,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            unreadNotificationCount > 9
+                                ? '9+'
+                                : '$unreadNotificationCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              height: 1,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 10),
-
-          // 3. Barangay logo avatar
-          GestureDetector(
-            onTap: onProfileTap,
-            child: _buildBarangayAvatar(),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: onProfileTap,
+                child: _buildAvatarWidget(profileImageUrl, initials),
+              ),
+            ],
           ),
         ],
       ),

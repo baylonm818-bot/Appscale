@@ -69,17 +69,3 @@ class NutritionCounts {
     required this.notWeighedCount,
   });
 }
-
-class YearlyNutritionBreakdown {
-  final int year;
-  final int totalWeighed;
-  final Map<String, int> counts;
-  final Map<String, double> percents;
-
-  const YearlyNutritionBreakdown({
-    required this.year,
-    required this.totalWeighed,
-    required this.counts,
-    required this.percents,
-  });
-}
