@@ -119,21 +119,23 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.8';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 41);
+    const version = process.env.APP_VERSION || '3.3.9';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 42);
     const notesEn = [
-        "Tappable download complete notifications opening PDF and Excel reports directly",
-        "Floating in-app snackbar with OPEN action button above export controls",
-        "Overhauled 6-digit OTP verification screen with auto-advance and shake on error",
-        "Enhanced Forgot Password flow with SMS as second verification option",
-        "Security hardening: constant-time login checks, account lockout protection, and secure token storage"
+        "Clean profile headers: removed referral clutter and eliminated button overflow",
+        "Refer action now safely placed inside the three-dot menu when needed",
+        "Visit history shows labeled rows (Observation, Concern, Feeding, Referral) and accurate status badges",
+        "Mother's Signature Attached badge on counseling visits with drawing and offline sync",
+        "Refined language selector with fixed width and one-line settings subtitles",
+        "Pinned search bar and filter chips in Masterlist with shortened, 3-column child cards"
     ];
     const notesTl = [
-        "Maaaring pindutin ang abiso ng pag-download upang buksan agad ang mga ulat ng PDF at Excel",
-        "Lumulutang na snackbar na may buton na OPEN sa itaas ng mga pindutan ng pag-export",
-        "Pinahusay na 6-digit OTP screen na may awtomatikong pagsulong at shake animation",
-        "Mas ligtas na pag-reset ng password na may opsyon para sa SMS OTP verification",
-        "Pinatibay na seguridad: proteksyon laban sa pag-atake, lockout pagkatapos ng 5 pagsubok, at secure token storage"
+        "Malinis na profile headers: inalis ang kalat ng referral at overflow sa header",
+        "Ang opsyon sa pag-refer ay inilagay sa loob ng three-dot menu kapag kinakailangan",
+        "Talaan ng pagbisita na may nakalinyang impormasyon at tamang kulay ng badge",
+        "Tatak ng Lagda ng Ina sa mga pagbisita na may maayos na drawing at offline sync",
+        "Maayos na pagpili ng wika na may nakatakdang lapad at malinaw na mga subtitle sa settings",
+        "Naka-pin na search bar at filter chips sa Masterlist na may pinaikling 3-column na card ng bata"
     ];
     const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 

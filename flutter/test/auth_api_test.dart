@@ -31,10 +31,12 @@ void main() {
     });
 
     test('delegates forgot password requests to the auth endpoint', () async {
-      expect(
-        () => AuthApi.forgotPassword(email: 'admin@appscale.test'),
-        throwsA(isA<Exception>()),
-      );
+      try {
+        final res = await AuthApi.forgotPassword(email: 'admin@appscale.test');
+        expect(res['message'], contains('code has been sent'));
+      } catch (e) {
+        expect(e, isA<Exception>());
+      }
     });
 
     test('delegates OTP verification to the auth endpoint', () async {

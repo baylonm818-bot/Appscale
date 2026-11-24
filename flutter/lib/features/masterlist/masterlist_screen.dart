@@ -264,58 +264,74 @@ class MasterlistScreenState extends State<MasterlistScreen> {
                 onChanged: (v) => setState(() => _showingActive = v),
               ),
             ),
+            // Pinned Search Bar and Filter Chips
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.sm,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MasterlistSearchBar(
+                    hint: _category == MasterlistCategory.children
+                        ? 'search_children'.tr
+                        : 'search_mothers'.tr,
+                    onChanged: (v) => setState(() => _query = v),
+                    onFilterTap: _openSortSheet,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildFilterChips(),
+                ],
+              ),
+            ),
+            // Clipped Scrollable List below pinned controls
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.md,
-                  AppSpacing.lg,
-                  150,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    MasterlistSearchBar(
-                      hint: _category == MasterlistCategory.children
-                          ? 'search_children'.tr
-                          : 'search_mothers'.tr,
-                      onChanged: (v) => setState(() => _query = v),
-                      onFilterTap: _openSortSheet,
-                    ),
-                    const SizedBox(height: 10),
-                    _buildFilterChips(),
-                    const SizedBox(height: AppSpacing.md),
-                    if (!_showingActive) ...[
-                      Row(
-                        children: [
-                          Icon(
-                            _category == MasterlistCategory.children
-                                ? Icons.school_outlined
-                                : Icons.no_food_outlined,
-                            size: 14,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _category == MasterlistCategory.children
-                                ? 'children_completed_monitoring'.tr
-                                : 'mothers_stopped_breastfeeding'.tr,
-                            style: AppTextStyles.body.copyWith(
-                              fontSize: 11,
+              child: ClipRect(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    4,
+                    AppSpacing.lg,
+                    160,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!_showingActive) ...[
+                        Row(
+                          children: [
+                            Icon(
+                              _category == MasterlistCategory.children
+                                  ? Icons.school_outlined
+                                  : Icons.no_food_outlined,
+                              size: 14,
                               color: AppColors.textMuted,
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
+                            const SizedBox(width: 6),
+                            Text(
+                              _category == MasterlistCategory.children
+                                  ? 'children_completed_monitoring'.tr
+                                  : 'mothers_stopped_breastfeeding'.tr,
+                              style: AppTextStyles.body.copyWith(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
+                      if (_isLoading)
+                        _buildShimmerList()
+                      else if (_category == MasterlistCategory.children)
+                        _buildChildrenList()
+                      else
+                        _buildMothersList(),
                     ],
-                    if (_isLoading)
-                      _buildShimmerList()
-                    else if (_category == MasterlistCategory.children)
-                      _buildChildrenList()
-                    else
-                      _buildMothersList(),
-                  ],
+                  ),
                 ),
               ),
             ),

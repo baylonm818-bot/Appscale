@@ -7,8 +7,6 @@ import '../../../data/local/referral_repository.dart';
 import '../../../data/models/mother.dart';
 import '../../masterlist/utils/mother_status_meta.dart';
 import '../../masterlist/widgets/status_badge.dart';
-import '../../referrals/widgets/referred_header_badge.dart';
-import '../../referrals/widgets/referral_detail_sheet.dart';
 
 const _kAccent = Color(0xFF1B5E20);
 const _kAccentDark = Color(0xFF2E7D32);
@@ -84,20 +82,7 @@ class MotherProfileHeader extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               if (mother.isActive && !mother.isTransferPending) ...[
                 _AddVisitButton(onPressed: onAddVisitPressed),
-                if (referralStatus.showReferButton) ...[
-                  const SizedBox(width: 6),
-                  _ReferralButton(onPressed: onReferralPressed),
-                ] else if (referralStatus.referral != null) ...[
-                  const SizedBox(width: 6),
-                  ReferredHeaderBadge(
-                    referral: referralStatus.referral!,
-                    onTap: () => ReferralDetailSheet.show(
-                      context,
-                      referral: referralStatus.referral!,
-                    ),
-                  ),
-                ],
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
               ],
               _OverflowMenu(
                 isActive: mother.isActive,
@@ -185,20 +170,6 @@ class MotherProfileHeader extends StatelessWidget {
                   color: AppColors.textMuted,
                   onDark: true,
                 ),
-              if (referralStatus.chipLabel != null)
-                GestureDetector(
-                  onTap: referralStatus.referral != null
-                      ? () => ReferralDetailSheet.show(
-                            context,
-                            referral: referralStatus.referral!,
-                          )
-                      : null,
-                  child: StatusBadge(
-                    label: referralStatus.chipLabel!,
-                    color: referralStatus.chipColor!,
-                    onDark: true,
-                  ),
-                ),
             ],
           ),
         ],
@@ -240,26 +211,9 @@ class _OverflowMenu extends StatelessWidget {
         if (value == 'edit') onEditPressed();
         if (value == 'status') onStatusActionPressed();
         if (value == 'refer') onReferralPressed();
-        if (value == 'view_referral' && referralStatus.referral != null) {
-          ReferralDetailSheet.show(context, referral: referralStatus.referral!);
-        }
       },
       itemBuilder: (context) => [
         if (!isTransferPending) ...[
-          const PopupMenuItem(
-            value: 'edit',
-            child: Row(
-              children: [
-                Icon(
-                  Icons.edit_outlined,
-                  size: 18,
-                  color: AppColors.textSecondary,
-                ),
-                SizedBox(width: 10),
-                Text('Edit profile'),
-              ],
-            ),
-          ),
           if (referralStatus.showReferButton) ...[
             const PopupMenuItem(
               value: 'refer',
@@ -275,22 +229,21 @@ class _OverflowMenu extends StatelessWidget {
                 ],
               ),
             ),
-          ] else if (referralStatus.referral != null) ...[
-            const PopupMenuItem(
-              value: 'view_referral',
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.assignment_turned_in,
-                    size: 18,
-                    color: AppColors.primaryGreen,
-                  ),
-                  SizedBox(width: 10),
-                  Text('View Referral Details'),
-                ],
-              ),
-            ),
           ],
+          const PopupMenuItem(
+            value: 'edit',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.edit_outlined,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
+                SizedBox(width: 10),
+                Text('Edit profile'),
+              ],
+            ),
+          ),
         ],
         PopupMenuItem(
           value: 'status',
@@ -340,41 +293,6 @@ class _AddVisitButton extends StatelessWidget {
               SizedBox(width: 3),
               Text(
                 'Visit',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ReferralButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _ReferralButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.statOrange,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(20),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.assignment_turned_in_outlined, color: Colors.white, size: 14),
-              SizedBox(width: 3),
-              Text(
-                'Refer',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 12,

@@ -493,17 +493,21 @@ class SyncService {
       final motherId = (ms['mother_external_id'] ?? ms['mother_id'] ?? '').toString();
       if (motherId.isEmpty) continue;
       groupedMv.putIfAbsent(motherId, () => []);
+      final noteStr = (ms['notes'] ?? '').toString();
+      final hasConcernInNotes = noteStr.toLowerCase().contains('concern') || noteStr.contains('Signs of concern');
+      final obs = ms['observation'] ?? (hasConcernInNotes ? 'Signs of concern' : 'Appears well');
       groupedMv[motherId]!.add({
         'date': _dateOnly(ms['service_date']),
         'present': true,
-        'breastfeedingPractice': 'Exclusively breastfeeding',
+        'breastfeedingPractice': ms['dosage'] ?? 'Exclusively breastfeeding',
         'topicsCounseled': [ms['service_name'] ?? 'Maternal Counseling'],
-        'hasMedicalConcern': false,
+        'hasMedicalConcern': hasConcernInNotes,
         'concernNote': null,
-        'observation': 'Appears well',
+        'observation': obs,
         'observationNote': ms['notes'],
-        'needsReferral': false,
+        'needsReferral': hasConcernInNotes,
         'createdAt': DateTime.now().toIso8601String(),
+        'signature': ms['signature'],
         '_syncStatus': 'synced',
       });
     }

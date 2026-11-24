@@ -1398,7 +1398,7 @@ exports.getMobileSync = async (req, res) => {
       ),
       pool.query(
         `SELECT ms.service_id, ms.external_id, ms.mother_id, m.external_id AS mother_external_id,
-                ms.service_type, ms.service_name, ms.dosage, ms.service_date, ms.provided_by, ms.notes
+                ms.service_type, ms.service_name, ms.dosage, ms.service_date, ms.provided_by, ms.notes, ms.signature
          FROM mother_services ms
          INNER JOIN mothers m ON m.mother_id = ms.mother_id
          WHERE ${motherWhere} ORDER BY ms.service_date ASC`,

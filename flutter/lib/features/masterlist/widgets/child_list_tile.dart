@@ -11,76 +11,35 @@ class ChildListTile extends StatelessWidget {
 
   const ChildListTile({super.key, required this.child, required this.onTap});
 
-  Widget _buildIndicator(String type, String rawStatus) {
+  Widget _buildColumn(String type, String rawStatus) {
     final status = ChildStatusMeta.formatStatus(rawStatus);
     final color = ChildStatusMeta.colorFor(status);
 
-    // Full words as requested (e.g. Overweight, not "Overwt")
-    String fullWord;
-    switch (status) {
-      case 'Severely Underweight':
-        fullWord = 'Severely Underweight';
-        break;
-      case 'Severely Stunted':
-        fullWord = 'Severely Stunted';
-        break;
-      case 'Underweight':
-        fullWord = 'Underweight';
-        break;
-      case 'Stunted':
-        fullWord = 'Stunted';
-        break;
-      case 'SAM':
-        fullWord = 'SAM';
-        break;
-      case 'MAM':
-        fullWord = 'MAM';
-        break;
-      case 'Overweight':
-        fullWord = 'Overweight';
-        break;
-      case 'Obese':
-        fullWord = 'Obese';
-        break;
-      case 'Normal':
-        fullWord = 'Normal';
-        break;
-      case 'Tall':
-        fullWord = 'Tall';
-        break;
-      case 'Not weighed':
-        fullWord = 'Not weighed';
-        break;
-      default:
-        fullWord = status;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 5,
-            height: 5,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          type,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMuted,
           ),
-          const SizedBox(width: 4),
-          Text(
-            '$type: $fullWord',
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: color == AppColors.primaryGreen ? AppColors.darkGreen : color,
-            ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          status,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: color == AppColors.primaryGreen ? AppColors.darkGreen : color,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -173,9 +132,9 @@ class ChildListTile extends StatelessWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 3),
-                                  // Line 2: Age and Purok
+                                  // Line 2: Age and Purok (without barangay name)
                                   Text(
-                                    '${child.ageDisplay} · ${child.addressWithBarangay}',
+                                    '${child.ageDisplay} · ${child.formattedAddress.isNotEmpty ? child.formattedAddress : "Purok"}',
                                     style: AppTextStyles.caption.copyWith(
                                       fontSize: 12,
                                       color: AppColors.textMuted,
@@ -183,16 +142,23 @@ class ChildListTile extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  const SizedBox(height: 6),
-                                  // Line 3: WFA / HFA / WFH small colored chips in a single wrapped row
-                                  Wrap(
-                                    spacing: 6,
-                                    runSpacing: 4,
-                                    children: [
-                                      _buildIndicator('WFA', child.nutritionStatus),
-                                      _buildIndicator('HFA', child.stuntingStatus),
-                                      _buildIndicator('WFH', child.wastingStatus),
-                                    ],
+                                  const SizedBox(height: 8),
+                                  // Line 3: Single row of three equal columns (WFA, HFA, WFH)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.background,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(child: _buildColumn('WFA', child.nutritionStatus)),
+                                        Container(width: 1, height: 22, color: AppColors.border),
+                                        Expanded(child: _buildColumn('HFA', child.stuntingStatus)),
+                                        Container(width: 1, height: 22, color: AppColors.border),
+                                        Expanded(child: _buildColumn('WFH', child.wastingStatus)),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
