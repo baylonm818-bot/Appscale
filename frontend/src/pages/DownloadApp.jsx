@@ -1,7 +1,8 @@
 import React from 'react';
-import { Download, CheckCircle2, ShieldAlert, Smartphone } from 'lucide-react';
+import { Download, CheckCircle2, ShieldAlert, Smartphone, QrCode } from 'lucide-react';
 import { API_ORIGIN } from '../api/config';
 import logo from '../assets/logo.png';
+import qrCodeImg from '../assets/appscale_qr.png';
 
 const DownloadApp = () => {
   const handleDownload = () => {
@@ -19,32 +20,44 @@ const DownloadApp = () => {
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
         
         <div className="relative z-10 max-w-lg">
-          <div className="flex items-center gap-3 mb-10">
+          <div className="flex items-center gap-3 mb-8">
             <div className="bg-white p-1.5 rounded-xl shadow-lg">
               <img src={logo} alt="AppScale Logo" className="w-8 h-8 object-contain" />
             </div>
             <span className="text-xl font-bold tracking-widest uppercase">AppScale</span>
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-black mb-6 leading-tight">
+          <h1 className="text-5xl md:text-6xl font-black mb-5 leading-tight">
             Better Health, <br />
             <span className="text-green-300">In Your Hands.</span>
           </h1>
           
-          <p className="text-green-50 text-base md:text-lg mb-10 leading-relaxed max-w-md">
+          <p className="text-green-50 text-base md:text-lg mb-8 leading-relaxed max-w-md">
             AppScale helps Barangay Nutrition Scholars (BNS) connect with communities, record vitals, and monitor child nutrition securely on the go.
           </p>
 
-          <button 
-            onClick={handleDownload}
-            className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-green-900 font-bold text-lg rounded-full shadow-2xl hover:bg-green-50 hover:scale-105 transition-all duration-300 w-full sm:w-auto"
-          >
-            <Download size={24} className="group-hover:-translate-y-1 transition-transform" />
-            Download APK
-          </button>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 mb-4">
+            <button 
+              onClick={handleDownload}
+              className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-green-900 font-bold text-lg rounded-full shadow-2xl hover:bg-green-50 hover:scale-105 transition-all duration-300 w-full sm:w-auto"
+            >
+              <Download size={22} className="group-hover:-translate-y-1 transition-transform" />
+              Download APK
+            </button>
+
+            <div className="flex items-center gap-3 bg-black/25 backdrop-blur-xs p-2.5 rounded-2xl border border-white/15">
+              <img src={qrCodeImg} alt="Download AppScale QR Code" className="w-20 h-20 rounded-xl bg-white p-1 object-contain shadow-md" />
+              <div className="text-left text-xs pr-2">
+                <p className="font-bold text-white text-sm flex items-center gap-1">
+                  <QrCode size={14} className="text-green-300" /> Scan QR
+                </p>
+                <p className="text-green-200/90 text-[11px] mt-0.5">Scan with your phone to download directly</p>
+              </div>
+            </div>
+          </div>
           
-          <p className="mt-4 text-xs text-green-200/80 font-medium">
-            Android App • Free Download • v1.0.0
+          <p className="mt-2 text-xs text-green-200/80 font-medium">
+            Android App &bull; Free Download &bull; v3.3.13 (Latest Release)
           </p>
         </div>
 
