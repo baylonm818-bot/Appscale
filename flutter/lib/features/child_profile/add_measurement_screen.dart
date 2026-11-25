@@ -24,7 +24,6 @@ import '../masterlist/widgets/status_badge.dart';
 import '../referrals/create_referral_screen.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../../shared/widgets/urgent_referral_dialog.dart';
-import '../../shared/widgets/mother_signature_pad.dart';
 
 class AddMeasurementScreen extends StatefulWidget {
   final Child child;
@@ -62,7 +61,6 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
   DateTime _monthYear = DateTime.now();
   bool _edema = false;
   bool _isSaving = false;
-  String? _motherSignature;
 
   Measurement? get _previousEntry {
     final history = _measurementRepo.getForChild(widget.child.id);
@@ -192,8 +190,7 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     return _weightValidation.isError ||
         _heightValidation.isError ||
         _muacValidation.isError ||
-        _plausibilityError != null ||
-        (_motherSignature == null || _motherSignature!.trim().isEmpty);
+        _plausibilityError != null;
   }
 
   String get _hardErrorSummary {
@@ -203,9 +200,6 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     if (_muacValidation.isError) fields.add('MUAC');
     if (_plausibilityError != null) return _plausibilityError!;
     if (fields.isNotEmpty) return 'Ayusin ang error sa ${fields.join(" at ")} bago i-save.';
-    if (_motherSignature == null || _motherSignature!.trim().isEmpty) {
-      return 'Signature is required';
-    }
     return 'Ayusin ang mga invalid value bago i-save.';
   }
 
@@ -672,7 +666,6 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       customBmiStatus: isPlausible ? assessment.weightForLengthStatus : 'Needs re-measurement',
       ageInDays: assessmentDays,
       ageInMonths: _assessmentAgeMonths,
-      signature: _motherSignature,
     );
 
     await _measurementRepo.addMeasurement(widget.child.id, measurement);
@@ -1078,16 +1071,6 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: AppSpacing.lg),
-                    MotherSignaturePad(
-                      title: "Mother / Guardian Signature (Monitoring)",
-                      isRequired: true,
-                      errorMessage: 'Signature is required',
-                      initialSignature: _motherSignature,
-                      onSignatureChanged: (sig) {
-                        setState(() => _motherSignature = sig);
-                      },
-                    ),
                     const SizedBox(height: AppSpacing.xl),
                   ],
                 ),
