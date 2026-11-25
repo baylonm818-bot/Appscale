@@ -1990,6 +1990,11 @@ exports.recordChildService = async (req, res) => {
       const [[c]] = await pool.query('SELECT child_id FROM children WHERE external_id = ? OR child_id = ? LIMIT 1', [child_external_id, child_external_id]);
       if (c) resolvedChildId = c.child_id;
     }
+    if (!resolvedChildId && (req.body.child_name || req.body.name)) {
+      const name = (req.body.child_name || req.body.name).trim();
+      const [[c]] = await pool.query('SELECT child_id FROM children WHERE LOWER(full_name) = LOWER(?) OR LOWER(full_name) LIKE LOWER(?) LIMIT 1', [name, `%${name}%`]);
+      if (c) resolvedChildId = c.child_id;
+    }
     if (!resolvedChildId) {
       return res.status(400).json({ message: 'Valid child is required.' });
     }

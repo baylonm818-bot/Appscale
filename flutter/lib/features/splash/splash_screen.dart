@@ -66,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen>
       Widget nextScreen;
       if (!settings.hasSeenOnboarding) {
         nextScreen = const OnboardingScreen();
-      } else if (settings.hasValidSession) {
+      } else if (settings.hasValidSession && settings.rememberMe) {
         nextScreen = const MainShell();
       } else {
         await settings.clearSession();

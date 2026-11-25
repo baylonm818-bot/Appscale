@@ -120,21 +120,21 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.15';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 48);
+    const version = process.env.APP_VERSION || '3.3.16';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 49);
     const notesEn = [
-        "Child Monitoring: Removed signature requirement on child measurement (visits only)",
-        "Programs & Schedule: Print & Export calendar of schedule with layout options (Calendar + List, List only, Calendar only)",
-        "Restored classic Home Dashboard with solid stat cards and WHO Nutritional Status bars",
-        "Clean Child and Mother Profiles with stable history cards and reliable sync",
-        "General stability and offline data improvements"
+        "Sync & Offline: Full Vitamin A real-time synchronization, automatic retry, and immediate queue refresh",
+        "Feeding Program: Strict pre-enrollment weighing check, meal card improvements, and cleaner session layouts",
+        "Beneficiary Profiles: Mother visit signature previews, accurate visit status derivation, and guardian birth date validation",
+        "Security & Authentication: Secure session remembering and seamless token renewal",
+        "Reports: Streamlined PDF masterlist exports across all programs"
     ];
     const notesTl = [
-        "Pagsukat sa Bata: Tinanggal ang kinakailangang pirma sa measurement ng bata (pang-visit na lamang)",
-        "Mga Programa at Iskedyul: Pag-print at pag-export ng kalendaryo ng iskedyul (Calendar + List, List lamang, Calendar lamang)",
-        "Ibinalik ang klasikong Home Dashboard na may solid stat cards at WHO Nutritional Status bars",
-        "Maayos na Profile ng Bata at Ina na may matatag na history cards at maaasahang pag-sync",
-        "Pangkalahatang katatagan at pagpapabuti sa offline data"
+        "Sync at Offline: Buong real-time sync para sa Vitamin A, awtomatikong retry, at agarang queue counter refresh",
+        "Feeding Program: Kinakailangang timbang bago mag-enroll, maayos na meal card, at malinis na session history",
+        "Profile ng Benepisyaryo: Preview ng pirma sa visit ng ina, tamang visit status, at birth date validation para sa guardian",
+        "Seguridad at Login: Ligtas na Remember Me at maayos na auto-login gamit ang tokens",
+        "Mga Ulat: Malinis na PDF masterlist exports para sa lahat ng programa"
     ];
     const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 

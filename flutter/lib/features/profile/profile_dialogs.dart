@@ -10,6 +10,7 @@ import '../../data/local/measurement_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/referral_repository.dart';
 import '../../data/remote/auth_api.dart';
+import '../../data/local/secure_token_storage.dart';
 import '../../shared/utils/app_page_route.dart';
 import '../../shared/widgets/form_required_note.dart';
 import '../auth/login_screen.dart';
@@ -267,6 +268,7 @@ Future<void> showLogoutConfirmationDialog(BuildContext context) async {
 
   if (confirmed == true && context.mounted) {
     await SettingsRepository().clearSession();
+    await SecureTokenStorage.clearTokens();
     AppDataBus.notifyChanged();
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(

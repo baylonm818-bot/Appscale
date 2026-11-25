@@ -84,6 +84,7 @@ class _ChildProgramsTabState extends State<ChildProgramsTab> {
           final wasEverEnrolled = FeedingEnrollmentRepository().wasEverEnrolled(widget.child.id);
           final vitARecords = VitaminARepository().getByChildId(widget.child.id);
           final dewormingRecords = DewormingRepository().getByChildId(widget.child.id);
+          final hasMeasurement = MeasurementRepository().getForChild(widget.child.id).any((m) => m.isPlausible);
 
           // Calculate attendance: only count on/after enrollment date, cap at elapsed days, no future dates
           final attRepo = FeedingAttendanceRepository();
@@ -148,23 +149,30 @@ class _ChildProgramsTabState extends State<ChildProgramsTab> {
                         const SizedBox(height: 12),
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryGreen,
-                            foregroundColor: Colors.white,
+                            backgroundColor: hasMeasurement ? AppColors.primaryGreen : AppColors.border,
+                            foregroundColor: hasMeasurement ? Colors.white : AppColors.textMuted,
+                            disabledBackgroundColor: AppColors.border,
+                            disabledForegroundColor: AppColors.textMuted,
                             minimumSize: const Size(double.infinity, 36),
                             elevation: 0,
                           ),
-                          icon: const Icon(Icons.add, size: 16),
-                          label: const Text('Enroll in program', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                          onPressed: () async {
-                            final messenger = ScaffoldMessenger.of(context);
-                            await FeedingEnrollmentRepository().enroll(widget.child.id);
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text('${widget.child.fullName} enrolled in Feeding Program'),
-                                backgroundColor: AppColors.primaryGreen,
-                              ),
-                            );
-                          },
+                          icon: Icon(hasMeasurement ? Icons.add : Icons.scale_outlined, size: 16),
+                          label: Text(
+                            hasMeasurement ? 'Enroll in program' : 'Weigh child first',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: hasMeasurement
+                              ? () async {
+                                  final messenger = ScaffoldMessenger.of(context);
+                                  await FeedingEnrollmentRepository().enroll(widget.child.id);
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('${widget.child.fullName} enrolled in Feeding Program'),
+                                      backgroundColor: AppColors.primaryGreen,
+                                    ),
+                                  );
+                                }
+                              : null,
                         ),
                       ],
                     ),
@@ -674,32 +682,41 @@ class _ChildProgramsTabState extends State<ChildProgramsTab> {
               ),
             ),
             const SizedBox(height: 10),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isSamOrMam
-                    ? AppColors.darkGreen
-                    : AppColors.surface,
-                foregroundColor: isSamOrMam
-                    ? Colors.white
-                    : AppColors.darkGreen,
-                minimumSize: const Size(double.infinity, 36),
-                elevation: 0,
-              ),
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text(
-                'Enroll in Feeding Program',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                await FeedingEnrollmentRepository().enroll(child.id);
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '${child.fullName} enrolled in Feeding Program',
-                    ),
-                    backgroundColor: AppColors.primaryGreen,
+            Builder(
+              builder: (ctx) {
+                final hasMeasurement = MeasurementRepository().getForChild(child.id).any((m) => m.isPlausible);
+                return ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: !hasMeasurement
+                        ? AppColors.border
+                        : (isSamOrMam ? AppColors.darkGreen : AppColors.surface),
+                    foregroundColor: !hasMeasurement
+                        ? AppColors.textMuted
+                        : (isSamOrMam ? Colors.white : AppColors.darkGreen),
+                    disabledBackgroundColor: AppColors.border,
+                    disabledForegroundColor: AppColors.textMuted,
+                    minimumSize: const Size(double.infinity, 36),
+                    elevation: 0,
                   ),
+                  icon: Icon(hasMeasurement ? Icons.add : Icons.scale_outlined, size: 16),
+                  label: Text(
+                    hasMeasurement ? 'Enroll in Feeding Program' : 'Weigh child first',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  onPressed: hasMeasurement
+                      ? () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          await FeedingEnrollmentRepository().enroll(child.id);
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '${child.fullName} enrolled in Feeding Program',
+                              ),
+                              backgroundColor: AppColors.primaryGreen,
+                            ),
+                          );
+                        }
+                      : null,
                 );
               },
             ),

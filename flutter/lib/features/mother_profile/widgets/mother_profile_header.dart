@@ -33,8 +33,13 @@ class MotherProfileHeader extends StatelessWidget {
     final presentVisits = visits.where((v) => v.present).toList();
     final hasVisits = presentVisits.isNotEmpty;
     final latestVisit = hasVisits ? presentVisits.first : null;
+    final effectiveRiskStatus = hasVisits
+        ? (mother.riskStatus != 'Not visited' && mother.riskStatus.isNotEmpty
+            ? mother.riskStatus
+            : (latestVisit!.isReferralNeeded ? 'At-risk' : 'Normal'))
+        : 'Not visited';
     final needsReferral = latestVisit != null &&
-        (latestVisit.isReferralNeeded || mother.riskStatus == 'At-risk');
+        (latestVisit.isReferralNeeded || effectiveRiskStatus == 'At-risk');
 
     final referralStatus = ReferralRepository().getReferralHeaderStatus(
       beneficiaryId: mother.id,
@@ -154,8 +159,8 @@ class MotherProfileHeader extends StatelessWidget {
             children: [
               if (mother.isActive) ...[
                 StatusBadge(
-                  label: mother.riskStatus,
-                  color: MotherStatusMeta.colorFor(mother.riskStatus),
+                  label: effectiveRiskStatus,
+                  color: MotherStatusMeta.colorFor(effectiveRiskStatus),
                   onDark: true,
                 ),
                 if (mother.isAdolescent)

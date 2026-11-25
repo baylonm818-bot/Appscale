@@ -10,12 +10,14 @@ import '../../data/local/child_repository.dart';
 import '../../data/local/mother_repository.dart';
 import '../../data/local/measurement_repository.dart';
 import '../../data/local/referral_repository.dart';
+import '../../data/local/vitamin_a_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/local/app_data_bus.dart';
 import '../../data/models/child.dart';
 import '../../data/models/mother.dart';
 import '../../data/models/measurement.dart';
 import '../../data/models/referral.dart';
+import '../../data/models/vitamin_a_record.dart';
 import '../../data/remote/auth_api.dart';
 import '../../data/remote/beneficiary_api.dart';
 import '../../data/remote/sync_service.dart';
@@ -56,6 +58,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
   final _mothers = MotherRepository();
   final _measurements = MeasurementRepository();
   final _referrals = ReferralRepository();
+  final _vitaminA = VitaminARepository();
   final _settings = SettingsRepository();
   bool _isSyncing = false;
   bool _showAllRecent = false;
@@ -82,6 +85,20 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         Hive.box(HiveBoxes.settings).put('last_synced_at', latestIso);
       }
     }
+    AppDataBus.version.addListener(_onDataChanged);
+  }
+
+  void _onDataChanged() {
+    final updated = Hive.box(HiveBoxes.settings).get('last_synced_at') as String?;
+    if (updated != null && updated != _lastSyncedAt && mounted) {
+      setState(() => _lastSyncedAt = updated);
+    }
+  }
+
+  @override
+  void dispose() {
+    AppDataBus.version.removeListener(_onDataChanged);
+    super.dispose();
   }
 
   List<SyncItem> _loadSyncItems() {
@@ -524,6 +541,22 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         }
       }
 
+      // Step 4b: Sync Vitamin A records one by one
+      final vitaminABox = Hive.box(HiveBoxes.vitaminA);
+      for (final raw in List.from(vitaminABox.values)) {
+        if (raw is! Map) continue;
+        final map = Map<String, dynamic>.from(raw);
+        if (map['_syncStatus'] != 'synced') {
+          final record = VitaminARecord.fromMap(map);
+          final res = await _vitaminA.trySync(record);
+          if (res != null && !res.success) {
+            errors.add('Vitamin A (${record.childName}): ${res.message}');
+          }
+          if (mounted) setState(() {});
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+      }
+
       // Step 5: Sync Profile Picture if pending
       final pendingPicPath = _settings.pendingProfilePicturePath;
       final userId = _settings.authUser?['user_id']?.toString() ?? '';
@@ -619,6 +652,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           _mothers.pendingCount +
           _measurements.pendingCount +
           _referrals.pendingCount +
+          _vitaminA.pendingCount +
           (_settings.pendingProfilePicturePath != null ? 1 : 0) +
           (_settings.pendingProfileUpdate != null ? 1 : 0) +
           (_settings.pendingPasswordChange != null ? 1 : 0);
@@ -763,6 +797,29 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
             }
           }
           await measurementBox.put(childId, updated);
+        }
+      } else if (item.type == 'vitamin_a') {
+        final raw = Hive.box(HiveBoxes.vitaminA).get(item.id);
+        if (raw is Map) {
+          final record = VitaminARecord.fromMap(Map<String, dynamic>.from(raw));
+          final res = await _vitaminA.trySync(record);
+          if (mounted) {
+            if (res != null && !res.success) {
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                SnackBar(
+                  content: Text('Retry failed for ${record.childName}: ${res.message}'),
+                  backgroundColor: AppColors.statRed,
+                ),
+              );
+            } else {
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                SnackBar(
+                  content: Text('Vitamin A record synced for ${record.childName}'),
+                  backgroundColor: AppColors.primaryGreen,
+                ),
+              );
+            }
+          }
         }
       } else if (item.type == 'profile_photo') {
         final pendingPicPath = _settings.pendingProfilePicturePath;
@@ -1094,6 +1151,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     final motherPending = _mothers.pendingCount;
     final measPending = _measurements.pendingCount;
     final refPending = _referrals.pendingCount;
+    final vitAPending = _vitaminA.pendingCount;
 
     return Container(
       margin: const EdgeInsets.only(top: 8, bottom: 20),
@@ -1119,6 +1177,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
             _buildDetailRow('Mothers', motherPending, Hive.box(HiveBoxes.mothers).length),
             _buildDetailRow('Measurements', measPending, _measurementsCount()),
             _buildDetailRow('Referrals', refPending, Hive.box(HiveBoxes.referrals).length),
+            _buildDetailRow('Vitamin A', vitAPending, Hive.box(HiveBoxes.vitaminA).length),
           ],
         ),
       ),

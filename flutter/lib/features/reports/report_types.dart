@@ -85,31 +85,31 @@ class ReportTypes {
     id: 'children_masterlist',
     title: 'Children Masterlist',
     category: ReportCategory.masterlist,
-    formats: [ExportFormat.pdf, ExportFormat.excel],
+    formats: [ExportFormat.pdf],
   );
   static const lactatingMothersMasterlist = ReportTypeInfo(
     id: 'lactating_mothers_masterlist',
     title: 'Masterlist of Lactating Mothers',
     category: ReportCategory.masterlist,
-    formats: [ExportFormat.pdf, ExportFormat.excel],
+    formats: [ExportFormat.pdf],
   );
   static const vitaminAMasterlist = ReportTypeInfo(
     id: 'vitamin_a_masterlist',
     title: 'Vitamin A Supplementation Masterlist & Report',
     category: ReportCategory.masterlist,
-    formats: [ExportFormat.pdf, ExportFormat.excel],
+    formats: [ExportFormat.pdf],
   );
   static const dewormingMasterlist = ReportTypeInfo(
     id: 'deworming_masterlist',
     title: 'Deworming Program Masterlist & Report',
     category: ReportCategory.masterlist,
-    formats: [ExportFormat.pdf, ExportFormat.excel],
+    formats: [ExportFormat.pdf],
   );
   static const feedingProgramMasterlist = ReportTypeInfo(
     id: 'feeding_program_masterlist',
     title: 'Supplementary Feeding Program Masterlist & Report',
     category: ReportCategory.masterlist,
-    formats: [ExportFormat.pdf, ExportFormat.excel],
+    formats: [ExportFormat.pdf],
   );
 
   static const consolidationTypes = [

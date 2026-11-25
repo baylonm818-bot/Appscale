@@ -98,6 +98,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   final _guardianNameKey = GlobalKey();
   final _relationshipKey = GlobalKey();
   final _guardianContactKey = GlobalKey();
+  final _guardianBirthDateKey = GlobalKey();
 
   String? _fullNameError;
   String? _birthDateError;
@@ -106,6 +107,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   String? _guardianNameError;
   String? _relationshipError;
   String? _guardianContactError;
+  String? _guardianBirthDateError;
 
   static const List<String> commonDisabilities = [
     'Visual Impairment',
@@ -343,13 +345,29 @@ class _AddChildScreenState extends State<AddChildScreen> {
       guardianContactErr = 'Contact number must be 11 digits (e.g. 09123456789)';
     }
 
+    String? guardianBirthDateErr;
+    if (_guardianBirthDate == null) {
+      guardianBirthDateErr = 'Guardian birth date is required';
+    } else {
+      final now = DateTime.now();
+      int age = now.year - _guardianBirthDate!.year;
+      if (now.month < _guardianBirthDate!.month ||
+          (now.month == _guardianBirthDate!.month && now.day < _guardianBirthDate!.day)) {
+        age--;
+      }
+      if (age < 10 || age > 55) {
+        guardianBirthDateErr = 'Guardian age must be between 10 and 55 years old (current: $age yrs)';
+      }
+    }
+
     if (fullNameErr != null ||
         birthDateErr != null ||
         genderErr != null ||
         addressErr != null ||
         guardianNameErr != null ||
         relationshipErr != null ||
-        guardianContactErr != null) {
+        guardianContactErr != null ||
+        guardianBirthDateErr != null) {
       setState(() {
         _fullNameError = fullNameErr;
         _birthDateError = birthDateErr;
@@ -358,6 +376,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
         _guardianNameError = guardianNameErr;
         _relationshipError = relationshipErr;
         _guardianContactError = guardianContactErr;
+        _guardianBirthDateError = guardianBirthDateErr;
       });
 
       GlobalKey? firstInvalidKey;
@@ -377,6 +396,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
         firstInvalidKey = _relationshipKey;
       } else if (guardianContactErr != null) {
         firstInvalidKey = _guardianContactKey;
+      } else if (guardianBirthDateErr != null) {
+        firstInvalidKey = _guardianBirthDateKey;
       }
 
       if (firstInvalidKey?.currentContext != null) {
@@ -949,12 +970,17 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             children: [
                               Expanded(
                                 child: AppDateField(
-                                  label: 'Guardian Birth Date (Optional)',
+                                  key: _guardianBirthDateKey,
+                                  label: 'Guardian Birth Date',
+                                  isRequired: true,
+                                  hasError: _guardianBirthDateError != null,
+                                  errorText: _guardianBirthDateError,
                                   value: _guardianBirthDate,
                                   firstDate: DateTime(1940),
                                   lastDate: DateTime.now(),
                                   onChanged: (d) => setState(() {
                                     _guardianBirthDate = d;
+                                    _guardianBirthDateError = null;
                                   }),
                                 ),
                               ),

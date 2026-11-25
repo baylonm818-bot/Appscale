@@ -34,6 +34,17 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _rememberMe = _settings.rememberMe;
+    _loadRememberedEmail();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    final savedEmail = await SecureTokenStorage.getRememberedEmail();
+    if (savedEmail != null && savedEmail.isNotEmpty && mounted) {
+      setState(() {
+        _emailController.text = savedEmail;
+        _rememberMe = true;
+      });
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -59,18 +70,24 @@ class _LoginScreenState extends State<LoginScreen> {
       const expiryDuration = Duration(days: 30);
       final expiresAt = DateTime.now().add(expiryDuration);
 
-      // Persist tokens securely using flutter_secure_storage
-      await SecureTokenStorage.saveTokens(
-        accessToken: session.token,
-        refreshToken: session.refreshToken,
-      );
-      // Persist salted password hash locally for offline login
-      await SecureTokenStorage.saveOfflineCredentials(
-        email: email,
-        password: password,
-      );
+      if (_rememberMe) {
+        // Persist tokens securely using flutter_secure_storage
+        await SecureTokenStorage.saveTokens(
+          accessToken: session.token,
+          refreshToken: session.refreshToken,
+        );
+        await SecureTokenStorage.saveRememberedEmail(email);
+        await SecureTokenStorage.saveOfflineCredentials(
+          email: email,
+          password: password,
+        );
+        await _settings.setRememberMe(true);
+      } else {
+        await SecureTokenStorage.clearTokens();
+        await SecureTokenStorage.clearRememberedEmail();
+        await _settings.setRememberMe(false);
+      }
 
-      await _settings.setRememberMe(_rememberMe);
       await _settings.setAuthToken(session.token);
       await _settings.setSessionExpiresAt(expiresAt);
       final userMap = Map<String, dynamic>.from(session.toMap()['user'] as Map);

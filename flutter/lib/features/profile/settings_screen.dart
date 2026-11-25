@@ -66,7 +66,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _updateStatusText = 'update_already_latest'.tr;
             _updateStatusColor = AppColors.primaryGreen;
           });
-          AppNotificationUI.showSuccess(context, 'update_already_latest'.tr);
+          AppNotificationUI.showSuccess(context, 'update_already_latest'.tr, bottomMargin: 80);
           break;
         case AppUpdateStatus.updateAvailable:
           setState(() {
@@ -383,37 +383,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Text(
-                                'update_installed_version'.trArgs({'version': AppUpdateService.currentVersion}),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.textMuted,
-                                  fontSize: 12,
+                          Text(
+                            'update_installed_version'.trArgs({'version': AppUpdateService.currentVersion}),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (_updateStatusText != null) ...[
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: (_updateStatusColor ?? AppColors.primaryGreen).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _updateStatusText!,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: _updateStatusColor ?? AppColors.primaryGreen,
                                 ),
                               ),
-                              if (_updateStatusText != null) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: (_updateStatusColor ?? AppColors.primaryGreen).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    _updateStatusText!,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: _updateStatusColor ?? AppColors.primaryGreen,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

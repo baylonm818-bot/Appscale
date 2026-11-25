@@ -263,70 +263,96 @@ class _AttendanceTabState extends State<AttendanceTab> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.border),
             ),
-            child: Column(
-              children: [
-                InkWell(
-                  onTap: _pickDate,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.calendar_today_outlined,
-                          size: 16,
-                          color: AppColors.primaryGreen,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isToday
-                              ? 'Today · ${_formatDate(_selectedDate)}'
-                              : _formatDate(_selectedDate),
-                          style: AppTextStyles.label.copyWith(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Spacer(),
-                        const Text(
-                          'Change Date',
-                          style: TextStyle(
-                            color: AppColors.primaryGreen,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+            child: InkWell(
+              onTap: _pickDate,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 16,
+                      color: AppColors.primaryGreen,
                     ),
-                  ),
-                ),
-                const Divider(height: 1, color: AppColors.border),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.restaurant_menu, size: 16, color: AppColors.primaryGreen),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _foodServedController,
-                          decoration: InputDecoration(
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                            hintText: mealPlan != null
-                                ? 'Meal: ${mealPlan.itemsSummary}'
-                                : 'Record food served today (e.g. Nutri-soup, Porridge)',
-                            hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                          ),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.darkGreen,
-                          ),
-                        ),
+                    const SizedBox(width: 8),
+                    Text(
+                      isToday
+                          ? 'Today · ${_formatDate(_selectedDate)}'
+                          : _formatDate(_selectedDate),
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ],
+                    ),
+                    const Spacer(),
+                    const Text(
+                      'Change Date',
+                      style: TextStyle(
+                        color: AppColors.primaryGreen,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          // Meal today card
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.restaurant_menu, size: 16, color: AppColors.primaryGreen),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Meal today',
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _foodServedController,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+                    ),
+                    hintText: mealPlan != null
+                        ? mealPlan.itemsSummary
+                        : 'Record food served today (e.g. Nutri-soup, Porridge)',
+                    hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.darkGreen,
                   ),
                 ),
               ],
@@ -1571,30 +1597,38 @@ class _SuggestedCardState extends State<_SuggestedCard> {
                         style: AppTextStyles.body.copyWith(fontSize: 12),
                       ),
                     ),
-                    SizedBox(
-                      height: 30,
-                      child: FilledButton(
-                        onPressed: isEnrolling ? null : () => _enrollChild(c),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.statRed,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: isEnrolling
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Enroll',
-                                style: TextStyle(fontSize: 11),
+                    Builder(
+                      builder: (ctx) {
+                        final hasMeas = MeasurementRepository().getForChild(c.id).any((m) => m.isPlausible);
+                        return SizedBox(
+                          height: 30,
+                          child: FilledButton(
+                            onPressed: (!hasMeas || isEnrolling) ? null : () => _enrollChild(c),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: hasMeas ? AppColors.statRed : AppColors.border,
+                              foregroundColor: hasMeas ? Colors.white : AppColors.textMuted,
+                              disabledBackgroundColor: AppColors.border,
+                              disabledForegroundColor: AppColors.textMuted,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                      ),
+                            ),
+                            child: isEnrolling
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    hasMeas ? 'Enroll' : 'Weigh child first',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -1764,11 +1798,20 @@ class _EnrollSearchSheetState extends State<_EnrollSearchSheet> {
             ...notEnrolled.map(
               (c) {
                 final isEnrolling = _enrollingIds.contains(c.id);
+                final hasMeas = MeasurementRepository().getForChild(c.id).any((m) => m.isPlausible);
                 return ListTile(
                   title: Text(c.fullName),
                   subtitle: Text('${c.ageInMonths} mos · ${c.address}'),
                   trailing: FilledButton(
-                    onPressed: isEnrolling ? null : () => _enroll(c),
+                    style: !hasMeas
+                        ? FilledButton.styleFrom(
+                            backgroundColor: AppColors.border,
+                            foregroundColor: AppColors.textMuted,
+                            disabledBackgroundColor: AppColors.border,
+                            disabledForegroundColor: AppColors.textMuted,
+                          )
+                        : null,
+                    onPressed: (!hasMeas || isEnrolling) ? null : () => _enroll(c),
                     child: isEnrolling
                         ? const SizedBox(
                             width: 14,
@@ -1778,7 +1821,10 @@ class _EnrollSearchSheetState extends State<_EnrollSearchSheet> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text('Enroll'),
+                        : Text(
+                            hasMeas ? 'Enroll' : 'Weigh child first',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                   ),
                 );
               },

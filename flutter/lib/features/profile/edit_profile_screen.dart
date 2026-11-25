@@ -67,35 +67,74 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _initPurokOptions(rawBarangay);
   }
 
+  String _normalizePurokEntry(String raw, String barangay) {
+    var cleaned = raw.trim();
+    if (cleaned.isEmpty) return '';
+
+    // Strip out the barangay name if it was appended (e.g. "Purok 1, Tuguion" -> "Purok 1")
+    if (barangay.isNotEmpty) {
+      final bgyRegex = RegExp('[,\\-–/]?\\s*${RegExp.escape(barangay)}', caseSensitive: false);
+      cleaned = cleaned.replaceAll(bgyRegex, '').trim();
+    }
+    if (cleaned.isEmpty || cleaned.toLowerCase() == 'barangay') {
+      return '';
+    }
+
+    return Child.normalizePurok(cleaned);
+  }
+
   void _initPurokOptions(String barangay) {
-    final currentPurok = _initialUser['purok']?.toString().trim() ?? '';
-    final optionsSet = <String>{};
+    final currentPurokRaw = _initialUser['purok']?.toString().trim() ?? '';
+    final canonicalMap = <String, String>{};
 
-    try {
-      final repoPuroks = PurokRepository().getByBarangay(barangay).map((p) => p.name.trim()).where((s) => s.isNotEmpty);
-      optionsSet.addAll(repoPuroks);
-
-      final childPuroks = ChildRepository().getByBarangay(barangay).map((c) => Child.normalizePurok(c.address)).where((s) => s.isNotEmpty);
-      optionsSet.addAll(childPuroks);
-
-      final motherPuroks = MotherRepository().getByBarangay(barangay).map((m) => Child.normalizePurok(m.address)).where((s) => s.isNotEmpty);
-      optionsSet.addAll(motherPuroks);
-    } catch (_) {}
-
-    if (optionsSet.isEmpty) {
-      for (int i = 1; i <= 7; i++) {
-        optionsSet.add('Purok $i');
+    void addCandidate(String? s) {
+      if (s == null) return;
+      final norm = _normalizePurokEntry(s, barangay);
+      if (norm.isNotEmpty) {
+        canonicalMap.putIfAbsent(norm.toLowerCase(), () => norm);
       }
     }
 
-    if (currentPurok.isNotEmpty) {
-      optionsSet.add(currentPurok);
+    try {
+      final repoPuroks = PurokRepository().getByBarangay(barangay).map((p) => p.name);
+      for (final p in repoPuroks) {
+        addCandidate(p);
+      }
+
+      final childPuroks = ChildRepository().getByBarangay(barangay).map((c) => c.address);
+      for (final a in childPuroks) {
+        addCandidate(a);
+      }
+
+      final motherPuroks = MotherRepository().getByBarangay(barangay).map((m) => m.address);
+      for (final a in motherPuroks) {
+        addCandidate(a);
+      }
+    } catch (_) {}
+
+    if (canonicalMap.isEmpty) {
+      for (int i = 1; i <= 7; i++) {
+        addCandidate('Purok $i');
+      }
     }
 
-    final sorted = optionsSet.toList()..sort();
-    _purokOptions = sorted;
-    if (currentPurok.isNotEmpty && _purokOptions.contains(currentPurok)) {
-      _selectedPurok = currentPurok;
+    if (currentPurokRaw.isNotEmpty) {
+      addCandidate(currentPurokRaw);
+    }
+
+    final list = canonicalMap.values.toList();
+    list.sort((a, b) {
+      final numA = int.tryParse(a.replaceAll(RegExp(r'\D'), ''));
+      final numB = int.tryParse(b.replaceAll(RegExp(r'\D'), ''));
+      if (numA != null && numB != null) return numA.compareTo(numB);
+      return a.toLowerCase().compareTo(b.toLowerCase());
+    });
+
+    _purokOptions = list;
+
+    final normCurrent = _normalizePurokEntry(currentPurokRaw, barangay);
+    if (normCurrent.isNotEmpty && canonicalMap.containsKey(normCurrent.toLowerCase())) {
+      _selectedPurok = canonicalMap[normCurrent.toLowerCase()]!;
     } else if (_purokOptions.isNotEmpty) {
       _selectedPurok = _purokOptions.first;
     } else {
@@ -109,13 +148,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final origLast = (_initialUser['last_name']?.toString() ?? '').trim();
     final origContact = (_initialUser['contact_number']?.toString() ?? '').trim();
     final origEmail = (_initialUser['email']?.toString() ?? '').trim();
-    final origPurok = (_initialUser['purok']?.toString() ?? '').trim();
+    final rawBarangay = AppUserIdentity.resolveBarangay(_initialUser);
+    final origPurokRaw = (_initialUser['purok']?.toString() ?? '').trim();
+    final origPurokNorm = _normalizePurokEntry(origPurokRaw, rawBarangay);
 
     final changed = _firstNameCtrl.text.trim() != origFirst ||
         _lastNameCtrl.text.trim() != origLast ||
         _contactCtrl.text.trim() != origContact ||
         _emailCtrl.text.trim() != origEmail ||
-        _selectedPurok.trim() != origPurok;
+        _selectedPurok.trim().toLowerCase() != origPurokNorm.toLowerCase();
 
     if (changed != _hasChanges) {
       setState(() => _hasChanges = changed);
@@ -417,6 +458,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 20),
                 child: DropdownButtonFormField<String>(
+                  key: ValueKey('purok_$_selectedPurok'),
                   initialValue: _purokOptions.contains(_selectedPurok) ? _selectedPurok : _purokOptions.first,
                   decoration: InputDecoration(
                     labelText: '${AppStrings.t('purok')} *',

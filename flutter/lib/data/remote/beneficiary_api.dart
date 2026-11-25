@@ -335,6 +335,7 @@ class BeneficiaryApi {
   static Future<ApiResponse> syncChildService({
     required String externalId,
     required String childExternalId,
+    String? childName,
     required String serviceType,
     required String serviceName,
     required String dosage,
@@ -355,6 +356,8 @@ class BeneficiaryApi {
     return _post('/mobile/child-services', {
       'external_id': externalId,
       'child_external_id': childExternalId,
+      if (int.tryParse(childExternalId) != null) 'child_id': int.tryParse(childExternalId),
+      if (childName != null && childName.isNotEmpty) 'child_name': childName,
       'service_type': serviceType,
       'service_name': serviceName,
       'dosage': dosage,

@@ -9,9 +9,25 @@ class SecureTokenStorage {
 
   static const String _keyAccessToken = 'appscale_access_token';
   static const String _keyRefreshToken = 'appscale_refresh_token';
+  static const String _keyRememberedEmail = 'appscale_remembered_email';
   static const String _keyOfflineEmail = 'appscale_offline_email';
   static const String _keyOfflineSalt = 'appscale_offline_salt';
   static const String _keyOfflineHash = 'appscale_offline_hash';
+
+  /// Saves the remembered email address for prefilling login.
+  static Future<void> saveRememberedEmail(String email) async {
+    await _storage.write(key: _keyRememberedEmail, value: email.trim());
+  }
+
+  /// Retrieves the remembered email address.
+  static Future<String?> getRememberedEmail() async {
+    return await _storage.read(key: _keyRememberedEmail);
+  }
+
+  /// Clears the remembered email address.
+  static Future<void> clearRememberedEmail() async {
+    await _storage.delete(key: _keyRememberedEmail);
+  }
 
   /// Saves the active access token and optional refresh token securely.
   static Future<void> saveTokens({

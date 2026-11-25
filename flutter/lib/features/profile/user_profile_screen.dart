@@ -584,6 +584,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 const SizedBox(height: 8),
                 Text(
                   '$barangayLabel • ${AppStrings.t('rural_health_unit')}',
+                  textAlign: TextAlign.center,
                   style: AppTextStyles.body.copyWith(
                     color: Colors.white70,
                     fontSize: 13,
@@ -661,7 +662,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 _buildInfoRow(
                   Icons.place_outlined,
                   AppStrings.t('assigned_barangay'),
-                  barangayLabel,
+                  resolvedBarangay.isEmpty
+                      ? AppStrings.t('unassigned')
+                      : resolvedBarangay.replaceFirst(RegExp(r'^barangay\s+', caseSensitive: false), '').trim(),
                 ),
                 const Divider(height: 1, color: AppColors.border),
                 _buildInfoRow(

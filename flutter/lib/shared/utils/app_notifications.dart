@@ -27,6 +27,7 @@ class AppNotificationUI {
     BuildContext context,
     String message, {
     String title = 'Success',
+    double? bottomMargin,
   }) {
     _showSnackBar(
       context,
@@ -35,6 +36,7 @@ class AppNotificationUI {
       backgroundColor: const Color(0xFF15803D), // Deep emerald green
       borderColor: const Color(0xFF86EFAC),
       icon: Icons.check_circle_outline_rounded,
+      bottomMargin: bottomMargin,
     );
   }
 
@@ -43,6 +45,7 @@ class AppNotificationUI {
     BuildContext context,
     String message, {
     String title = 'Notice',
+    double? bottomMargin,
   }) {
     _showSnackBar(
       context,
@@ -51,6 +54,7 @@ class AppNotificationUI {
       backgroundColor: const Color(0xFFB45309), // Warm amber
       borderColor: const Color(0xFFFCD34D),
       icon: Icons.warning_amber_rounded,
+      bottomMargin: bottomMargin,
     );
   }
 
@@ -61,6 +65,7 @@ class AppNotificationUI {
     required Color backgroundColor,
     required Color borderColor,
     required IconData icon,
+    double? bottomMargin,
   }) {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
@@ -68,7 +73,7 @@ class AppNotificationUI {
       SnackBar(
         elevation: 0,
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, bottomMargin ?? 32),
         padding: EdgeInsets.zero,
         backgroundColor: Colors.transparent,
         duration: const Duration(seconds: 4),

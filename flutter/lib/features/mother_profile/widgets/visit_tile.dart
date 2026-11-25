@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -99,29 +101,124 @@ class VisitTile extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (visit.signature != null && visit.signature!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.draw, size: 13, color: AppColors.primaryGreen),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Mother\'s Signature Attached',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.primaryGreen,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    _buildSignatureSection(context),
                   ],
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _openSignatureDialog(BuildContext context, Uint8List bytes) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.draw, color: AppColors.primaryGreen, size: 20),
+            SizedBox(width: 8),
+            Text('Mother\'s Signature', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Container(
+          width: double.maxFinite,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Image.memory(
+            bytes,
+            fit: BoxFit.contain,
+            height: 180,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSignatureSection(BuildContext context) {
+    final sig = visit.signature?.trim();
+    if (sig == null || sig.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Row(
+          children: [
+            const Icon(Icons.edit_off_outlined, size: 13, color: AppColors.textMuted),
+            const SizedBox(width: 4),
+            Text(
+              'No signature',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Uint8List? bytes;
+    try {
+      final clean = sig.startsWith('data:') ? sig.split(',').last : sig;
+      bytes = base64Decode(clean);
+    } catch (_) {}
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          if (bytes != null) ...[
+            InkWell(
+              onTap: () => _openSignatureDialog(context, bytes!),
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                width: 56,
+                height: 32,
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: Image.memory(
+                    bytes,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Icon(Icons.draw, size: 16, color: AppColors.textMuted),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          const Icon(Icons.draw, size: 13, color: AppColors.primaryGreen),
+          const SizedBox(width: 4),
+          InkWell(
+            onTap: bytes != null ? () => _openSignatureDialog(context, bytes!) : null,
+            child: const Text(
+              'Mother\'s Signature Attached',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.primaryGreen,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -12,7 +12,6 @@ import '../../../../data/models/feeding_child_progress.dart';
 import '../../../../data/models/feeding_session.dart';
 import '../../../../shared/utils/app_page_route.dart';
 import '../../../../shared/utils/app_pickers.dart';
-import '../../../../shared/widgets/empty_state.dart';
 import '../../../masterlist/widgets/status_badge.dart';
 import '../session_detail_screen.dart';
 
@@ -550,9 +549,38 @@ class _SessionsTabState extends State<SessionsTab> {
 
                 // ── Sessions List Cards ──
                 if (filteredSessions.isEmpty)
-                  const EmptyState(
-                    icon: Icons.no_meals_outlined,
-                    message: 'No feeding sessions yet.',
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 36),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.no_meals_outlined,
+                            size: 48,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'No feeding sessions found',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 32),
+                            child: Text(
+                              'There are no feeding sessions recorded for this period. Tap "+ New Session" above to create one.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   )
                 else
                   ListView.separated(
@@ -699,32 +727,37 @@ class _FeedingSessionCard extends StatelessWidget {
           children: [
             // Top Row: Date & Status Badge
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(7),
-                      decoration: BoxDecoration(
-                        color: AppColors.lightGreenBg,
-                        borderRadius: BorderRadius.circular(10),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: AppColors.lightGreenBg,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.calendar_today_rounded,
+                          size: 14,
+                          color: AppColors.primaryGreen,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.calendar_today_rounded,
-                        size: 14,
-                        color: AppColors.primaryGreen,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          dateText,
+                          style: AppTextStyles.h3.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      dateText,
-                      style: AppTextStyles.h3.copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 StatusBadge(
                   label: session.status,
                   color: statusColor,
@@ -764,28 +797,35 @@ class _FeedingSessionCard extends StatelessWidget {
             // Stats Bottom Row: Present, Absent, Weighed Chips
             Row(
               children: [
-                _StatBadge(
-                  label: '$presentCount Present',
-                  icon: Icons.check_circle_outline,
-                  color: AppColors.primaryGreen,
-                  bg: AppColors.lightGreenBg,
-                ),
-                const SizedBox(width: 6),
-                _StatBadge(
-                  label: '$absentCount Absent',
-                  icon: Icons.cancel_outlined,
-                  color: AppColors.statRed,
-                  bg: AppColors.statRed.withValues(alpha: 0.08),
-                ),
-                const SizedBox(width: 6),
-                if (weighedCount > 0)
-                  _StatBadge(
-                    label: '$weighedCount Weighed',
-                    icon: Icons.monitor_weight_outlined,
-                    color: AppColors.statBlue,
-                    bg: AppColors.statBlue.withValues(alpha: 0.08),
+                Expanded(
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _StatBadge(
+                        label: '$presentCount Present',
+                        icon: Icons.check_circle_outline,
+                        color: AppColors.primaryGreen,
+                        bg: AppColors.lightGreenBg,
+                      ),
+                      _StatBadge(
+                        label: '$absentCount Absent',
+                        icon: Icons.cancel_outlined,
+                        color: AppColors.statRed,
+                        bg: AppColors.statRed.withValues(alpha: 0.08),
+                      ),
+                      if (weighedCount > 0)
+                        _StatBadge(
+                          label: '$weighedCount Weighed',
+                          icon: Icons.monitor_weight_outlined,
+                          color: AppColors.statBlue,
+                          bg: AppColors.statBlue.withValues(alpha: 0.08),
+                        ),
+                    ],
                   ),
-                const Spacer(),
+                ),
+                const SizedBox(width: 4),
                 const Icon(
                   Icons.chevron_right,
                   size: 18,

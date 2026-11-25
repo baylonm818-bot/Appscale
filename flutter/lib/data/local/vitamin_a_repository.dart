@@ -50,18 +50,12 @@ class VitaminARepository {
     return list.isNotEmpty ? list.first : null;
   }
 
-  Future<void> save(VitaminARecord record) async {
-    await _box.put(record.id, record.toMap()..['_syncStatus'] = 'pending');
-    await ActivityLogRepository().logActivity(
-      type: 'measurement_added',
-      title: 'Administered Vit A: ${record.childName} (${record.dosage})',
-    );
-    AppDataBus.notifyChanged();
-
+  Future<ApiResponse?> trySync(VitaminARecord record) async {
     try {
       final res = await BeneficiaryApi.syncChildService(
         externalId: record.id,
         childExternalId: record.childId,
+        childName: record.childName,
         serviceType: 'Vitamin A',
         serviceName: record.doseType,
         dosage: record.dosage,
@@ -71,41 +65,58 @@ class VitaminARepository {
         notes: record.remarks,
       );
       if (res.success) {
-        await _box.put(record.id, record.toMap()..['_syncStatus'] = 'synced');
+        final map = record.toMap()
+          ..['_syncStatus'] = 'synced'
+          ..['_syncedAt'] = DateTime.now().toIso8601String()
+          ..remove('_lastSyncError');
+        await _box.put(record.id, map);
+        await Hive.box(HiveBoxes.settings).put('last_synced_at', DateTime.now().toIso8601String());
+        AppDataBus.notifyChanged();
+        return res;
+      } else {
+        final map = record.toMap()
+          ..['_syncStatus'] = 'failed'
+          ..['_lastSyncError'] = res.message;
+        await _box.put(record.id, map);
+        AppDataBus.notifyChanged();
+        return res;
       }
-    } catch (_) {}
+    } catch (e) {
+      final map = record.toMap()
+        ..['_syncStatus'] = 'failed'
+        ..['_lastSyncError'] = e.toString();
+      await _box.put(record.id, map);
+      AppDataBus.notifyChanged();
+      return ApiResponse(success: false, statusCode: 500, message: e.toString());
+    }
+  }
+
+  Future<void> save(VitaminARecord record) async {
+    await _box.put(record.id, record.toMap()..['_syncStatus'] = 'pending');
+    await ActivityLogRepository().logActivity(
+      type: 'measurement_added',
+      title: 'Administered Vit A: ${record.childName} (${record.dosage})',
+    );
+    AppDataBus.notifyChanged();
+
+    await trySync(record);
   }
 
   int get pendingCount {
     var count = 0;
     for (final key in _box.keys) {
       final raw = _box.get(key);
-      if (raw is Map && raw['_syncStatus'] == 'pending') count++;
+      if (raw is Map && raw['_syncStatus'] != 'synced') count++;
     }
     return count;
   }
 
   Future<void> syncPending() async {
-    for (final key in _box.keys) {
+    for (final key in List.from(_box.keys)) {
       final raw = _box.get(key);
-      if (raw is Map && raw['_syncStatus'] == 'pending') {
+      if (raw is Map && raw['_syncStatus'] != 'synced') {
         final record = VitaminARecord.fromMap(Map<String, dynamic>.from(raw));
-        try {
-          final res = await BeneficiaryApi.syncChildService(
-            externalId: record.id,
-            childExternalId: record.childId,
-            serviceType: 'Vitamin A',
-            serviceName: record.doseType,
-            dosage: record.dosage,
-            serviceDate: record.dateGiven,
-            nextSchedule: record.nextDueDate,
-            providedBy: record.administeredBy,
-            notes: record.remarks,
-          );
-          if (res.success) {
-            await _box.put(key, record.toMap()..['_syncStatus'] = 'synced');
-          }
-        } catch (_) {}
+        await trySync(record);
       }
     }
   }
