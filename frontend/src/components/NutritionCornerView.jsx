@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import {
   BarChart,
@@ -1722,27 +1723,28 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
       {/* ─────────────────────────────────────────────────────────────
           MODAL: UNWEIGHED CHILDREN
       ───────────────────────────────────────────────────────────── */}
-      {unweighedModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[85vh] overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
+      {unweighedModal && createPortal(
+        <div className="fixed inset-0 z-9999 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] my-auto">
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between text-white shrink-0">
               <div>
-                <h3 className="text-base font-bold text-slate-800">
+                <h3 className="text-base font-bold text-white">
                   Unweighed Children &bull; {unweighedModal.barangay}
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-white/70 text-xs mt-0.5">
                   {MONTH_NAMES[unweighedModal.month - 1]} {unweighedModal.year} &bull; Active children with no measurement recorded
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setUnweighedModal(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
               <div className="relative flex-1">
                 <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
                 <input
@@ -1802,176 +1804,194 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
               )}
             </div>
 
-            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
               <button
+                type="button"
                 onClick={() => setUnweighedModal(null)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs rounded-xl transition"
+                className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs rounded-xl transition"
               >
                 Close
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-
-
 
       {/* ─────────────────────────────────────────────────────────────
           MODAL: ADD / EDIT PROGRAM (Admin only)
       ───────────────────────────────────────────────────────────── */}
-      {showProgramModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-800">
-                {editingProgram ? 'Edit Nutrition Program' : 'Add Nutrition Program'}
-              </h3>
+      {showProgramModal && createPortal(
+        <div className="fixed inset-0 z-9999 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] my-auto">
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between text-white shrink-0">
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {editingProgram ? 'Edit Nutrition Program' : 'New Nutrition Program'}
+                </h3>
+                <p className="text-white/70 text-xs mt-0.5">Fill in the program details below</p>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowProgramModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProgram} className="p-5 space-y-4 text-xs sm:text-sm">
-              <div>
-                <label className="block font-semibold text-slate-600 mb-1">Section</label>
-                <select
-                  value={programForm.section}
-                  onChange={(e) => setProgramForm({ ...programForm, section: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-semibold"
-                >
-                  <option value="nutrition_specific">Nutrition-Specific (Direct Interventions)</option>
-                  <option value="nutrition_sensitive">Nutrition-Sensitive (Underlying Determinants)</option>
-                  <option value="enabling">Enabling Programs & Support</option>
-                </select>
-              </div>
+            <div className="overflow-y-auto flex-1 p-6">
+              <form id="programForm" onSubmit={handleSaveProgram} className="space-y-4 text-xs sm:text-sm">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Section</label>
+                  <select
+                    value={programForm.section}
+                    onChange={(e) => setProgramForm({ ...programForm, section: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl bg-white font-medium focus:outline-emerald-600 focus:border-emerald-600"
+                  >
+                    <option value="nutrition_specific">Nutrition-Specific (Direct Interventions)</option>
+                    <option value="nutrition_sensitive">Nutrition-Sensitive (Underlying Determinants)</option>
+                    <option value="enabling">Enabling Programs & Support</option>
+                  </select>
+                </div>
 
-              <div>
-                <label className="block font-semibold text-slate-600 mb-1">Program Title</label>
-                <input
-                  type="text"
-                  value={programForm.title}
-                  onChange={(e) => setProgramForm({ ...programForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  required
-                />
-              </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Program Title</label>
+                  <input
+                    type="text"
+                    value={programForm.title}
+                    onChange={(e) => setProgramForm({ ...programForm, title: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-emerald-600 focus:border-emerald-600"
+                    placeholder="e.g. Supplementary Feeding Program"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block font-semibold text-slate-600 mb-1">Description</label>
-                <textarea
-                  rows={3}
-                  value={programForm.description}
-                  onChange={(e) => setProgramForm({ ...programForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  placeholder="Summary and key objectives of this program..."
-                />
-              </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Description</label>
+                  <textarea
+                    rows={3}
+                    value={programForm.description}
+                    onChange={(e) => setProgramForm({ ...programForm, description: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl resize-none focus:outline-emerald-600 focus:border-emerald-600"
+                    placeholder="Summary and key objectives of this program..."
+                  />
+                </div>
+              </form>
+            </div>
 
-              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowProgramModal(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 font-semibold hover:bg-slate-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-semibold transition"
-                >
-                  Save Program
-                </button>
-              </div>
-            </form>
+            <div className="shrink-0 px-6 pb-5 pt-3 flex gap-3 border-t border-gray-100 bg-white">
+              <button
+                type="button"
+                onClick={() => setShowProgramModal(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border-2 border-gray-200 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="programForm"
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-sm"
+              >
+                {editingProgram ? 'Update Program' : 'Save Program'}
+              </button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ─────────────────────────────────────────────────────────────
           MODAL: ADD / EDIT LAW (Admin only)
       ───────────────────────────────────────────────────────────── */}
-      {showLawModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-800">
-                {editingLaw ? 'Edit Statutory Reference' : 'Add Statutory Reference'}
-              </h3>
+      {showLawModal && createPortal(
+        <div className="fixed inset-0 z-9999 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] my-auto">
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between text-white shrink-0">
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {editingLaw ? 'Edit Statutory Reference' : 'New Statutory Reference'}
+                </h3>
+                <p className="text-white/70 text-xs mt-0.5">Fill in the reference details below</p>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowLawModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveLaw} className="p-5 space-y-4 text-xs sm:text-sm">
-              <div>
-                <label className="block font-semibold text-slate-600 mb-1">Legal Basis / Law Code</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Republic Act No. 10028"
-                  value={lawForm.legal_basis}
-                  onChange={(e) => setLawForm({ ...lawForm, legal_basis: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  required
-                />
-              </div>
+            <div className="overflow-y-auto flex-1 p-6">
+              <form id="lawForm" onSubmit={handleSaveLaw} className="space-y-4 text-xs sm:text-sm">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Legal Basis / Law Code</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Republic Act No. 10028"
+                    value={lawForm.legal_basis}
+                    onChange={(e) => setLawForm({ ...lawForm, legal_basis: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-emerald-600 focus:border-emerald-600"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block font-semibold text-slate-600 mb-1">Full Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Expanded Breastfeeding Promotion Act of 2009"
-                  value={lawForm.title}
-                  onChange={(e) => setLawForm({ ...lawForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  required
-                />
-              </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Full Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Expanded Breastfeeding Promotion Act of 2009"
+                    value={lawForm.title}
+                    onChange={(e) => setLawForm({ ...lawForm, title: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-emerald-600 focus:border-emerald-600"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block font-semibold text-slate-600 mb-1">Description / Summary</label>
-                <textarea
-                  rows={3}
-                  value={lawForm.description}
-                  onChange={(e) => setLawForm({ ...lawForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                />
-              </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Description / Summary</label>
+                  <textarea
+                    rows={3}
+                    value={lawForm.description}
+                    onChange={(e) => setLawForm({ ...lawForm, description: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl resize-none focus:outline-emerald-600 focus:border-emerald-600"
+                    placeholder="Brief description or purpose of this law..."
+                  />
+                </div>
 
-              <div>
-                <label className="block font-semibold text-slate-600 mb-1">Category</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Maternal & Child Health, Food Security"
-                  value={lawForm.category}
-                  onChange={(e) => setLawForm({ ...lawForm, category: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                />
-              </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Category</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Maternal & Child Health, Food Security"
+                    value={lawForm.category}
+                    onChange={(e) => setLawForm({ ...lawForm, category: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-emerald-600 focus:border-emerald-600"
+                  />
+                </div>
+              </form>
+            </div>
 
-              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowLawModal(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 font-semibold hover:bg-slate-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-semibold transition"
-                >
-                  Save Reference
-                </button>
-              </div>
-            </form>
+            <div className="shrink-0 px-6 pb-5 pt-3 flex gap-3 border-t border-gray-100 bg-white">
+              <button
+                type="button"
+                onClick={() => setShowLawModal(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border-2 border-gray-200 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="lawForm"
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-sm"
+              >
+                {editingLaw ? 'Update Reference' : 'Save Reference'}
+              </button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

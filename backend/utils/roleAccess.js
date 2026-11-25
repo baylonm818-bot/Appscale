@@ -4,7 +4,12 @@ function normalizeRole(value) {
 
 function sameBarangay(a, b) {
   if (!a || !b) return false;
-  return String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+  const aNorm = String(a).trim().toLowerCase();
+  const bNorm = String(b).trim().toLowerCase();
+  if (aNorm === bNorm) return true;
+  const aList = aNorm.split(',').map((s) => s.trim());
+  const bList = bNorm.split(',').map((s) => s.trim());
+  return aList.some((item) => bList.includes(item));
 }
 
 function canAccessProfile(requester, target) {

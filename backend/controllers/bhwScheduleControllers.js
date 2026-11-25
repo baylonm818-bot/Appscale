@@ -49,12 +49,14 @@ exports.getBhwSchedules = async (req, res) => {
        WHERE status != 'archived'
          AND (
            LOWER(TRIM(barangay)) = LOWER(TRIM(?))
+           OR FIND_IN_SET(LOWER(TRIM(?)), LOWER(REPLACE(barangay, ', ', ','))) > 0
+           OR LOWER(TRIM(barangay)) LIKE CONCAT('%', LOWER(TRIM(?)), '%')
            OR LOWER(TRIM(barangay)) = 'all barangays'
            OR barangay IS NULL
            OR barangay = ''
          )
        ORDER BY schedule_date ASC`,
-      [barangay]
+      [barangay, barangay, barangay]
     );
 
     const allowedSchedules = schedules.filter((schedule) => canAccessSchedule(user, schedule));

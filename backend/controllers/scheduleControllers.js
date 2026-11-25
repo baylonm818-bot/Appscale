@@ -195,16 +195,31 @@ exports.createSchedule = async (req, res) => {
       });
       const location = [venue, barangay && barangay !== 'All Barangays' ? barangay : null]
         .filter(Boolean).join(', ');
-      await pool.query(
-        `INSERT INTO notifications (title, message, type, is_read, related_id, recipient_role, barangay, created_at)
-         VALUES (?, ?, 'schedule', FALSE, ?, 'all', ?, NOW())`,
-        [
-          `New Schedule: ${title}`,
-          `${schedule_type.toUpperCase()} on ${formattedDate} at ${location}.`,
-          scheduleId,
-          barangay && barangay !== 'All Barangays' ? barangay : null,
-        ]
-      );
+      if (barangay && barangay !== 'All Barangays') {
+        const bgyList = barangay.split(',').map((b) => b.trim()).filter(Boolean);
+        for (const bgy of bgyList) {
+          await pool.query(
+            `INSERT INTO notifications (title, message, type, is_read, related_id, recipient_role, barangay, created_at)
+             VALUES (?, ?, 'schedule', FALSE, ?, 'all', ?, NOW())`,
+            [
+              `New Schedule: ${title}`,
+              `${schedule_type.toUpperCase()} on ${formattedDate} at ${location}.`,
+              scheduleId,
+              bgy,
+            ]
+          );
+        }
+      } else {
+        await pool.query(
+          `INSERT INTO notifications (title, message, type, is_read, related_id, recipient_role, barangay, created_at)
+           VALUES (?, ?, 'schedule', FALSE, ?, 'all', NULL, NOW())`,
+          [
+            `New Schedule: ${title}`,
+            `${schedule_type.toUpperCase()} on ${formattedDate} at ${location}.`,
+            scheduleId,
+          ]
+        );
+      }
     } catch (notifErr) {
       console.warn('Schedule notification warning:', notifErr && notifErr.message);
     }

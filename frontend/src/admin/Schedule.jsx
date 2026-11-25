@@ -13,9 +13,6 @@ import {
   Search,
   Sparkles,
   ArrowRight,
-  FileText,
-  Download,
-  Printer,
   X
 } from 'lucide-react';
 import { capitalizeWords } from '../utils/i18n';
@@ -205,7 +202,7 @@ const fieldCls = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm f
 
 const emptyForm = {
   title: '', schedule_type: 'feeding', schedule_date: '', schedule_time: '',
-  venue: '', barangay: 'All Barangays', assigned_to: '', target_role: '',
+  venue: '', barangay: 'All Barangays', selected_barangays: [], assigned_to: '', target_role: '',
   recipient_type: 'all', facilitator: '', notes: '',
   participant_ids: [],
 };
@@ -226,156 +223,72 @@ function Schedule() {
 
   const filteredBarangayUsers = useMemo(() => {
     if (form.recipient_type !== 'barangay') return [];
+    const selectedList = form.selected_barangays || [];
+    if (selectedList.length === 0) return [];
     const q = participantSearch.trim().toLowerCase();
     return users.filter((u) => {
-      const matchesBarangay = !form.barangay || u.barangay?.toLowerCase() === form.barangay?.toLowerCase();
+      const uBgy = u.barangay?.trim();
+      const matchesBarangay = selectedList.some((b) => b.toLowerCase() === uBgy?.toLowerCase());
       if (!q) return matchesBarangay;
       const fullName = `${u.first_name} ${u.last_name}`.toLowerCase();
-      const matchesSearch = fullName.includes(q) || u.role?.toLowerCase().includes(q) || u.barangay?.toLowerCase().includes(q);
+      const matchesSearch = fullName.includes(q) || u.role?.toLowerCase().includes(q) || uBgy?.toLowerCase().includes(q);
       return matchesBarangay && matchesSearch;
     });
-  }, [users, form.recipient_type, form.barangay, participantSearch]);
+  }, [users, form.recipient_type, form.selected_barangays, participantSearch]);
+
+  const handleAddBarangay = (bgy) => {
+    if (!bgy) return;
+    setForm((prev) => {
+      const current = prev.selected_barangays || [];
+      if (current.includes(bgy)) return prev;
+      const updated = [...current, bgy];
+      return {
+        ...prev,
+        selected_barangays: updated,
+        barangay: updated.join(', '),
+      };
+    });
+    setSchedErrors((prev) => ({ ...prev, barangay: '' }));
+  };
+
+  const handleRemoveBarangay = (bgy) => {
+    setForm((prev) => {
+      const current = prev.selected_barangays || [];
+      const updated = current.filter((b) => b !== bgy);
+      return {
+        ...prev,
+        selected_barangays: updated,
+        barangay: updated.join(', '),
+        participant_ids: (prev.participant_ids || []).filter((pid) => {
+          const u = users.find((x) => String(x.user_id) === String(pid));
+          return u && updated.includes(u.barangay);
+        }),
+      };
+    });
+  };
+
+  const handleSelectAllBarangays = () => {
+    setForm((prev) => ({
+      ...prev,
+      selected_barangays: [...GASAN_BARANGAYS],
+      barangay: GASAN_BARANGAYS.join(', '),
+    }));
+    setSchedErrors((prev) => ({ ...prev, barangay: '' }));
+  };
+
+  const handleClearBarangays = () => {
+    setForm((prev) => ({
+      ...prev,
+      selected_barangays: [],
+      barangay: '',
+      participant_ids: [],
+    }));
+  };
 
   // Calendar State
   const [calendarDate, setCalendarDate] = useState(() => new Date());
   const [selectedDateKey, setSelectedDateKey] = useState(() => formatDateKey(new Date()));
   const [fetching, setFetching]         = useState(false);
-
-  // Activities Report State
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportFromDate, setReportFromDate] = useState(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
-  });
-  const [reportToDate, setReportToDate] = useState(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
-  });
-  const [reportBarangay, setReportBarangay] = useState('All Barangays');
-
-  const reportFilteredActivities = useMemo(() => {
-    return activities.filter((act) => {
-      const actDate = act.schedule_date ? act.schedule_date.slice(0, 10) : '';
-      if (reportFromDate && actDate < reportFromDate) return false;
-      if (reportToDate && actDate > reportToDate) return false;
-      if (reportBarangay !== 'All Barangays' && act.barangay !== reportBarangay) return false;
-      return true;
-    }).sort((a, b) => (a.schedule_date || '').localeCompare(b.schedule_date || ''));
-  }, [activities, reportFromDate, reportToDate, reportBarangay]);
-
-  const handlePrintReport = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Pop-up blocked. Please allow pop-ups for this site to view printable report.');
-      return;
-    }
-    const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-  <title>Report of Activities - ${reportBarangay}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 30px; color: #111; font-size: 12px; }
-    .header { text-align: center; margin-bottom: 24px; }
-    .header p { margin: 2px 0; }
-    .header .gov { font-size: 11px; text-transform: uppercase; color: #444; }
-    .header .title { font-size: 15px; font-weight: bold; margin-top: 8px; text-decoration: underline; }
-    .header .meta { font-size: 11px; margin-top: 4px; color: #555; }
-    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
-    th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; font-size: 11px; }
-    th { background-color: #f0f0f0; font-weight: bold; }
-    .status { text-transform: uppercase; font-weight: bold; font-size: 10px; }
-    .signatures { margin-top: 45px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-    .sig-col { width: 45%; text-align: center; }
-    .sig-line { margin-top: 40px; border-top: 1px solid #333; padding-top: 4px; font-weight: bold; }
-    @media print {
-      body { margin: 15mm; }
-      @page { size: portrait; margin: 10mm; }
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <p class="gov">Republic of the Philippines</p>
-    <p class="gov">Province of Marinduque</p>
-    <p class="gov">Municipality of Gasan</p>
-    <p class="title">NUTRITION PROGRAM — CALENDAR & REPORT OF ACTIVITIES</p>
-    <p class="meta"><strong>Date Range:</strong> ${reportFromDate} to ${reportToDate} &nbsp;|&nbsp; <strong>Barangay:</strong> ${reportBarangay}</p>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 80px;">Date</th>
-        <th style="width: 70px;">Time</th>
-        <th>Activity Title</th>
-        <th>Type</th>
-        <th>Venue</th>
-        <th>Target Role</th>
-        <th>Barangay</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${reportFilteredActivities.length === 0 ? '<tr><td colspan="8" style="text-align:center; padding: 20px;">No scheduled activities found for this period and criteria.</td></tr>' :
-        reportFilteredActivities.map(act => `
-          <tr>
-            <td>${act.schedule_date ? act.schedule_date.slice(0, 10) : '—'}</td>
-            <td>${formatScheduleTime(act.schedule_time) || '—'}</td>
-            <td><strong>${act.title || 'Untitled'}</strong>${act.notes ? `<br><small style="color:#555;">${act.notes}</small>` : ''}</td>
-            <td>${(act.schedule_type || 'activity').replace('_', ' ')}</td>
-            <td>${act.venue || '—'}</td>
-            <td>${act.target_role || 'All'}</td>
-            <td>${act.barangay || 'All Barangays'}</td>
-            <td class="status">${act.status || 'pending'}</td>
-          </tr>
-        `).join('')}
-    </tbody>
-  </table>
-  <div class="signatures">
-    <div class="sig-col">
-      <p style="margin: 0; font-size: 11px;">Prepared by:</p>
-      <div class="sig-line">Barangay Nutrition Scholar / BHW</div>
-      <p style="margin: 2px 0 0; font-size: 10px; color: #555;">Barangay Health & Nutrition Worker</p>
-    </div>
-    <div class="sig-col">
-      <p style="margin: 0; font-size: 11px;">Noted by:</p>
-      <div class="sig-line">Municipal Nutrition Action Officer (MNAO)</div>
-      <p style="margin: 2px 0 0; font-size: 10px; color: #555;">Municipal Nutrition Program</p>
-    </div>
-  </div>
-  <script>
-    window.onload = function() { window.print(); };
-  </script>
-</body>
-</html>`;
-    printWindow.document.open();
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-  };
-
-  const handleDownloadCsv = () => {
-    if (!reportFilteredActivities || reportFilteredActivities.length === 0) return;
-    const headers = ['Schedule ID', 'Date', 'Time', 'Title', 'Type', 'Venue', 'Barangay', 'Target Role', 'Status', 'Notes'];
-    const rows = reportFilteredActivities.map(act => [
-      act.schedule_id,
-      act.schedule_date ? act.schedule_date.slice(0, 10) : '',
-      `"${formatScheduleTime(act.schedule_time) || ''}"`,
-      `"${act.title || ''}"`,
-      `"${(act.schedule_type || '').replace('_', ' ')}"`,
-      `"${act.venue || ''}"`,
-      `"${act.barangay || 'All Barangays'}"`,
-      `"${act.target_role || 'All'}"`,
-      `"${act.status || 'pending'}"`,
-      `"${act.notes || ''}"`,
-    ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Activities_Report_${reportBarangay.replace(/\s+/g, '_')}_${reportFromDate}_to_${reportToDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   const fetchActivities = async () => {
     setFetching(true);
@@ -430,9 +343,16 @@ function Schedule() {
   };
 
   const handleRecipientChange = (e) => {
-    setForm({ ...form, recipient_type: e.target.value,
-      barangay: e.target.value === 'all' ? 'All Barangays' : '',
-      assigned_to: '', target_role: '', participant_ids: [] });
+    const val = e.target.value;
+    setForm({
+      ...form,
+      recipient_type: val,
+      barangay: val === 'all' ? 'All Barangays' : '',
+      selected_barangays: [],
+      assigned_to: '',
+      target_role: '',
+      participant_ids: [],
+    });
     setSchedErrors((prev) => ({ ...prev, barangay: '', target_role: '', assigned_to: '' }));
     setParticipantSearch('');
   };
@@ -456,7 +376,9 @@ function Schedule() {
     if (!form.title?.trim()) errs.title = 'This field is required';
     if (!form.schedule_date) errs.schedule_date = 'This field is required';
     if (!form.venue?.trim()) errs.venue = 'Venue is required';
-    if (form.recipient_type === 'barangay' && !form.barangay) errs.barangay = 'This field is required';
+    if (form.recipient_type === 'barangay' && (!form.selected_barangays || form.selected_barangays.length === 0) && !form.barangay) {
+      errs.barangay = 'Please select at least one barangay';
+    }
     if (form.recipient_type === 'role' && !form.target_role) errs.target_role = 'This field is required';
     if (form.recipient_type === 'user' && !form.assigned_to) errs.assigned_to = 'This field is required';
 
@@ -476,15 +398,33 @@ function Schedule() {
     setSchedErrors({});
     setSaving(true);
     try {
-      const { recipient_type, ...schedule } = form;
-      if (recipient_type === 'all')      { schedule.barangay = 'All Barangays'; schedule.assigned_to = null; schedule.target_role = null; }
-      if (recipient_type === 'barangay') { schedule.assigned_to = null; schedule.target_role = null; }
-      if (recipient_type === 'role')     { schedule.barangay = 'All Barangays'; schedule.assigned_to = null; }
-      if (recipient_type === 'user')     { schedule.target_role = null; }
+      const { recipient_type, selected_barangays, ...schedule } = form;
+      if (recipient_type === 'all') {
+        schedule.barangay = 'All Barangays';
+        schedule.assigned_to = null;
+        schedule.target_role = null;
+      }
+      if (recipient_type === 'barangay') {
+        schedule.barangay = selected_barangays && selected_barangays.length > 0 ? selected_barangays.join(', ') : form.barangay;
+        schedule.assigned_to = null;
+        schedule.target_role = null;
+      }
+      if (recipient_type === 'role') {
+        schedule.barangay = 'All Barangays';
+        schedule.assigned_to = null;
+      }
+      if (recipient_type === 'user') {
+        schedule.target_role = null;
+      }
       await axiosClient.post('/schedule', schedule);
-      setShowModal(false); setForm(emptyForm); fetchActivities();
-    } catch (err) { setFormError(err.response?.data?.message || 'Something went wrong.'); }
-    finally { setSaving(false); }
+      setShowModal(false);
+      setForm(emptyForm);
+      fetchActivities();
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Something went wrong.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const counts = {
@@ -689,17 +629,8 @@ function Schedule() {
           />
         </div>
 
-        {/* Action Buttons: Activities Report & Add Activity */}
+        {/* Action Button: Add Activity */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowReportModal(true)}
-            className="flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-[#1b5e20] border-2 border-green-200 px-4 py-2.5 rounded-xl font-bold text-sm transition shadow-2xs cursor-pointer shrink-0"
-            title="Generate and export activities report per date range and barangay"
-          >
-            <FileText size={17} />
-            <span>Activities Report</span>
-          </button>
-
           <button
             onClick={() => handleOpenAddForDate(selectedDateKey)}
             className="flex items-center justify-center gap-2 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-sm cursor-pointer shrink-0"
@@ -1063,27 +994,74 @@ function Schedule() {
                 {form.recipient_type === 'barangay' && (
                   <div className="space-y-3">
                     <div>
-                      <FormLabel label="Barangay" required />
+                      <div className="flex items-center justify-between mb-1.5">
+                        <FormLabel label="Target Barangays" required />
+                        <div className="flex items-center gap-2 text-xs">
+                          <button
+                            type="button"
+                            onClick={handleSelectAllBarangays}
+                            className="text-emerald-700 hover:text-emerald-900 font-semibold cursor-pointer"
+                          >
+                            Select All (25)
+                          </button>
+                          {(form.selected_barangays || []).length > 0 && (
+                            <>
+                              <span className="text-gray-300">•</span>
+                              <button
+                                type="button"
+                                onClick={handleClearBarangays}
+                                className="text-gray-500 hover:text-red-600 cursor-pointer"
+                              >
+                                Clear
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Selected Barangays Chips */}
+                      {(form.selected_barangays || []).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-emerald-50/60 border border-emerald-100 rounded-xl max-h-28 overflow-y-auto">
+                          {form.selected_barangays.map((b) => (
+                            <span
+                              key={b}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-700 text-white shadow-2xs"
+                            >
+                              {b}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveBarangay(b)}
+                                className="hover:bg-white/20 rounded-full p-0.5 text-white/90 hover:text-white transition cursor-pointer"
+                              >
+                                <X size={12} />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Dropdown to add more barangays */}
                       <select
-                        name="barangay"
-                        value={form.barangay}
+                        value=""
                         onChange={(e) => {
-                          handleChange(e);
-                          setForm((prev) => ({ ...prev, barangay: e.target.value, participant_ids: [] }));
-                          setParticipantSearch('');
+                          if (e.target.value) handleAddBarangay(e.target.value);
                         }}
-                        className={`${fieldCls} ${schedErrors.barangay ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+                        className={`${fieldCls} ${schedErrors.barangay ? 'border-[#D32F2F] ring-1 ring-[#D32F2F]' : ''}`}
                       >
-                        <option value="">Select barangay…</option>
-                        {GASAN_BARANGAYS.map((b) => (
+                        <option value="">
+                          {(form.selected_barangays || []).length === 0
+                            ? '+ Select a barangay to add…'
+                            : '+ Add another barangay…'}
+                        </option>
+                        {GASAN_BARANGAYS.filter((b) => !(form.selected_barangays || []).includes(b)).map((b) => (
                           <option key={b} value={b}>{b}</option>
                         ))}
                       </select>
                       {schedErrors.barangay && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.barangay}</p>}
                     </div>
 
-                    {/* Optional participants for specific barangay */}
-                    {form.barangay && (
+                    {/* Optional participants scoped to all selected barangays */}
+                    {(form.selected_barangays || []).length > 0 && (
                       <div className="pt-1">
                         <div className="flex items-center justify-between mb-1.5">
                           <FormLabel label="Specific Assigned Workers (Optional)" />
@@ -1101,14 +1079,14 @@ function Schedule() {
                             type="text"
                             value={participantSearch}
                             onChange={(e) => setParticipantSearch(e.target.value)}
-                            placeholder={`Search worker in ${form.barangay}…`}
+                            placeholder="Search worker by name, role, or barangay…"
                             className="w-full pl-8 pr-7 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-emerald-600 focus:border-emerald-600 transition"
                           />
                           {participantSearch && (
                             <button
                               type="button"
                               onClick={() => setParticipantSearch('')}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs cursor-pointer"
                             >
                               ✕
                             </button>
@@ -1118,14 +1096,19 @@ function Schedule() {
                         <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100 bg-gray-50">
                           {filteredBarangayUsers.length === 0 ? (
                             <div className="p-3 text-center text-xs text-gray-400">
-                              {participantSearch ? 'No matching workers found.' : `No workers assigned to Brgy. ${form.barangay} yet.`}
+                              {participantSearch
+                                ? 'No matching workers found.'
+                                : 'No active workers found in the selected barangays.'}
                             </div>
                           ) : (
                             filteredBarangayUsers.map((u) => {
                               const uid = String(u.user_id);
                               const checked = (form.participant_ids || []).includes(uid);
                               return (
-                                <label key={uid} className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-green-50 transition ${checked ? 'bg-emerald-50' : ''}`}>
+                                <label
+                                  key={uid}
+                                  className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-green-50 transition ${checked ? 'bg-emerald-50' : ''}`}
+                                >
                                   <input
                                     type="checkbox"
                                     checked={checked}
@@ -1219,96 +1202,6 @@ function Schedule() {
         </motion.div>
       )}
     </AnimatePresence>,
-    document.body
-  )}
-
-  {/* ── Activities Report Modal ── */}
-  {showReportModal && createPortal(
-    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col my-8">
-        <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-4 flex items-center justify-between text-white shrink-0">
-          <div className="flex items-center gap-2">
-            <FileText size={20} />
-            <div>
-              <h3 className="text-base font-bold">Export Activities Report</h3>
-              <p className="text-xs text-white/80">Generate calendar & activity summary</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowReportModal(false)}
-            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <FormLabel label="From Date" required />
-              <input
-                type="date"
-                value={reportFromDate}
-                onChange={(e) => setReportFromDate(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 bg-white"
-              />
-            </div>
-            <div>
-              <FormLabel label="To Date" required />
-              <input
-                type="date"
-                value={reportToDate}
-                onChange={(e) => setReportToDate(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 bg-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <FormLabel label="Barangay Coverage" required />
-            <select
-              value={reportBarangay}
-              onChange={(e) => setReportBarangay(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 bg-white"
-            >
-              <option value="All Barangays">All Barangays (Municipal-wide)</option>
-              {GASAN_BARANGAYS.map((b) => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between text-xs">
-            <span className="font-semibold text-gray-700">Matching Activities:</span>
-            <span className="font-bold text-[#1b5e20] bg-green-100 px-2.5 py-0.5 rounded-full">
-              {reportFilteredActivities.length} record(s)
-            </span>
-          </div>
-
-          <div className="pt-2 flex flex-col sm:flex-row gap-2">
-            <button
-              type="button"
-              onClick={handlePrintReport}
-              disabled={reportFilteredActivities.length === 0}
-              className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:opacity-95 transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-sm"
-            >
-              <Printer size={15} />
-              <span>Print / Save PDF</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadCsv}
-              disabled={reportFilteredActivities.length === 0}
-              className="flex-1 py-2.5 rounded-xl text-xs font-bold text-[#1b5e20] bg-white border border-green-300 hover:bg-green-50 transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs"
-            >
-              <Download size={15} />
-              <span>Export CSV</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>,
     document.body
   )}
     </div>
