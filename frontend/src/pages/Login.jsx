@@ -66,11 +66,6 @@ function LoginCard({ emailInputRef }) {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetStep, setResetStep] = useState("email");
   const [forgotEmail, setForgotEmail] = useState("");
-  const [selectedChannel, setSelectedChannel] = useState("email");
-  const [hasSmsOption, setHasSmsOption] = useState(false);
-  const [smsConfigured, setSmsConfigured] = useState(false);
-  const [resolvedAccount, setResolvedAccount] = useState(null);
-  const [maskedPhone, setMaskedPhone] = useState("");
   const [maskedRecipient, setMaskedRecipient] = useState("");
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
   const [otpHasError, setOtpHasError] = useState(false);
@@ -89,37 +84,6 @@ function LoginCard({ emailInputRef }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const otpInputRefs = useRef([]);
-
-  // Check account for email, phone, or username registration
-  const checkAccount = async (targetIdentifier) => {
-    const raw = (targetIdentifier || "").trim();
-    if (!raw || raw.length < 3) {
-      setResolvedAccount(null);
-      setHasSmsOption(false);
-      return;
-    }
-    try {
-      const res = await fetch(`${API_URL}/auth/check-account?identifier=${encodeURIComponent(raw)}&platform=web`);
-      const data = await res.json();
-      if (data && data.exists) {
-        setHasSmsOption(Boolean(data.has_sms));
-        setSmsConfigured(Boolean(data.sms_configured));
-        setMaskedPhone(data.masked_phone || "");
-        setResolvedAccount({
-          email: data.email,
-          fullName: data.full_name,
-          phone: data.contact_number,
-          maskedPhone: data.masked_phone,
-        });
-        if (!data.sms_configured && selectedChannel === "sms") {
-          setSelectedChannel("email");
-        }
-      } else {
-        setHasSmsOption(false);
-        setResolvedAccount(null);
-      }
-    } catch (_) {}
-  };
 
   // Timers effect for OTP
   useEffect(() => {
@@ -148,7 +112,6 @@ function LoginCard({ emailInputRef }) {
     setShowForgotPassword(true);
     setResetStep("email");
     setForgotEmail(email.trim());
-    setSelectedChannel("email");
     setOtpDigits(["", "", "", "", "", ""]);
     setOtpHasError(false);
     setResetToken("");
@@ -156,7 +119,6 @@ function LoginCard({ emailInputRef }) {
     setConfirmPassword("");
     setForgotMessage("");
     setError("");
-    if (email.trim()) checkAccount(email.trim());
   };
 
   // ── Load saved email on mount ──
@@ -219,30 +181,26 @@ function LoginCard({ emailInputRef }) {
     }
   };
 
-  const handleForgotPassword = async (e, overrideChannel) => {
+  const handleForgotPassword = async (e) => {
     if (e) e.preventDefault();
     setForgotMessage("");
     setError("");
 
     if (!forgotEmail.trim()) {
       setForgotMessageType("error");
-      setForgotMessage("Please enter your registered email address or mobile number.");
+      setForgotMessage("Please enter your registered email address.");
       return;
     }
 
-    const channelToUse = overrideChannel || selectedChannel;
     setForgotLoading(true);
 
     try {
-      const emailToSend = resolvedAccount?.email || forgotEmail.trim();
       const res = await fetch(`${API_URL}/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          identifier: forgotEmail.trim(),
-          email: emailToSend,
+          email: forgotEmail.trim(),
           platform: "web",
-          channel: channelToUse,
         }),
       });
 
@@ -254,13 +212,8 @@ function LoginCard({ emailInputRef }) {
       }
 
       setForgotMessageType("success");
-      setForgotMessage(data.message || "If this account exists, a code has been sent.");
-      const effectiveChannel = data.channel || channelToUse;
-      setSelectedChannel(effectiveChannel);
-      if (data.email) {
-        setForgotEmail(data.email);
-      }
-      setMaskedRecipient(data.masked_recipient || (effectiveChannel === "sms" ? maskedPhone : (data.email || forgotEmail)));
+      setForgotMessage(data.message || "If this account exists, a verification code has been sent to your email.");
+      setMaskedRecipient(data.masked_recipient || forgotEmail);
       setResetStep("otp");
       setOtpDigits(["", "", "", "", "", ""]);
       setOtpHasError(false);
@@ -522,97 +475,23 @@ function LoginCard({ emailInputRef }) {
             </h3>
           </div>
 
-          {/* ── STEP 1: Email & Channel Selection ── */}
+          {/* ── STEP 1: Email Address ── */}
           {resetStep === "email" && (
             <div className="space-y-4">
               <p className="text-xs text-slate-500">
-                Enter your registered email address or mobile phone number to receive your 6-digit verification code.
+                Enter your registered email address to receive your 6-digit verification code.
               </p>
               <div>
                 <label className="mb-1 block text-sm font-semibold text-slate-700">
-                  Registered Email or Phone Number <span className="text-red-500">*</span>
+                  Registered Email <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="text"
+                  type="email"
                   value={forgotEmail}
-                  onBlur={() => checkAccount(forgotEmail)}
-                  onChange={(e) => {
-                    setForgotEmail(e.target.value);
-                    if (e.target.value.length >= 4) checkAccount(e.target.value);
-                  }}
-                  placeholder="e.g. yourname@gmail.com or 09XXXXXXXXX"
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="e.g. softdev349@gmail.com"
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                 />
-              </div>
-
-              {resolvedAccount && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 text-xs text-emerald-950">
-                  <div className="font-bold flex items-center gap-1.5 text-emerald-800">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-                    Account Found: {resolvedAccount.fullName}
-                  </div>
-                  <div className="mt-1 text-slate-600 space-y-0.5 text-[11px]">
-                    <div>Email: <span className="font-semibold text-slate-800">{resolvedAccount.email}</span></div>
-                    {resolvedAccount.maskedPhone && (
-                      <div>Mobile: <span className="font-semibold text-slate-800">{resolvedAccount.maskedPhone}</span></div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Send Code Via
-                </label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedChannel("email")}
-                    className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 px-3 text-xs font-semibold transition ${
-                      selectedChannel === "email"
-                        ? "border-emerald-600 bg-emerald-50 text-emerald-800 shadow-xs"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <span>Email (Recommended)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={!hasSmsOption}
-                    onClick={() => setSelectedChannel("sms")}
-                    className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border py-2 px-2.5 text-xs font-semibold transition ${
-                      !hasSmsOption
-                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-60"
-                        : selectedChannel === "sms"
-                        ? "border-emerald-600 bg-emerald-50 text-emerald-800 shadow-xs"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                      <span>{hasSmsOption && maskedPhone ? `SMS (${maskedPhone})` : "SMS"}</span>
-                    </div>
-                    {!smsConfigured && hasSmsOption && (
-                      <span className="text-[10px] text-amber-700 font-normal">No SMS Gateway (Uses Email)</span>
-                    )}
-                  </button>
-                </div>
-                {!hasSmsOption && forgotEmail.length >= 4 && (
-                  <p className="mt-1.5 text-[11px] text-slate-400">
-                    No registered phone number found on account. Please use Email.
-                  </p>
-                )}
-                {!smsConfigured && selectedChannel === "sms" && (
-                  <p className="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2.5 leading-relaxed">
-                    ℹ️ <strong>Paalala:</strong> Walang aktibong SMS gateway (Semaphore/PhilSMS) ang server. Kung pipiliin ang SMS, awtomatiko pa ring ipapadala ang 6-digit verification code sa inyong registered email (<span className="font-semibold">{resolvedAccount?.email || forgotEmail}</span>) upang matanggap ninyo agad ang OTP.
-                  </p>
-                )}
               </div>
 
               <button
@@ -630,7 +509,7 @@ function LoginCard({ emailInputRef }) {
                     <span>Sending Code...</span>
                   </>
                 ) : (
-                  <span>Next: Send Code →</span>
+                  <span>Send Verification Code →</span>
                 )}
               </button>
             </div>
@@ -641,18 +520,12 @@ function LoginCard({ emailInputRef }) {
             <div className={`space-y-4 ${otpHasError ? "animate-shake" : ""}`}>
               <div className="flex flex-col items-center text-center">
                 <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-2.5 text-emerald-700">
-                  {selectedChannel === "sms" ? (
-                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  )}
+                  <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
                 </div>
                 <h4 className="text-base font-bold text-slate-900">
-                  {selectedChannel === "sms" ? "Check your phone" : "Check your email"}
+                  Check your email
                 </h4>
                 <p className="text-xs text-slate-500 mt-0.5">
                   We sent a 6-digit code to <span className="font-semibold text-slate-800">{maskedRecipient || forgotEmail}</span>
@@ -725,19 +598,6 @@ function LoginCard({ emailInputRef }) {
                 >
                   {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
                 </button>
-
-                {hasSmsOption && resendCooldown === 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextCh = selectedChannel === "sms" ? "email" : "sms";
-                      handleForgotPassword(null, nextCh);
-                    }}
-                    className="text-[11px] text-slate-500 hover:text-emerald-700 hover:underline"
-                  >
-                    {selectedChannel === "sms" ? "Send to email instead" : "Send via SMS instead"}
-                  </button>
-                )}
               </div>
             </div>
           )}

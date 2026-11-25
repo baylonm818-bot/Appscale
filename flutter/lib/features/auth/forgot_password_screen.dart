@@ -32,15 +32,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
 
-  int _currentStep = 0; // 0 = Step 1 (Email/Channel), 1 = Step 2 (OTP), 2 = Step 3 (New Password)
+  int _currentStep = 0; // 0 = Step 1 (Email), 1 = Step 2 (OTP), 2 = Step 3 (New Password)
   bool _otpRequested = false;
   bool _otpVerified = false;
   bool _isLoading = false;
-  bool _isCheckingAccount = false;
 
-  String _selectedChannel = 'email'; // 'email' | 'sms'
-  bool _hasSmsOption = false;
-  String? _maskedPhone;
   String _maskedRecipient = '';
   String? _resetToken;
 
@@ -131,28 +127,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     return '$first*****$last@$domain';
   }
 
-  Future<void> _checkAccountPhone() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) return;
-
-    setState(() => _isCheckingAccount = true);
-    try {
-      final res = await AuthApi.checkAccount(email: email);
-      if (!mounted) return;
-      setState(() {
-        _hasSmsOption = res['has_sms'] == true;
-        _maskedPhone = res['masked_phone']?.toString();
-        if (!_hasSmsOption && _selectedChannel == 'sms') {
-          _selectedChannel = 'email';
-        }
-      });
-    } catch (_) {
-      // Fallback: keep email default
-    } finally {
-      if (mounted) setState(() => _isCheckingAccount = false);
-    }
-  }
-
   void _goToStep(int step) {
     if (step < 0 || step > 2) return;
     if (step == 1 && !_otpRequested) {
@@ -190,14 +164,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     try {
       final res = await AuthApi.forgotPassword(
         email: email,
-        channel: _selectedChannel,
       );
       if (!mounted) return;
 
       final serverMasked = res['masked_recipient']?.toString();
       _maskedRecipient = (serverMasked != null && serverMasked.isNotEmpty)
           ? serverMasked
-          : (_selectedChannel == 'sms' ? (_maskedPhone ?? 'registered phone') : _maskEmail(email));
+          : _maskEmail(email);
 
       setState(() {
         _otpRequested = true;
@@ -220,7 +193,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     }
   }
 
-  Future<void> _resendOtp({String? overrideChannel}) async {
+  Future<void> _resendOtp() async {
     if (_resendCooldown > 0 || _isLoading) return;
     final email = _emailController.text.trim();
     if (email.isEmpty) {
@@ -228,22 +201,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
       return;
     }
 
-    final channelToUse = overrideChannel ?? _selectedChannel;
-
     setState(() => _isLoading = true);
     try {
       final res = await AuthApi.forgotPassword(
         email: email,
-        channel: channelToUse,
       );
       if (!mounted) return;
 
       setState(() {
-        _selectedChannel = channelToUse;
         final serverMasked = res['masked_recipient']?.toString();
         _maskedRecipient = (serverMasked != null && serverMasked.isNotEmpty)
             ? serverMasked
-            : (_selectedChannel == 'sms' ? (_maskedPhone ?? 'registered phone') : _maskEmail(email));
+            : _maskEmail(email);
         _otpHasError = false;
         _otpErrorMessage = '';
       });
@@ -561,7 +530,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     );
   }
 
-  // ── Step 1: Email & Channel Selection ──
+  // ── Step 1: Email Address ──
   Widget _buildStep1EmailAndChannel() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -575,143 +544,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
           ),
           const SizedBox(height: 24),
-          Focus(
-            onFocusChange: (hasFocus) {
-              if (!hasFocus) _checkAccountPhone();
-            },
-            child: AppTextField(
-              label: 'email'.tr,
-              hint: 'hint_enter_email'.tr,
-              icon: Icons.email_outlined,
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-            ),
+          AppTextField(
+            label: 'email'.tr,
+            hint: 'hint_enter_email'.tr,
+            icon: Icons.email_outlined,
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
           ),
-          const SizedBox(height: 20),
-          Text(
-            'send_code_via'.tr,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              // Email option
-              Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _selectedChannel = 'email'),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: _selectedChannel == 'email'
-                          ? AppColors.primaryGreen.withValues(alpha: 0.1)
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: _selectedChannel == 'email'
-                            ? AppColors.primaryGreen
-                            : AppColors.border,
-                        width: _selectedChannel == 'email' ? 2 : 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.mail_rounded,
-                          size: 18,
-                          color: _selectedChannel == 'email'
-                              ? AppColors.primaryGreen
-                              : AppColors.textMuted,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Email',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: _selectedChannel == 'email'
-                                ? AppColors.primaryGreen
-                                : AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // SMS option
-              Expanded(
-                child: InkWell(
-                  onTap: _hasSmsOption
-                      ? () => setState(() => _selectedChannel = 'sms')
-                      : null,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: !_hasSmsOption
-                          ? Colors.grey.shade100
-                          : _selectedChannel == 'sms'
-                              ? AppColors.primaryGreen.withValues(alpha: 0.1)
-                              : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: !_hasSmsOption
-                            ? Colors.grey.shade300
-                            : _selectedChannel == 'sms'
-                                ? AppColors.primaryGreen
-                                : AppColors.border,
-                        width: _selectedChannel == 'sms' ? 2 : 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.phone_android_rounded,
-                          size: 18,
-                          color: !_hasSmsOption
-                              ? Colors.grey.shade400
-                              : _selectedChannel == 'sms'
-                                  ? AppColors.primaryGreen
-                                  : AppColors.textMuted,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _hasSmsOption && _maskedPhone != null
-                              ? 'SMS (${_maskedPhone!})'
-                              : 'SMS',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            color: !_hasSmsOption
-                                ? Colors.grey.shade500
-                                : _selectedChannel == 'sms'
-                                    ? AppColors.primaryGreen
-                                    : AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (!_hasSmsOption && _emailController.text.isNotEmpty && !_isCheckingAccount)
-            Padding(
-              padding: const EdgeInsets.only(top: 8, left: 4),
-              child: Text(
-                'no_registered_number'.tr,
-                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-              ),
-            ),
           const SizedBox(height: 28),
           AppButton(
             label: 'send_code'.tr,
@@ -725,8 +564,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
 
   // ── Step 2: OTP 6 Digit Boxes ──
   Widget _buildStep2OtpBoxes() {
-    final isSms = _selectedChannel == 'sms';
-
     return AnimatedBuilder(
       animation: _shakeAnimation,
       builder: (context, child) {
@@ -743,7 +580,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         child: Column(
           children: [
             const SizedBox(height: 8),
-            // Header: Light green circle badge with icon
+            // Header: Light green circle badge with mail icon
             Container(
               width: 68,
               height: 68,
@@ -751,15 +588,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                 color: AppColors.primaryGreen.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                isSms ? Icons.phone_android_rounded : Icons.mail_outline_rounded,
+              child: const Icon(
+                Icons.mail_outline_rounded,
                 color: AppColors.primaryGreen,
                 size: 34,
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              isSms ? 'check_your_phone'.tr : 'check_your_email'.tr,
+              'check_your_email'.tr,
               style: AppTextStyles.h2,
               textAlign: TextAlign.center,
             ),
@@ -955,24 +792,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                     : () => _resendOtp(),
               ),
             ),
-
-            if (_hasSmsOption && _resendCooldown == 0)
-              TextButton(
-                onPressed: () {
-                  final newChannel = _selectedChannel == 'sms' ? 'email' : 'sms';
-                  _resendOtp(overrideChannel: newChannel);
-                },
-                child: Text(
-                  _selectedChannel == 'sms'
-                      ? 'Send code to email instead'
-                      : 'Send code via SMS instead',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryGreen,
-                  ),
-                ),
-              ),
           ],
         ),
       ),

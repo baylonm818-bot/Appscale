@@ -28,7 +28,7 @@ test('SMS service correctly normalizes Philippine numbers and masks them', () =>
   assert.equal(maskPhoneNumber('+639175551234'), '0917*****34');
 });
 
-test('checkAccount returns masked phone for accounts with contact numbers', async () => {
+test('checkAccount returns account status and email-only OTP config', async () => {
   const pool = require('../config/db');
   const originalQuery = pool.query;
 
@@ -56,14 +56,14 @@ test('checkAccount returns masked phone for accounts with contact numbers', asyn
 
     assert.equal(res.statusCode, 200);
     assert.equal(res.payload.exists, true);
-    assert.equal(res.payload.has_sms, true);
-    assert.equal(res.payload.masked_phone, '0966*****26');
+    assert.equal(res.payload.has_sms, false);
+    assert.equal(res.payload.sms_configured, false);
   } finally {
     pool.query = originalQuery;
   }
 });
 
-test('forgotPassword returns generic message and allows OTP verification then password reset', async () => {
+test('forgotPassword sends OTP via email and allows OTP verification then password reset', async () => {
   const pool = require('../config/db');
   const originalQuery = pool.query;
 
@@ -94,7 +94,7 @@ test('forgotPassword returns generic message and allows OTP verification then pa
   try {
     // 1. Request OTP
     const forgotReq = {
-      body: { email: testUser.email, platform: 'mobile', channel: 'sms' },
+      body: { email: testUser.email, platform: 'mobile' },
       headers: {},
     };
     const forgotRes = makeRes();
@@ -103,8 +103,8 @@ test('forgotPassword returns generic message and allows OTP verification then pa
 
     assert.equal(forgotRes.statusCode, 200);
     assert.equal(forgotRes.payload.message, 'If this account exists, a code has been sent.');
-    assert.equal(forgotRes.payload.channel, 'sms');
-    assert.equal(forgotRes.payload.masked_recipient, '0917*****67');
+    assert.equal(forgotRes.payload.channel, 'email');
+    assert.equal(forgotRes.payload.masked_recipient, 'te*****r@apscale.local');
 
     // 2. Reject incorrect OTP
     const wrongVerifyReq = {

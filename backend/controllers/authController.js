@@ -310,16 +310,13 @@ exports.checkAccount = async (req, res) => {
     }
 
     const canReset = ['admin', 'bhw', 'bns'].includes(userRole);
-    const smsConfigured = isSmsConfigured();
-    const hasSms = Boolean(user.contact_number && user.contact_number.trim().length >= 10);
-    const maskedPhone = hasSms ? maskPhoneNumber(user.contact_number) : null;
 
     return res.status(200).json({
       exists: canReset,
       canReset,
-      has_sms: hasSms,
-      sms_configured: smsConfigured,
-      masked_phone: maskedPhone,
+      has_sms: false,
+      sms_configured: false,
+      masked_phone: null,
       email: user.email,
       masked_email: maskEmail(user.email),
       contact_number: user.contact_number,
@@ -410,60 +407,27 @@ exports.forgotPassword = async (req, res) => {
       attempts: 0,
       expiresAt,
       cooldownUntil,
-      channel,
+      channel: 'email',
       contactNumber: user.contact_number,
       email: canonicalEmail,
       verified: false,
     });
 
-    const smsConfigured = isSmsConfigured();
-    const isSms = channel === 'sms' && Boolean(user.contact_number && user.contact_number.trim().length >= 10);
-
-    if (isSms && smsConfigured) {
-      try {
-        await sendVerificationSms({ phone: user.contact_number, otp });
-        console.log(`[Audit] Verification OTP sent via SMS to ${maskPhoneNumber(user.contact_number)} for account ${maskEmail(canonicalEmail)}`);
-      } catch (smsError) {
-        console.error('Send SMS OTP error:', smsError && smsError.message);
-        // Fall back to email if SMS provider encountered an error
-        await sendOtpEmail(canonicalEmail, otp);
-        return res.status(200).json({
-          message: `Paalala: Hindi pa na-approve ng Semaphore ang account o kulang sa credits. Ipinadala ang 6-digit OTP sa inyong email (${maskEmail(canonicalEmail)}).`,
-          channel: 'email',
-          masked_recipient: maskEmail(canonicalEmail),
-          sms_fallback: true,
-          email: canonicalEmail,
-        });
-      }
-    } else if (isSms && !smsConfigured) {
-      // SMS gateway is not configured with an API key.
-      // Automatically send OTP to registered email so user is NEVER left without a code!
+    try {
       await sendOtpEmail(canonicalEmail, otp);
-      console.log(`[Audit] SMS Gateway unconfigured. Dispatched OTP to registered email ${maskEmail(canonicalEmail)} as safe fallback.`);
-      return res.status(200).json({
-        message: `Paalala: Walang aktibong SMS Gateway ang server. Ang 6-digit OTP ay ligtas na ipinadala sa inyong registered email (${maskEmail(canonicalEmail)}).`,
-        channel: 'email',
-        masked_recipient: maskEmail(canonicalEmail),
-        sms_fallback: true,
-        email: canonicalEmail,
+      console.log(`[Audit] Verification OTP sent via email to ${maskEmail(canonicalEmail)}`);
+    } catch (emailError) {
+      console.error('Send reset email error:', emailError && emailError.message);
+      passwordResetTokens.delete(key);
+      return res.status(500).json({
+        message: 'Failed to send OTP. Please check the email server configuration or contact the administrator.',
       });
-    } else {
-      try {
-        await sendOtpEmail(canonicalEmail, otp);
-        console.log(`[Audit] Verification OTP sent via email to ${maskEmail(canonicalEmail)}`);
-      } catch (emailError) {
-        console.error('Send reset email error:', emailError && emailError.message);
-        passwordResetTokens.delete(key);
-        return res.status(500).json({
-          message: 'Failed to send OTP. Please check the email server configuration or contact the administrator.',
-        });
-      }
     }
 
     return res.status(200).json({
       message: 'If this account exists, a code has been sent.',
-      channel: isSms ? 'sms' : 'email',
-      masked_recipient: isSms ? maskPhoneNumber(user.contact_number) : maskEmail(canonicalEmail),
+      channel: 'email',
+      masked_recipient: maskEmail(canonicalEmail),
       email: canonicalEmail,
     });
   } catch (error) {
