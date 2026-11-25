@@ -1,22 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CountUp, ShimmerSkeleton, modalVariants, backdropVariants } from '../components/ui/motion';
 import {
   Search,
-  ClipboardPlus,
   Stethoscope,
   X,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
-  Building2,
-  Calendar,
-  ExternalLink,
-  User,
 } from 'lucide-react';
 
 const statusColors = {
@@ -61,20 +54,11 @@ function NeedAttention() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [ageFilter, setAgeFilter] = useState('all');
-  const [referralFilter, setReferralFilter] = useState('all'); // 'all', 'referred_bhw', 'referred_bns', 'referred', 'not_referred'
   const [sortBy, setSortBy] = useState('priority');
 
   // pagination
   const [page, setPage] = useState(1);
   const pageSize = 10;
-
-  // refer modal
-  const [referTarget, setReferTarget] = useState(null);
-  const [referDestination, setReferDestination] = useState('Rural Health Unit (RHU)');
-  const [referUrgency, setReferUrgency] = useState('Routine');
-  const [referReason, setReferReason] = useState('');
-  const [referSubmitting, setReferSubmitting] = useState(false);
-  const [referError, setReferError] = useState('');
 
   // toast state
   const [toastMessage, setToastMessage] = useState(null); // { text, type: 'success' | 'error' }
@@ -94,6 +78,17 @@ function NeedAttention() {
   const [visitNotes, setVisitNotes] = useState('');
   const [visitSubmitting, setVisitSubmitting] = useState(false);
   const [visitError, setVisitError] = useState('');
+
+  // Lock body scroll when visit modal is open
+  useEffect(() => {
+    if (visitTarget) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [visitTarget]);
 
   const { data, isLoading, error: queryError, refetch } = useQuery({
     queryKey: ['need-attention', user.barangay || ''],
@@ -133,18 +128,6 @@ function NeedAttention() {
       });
     }
 
-    if (referralFilter !== 'all') {
-      if (referralFilter === 'referred_bhw') {
-        list = list.filter((c) => Boolean(c.is_referred) && String(c.referrer_role || 'BHW').toUpperCase() === 'BHW');
-      } else if (referralFilter === 'referred_bns') {
-        list = list.filter((c) => Boolean(c.is_referred) && String(c.referrer_role).toUpperCase() === 'BNS');
-      } else if (referralFilter === 'referred') {
-        list = list.filter((c) => Boolean(c.is_referred));
-      } else if (referralFilter === 'not_referred') {
-        list = list.filter((c) => !Boolean(c.is_referred));
-      }
-    }
-
     if (sortBy === 'priority') {
       list.sort(
         (a, b) =>
@@ -164,93 +147,18 @@ function NeedAttention() {
     }
 
     return list;
-  }, [children, search, statusFilter, ageFilter, referralFilter, sortBy]);
+  }, [children, search, statusFilter, ageFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredChildren.length / pageSize));
   const pagedChildren = filteredChildren.slice((page - 1) * pageSize, page * pageSize);
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, ageFilter, referralFilter, sortBy]);
+  }, [search, statusFilter, ageFilter, sortBy]);
 
-  const openReferModal = (child, e) => {
-    e.stopPropagation();
-    if (child.is_referred) return;
-    setReferTarget(child);
-
-    // Auto-detect urgency
-    const isSevere = child.overall_status === 'SAM' ||
-      child.weight_status === 'severely_underweight' ||
-      child.weight_status === 'severly_underweight' ||
-      child.height_status === 'severely_stunted' ||
-      child.height_status === 'severly_stunted';
-
-    const defaultUrgency = isSevere ? 'Urgent' : 'Routine';
-    setReferDestination('Rural Health Unit (RHU)');
-    setReferUrgency(defaultUrgency);
-
-    let defaultReason = '';
-    if (isSevere) {
-      defaultReason = `Severely malnourished (${child.overall_status || 'SAM'}) with complications. Immediate medical attention and specialized therapeutic feeding required.`;
-    } else {
-      defaultReason = `Under child nutrition monitoring (${child.overall_status || 'MAM'}). Requires medical checkup and nutritional consultation.`;
-    }
-
-    setReferReason(defaultReason);
-    setReferError('');
-  };
-
-  const submitReferral = async () => {
-    if (!referTarget || referSubmitting) return;
-
-    if (!referReason.trim()) {
-      setReferError('Please provide a reason or symptoms for the referral.');
-      return;
-    }
-
-    setReferSubmitting(true);
-    setReferError('');
-    const benName = `${referTarget.first_name || ''} ${referTarget.last_name || ''}`.trim() || 'the child';
-    const severityMapped = referUrgency === 'Urgent' ? 'high' : 'medium';
-
-    try {
-      await axiosClient.post('/bhw/referrals', {
-        child_id: referTarget.child_id,
-        referral_type: 'child',
-        beneficiary_type: 'child',
-        facility: referDestination,
-        severity: severityMapped,
-        urgency: referUrgency,
-        reason: referReason.trim(),
-        nutrition_status: referTarget.overall_status || 'SAM',
-        notes: `Referred from Need Attention monitoring (${referTarget.overall_status || 'At Risk'}). Latest Weight: ${referTarget.weight_kg ? `${referTarget.weight_kg} kg` : 'N/A'}, Latest Height: ${referTarget.height_cm ? `${referTarget.height_cm} cm` : 'N/A'}.`,
-        referred_by: user.user_id,
-      });
-
-      setReferTarget(null);
-      await refetch();
-      window.dispatchEvent(new CustomEvent('notifications:updated'));
-      setToastMessage({
-        text: `Referral submitted for ${benName} to ${referDestination}. Partner BNS notified.`,
-        type: 'success',
-      });
-    } catch (err) {
-      const errMsg = err.response?.data?.message || 'Failed to submit referral. Please try again.';
-      setReferError(errMsg);
-      setToastMessage({
-        text: errMsg,
-        type: 'error',
-      });
-    } finally {
-      setReferSubmitting(false);
-    }
-  };
-
-  const openVisitModal = (child, e) => {
-    e.stopPropagation();
+  const openVisitModal = (child) => {
     setVisitTarget(child);
     setVisitDate(new Date().toISOString().slice(0, 10));
-    // start with placeholder selection
     setServiceType('');
     setVisitWeight(child.weight_kg || '');
     setVisitHeight(child.height_cm || '');
@@ -377,9 +285,9 @@ function NeedAttention() {
       {/* ── Controls & Table ── */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
 
-        {/* Filter bar */}
-            <div className="p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-1 min-w-60 items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 border border-gray-100 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-100 transition">
+        {/* Filter bar - One Line */}
+        <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+          <div className="flex flex-1 min-w-[200px] items-center gap-2 bg-gray-50 rounded-xl px-3.5 py-2.5 border border-gray-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition">
             <Search size={16} className="text-gray-400 shrink-0" />
             <input
               type="text"
@@ -387,16 +295,20 @@ function NeedAttention() {
               aria-label="Search child by name or guardian"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="outline-none text-sm w-full bg-transparent text-gray-700 placeholder-gray-400"
+              className="outline-none text-xs sm:text-sm w-full bg-transparent text-gray-700 placeholder-gray-400"
             />
-            {search && <button onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>}
+            {search && (
+              <button type="button" onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <X size={14} />
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#2e7d32]"
+              className="border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-emerald-600 cursor-pointer shadow-2xs"
             >
               <option value="all">All Statuses</option>
               <option value="SAM">SAM (Severe)</option>
@@ -407,21 +319,9 @@ function NeedAttention() {
             </select>
 
             <select
-              value={referralFilter}
-              onChange={(e) => setReferralFilter(e.target.value)}
-              className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#2e7d32]"
-            >
-              <option value="all">All Referral Status</option>
-              <option value="referred_bhw">Referred by BHW</option>
-              <option value="referred_bns">Referred by BNS</option>
-              <option value="referred">All Referred</option>
-              <option value="not_referred">Not Yet Referred</option>
-            </select>
-
-            <select
               value={ageFilter}
               onChange={(e) => setAgeFilter(e.target.value)}
-              className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#2e7d32]"
+              className="border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-emerald-600 cursor-pointer shadow-2xs"
             >
               <option value="all">All Age Groups</option>
               <option value="0-23">0–23 months</option>
@@ -431,7 +331,7 @@ function NeedAttention() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-[#2e7d32]"
+              className="border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-emerald-600 cursor-pointer shadow-2xs"
             >
               <option value="priority">Sort: Severity Priority</option>
               <option value="overdue">Sort: Most Overdue</option>
@@ -451,12 +351,12 @@ function NeedAttention() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm table-fixed min-w-[800px]">
             <colgroup>
-              <col className="w-[24%]" />
-              <col className="w-[8%]" />
-              <col className="w-[12%]" />
-              <col className="w-[18%]" />
+              <col className="w-[28%]" />
+              <col className="w-[10%]" />
               <col className="w-[14%]" />
-              <col className="w-[24%]" />
+              <col className="w-[18%]" />
+              <col className="w-[16%]" />
+              <col className="w-[14%]" />
             </colgroup>
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80 border-b border-gray-100">
@@ -465,7 +365,7 @@ function NeedAttention() {
                 <th scope="col" className="px-4 py-3.5">Weight / Height</th>
                 <th scope="col" className="px-4 py-3.5 text-center">Nutrition Status</th>
                 <th scope="col" className="px-4 py-3.5">Last Visit</th>
-                <th scope="col" className="px-4 py-3.5 text-center">Interventions</th>
+                <th scope="col" className="px-4 py-3.5 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -476,16 +376,13 @@ function NeedAttention() {
                   </td>
                 </tr>
               ) : (
-                pagedChildren.map((c, idx) => {
+                pagedChildren.map((c) => {
                   const days = daysSince(c.last_visit);
                   const isOverdue = days == null || days > 30;
 
                   return (
-                    <motion.tr
+                    <tr
                       key={c.child_id}
-                      initial={idx < 10 ? { opacity: 0, y: 8 } : false}
-                      animate={idx < 10 ? { opacity: 1, y: 0 } : false}
-                      transition={idx < 10 ? { duration: 0.25, delay: idx * 0.03 } : undefined}
                       className="hover:bg-green-50/40 transition-colors"
                     >
                       <td className="px-6 py-4">
@@ -523,113 +420,17 @@ function NeedAttention() {
                         </p>
                       </td>
                       <td className="px-4 py-4 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-2 flex-nowrap">
-                          <button
-                            type="button"
-                            onClick={(e) => openVisitModal(c, e)}
-                            aria-label={`Log visit for ${c.first_name} ${c.last_name}`}
-                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors shadow-2xs inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
-                          >
-                            <Stethoscope size={13} className="text-emerald-700" /> Log Visit
-                          </button>
-                          {Boolean(c.is_referred) ? (
-                            <div className="relative inline-block text-left group">
-                              <Link
-                                to="/bhw/referrals"
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all shadow-2xs ${
-                                  c.referrer_role === 'BNS'
-                                    ? 'text-purple-700 bg-purple-50/90 hover:bg-purple-100 hover:text-purple-800 border border-purple-200/80 group-hover:border-purple-300'
-                                    : 'text-blue-700 bg-blue-50/90 hover:bg-blue-100 hover:text-blue-800 border border-blue-200/80 group-hover:border-blue-300'
-                                }`}
-                              >
-                                <CheckCircle2 size={13} className={c.referrer_role === 'BNS' ? 'text-purple-600' : 'text-blue-600'} />
-                                <span>{c.referrer_by_label || (c.referrer_role === 'BNS' ? 'Referred by BNS' : 'Referred by BHW')}</span>
-                              </Link>
-
-                              {/* Beautiful Popover Card on Hover */}
-                              <div className="absolute bottom-full right-0 mb-2.5 hidden group-hover:flex flex-col w-68 p-3.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200/90 text-left z-50 pointer-events-none transition-all duration-200 animate-in fade-in zoom-in-95">
-                                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-900">
-                                    <CheckCircle2 size={13} className={c.referrer_role === 'BNS' ? 'text-purple-600 shrink-0' : 'text-blue-600 shrink-0'} />
-                                    <span>Active Referral</span>
-                                  </div>
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                    String(c.referral_status).toLowerCase() === 'received'
-                                      ? 'bg-sky-100 text-sky-800'
-                                      : String(c.referral_status).toLowerCase() === 'ongoing'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : 'bg-amber-100 text-amber-800'
-                                  }`}>
-                                    {c.referral_status || 'Pending'}
-                                  </span>
-                                </div>
-
-                                <div className="py-2.5 space-y-2 text-xs">
-                                  {/* Referred By Role Badge */}
-                                  <div className="flex items-center gap-2">
-                                    <User size={13} className="text-gray-400 shrink-0" />
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] text-gray-400 uppercase font-semibold">Referred by:</span>
-                                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
-                                        c.referrer_role === 'BNS'
-                                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                                          : 'bg-blue-100 text-blue-800 border border-blue-200'
-                                      }`}>
-                                        {c.referrer_role || 'BHW'}
-                                      </span>
-                                      {c.referrer_name && (
-                                        <span className="text-[11px] text-gray-700 font-medium truncate max-w-[110px]">
-                                          ({c.referrer_name})
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-start gap-2 text-gray-700">
-                                    <Building2 size={13} className="text-gray-400 mt-0.5 shrink-0" />
-                                    <div className="min-w-0">
-                                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Facility</p>
-                                      <p className="font-semibold text-gray-900 leading-tight truncate">
-                                        {c.destination_facility || 'Rural Health Unit (RHU)'}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-start gap-2 text-gray-700">
-                                    <Calendar size={13} className="text-gray-400 mt-0.5 shrink-0" />
-                                    <div>
-                                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Referred Date</p>
-                                      <p className="font-medium text-gray-800">
-                                        {c.referral_date
-                                          ? new Date(c.referral_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                                          : 'Recently'}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-blue-600">
-                                  <span>View in Referrals</span>
-                                  <ExternalLink size={12} className="text-blue-500" />
-                                </div>
-
-                                {/* Arrow pointer */}
-                                <div className="absolute top-full right-5 -mt-1 w-2.5 h-2.5 bg-white border-r border-b border-slate-200 transform rotate-45" />
-                              </div>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => openReferModal(c, e)}
-                              aria-label={`Refer ${c.first_name} ${c.last_name}`}
-                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 transition-colors shadow-2xs inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer"
-                            >
-                              <ClipboardPlus size={13} className="text-amber-700" /> Refer
-                            </button>
-                          )}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openVisitModal(c)}
+                          aria-label={`Log visit for ${c.first_name} ${c.last_name}`}
+                          className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-all shadow-2xs inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
+                        >
+                          <Stethoscope size={14} className="text-emerald-700" />
+                          <span>Log Visit</span>
+                        </button>
                       </td>
-                    </motion.tr>
+                    </tr>
                   );
                 })
               )}
@@ -648,7 +449,7 @@ function NeedAttention() {
                 type="button"
                 disabled={page === 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="p-2 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50 transition"
+                className="p-2 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50 transition cursor-pointer"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -656,7 +457,7 @@ function NeedAttention() {
                 type="button"
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="p-2 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50 transition"
+                className="p-2 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50 transition cursor-pointer"
               >
                 <ChevronRight size={16} />
               </button>
@@ -668,14 +469,18 @@ function NeedAttention() {
 
       {/* ── Log Visit Modal ── */}
       <AnimatePresence>
-        {visitTarget && createPortal(
+        {visitTarget && (
           <motion.div
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
-            onClick={() => setVisitTarget(null)}
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !visitSubmitting) {
+                setVisitTarget(null);
+              }
+            }}
           >
             <motion.div
               variants={modalVariants}
@@ -690,7 +495,12 @@ function NeedAttention() {
                   <h3 className="font-bold text-base">Record Health Visit / Service</h3>
                   <p className="text-xs text-white/70 mt-0.5">{visitTarget.first_name} {visitTarget.last_name}</p>
                 </div>
-                <button onClick={() => setVisitTarget(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white">
+                <button
+                  type="button"
+                  onClick={() => setVisitTarget(null)}
+                  disabled={visitSubmitting}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -700,7 +510,11 @@ function NeedAttention() {
 
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Service Provided *</label>
-                  <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]">
+                  <select
+                    value={serviceType}
+                    onChange={(e) => setServiceType(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] cursor-pointer"
+                  >
                     <option value="">Select service</option>
                     {serviceOptions.map((opt) => {
                       const age = visitTarget?.age_in_months ?? 0;
@@ -726,40 +540,77 @@ function NeedAttention() {
 
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Visit Date *</label>
-                  <input type="date" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]" />
+                  <input
+                    type="date"
+                    value={visitDate}
+                    onChange={(e) => setVisitDate(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">New Weight (kg)</label>
-                    <input type="number" step="0.1" placeholder="e.g. 10.5" value={visitWeight} onChange={(e) => setVisitWeight(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]" />
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g. 10.5"
+                      value={visitWeight}
+                      onChange={(e) => setVisitWeight(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                    />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">New Height (cm)</label>
-                    <input type="number" step="0.1" placeholder="e.g. 82.0" value={visitHeight} onChange={(e) => setVisitHeight(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]" />
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g. 82.0"
+                      value={visitHeight}
+                      onChange={(e) => setVisitHeight(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                    />
                   </div>
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Observation / Notes</label>
-                  <textarea rows={2} placeholder="Optional notes regarding child response, health condition…" value={visitNotes} onChange={(e) => setVisitNotes(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] resize-none" />
+                  <textarea
+                    rows={2}
+                    placeholder="Optional notes regarding child response, health condition…"
+                    value={visitNotes}
+                    onChange={(e) => setVisitNotes(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] resize-none"
+                  />
                 </div>
               </div>
+
               <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-2 sticky bottom-0">
-                <button type="button" onClick={() => setVisitTarget(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">Cancel</button>
-                <button type="button" disabled={visitSubmitting} onClick={submitVisit} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-60">
+                <button
+                  type="button"
+                  onClick={() => setVisitTarget(null)}
+                  disabled={visitSubmitting}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={visitSubmitting}
+                  onClick={submitVisit}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition disabled:opacity-60 cursor-pointer shadow-sm"
+                >
                   {visitSubmitting ? 'Saving…' : 'Save Service'}
                 </button>
               </div>
             </motion.div>
-          </motion.div>,
-          document.body
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* ── Toast Notification Banner ── */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-9999 animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="fixed bottom-6 right-6 z-[9999] animate-in fade-in slide-in-from-bottom-5 duration-200">
           <div
             className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold ${
               toastMessage.type === 'success'
@@ -776,189 +627,6 @@ function NeedAttention() {
           </div>
         </div>
       )}
-
-      {/* ── Refer Modal ── */}
-      <AnimatePresence>
-        {referTarget && createPortal(
-          <motion.div
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
-            onClick={() => setReferTarget(null)}
-          >
-            <motion.div
-              variants={modalVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-linear-to-r from-amber-600 to-orange-600 px-6 py-5 flex items-center justify-between text-white shrink-0">
-                <div>
-                  <h3 className="font-bold text-base">Refer Child to Health Facility</h3>
-                  <p className="text-xs text-white/80 mt-0.5">BHW Referral for Specialized Medical / Nutrition Follow-up</p>
-                </div>
-                <button onClick={() => setReferTarget(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white cursor-pointer">
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-4 overflow-y-auto flex-1">
-                {referError && (
-                  <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-semibold flex items-center gap-2">
-                    <X size={14} className="shrink-0 text-red-500" />
-                    <span>{referError}</span>
-                  </div>
-                )}
-
-                {/* Auto-filled Child Overview Card */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Child (Auto-filled)</span>
-                      <p className="text-sm font-bold text-gray-900">
-                        {referTarget.first_name} {referTarget.middle_initial ? `${referTarget.middle_initial}. ` : ''}{referTarget.last_name}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nutrition Status</span>
-                      <div>
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase inline-block mt-0.5 ${statusColors[referTarget.overall_status] || 'bg-amber-100 text-amber-800'}`}>
-                          {referTarget.overall_status || 'SAM'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-200/60 grid grid-cols-3 gap-2 text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Latest Weight</span>
-                      <span className="font-bold text-gray-800">{referTarget.weight_kg ? `${referTarget.weight_kg} kg` : 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Latest Height</span>
-                      <span className="font-bold text-gray-800">{referTarget.height_cm ? `${referTarget.height_cm} cm` : 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px] uppercase font-semibold">Recorded Date</span>
-                      <span className="font-bold text-gray-800">
-                        {referTarget.latest_measurement_date
-                          ? new Date(referTarget.latest_measurement_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                          : (referTarget.last_visit ? new Date(referTarget.last_visit).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Refer To Facility */}
-                <div>
-                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5 block">
-                    Refer To Destination Facility <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={referDestination}
-                    onChange={(e) => setReferDestination(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:border-amber-600 bg-white"
-                  >
-                    <option value="Barangay Health Station (BHS)">Barangay Health Station (BHS)</option>
-                    <option value="Rural Health Unit (RHU)">Rural Health Unit (RHU)</option>
-                    <option value="District Hospital">District Hospital</option>
-                  </select>
-                </div>
-
-                {/* Urgency */}
-                <div>
-                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5 block">
-                    Urgency Level <span className="text-red-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <label
-                      className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition text-xs ${
-                        referUrgency === 'Urgent'
-                          ? 'border-red-400 bg-red-50 text-red-900 font-bold ring-1 ring-red-300'
-                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="referUrgency"
-                        value="Urgent"
-                        checked={referUrgency === 'Urgent'}
-                        onChange={(e) => setReferUrgency(e.target.value)}
-                        className="mt-0.5 accent-red-600 cursor-pointer"
-                      />
-                      <div>
-                        <span className="block font-bold">Urgent</span>
-                        <span className="text-[11px] font-normal text-red-700/80">SAM with complications / acute illness</span>
-                      </div>
-                    </label>
-
-                    <label
-                      className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition text-xs ${
-                        referUrgency === 'Routine'
-                          ? 'border-blue-400 bg-blue-50 text-blue-900 font-bold ring-1 ring-blue-300'
-                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="referUrgency"
-                        value="Routine"
-                        checked={referUrgency === 'Routine'}
-                        onChange={(e) => setReferUrgency(e.target.value)}
-                        className="mt-0.5 accent-blue-600 cursor-pointer"
-                      />
-                      <div>
-                        <span className="block font-bold">Routine</span>
-                        <span className="text-[11px] font-normal text-blue-700/80">Growth monitoring & standard checkup</span>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Reason / Symptoms (Required) */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block">
-                      Reason / Symptoms <span className="text-red-500">*</span>
-                    </label>
-                    <span className="text-[11px] text-gray-400 font-medium">Required</span>
-                  </div>
-                  <textarea
-                    rows={3}
-                    placeholder="Describe specific symptoms, clinical observations, or reasons for referral…"
-                    value={referReason}
-                    onChange={(e) => setReferReason(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-600 resize-none font-normal placeholder:text-gray-400"
-                  />
-                </div>
-              </div>
-
-              <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-3 sticky bottom-0">
-                <button
-                  type="button"
-                  onClick={() => setReferTarget(null)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 cursor-pointer transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={referSubmitting}
-                  onClick={submitReferral}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-60 cursor-pointer transition shadow-xs"
-                >
-                  {referSubmitting ? 'Submitting Referral…' : 'Submit Referral'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>,
-          document.body
-        )}
-      </AnimatePresence>
 
     </main>
   );
