@@ -248,6 +248,16 @@ function NeedAttention() {
     }
   };
 
+  const currentBeneficiaries = useMemo(() => {
+    if (typeFilter === 'child') return children.filter((c) => (c.beneficiary_type || 'child') === 'child');
+    if (typeFilter === 'mother') return children.filter((c) => c.beneficiary_type === 'mother');
+    return children;
+  }, [children, typeFilter]);
+
+  const samCount = currentBeneficiaries.filter((c) => c.overall_status === 'SAM' || c.weight_status === 'severely_underweight').length;
+  const mamCount = currentBeneficiaries.filter((c) => c.overall_status === 'MAM' || c.weight_status === 'underweight').length;
+  const overdueCount = currentBeneficiaries.filter((c) => (daysSince(c.last_visit) ?? 999) > 30).length;
+
   if (loading) {
     return (
       <div className="space-y-6 bg-gray-50 min-h-screen p-6">
@@ -269,16 +279,6 @@ function NeedAttention() {
   }
 
   if (error) return <p className="text-red-600 p-6">{error}</p>;
-
-  const currentBeneficiaries = useMemo(() => {
-    if (typeFilter === 'child') return children.filter((c) => (c.beneficiary_type || 'child') === 'child');
-    if (typeFilter === 'mother') return children.filter((c) => c.beneficiary_type === 'mother');
-    return children;
-  }, [children, typeFilter]);
-
-  const samCount = currentBeneficiaries.filter((c) => c.overall_status === 'SAM' || c.weight_status === 'severely_underweight').length;
-  const mamCount = currentBeneficiaries.filter((c) => c.overall_status === 'MAM' || c.weight_status === 'underweight').length;
-  const overdueCount = currentBeneficiaries.filter((c) => (daysSince(c.last_visit) ?? 999) > 30).length;
 
   return (
     <main role="main" aria-label="Need Attention" className="space-y-6 bg-gray-50 min-h-screen p-6">
