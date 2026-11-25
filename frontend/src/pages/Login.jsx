@@ -395,8 +395,8 @@ function LoginCard({ emailInputRef }) {
   return (
     <div className="relative w-full max-w-md rounded-[28px] border border-white/40 bg-white/95 p-7 shadow-[0_30px_80px_rgba(10,42,20,0.32)] backdrop-blur-xl sm:p-9 transition-all duration-300 hover:shadow-[0_35px_90px_rgba(10,42,20,0.40)]">
       {/* ── Top Navigation Bar (Back & Close buttons) for Forgot Password Modal ── */}
-      {showForgotPassword && (
-        <div className="flex items-center justify-between mb-4 -mt-1">
+      {showForgotPassword ? (
+        <div className="flex items-center justify-between mb-3 -mt-1">
           <button
             type="button"
             onClick={() => {
@@ -417,6 +417,10 @@ function LoginCard({ emailInputRef }) {
             </svg>
           </button>
 
+          <span className="text-[11px] font-bold tracking-wide text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-full px-3 py-0.5">
+            Step {resetStep === "email" ? "1" : resetStep === "otp" ? "2" : "3"} of 3
+          </span>
+
           <button
             type="button"
             onClick={() => {
@@ -431,14 +435,26 @@ function LoginCard({ emailInputRef }) {
             </svg>
           </button>
         </div>
-      )}
+      ) : null}
 
-      <div className="mb-6">
-        <h2 className="text-3xl font-black tracking-tight text-slate-900">
-          {showForgotPassword ? "Reset Password" : "Welcome back!"}
+      <div className={showForgotPassword ? "mb-4" : "mb-6"}>
+        <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+          {showForgotPassword
+            ? resetStep === "email"
+              ? "Reset Password"
+              : resetStep === "otp"
+              ? "Verify Email Code"
+              : "Set New Password"
+            : "Welcome back!"}
         </h2>
-        <p className="mt-2 text-sm text-slate-500">
-          {showForgotPassword ? "Follow the steps to recover your account" : "Sign in to your account to continue"}
+        <p className="mt-1 text-xs sm:text-sm text-slate-500">
+          {showForgotPassword
+            ? resetStep === "email"
+              ? "Enter your registered email to receive your 6-digit verification code."
+              : resetStep === "otp"
+              ? <>We sent a 6-digit code to <span className="font-semibold text-slate-800">{maskedRecipient || forgotEmail}</span></>
+              : "Create a new strong password for your account."
+            : "Sign in to your account to continue"}
         </p>
       </div>
 
@@ -464,22 +480,10 @@ function LoginCard({ emailInputRef }) {
       )}
 
       {showForgotPassword ? (
-        <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
-          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-              {resetStep === "email" && "Reset Password — Step 1 of 3"}
-              {resetStep === "otp" && "Verify OTP — Step 2 of 3"}
-              {resetStep === "password" && "New Password — Step 3 of 3"}
-            </h3>
-          </div>
-
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
           {/* ── STEP 1: Email Address ── */}
           {resetStep === "email" && (
-            <div className="space-y-4">
-              <p className="text-xs text-slate-500">
-                Enter your registered email address to receive your 6-digit verification code.
-              </p>
+            <div className="space-y-3.5">
               <div>
                 <label className="mb-1 block text-sm font-semibold text-slate-700">
                   Registered Email <span className="text-red-500">*</span>
@@ -489,7 +493,7 @@ function LoginCard({ emailInputRef }) {
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
                   placeholder="e.g. softdev349@gmail.com"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                 />
               </div>
 
@@ -497,7 +501,7 @@ function LoginCard({ emailInputRef }) {
                 type="button"
                 onClick={handleForgotPassword}
                 disabled={forgotLoading || !forgotEmail.trim()}
-                className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-[#1b5e20] py-3.5 text-sm font-semibold text-white shadow-lg shadow-green-900/20 transition-all hover:bg-[#154a1a] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-[#1b5e20] py-3 text-sm font-semibold text-white shadow-lg shadow-green-900/20 transition-all hover:bg-[#154a1a] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {forgotLoading ? (
                   <>
@@ -516,21 +520,7 @@ function LoginCard({ emailInputRef }) {
 
           {/* ── STEP 2: 6-Box OTP Entry ── */}
           {resetStep === "otp" && (
-            <div className={`space-y-4 ${otpHasError ? "animate-shake" : ""}`}>
-              <div className="flex flex-col items-center text-center">
-                <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-2.5 text-emerald-700">
-                  <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h4 className="text-base font-bold text-slate-900">
-                  Check your email
-                </h4>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  We sent a 6-digit code to <span className="font-semibold text-slate-800">{maskedRecipient || forgotEmail}</span>
-                </p>
-              </div>
-
+            <div className={`space-y-3.5 ${otpHasError ? "animate-shake" : ""}`}>
               {/* 6 Digit Inputs */}
               <div>
                 <label className="mb-2 block text-center text-xs font-semibold text-slate-600">
@@ -547,7 +537,7 @@ function LoginCard({ emailInputRef }) {
                       value={digit}
                       onChange={(e) => handleDigitChange(index, e.target.value)}
                       onKeyDown={(e) => handleDigitKeyDown(index, e)}
-                      className={`w-11 h-13 text-center text-xl font-bold rounded-xl border outline-none transition shadow-xs ${
+                      className={`w-10 h-12 sm:w-11 sm:h-12 text-center text-lg sm:text-xl font-bold rounded-xl border outline-none transition shadow-xs ${
                         otpHasError
                           ? "border-red-400 bg-red-50 text-red-700"
                           : digit
@@ -558,7 +548,7 @@ function LoginCard({ emailInputRef }) {
                   ))}
                 </div>
                 {otpHasError && (
-                  <p className="mt-2 text-center text-xs font-semibold text-red-600">
+                  <p className="mt-1.5 text-center text-xs font-semibold text-red-600">
                     Incorrect or expired code
                   </p>
                 )}
