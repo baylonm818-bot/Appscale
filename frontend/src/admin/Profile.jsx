@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axiosClient from '../api/axiosClient';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import { useAuth } from '../components/AuthContext';
-import { Camera, Lock, User, ChevronRight, Info, MapPin, Mail, ShieldCheck } from 'lucide-react';
+import { Camera, Lock, User, ChevronRight, Info, MapPin, Mail, ShieldCheck, X } from 'lucide-react';
 import logo from '../assets/logo.png';
 import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
@@ -317,6 +317,14 @@ function Profile() {
   };
 
   const [passwordErrors, setPasswordErrors] = useState({});
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+    setPasswordErrors({});
+    setPasswordErr('');
+  };
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
@@ -360,6 +368,9 @@ function Profile() {
       });
       setPasswordMsg(res.data?.message || 'Password changed successfully.');
       setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+      setTimeout(() => {
+        setShowPasswordModal(false);
+      }, 1200);
       setTimeout(() => setPasswordMsg(''), 4000);
     } catch (err) {
       setPasswordErr(err.response?.data?.message || 'Current password is incorrect or change failed.');
@@ -514,35 +525,35 @@ function Profile() {
             <p className="text-xs text-gray-400">Use a strong password you don't use elsewhere</p>
           </div>
         </div>
-        {passwordMsg && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">{passwordMsg}</div>}
-        {passwordErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">{passwordErr}</div>}
-        <form onSubmit={submitPassword} noValidate className="space-y-4">
-          <FormRequiredNote />
-          {[
-            { name: 'current_password', label: 'Current Password' },
-            { name: 'new_password',     label: 'New Password'     },
-            { name: 'confirm_password', label: 'Confirm New Password' },
-          ].map(({ name, label }) => (
-            <div key={name}>
-              <FormLabel label={label} required />
-              <input
-                name={name}
-                type="password"
-                value={passwordForm[name]}
-                onChange={handlePasswordChange}
-                className={`${inputCls} ${passwordErrors[name] ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
-              />
-              {passwordErrors[name] && <p className="text-xs text-[#D32F2F] mt-1">{passwordErrors[name]}</p>}
-            </div>
-          ))}
-          <button
-            type="submit"
-            disabled={savingPassword}
-            className="w-full sm:w-auto px-8 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition disabled:opacity-60 shadow-sm cursor-pointer"
-          >
-            {savingPassword ? 'Saving…' : 'Change Password'}
-          </button>
-        </form>
+
+        {passwordMsg && (
+          <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">
+            {passwordMsg}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between py-4 border-t border-gray-50">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Password</p>
+            <p className="text-base font-bold text-gray-800 tracking-widest font-mono select-none">
+              ••••••••••••
+            </p>
+          </div>
+          <div className="ml-4 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setShowPasswordModal(true);
+                setPasswordErr('');
+                setPasswordMsg('');
+                setPasswordErrors({});
+              }}
+              className="text-xs font-semibold text-[#2e7d32] hover:text-[#1b5e20] flex items-center gap-1 transition cursor-pointer px-3 py-1.5 rounded-lg hover:bg-green-50"
+            >
+              Edit <ChevronRight size={12} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ── 3. About AppScale Card ── */}
@@ -595,6 +606,94 @@ function Profile() {
           © {new Date().getFullYear()} Municipal Nutrition Committee • Rural Health Unit of Gasan
         </div>
       </div>
+
+      {/* ── Change Password Modal Popup ── */}
+      {showPasswordModal && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !savingPassword) {
+              closePasswordModal();
+            }
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-linear-to-r from-green-50/50 to-emerald-50/30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-800">
+                  <Lock size={15} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Change Password</h3>
+                  <p className="text-xs text-gray-500">Update your account credentials</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closePasswordModal}
+                disabled={savingPassword}
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={submitPassword} noValidate className="p-6 space-y-4">
+              <FormRequiredNote />
+
+              {passwordMsg && (
+                <div className="bg-green-50 border border-green-200 text-green-700 text-xs rounded-xl px-3.5 py-2.5 font-medium">
+                  {passwordMsg}
+                </div>
+              )}
+              {passwordErr && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3.5 py-2.5">
+                  {passwordErr}
+                </div>
+              )}
+
+              {[
+                { name: 'current_password', label: 'Current Password', placeholder: 'Enter your current password' },
+                { name: 'new_password',     label: 'New Password',     placeholder: 'Minimum 8 characters' },
+                { name: 'confirm_password', label: 'Confirm New Password', placeholder: 'Re-enter new password' },
+              ].map(({ name, label, placeholder }) => (
+                <div key={name}>
+                  <FormLabel label={label} required />
+                  <input
+                    name={name}
+                    type="password"
+                    placeholder={placeholder}
+                    value={passwordForm[name]}
+                    onChange={handlePasswordChange}
+                    className={`${inputCls} ${passwordErrors[name] ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+                  />
+                  {passwordErrors[name] && <p className="text-xs text-[#D32F2F] mt-1">{passwordErrors[name]}</p>}
+                </div>
+              ))}
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 mt-5">
+                <button
+                  type="button"
+                  onClick={closePasswordModal}
+                  disabled={savingPassword}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPassword}
+                  className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition disabled:opacity-60 shadow-sm cursor-pointer"
+                >
+                  {savingPassword ? 'Saving…' : 'Change Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
