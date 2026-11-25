@@ -1866,32 +1866,8 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
                   value={programForm.description}
                   onChange={(e) => setProgramForm({ ...programForm, description: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                  placeholder="Summary and key objectives of this program..."
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Coverage Metric Link</label>
-                  <select
-                    value={programForm.coverage_metric}
-                    onChange={(e) => setProgramForm({ ...programForm, coverage_metric: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white"
-                  >
-                    <option value="">None (Standard Info)</option>
-                    <option value="feeding">Supplementary Feeding</option>
-                    <option value="vitamin_a">Vitamin A Supplementation</option>
-                    <option value="deworming">Deworming Program</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Sort Order</label>
-                  <input
-                    type="number"
-                    value={programForm.sort_order}
-                    onChange={(e) => setProgramForm({ ...programForm, sort_order: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
-                </div>
               </div>
 
               <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
@@ -1967,25 +1943,15 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Category</label>
-                  <input
-                    type="text"
-                    value={lawForm.category}
-                    onChange={(e) => setLawForm({ ...lawForm, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Sort Order</label>
-                  <input
-                    type="number"
-                    value={lawForm.sort_order}
-                    onChange={(e) => setLawForm({ ...lawForm, sort_order: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
-                </div>
+              <div>
+                <label className="block font-semibold text-slate-600 mb-1">Category</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Maternal & Child Health, Food Security"
+                  value={lawForm.category}
+                  onChange={(e) => setLawForm({ ...lawForm, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                />
               </div>
 
               <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
