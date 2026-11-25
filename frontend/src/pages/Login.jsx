@@ -593,13 +593,9 @@ function LoginCard({ emailInputRef }) {
 
           {/* ── STEP 3: New Password ── */}
           {resetStep === "password" && (
-            <div className="space-y-4">
-              <p className="text-xs text-slate-500">
-                OTP verified! Please create a new strong password.
-              </p>
-
+            <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                <label className="mb-1 block text-xs sm:text-sm font-semibold text-slate-700">
                   New Password <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -608,40 +604,40 @@ function LoginCard({ emailInputRef }) {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="At least 8 characters"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-800 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 pr-10 text-sm text-slate-800 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPass(!showNewPass)}
-                    className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-3 text-xs text-slate-400 hover:text-slate-600"
                   >
                     {showNewPass ? "Hide" : "Show"}
                   </button>
                 </div>
               </div>
 
-              {/* Password Rules Checklist */}
-              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-[11px] space-y-1">
+              {/* Password Rules Checklist: Compact 2x2 Grid */}
+              <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-[10.5px] grid grid-cols-2 gap-x-2 gap-y-1">
                 <div className={`flex items-center gap-1.5 ${newPassword.length >= 8 ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
                   <span>{newPassword.length >= 8 ? "✓" : "○"}</span>
-                  <span>At least 8 characters</span>
+                  <span>Min. 8 characters</span>
                 </div>
                 <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(newPassword) ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
                   <span>{/[A-Z]/.test(newPassword) ? "✓" : "○"}</span>
-                  <span>At least one uppercase letter (A-Z)</span>
+                  <span>Uppercase (A-Z)</span>
                 </div>
                 <div className={`flex items-center gap-1.5 ${/[a-z]/.test(newPassword) ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
                   <span>{/[a-z]/.test(newPassword) ? "✓" : "○"}</span>
-                  <span>At least one lowercase letter (a-z)</span>
+                  <span>Lowercase (a-z)</span>
                 </div>
                 <div className={`flex items-center gap-1.5 ${/[0-9]/.test(newPassword) ? "text-emerald-700 font-semibold" : "text-slate-500"}`}>
                   <span>{/[0-9]/.test(newPassword) ? "✓" : "○"}</span>
-                  <span>At least one number (0-9)</span>
+                  <span>Number (0-9)</span>
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                <label className="mb-1 block text-xs sm:text-sm font-semibold text-slate-700">
                   Confirm Password <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -650,12 +646,12 @@ function LoginCard({ emailInputRef }) {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-type new password"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-800 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 pr-10 text-sm text-slate-800 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPass(!showConfirmPass)}
-                    className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-3 text-xs text-slate-400 hover:text-slate-600"
                   >
                     {showConfirmPass ? "Hide" : "Show"}
                   </button>
@@ -672,7 +668,7 @@ function LoginCard({ emailInputRef }) {
                   newPassword.length < 8 ||
                   newPassword !== confirmPassword
                 }
-                className="w-full rounded-2xl bg-[#1b5e20] py-3.5 text-sm font-bold text-white shadow-lg shadow-green-900/20 transition hover:bg-[#154a1a] disabled:opacity-50"
+                className="w-full rounded-2xl bg-[#1b5e20] py-3 text-sm font-bold text-white shadow-lg shadow-green-900/20 transition hover:bg-[#154a1a] disabled:opacity-50"
               >
                 {forgotLoading ? "Updating Password…" : "Save New Password & Sign In"}
               </button>
