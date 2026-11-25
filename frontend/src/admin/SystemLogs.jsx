@@ -9,10 +9,11 @@ import { ShimmerSkeleton } from '../components/ui/motion';
 import { Search, X, ChevronLeft, ChevronRight, MapPin, Activity, Eye, Calendar, User, Clock, CheckCircle } from 'lucide-react';
 
 const GASAN_BARANGAYS = [
-  'Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang',
-  'Banot', 'Banuyo', 'Bognuyan', 'Cabugao', 'Dawis', 'Dili', 'Libtangin',
-  'Mahunig', 'Mangiliol', 'Masiga', 'Mat. Gasan', 'Pangi', 'Pinggan',
-  'Tabionan', 'Tiguion', 'Brgy. Uno', 'Brgy. Dos', 'Brgy. Tres', 'Tapuyan',
+  'Antipolo', 'Bachao Ibaba', 'Bachao Ilaya', 'Bacong-Bacong', 'Bahi',
+  'Bangbang', 'Banot', 'Banuyo', 'Bognuyan', 'Cabugao',
+  'Dawis', 'Dili', 'Libtangin', 'Mahunig', 'Mangiliol',
+  'Masiga', 'Matandag', 'Pangi', 'Pingan', 'Poblacion',
+  'Tabionan', 'Tapuyan', 'Tiguion', 'Victoria', 'Yook',
 ];
 
 const ACTION_COLORS = {
