@@ -120,15 +120,17 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.14';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 47);
+    const version = process.env.APP_VERSION || '3.3.15';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 48);
     const notesEn = [
+        "Child Monitoring: Removed signature requirement on child measurement (visits only)",
         "Programs & Schedule: Print & Export calendar of schedule with layout options (Calendar + List, List only, Calendar only)",
         "Restored classic Home Dashboard with solid stat cards and WHO Nutritional Status bars",
         "Clean Child and Mother Profiles with stable history cards and reliable sync",
         "General stability and offline data improvements"
     ];
     const notesTl = [
+        "Pagsukat sa Bata: Tinanggal ang kinakailangang pirma sa measurement ng bata (pang-visit na lamang)",
         "Mga Programa at Iskedyul: Pag-print at pag-export ng kalendaryo ng iskedyul (Calendar + List, List lamang, Calendar lamang)",
         "Ibinalik ang klasikong Home Dashboard na may solid stat cards at WHO Nutritional Status bars",
         "Maayos na Profile ng Bata at Ina na may matatag na history cards at maaasahang pag-sync",

@@ -586,7 +586,7 @@ function Profile() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
             <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Application Version</p>
-            <p className="text-sm font-bold text-gray-800">v3.2.0</p>
+            <p className="text-sm font-bold text-gray-800">v3.3.15</p>
           </div>
           <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
             <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Municipality</p>

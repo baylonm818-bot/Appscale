@@ -57,7 +57,7 @@ const DownloadApp = () => {
           </div>
           
           <p className="mt-2 text-xs text-green-200/80 font-medium">
-            Android App &bull; Free Download &bull; v3.3.13 (Latest Release)
+            Android App &bull; Free Download &bull; v3.3.15 (Latest Release)
           </p>
         </div>
 
