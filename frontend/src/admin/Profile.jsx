@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axiosClient from '../api/axiosClient';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import { useAuth } from '../components/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Lock, Bell, User, ChevronRight, Check, Info, Pencil, Briefcase, Sparkles, MapPin, Mail, ArrowRight } from 'lucide-react';
+import { Camera, Lock, User, ChevronRight, Info, MapPin, Mail, ShieldCheck } from 'lucide-react';
 import logo from '../assets/logo.png';
 import FormLabel, { FormRequiredNote, sanitizeContact, validateContact } from '../components/ui/FormLabel';
 
@@ -104,26 +103,6 @@ function ProfileInfoRow({ label, value, name, onSave }) {
   );
 }
 
-/* ── Toggle switch ── */
-function Toggle({ checked, onChange }) {
-  return (
-    <button type="button" onClick={onChange}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none
-        ${checked ? 'bg-[#2e7d32]' : 'bg-gray-200'}`}>
-      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform
-        ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
-    </button>
-  );
-}
-
-/* ── Tab definition ── */
-const TABS = [
-  { key: 'profile',       label: 'Profile Info',        icon: User },
-  { key: 'password',      label: 'Security & Password', icon: Lock },
-  { key: 'notifications', label: 'Notifications',       icon: Bell },
-  { key: 'about',         label: 'About AppScale',      icon: Info },
-];
-
 const inputCls = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition";
 
 /* ── Client-side image compressor for avatar uploads ── */
@@ -181,11 +160,6 @@ function Profile() {
   const [profile, setProfile]   = useState(() => user || (storedUser && Object.keys(storedUser).length ? storedUser : {}));
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
-  const [activeTab, setActiveTab] = useState('profile');
-  const [notificationPreferences, setNotificationPreferences] = useState(() => {
-    const saved = localStorage.getItem('notificationPreferences');
-    return saved ? JSON.parse(saved) : { schedules: true, accounts: true, system: true };
-  });
 
   const [profileMsg, setProfileMsg] = useState('');
   const [profileErr, setProfileErr] = useState('');
@@ -395,14 +369,6 @@ function Profile() {
     }
   };
 
-  const updateNotificationPreference = (name) => {
-    setNotificationPreferences((cur) => {
-      const updated = { ...cur, [name]: !cur[name] };
-      localStorage.setItem('notificationPreferences', JSON.stringify(updated));
-      return updated;
-    });
-  };
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -421,6 +387,7 @@ function Profile() {
       </div>
     );
   }
+
   return (
     <div className="space-y-6">
       {error && (
@@ -483,8 +450,9 @@ function Profile() {
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePictureChange} className="hidden" />
             </div>
 
-            {/* Role badge */}
-            <span className="bg-green-100 text-green-800 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide shadow-xs">
+            {/* Role badge with icon */}
+            <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 text-xs font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wide shadow-xs">
+              <ShieldCheck size={14} className="text-green-700" />
               {profile?.role || user?.role || 'Admin'}
             </span>
           </div>
@@ -496,204 +464,136 @@ function Profile() {
                 ? `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
                 : (user?.full_name || user?.name || user?.username || 'Camille Cadag')}
             </h2>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {profile?.email || user?.email || 'coders319@gmail.com'}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {profile?.barangay || user?.barangay || 'Dawis'}{profile?.municipality || user?.municipality ? `, ${profile?.municipality || user?.municipality}` : ', Gasan'}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
+              <div className="flex items-center gap-1.5">
+                <Mail size={14} className="text-gray-400 shrink-0" />
+                <span>{profile?.email || user?.email || 'coders319@gmail.com'}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                <MapPin size={14} className="text-gray-400 shrink-0" />
+                <span>
+                  {profile?.barangay || user?.barangay || 'Dawis'}{profile?.municipality || user?.municipality ? `, ${profile?.municipality || user?.municipality}` : ', Gasan'}
+                </span>
+              </div>
+            </div>
           </div>
 
           {picError && <p className="text-xs text-red-600 mt-3">{picError}</p>}
         </div>
       </div>
 
-      {/* ── Tab nav ── */}
-      <div className="bg-white rounded-2xl shadow-sm p-1.5 flex gap-1 overflow-x-auto relative border border-gray-100">
-        {TABS.map(({ key, label, icon: Icon }) => {
-          const isActive = activeTab === key;
-          return (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors flex-1 justify-center z-10 cursor-pointer ${
-                isActive ? 'text-white' : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              {isActive && (
-                <motion.span
-                  layoutId="adminSettingsTabIndicator"
-                  className="absolute inset-0 bg-linear-to-r from-[#1b5e20] to-[#2e7d32] rounded-xl shadow-sm -z-10"
-                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
-                />
-              )}
-              <Icon size={15} />
-              <span>{label}</span>
-            </button>
-          );
-        })}
+      {/* ── 1. Personal Information Card ── */}
+      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
+            <User size={16} className="text-green-700" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-gray-800">Personal Information</h3>
+            <p className="text-xs text-gray-400">Click Edit on any field to update it</p>
+          </div>
+        </div>
+        {profileMsg && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">{profileMsg}</div>}
+        {profileErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">{profileErr}</div>}
+        <ProfileInfoRow label="First Name"      name="first_name"      value={profile?.first_name || ''}      onSave={handleFieldSave} />
+        <ProfileInfoRow label="Middle Initial"  name="middle_initial"  value={profile?.middle_initial || ''}  onSave={handleFieldSave} />
+        <ProfileInfoRow label="Last Name"       name="last_name"       value={profile?.last_name || ''}       onSave={handleFieldSave} />
+        <ProfileInfoRow label="Email"           name="email"           value={profile?.email || ''}           onSave={handleFieldSave} />
+        <ProfileInfoRow label="Contact Number"  name="contact_number"  value={profile?.contact_number || ''}  onSave={handleFieldSave} />
+        <ProfileInfoRow label="Purok"           name="purok"           value={profile?.purok || ''}           onSave={handleFieldSave} />
       </div>
 
-      {/* ── Tab content ── */}
-      <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden border border-gray-100">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
+      {/* ── 2. Change Password Card ── */}
+      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
+            <Lock size={16} className="text-green-700" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-gray-800">Change Password</h3>
+            <p className="text-xs text-gray-400">Use a strong password you don't use elsewhere</p>
+          </div>
+        </div>
+        {passwordMsg && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">{passwordMsg}</div>}
+        {passwordErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">{passwordErr}</div>}
+        <form onSubmit={submitPassword} noValidate className="space-y-4">
+          <FormRequiredNote />
+          {[
+            { name: 'current_password', label: 'Current Password' },
+            { name: 'new_password',     label: 'New Password'     },
+            { name: 'confirm_password', label: 'Confirm New Password' },
+          ].map(({ name, label }) => (
+            <div key={name}>
+              <FormLabel label={label} required />
+              <input
+                name={name}
+                type="password"
+                value={passwordForm[name]}
+                onChange={handlePasswordChange}
+                className={`${inputCls} ${passwordErrors[name] ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+              />
+              {passwordErrors[name] && <p className="text-xs text-[#D32F2F] mt-1">{passwordErrors[name]}</p>}
+            </div>
+          ))}
+          <button
+            type="submit"
+            disabled={savingPassword}
+            className="w-full sm:w-auto px-8 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition disabled:opacity-60 shadow-sm cursor-pointer"
           >
+            {savingPassword ? 'Saving…' : 'Change Password'}
+          </button>
+        </form>
+      </div>
 
-        {/* PROFILE INFO */}
-        {activeTab === 'profile' && (
-          <>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
-                <User size={16} className="text-green-700" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-800">Personal Information</h3>
-                <p className="text-xs text-gray-400">Click Edit on any field to update it</p>
-              </div>
-            </div>
-            {profileMsg && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">{profileMsg}</div>}
-            {profileErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">{profileErr}</div>}
-            <ProfileInfoRow label="First Name"      name="first_name"      value={profile?.first_name || ''}      onSave={handleFieldSave} />
-            <ProfileInfoRow label="Middle Initial"  name="middle_initial"  value={profile?.middle_initial || ''}  onSave={handleFieldSave} />
-            <ProfileInfoRow label="Last Name"       name="last_name"       value={profile?.last_name || ''}       onSave={handleFieldSave} />
-            <ProfileInfoRow label="Email"           name="email"           value={profile?.email || ''}           onSave={handleFieldSave} />
-            <ProfileInfoRow label="Contact Number"  name="contact_number"  value={profile?.contact_number || ''}  onSave={handleFieldSave} />
-            <ProfileInfoRow label="Purok"           name="purok"           value={profile?.purok || ''}           onSave={handleFieldSave} />
-          </>
-        )}
+      {/* ── 3. About AppScale Card ── */}
+      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
+            <Info size={16} className="text-[#2e7d32]" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-gray-800">About AppScale</h3>
+            <p className="text-xs text-gray-400">System information and program details</p>
+          </div>
+        </div>
 
+        <div className="bg-linear-to-br from-green-50 to-emerald-50/40 border border-green-100 rounded-2xl p-5 mb-5">
+          <div className="flex items-center gap-3.5 mb-3">
+            <div className="w-12 h-12 rounded-xl bg-white shadow-xs border border-green-100 flex items-center justify-center p-2">
+              <img src={logo} alt="AppScale" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <h4 className="text-lg font-bold text-gray-900">AppScale</h4>
+              <p className="text-xs font-semibold text-[#2e7d32]">Child Nutrition Monitoring & Early Warning System</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-600 leading-relaxed">
+            AppScale is the digital health and nutrition monitoring platform of the Municipality of Gasan, Marinduque. Designed for Rural Health Units (RHU), Barangay Nutrition Scholars (BNS), and Barangay Health Workers (BHW) to track child growth and maternal health indicators.
+          </p>
+        </div>
 
-        {/* CHANGE PASSWORD */}
-        {activeTab === 'password' && (
-          <>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
-                <Lock size={16} className="text-green-700" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-800">Change Password</h3>
-                <p className="text-xs text-gray-400">Use a strong password you don't use elsewhere</p>
-              </div>
-            </div>
-            {passwordMsg && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">{passwordMsg}</div>}
-            {passwordErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">{passwordErr}</div>}
-            <form onSubmit={submitPassword} noValidate className="space-y-4">
-              <FormRequiredNote />
-              {[
-                { name: 'current_password', label: 'Current Password' },
-                { name: 'new_password',     label: 'New Password'     },
-                { name: 'confirm_password', label: 'Confirm New Password' },
-              ].map(({ name, label }) => (
-                <div key={name}>
-                  <FormLabel label={label} required />
-                  <input
-                    name={name}
-                    type="password"
-                    value={passwordForm[name]}
-                    onChange={handlePasswordChange}
-                    className={`${inputCls} ${passwordErrors[name] ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
-                  />
-                  {passwordErrors[name] && <p className="text-xs text-[#D32F2F] mt-1">{passwordErrors[name]}</p>}
-                </div>
-              ))}
-              <button type="submit" disabled={savingPassword}
-                className="w-full sm:w-auto px-8 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition disabled:opacity-60 shadow-sm">
-                {savingPassword ? 'Saving…' : 'Change Password'}
-              </button>
-            </form>
-          </>
-        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
+            <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Application Version</p>
+            <p className="text-sm font-bold text-gray-800">v3.2.0</p>
+          </div>
+          <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
+            <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Municipality</p>
+            <p className="text-sm font-bold text-gray-800">Gasan, Marinduque</p>
+          </div>
+          <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
+            <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Target Beneficiaries</p>
+            <p className="text-sm font-bold text-gray-800">Children 0–59 months & Mothers</p>
+          </div>
+          <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
+            <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Platform Deployment</p>
+            <p className="text-sm font-bold text-gray-800">Web Admin Portal & Flutter Mobile</p>
+          </div>
+        </div>
 
-        {/* NOTIFICATION PREFERENCES */}
-        {activeTab === 'notifications' && (
-          <>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
-                <Bell size={16} className="text-green-700" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-800">Notification Preferences</h3>
-                <p className="text-xs text-gray-400">Choose which alerts appear in your feed</p>
-              </div>
-            </div>
-            <div className="space-y-0 divide-y divide-gray-50">
-              {[
-                ['schedules', 'Schedule Reminders',   'Upcoming, completed, and missed community health schedules'],
-                ['accounts',  'Account & User Alerts', 'User account creations, lockouts, and restorations'],
-                ['system',    'System Alerts',        'Administrative and municipal maintenance notifications'],
-              ].map(([name, label, desc]) => (
-                <div key={name} className="flex items-center justify-between py-4">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">{label}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-                  </div>
-                  <Toggle checked={notificationPreferences[name]} onChange={() => updateNotificationPreference(name)} />
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* ABOUT */}
-        {activeTab === 'about' && (
-          <>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
-                <Info size={16} className="text-[#2e7d32]" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-800">About AppScale</h3>
-                <p className="text-xs text-gray-400">System information and program details</p>
-              </div>
-            </div>
-
-            <div className="bg-linear-to-br from-green-50 to-emerald-50/40 border border-green-100 rounded-2xl p-5 mb-5">
-              <div className="flex items-center gap-3.5 mb-3">
-                <div className="w-12 h-12 rounded-xl bg-white shadow-xs border border-green-100 flex items-center justify-center p-2">
-                  <img src={logo} alt="AppScale" className="w-full h-full object-contain" />
-                </div>
-                <div>
-                  <h4 className="text-lg font-bold text-gray-900">AppScale</h4>
-                  <p className="text-xs font-semibold text-[#2e7d32]">Child Nutrition Monitoring & Early Warning System</p>
-                </div>
-              </div>
-              <p className="text-xs text-gray-600 leading-relaxed">
-                AppScale is the digital health and nutrition monitoring platform of the Municipality of Gasan, Marinduque. Designed for Rural Health Units (RHU), Barangay Nutrition Scholars (BNS), and Barangay Health Workers (BHW) to track child growth and maternal health indicators.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-              <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
-                <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Application Version</p>
-                <p className="text-sm font-bold text-gray-800">v3.2.0</p>
-              </div>
-              <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
-                <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Municipality</p>
-                <p className="text-sm font-bold text-gray-800">Gasan, Marinduque</p>
-              </div>
-              <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
-                <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Target Beneficiaries</p>
-                <p className="text-sm font-bold text-gray-800">Children 0–59 months & Mothers</p>
-              </div>
-              <div className="rounded-2xl p-4 bg-gray-50 border border-gray-100">
-                <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-gray-400">Platform Deployment</p>
-                <p className="text-sm font-bold text-gray-800">Web Admin Portal & Flutter Mobile</p>
-              </div>
-            </div>
-
-            <div className="text-center pt-3 text-xs text-gray-400 border-t border-gray-100">
-              © {new Date().getFullYear()} Municipal Nutrition Committee • Rural Health Unit of Gasan
-            </div>
-          </>
-        )}
-          </motion.div>
-        </AnimatePresence>
+        <div className="text-center pt-3 text-xs text-gray-400 border-t border-gray-100">
+          © {new Date().getFullYear()} Municipal Nutrition Committee • Rural Health Unit of Gasan
+        </div>
       </div>
     </div>
   );
