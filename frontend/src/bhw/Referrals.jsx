@@ -89,17 +89,6 @@ function Referrals() {
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
-  // Lock body scroll when any modal is open
-  useEffect(() => {
-    if (actionTarget || archiveConfirm || showReferMotherModal) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = originalOverflow;
-      };
-    }
-  }, [actionTarget, archiveConfirm, showReferMotherModal]);
-
   // update status modal
   const [actionTarget, setActionTarget] = useState(null);
   const [newStatus, setNewStatus] = useState('Ongoing');
@@ -120,6 +109,17 @@ function Referrals() {
   const [motherNotes, setMotherNotes] = useState('');
   const [motherSubmitting, setMotherSubmitting] = useState(false);
   const [motherError, setMotherError] = useState('');
+
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (actionTarget || archiveConfirm || showReferMotherModal) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [actionTarget, archiveConfirm, showReferMotherModal]);
 
   const handleOpenReferMother = async () => {
     setShowReferMotherModal(true);
