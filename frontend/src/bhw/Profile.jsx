@@ -369,13 +369,13 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
         </div>
       )}
 
-      {/* ── Hero Profile Card (Modern Card Aesthetic) ── */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Cover banner with vibrant gradient */}
-        <div className="relative h-40 sm:h-48 w-full bg-linear-to-r from-amber-400 via-rose-400 via-purple-400 to-cyan-400 overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-300/40 via-pink-400/30 to-indigo-600/40 blur-2xl" />
-          <div className="absolute -top-10 -left-10 w-60 h-60 bg-amber-300/50 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-8 right-12 w-64 h-64 bg-sky-300/50 rounded-full blur-3xl pointer-events-none" />
+      {/* ── Hero Profile Card (Modern Card with Green Gradient) ── */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100">
+        {/* Cover banner with Green Gradient */}
+        <div className="relative h-36 sm:h-44 w-full bg-linear-to-r from-[#14471e] via-[#1b5e20] to-[#2e7d32] rounded-t-3xl overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-500/25 via-teal-600/20 to-transparent" />
+          <div className="absolute -top-10 -left-10 w-48 h-48 bg-emerald-400/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-8 right-10 w-56 h-56 bg-teal-300/20 rounded-full blur-2xl pointer-events-none" />
 
           {/* Top right quick edit button */}
           <button
@@ -383,20 +383,20 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingPic}
             title="Change Profile Photo"
-            className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-800 px-3 py-1.5 rounded-xl shadow-md backdrop-blur-md transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold z-20 border border-white/60"
+            className="absolute top-4 right-4 bg-white/90 hover:bg-white text-emerald-900 px-3 py-1.5 rounded-xl shadow-md backdrop-blur-md transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold z-20 border border-white/60"
           >
-            <Pencil size={13} className="text-gray-800" />
+            <Pencil size={13} className="text-emerald-800" />
             <span className="hidden sm:inline">Change Photo</span>
           </button>
         </div>
 
-        <div className="px-6 sm:px-8 pb-6 pt-0">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 -mt-14 sm:-mt-16 mb-6">
+        <div className="px-6 sm:px-8 pb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 -mt-12 sm:-mt-14 mb-2">
             
             {/* Left: Avatar + Details */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 text-center sm:text-left">
               <div className="relative shrink-0">
-                <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-white shadow-xl overflow-hidden bg-emerald-100 ring-1 ring-black/5">
+                <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl overflow-hidden bg-emerald-50 ring-2 ring-emerald-900/10">
                   {profileImageSrc || profile?.profile_picture ? (
                     <img
                       src={profileImageSrc || getProfileImageUrl(profile?.profile_picture)}
@@ -405,13 +405,13 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
                       onError={(ev) => {
                         ev.currentTarget.style.display = 'none';
                         const fb = document.createElement('div');
-                        fb.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-3xl font-black rounded-full';
+                        fb.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black rounded-full';
                         fb.textContent = getUserInitials(profile);
                         ev.currentTarget.parentElement?.appendChild(fb);
                       }}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-3xl font-black rounded-full">
+                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black rounded-full">
                       {getUserInitials(profile)}
                     </div>
                   )}
@@ -426,7 +426,7 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingPic}
                   title="Upload profile picture"
-                  className="absolute bottom-1 right-1 bg-gray-900 hover:bg-black text-white p-2 rounded-full shadow-lg border-2 border-white transition-transform hover:scale-110 z-20 cursor-pointer"
+                  className="absolute bottom-0 right-0 bg-[#1b5e20] hover:bg-[#14471e] text-white p-2 rounded-full shadow-lg border-2 border-white transition-transform hover:scale-110 z-20 cursor-pointer"
                 >
                   <Camera size={13} />
                 </button>
@@ -434,86 +434,46 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
               </div>
 
               {/* Name, Role & Location */}
-              <div className="pt-2 sm:pt-0">
-                <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-                  {profile?.first_name || ''} {profile?.last_name || ''}
+              <div className="pt-2 sm:pt-4">
+                <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                  {(profile?.first_name || profile?.last_name)
+                    ? `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
+                    : (user?.full_name || user?.name || user?.username || 'Health Worker')}
                 </h2>
-                <p className="text-sm font-semibold text-gray-600 mt-0.5">
-                  {profile?.role === 'BNS' ? 'Barangay Nutrition Scholar' : profile?.role === 'BHW' ? 'Barangay Health Worker' : (profile?.role || 'Community Health Worker')}
+                <p className="text-xs sm:text-sm font-semibold text-[#1b5e20] mt-0.5">
+                  {profile?.role === 'BNS' ? 'Barangay Nutrition Scholar' : profile?.role === 'BHW' ? 'Barangay Health Worker' : (profile?.role || user?.role || 'Community Health Worker')}
                 </p>
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-1.5 text-xs text-gray-500">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 mt-1 text-xs text-gray-500">
                   <span className="flex items-center gap-1 font-medium text-gray-700">
-                    <MapPin size={13} className="text-emerald-700" />
-                    Barangay {profile?.barangay || 'Antipolo'}, {profile?.municipality || 'Gasan'}, Marinduque
+                    <MapPin size={12} className="text-emerald-700" />
+                    Barangay {profile?.barangay || user?.barangay || 'Antipolo'}, {profile?.municipality || user?.municipality || 'Gasan'}, Marinduque
                   </span>
                   <span className="text-gray-300 hidden sm:inline">•</span>
                   <span className="flex items-center gap-1">
-                    <Mail size={13} className="text-gray-400" />
-                    {profile?.email || ''}
+                    <Mail size={12} className="text-gray-400" />
+                    {profile?.email || user?.email || ''}
                   </span>
-                </div>
-
-                {/* Pill Action Buttons */}
-                <div className="flex items-center justify-center sm:justify-start gap-2 mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('profile')}
-                    className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs ${
-                      activeTab === 'profile'
-                        ? 'bg-gray-900 text-white hover:bg-black'
-                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    Edit Profile
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('password')}
-                    className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs ${
-                      activeTab === 'password'
-                        ? 'bg-gray-900 text-white hover:bg-black'
-                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    Change Password
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('about')}
-                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs ${
-                      activeTab === 'about'
-                        ? 'bg-gray-900 text-white hover:bg-black'
-                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    System About
-                  </button>
                 </div>
               </div>
             </div>
 
             {/* Right: Current Role + Badges */}
-            <div className="flex flex-col items-center md:items-end justify-center text-center md:text-right shrink-0">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 mb-1">
-                <span>Current role</span>
-                <Briefcase size={13} />
-              </div>
-              <span className="bg-slate-100 text-slate-800 text-xs font-extrabold px-3.5 py-1.5 rounded-full uppercase tracking-wider mb-3">
-                {profile?.role || 'Health Worker'}
-              </span>
-
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 mb-1.5">
-                <span>Assigned Area</span>
-                <Sparkles size={13} className="text-amber-500" />
-              </div>
-              <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5 max-w-xs">
-                <span className="bg-amber-50 text-amber-900 text-[11px] font-bold px-2.5 py-1 rounded-full border border-amber-200/60">
-                  {profile?.barangay || 'Antipolo'}
+            <div className="flex flex-col items-center md:items-end justify-center text-center md:text-right shrink-0 mt-3 md:mt-0">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-semibold text-gray-400">Current role:</span>
+                <span className="bg-emerald-100 text-emerald-900 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-200">
+                  {profile?.role || user?.role || 'Health Worker'}
                 </span>
-                <span className="bg-emerald-50 text-emerald-900 text-[11px] font-bold px-2.5 py-1 rounded-full border border-emerald-200/60">
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5">
+                <span className="bg-gray-100 text-gray-700 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-gray-200">
+                  {profile?.barangay || user?.barangay || 'Antipolo'}
+                </span>
+                <span className="bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
                   Gasan Health Unit
                 </span>
-                <span className="bg-sky-50 text-sky-900 text-[11px] font-bold px-2.5 py-1 rounded-full border border-sky-200/60">
+                <span className="bg-teal-50 text-teal-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-teal-200">
                   Nutrition Monitoring
                 </span>
               </div>
@@ -521,50 +481,7 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
 
           </div>
 
-          {picError && <p className="text-xs text-red-600 mb-4">{picError}</p>}
-
-          {/* Quick info cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-5 border-t border-gray-100">
-            <div
-              onClick={() => setActiveTab('profile')}
-              className="group flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-100 hover:border-emerald-200 transition-all cursor-pointer"
-            >
-              <div>
-                <p className="text-xs font-bold text-gray-900">Health Worker Status</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">Active field worker in Gasan RHU</p>
-              </div>
-              <div className="w-7 h-7 rounded-full bg-white group-hover:bg-[#1b5e20] group-hover:text-white flex items-center justify-center text-gray-400 shadow-xs border border-gray-100 transition-colors">
-                <ArrowRight size={13} />
-              </div>
-            </div>
-
-            <div
-              onClick={() => setActiveTab('about')}
-              className="group flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-100 hover:border-emerald-200 transition-all cursor-pointer"
-            >
-              <div>
-                <p className="text-xs font-bold text-gray-900">System Platform</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">AppScale Mobile & Web Access</p>
-              </div>
-              <div className="w-7 h-7 rounded-full bg-white group-hover:bg-[#1b5e20] group-hover:text-white flex items-center justify-center text-gray-400 shadow-xs border border-gray-100 transition-colors">
-                <ArrowRight size={13} />
-              </div>
-            </div>
-
-            <div
-              onClick={() => setActiveTab('password')}
-              className="group flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-100 hover:border-emerald-200 transition-all cursor-pointer"
-            >
-              <div>
-                <p className="text-xs font-bold text-gray-900">Account Security</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">Protected with encrypted credentials</p>
-              </div>
-              <div className="w-7 h-7 rounded-full bg-white group-hover:bg-[#1b5e20] group-hover:text-white flex items-center justify-center text-gray-400 shadow-xs border border-gray-100 transition-colors">
-                <ArrowRight size={13} />
-              </div>
-            </div>
-          </div>
-
+          {picError && <p className="text-xs text-red-600 mt-2">{picError}</p>}
         </div>
       </div>
 
