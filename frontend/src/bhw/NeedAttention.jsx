@@ -73,8 +73,6 @@ function NeedAttention() {
   const [visitTarget, setVisitTarget] = useState(null);
   const [visitDate, setVisitDate] = useState(new Date().toISOString().slice(0, 10));
   const [selectedServices, setSelectedServices] = useState([]);
-  const [visitWeight, setVisitWeight] = useState('');
-  const [visitHeight, setVisitHeight] = useState('');
   const [visitNotes, setVisitNotes] = useState('');
   const [visitSubmitting, setVisitSubmitting] = useState(false);
   const [visitError, setVisitError] = useState('');
@@ -166,8 +164,6 @@ function NeedAttention() {
     setVisitTarget(child);
     setVisitDate(new Date().toISOString().slice(0, 10));
     setSelectedServices([]);
-    setVisitWeight(child.weight_kg || '');
-    setVisitHeight(child.height_cm || '');
     setVisitNotes('');
     setVisitError('');
   };
@@ -202,8 +198,6 @@ function NeedAttention() {
         service_types: selectedServices,
         service_type: selectedServices[0],
         provided_by: user.user_id,
-        weight_kg: visitWeight || null,
-        height_cm: visitHeight || null,
         notes: visitNotes,
       });
       await refetch();
@@ -581,31 +575,6 @@ function NeedAttention() {
                     onChange={(e) => setVisitDate(e.target.value)}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">New Weight (kg)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      placeholder="e.g. 10.5"
-                      value={visitWeight}
-                      onChange={(e) => setVisitWeight(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">New Height (cm)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      placeholder="e.g. 82.0"
-                      value={visitHeight}
-                      onChange={(e) => setVisitHeight(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
-                    />
-                  </div>
                 </div>
 
                 <div>
