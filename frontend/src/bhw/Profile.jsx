@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axiosClient from '../api/axiosClient';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import { useAuth } from '../components/AuthContext';
-import { Camera, Lock, User, ChevronRight, Globe, Check, Info } from 'lucide-react';
+import { Camera, Lock, User, ChevronRight, Check, Info, Pencil, Briefcase, Sparkles, MapPin, Mail, ArrowRight } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShimmerSkeleton } from '../components/ui/motion';
@@ -105,10 +105,9 @@ function Toggle({ checked, onChange }) {
 }
 
 const TABS = [
-  { key: 'profile',     label: 'Profile Info',     icon: User  },
-  { key: 'preferences', label: 'Preferences',      icon: Globe },
-  { key: 'password',    label: 'Change Password',  icon: Lock  },
-  { key: 'about',       label: 'About',            icon: Info  },
+  { key: 'profile',     label: 'Profile Info',        icon: User },
+  { key: 'password',    label: 'Security & Password', icon: Lock },
+  { key: 'about',       label: 'About System',        icon: Info },
 ];
 
 const inputCls = "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100 transition";
@@ -370,58 +369,202 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
         </div>
       )}
 
-      {/* ── Hero Profile Card ── */}
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-        <div className="h-28 bg-linear-to-r from-[#1b5e20] via-[#2e7d32] to-emerald-500" />
+      {/* ── Hero Profile Card (Modern Card Aesthetic) ── */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Cover banner with vibrant gradient */}
+        <div className="relative h-40 sm:h-48 w-full bg-linear-to-r from-amber-400 via-rose-400 via-purple-400 to-cyan-400 overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-300/40 via-pink-400/30 to-indigo-600/40 blur-2xl" />
+          <div className="absolute -top-10 -left-10 w-60 h-60 bg-amber-300/50 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-8 right-12 w-64 h-64 bg-sky-300/50 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="px-6 pb-6">
-          <div className="flex items-end justify-between -mt-12 mb-4">
-            <div className="relative">
-              <div className="relative w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden bg-green-100">
-                {profileImageSrc || profile?.profile_picture ? (
-                  <img
-                    src={profileImageSrc || getProfileImageUrl(profile?.profile_picture)}
-                    alt="Profile"
-                    className="w-full h-full object-cover rounded-full"
-                    onError={(ev) => {
-                      ev.currentTarget.style.display = 'none';
-                      const fb = document.createElement('div');
-                      fb.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black rounded-full';
-                      fb.textContent = getUserInitials(profile);
-                      ev.currentTarget.parentElement?.appendChild(fb);
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black rounded-full">
-                    {getUserInitials(profile)}
-                  </div>
-                )}
-                {uploadingPic && (
-                  <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white text-xs font-semibold z-10 backdrop-blur-xs">
-                    Uploading…
-                  </div>
-                )}
+          {/* Top right quick edit button */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingPic}
+            title="Change Profile Photo"
+            className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-800 px-3 py-1.5 rounded-xl shadow-md backdrop-blur-md transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold z-20 border border-white/60"
+          >
+            <Pencil size={13} className="text-gray-800" />
+            <span className="hidden sm:inline">Change Photo</span>
+          </button>
+        </div>
+
+        <div className="px-6 sm:px-8 pb-6 pt-0">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 -mt-14 sm:-mt-16 mb-6">
+            
+            {/* Left: Avatar + Details */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
+              <div className="relative shrink-0">
+                <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-white shadow-xl overflow-hidden bg-emerald-100 ring-1 ring-black/5">
+                  {profileImageSrc || profile?.profile_picture ? (
+                    <img
+                      src={profileImageSrc || getProfileImageUrl(profile?.profile_picture)}
+                      alt="Profile"
+                      className="w-full h-full object-cover rounded-full"
+                      onError={(ev) => {
+                        ev.currentTarget.style.display = 'none';
+                        const fb = document.createElement('div');
+                        fb.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-3xl font-black rounded-full';
+                        fb.textContent = getUserInitials(profile);
+                        ev.currentTarget.parentElement?.appendChild(fb);
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-3xl font-black rounded-full">
+                      {getUserInitials(profile)}
+                    </div>
+                  )}
+                  {uploadingPic && (
+                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white text-xs font-semibold z-10 backdrop-blur-xs">
+                      Uploading…
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPic}
+                  title="Upload profile picture"
+                  className="absolute bottom-1 right-1 bg-gray-900 hover:bg-black text-white p-2 rounded-full shadow-lg border-2 border-white transition-transform hover:scale-110 z-20 cursor-pointer"
+                >
+                  <Camera size={13} />
+                </button>
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePictureChange} className="hidden" />
               </div>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingPic}
-                className="absolute bottom-0.5 right-0.5 bg-[#2e7d32] hover:bg-[#256427] p-2 rounded-full shadow-md text-white transition z-20 cursor-pointer"
-              >
-                <Camera size={13} />
-              </button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePictureChange} className="hidden" />
+
+              {/* Name, Role & Location */}
+              <div className="pt-2 sm:pt-0">
+                <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+                  {profile?.first_name || ''} {profile?.last_name || ''}
+                </h2>
+                <p className="text-sm font-semibold text-gray-600 mt-0.5">
+                  {profile?.role === 'BNS' ? 'Barangay Nutrition Scholar' : profile?.role === 'BHW' ? 'Barangay Health Worker' : (profile?.role || 'Community Health Worker')}
+                </p>
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-1.5 text-xs text-gray-500">
+                  <span className="flex items-center gap-1 font-medium text-gray-700">
+                    <MapPin size={13} className="text-emerald-700" />
+                    Barangay {profile?.barangay || 'Antipolo'}, {profile?.municipality || 'Gasan'}, Marinduque
+                  </span>
+                  <span className="text-gray-300 hidden sm:inline">•</span>
+                  <span className="flex items-center gap-1">
+                    <Mail size={13} className="text-gray-400" />
+                    {profile?.email || ''}
+                  </span>
+                </div>
+
+                {/* Pill Action Buttons */}
+                <div className="flex items-center justify-center sm:justify-start gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('profile')}
+                    className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                      activeTab === 'profile'
+                        ? 'bg-gray-900 text-white hover:bg-black'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Edit Profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('password')}
+                    className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                      activeTab === 'password'
+                        ? 'bg-gray-900 text-white hover:bg-black'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Change Password
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('about')}
+                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                      activeTab === 'about'
+                        ? 'bg-gray-900 text-white hover:bg-black'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    System About
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <span className="bg-green-100 text-green-800 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide">
-              {profile?.role || 'BHW'}
-            </span>
+            {/* Right: Current Role + Badges */}
+            <div className="flex flex-col items-center md:items-end justify-center text-center md:text-right shrink-0">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 mb-1">
+                <span>Current role</span>
+                <Briefcase size={13} />
+              </div>
+              <span className="bg-slate-100 text-slate-800 text-xs font-extrabold px-3.5 py-1.5 rounded-full uppercase tracking-wider mb-3">
+                {profile?.role || 'Health Worker'}
+              </span>
+
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 mb-1.5">
+                <span>Assigned Area</span>
+                <Sparkles size={13} className="text-amber-500" />
+              </div>
+              <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5 max-w-xs">
+                <span className="bg-amber-50 text-amber-900 text-[11px] font-bold px-2.5 py-1 rounded-full border border-amber-200/60">
+                  {profile?.barangay || 'Antipolo'}
+                </span>
+                <span className="bg-emerald-50 text-emerald-900 text-[11px] font-bold px-2.5 py-1 rounded-full border border-emerald-200/60">
+                  Gasan Health Unit
+                </span>
+                <span className="bg-sky-50 text-sky-900 text-[11px] font-bold px-2.5 py-1 rounded-full border border-sky-200/60">
+                  Nutrition Monitoring
+                </span>
+              </div>
+            </div>
+
           </div>
 
-          <h2 className="text-xl font-black text-gray-900">{profile?.first_name || ''} {profile?.last_name || ''}</h2>
-          <p className="text-sm text-gray-400 mt-0.5">{profile?.email || ''}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{profile?.barangay || ''}{profile?.municipality ? `, ${profile.municipality}` : ''}</p>
-          {picError && <p className="text-xs text-red-600 mt-2">{picError}</p>}
+          {picError && <p className="text-xs text-red-600 mb-4">{picError}</p>}
+
+          {/* Quick info cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-5 border-t border-gray-100">
+            <div
+              onClick={() => setActiveTab('profile')}
+              className="group flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-100 hover:border-emerald-200 transition-all cursor-pointer"
+            >
+              <div>
+                <p className="text-xs font-bold text-gray-900">Health Worker Status</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">Active field worker in Gasan RHU</p>
+              </div>
+              <div className="w-7 h-7 rounded-full bg-white group-hover:bg-[#1b5e20] group-hover:text-white flex items-center justify-center text-gray-400 shadow-xs border border-gray-100 transition-colors">
+                <ArrowRight size={13} />
+              </div>
+            </div>
+
+            <div
+              onClick={() => setActiveTab('about')}
+              className="group flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-100 hover:border-emerald-200 transition-all cursor-pointer"
+            >
+              <div>
+                <p className="text-xs font-bold text-gray-900">System Platform</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">AppScale Mobile & Web Access</p>
+              </div>
+              <div className="w-7 h-7 rounded-full bg-white group-hover:bg-[#1b5e20] group-hover:text-white flex items-center justify-center text-gray-400 shadow-xs border border-gray-100 transition-colors">
+                <ArrowRight size={13} />
+              </div>
+            </div>
+
+            <div
+              onClick={() => setActiveTab('password')}
+              className="group flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-100 hover:border-emerald-200 transition-all cursor-pointer"
+            >
+              <div>
+                <p className="text-xs font-bold text-gray-900">Account Security</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">Protected with encrypted credentials</p>
+              </div>
+              <div className="w-7 h-7 rounded-full bg-white group-hover:bg-[#1b5e20] group-hover:text-white flex items-center justify-center text-gray-400 shadow-xs border border-gray-100 transition-colors">
+                <ArrowRight size={13} />
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -485,44 +628,6 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
           </>
         )}
 
-        {/* PREFERENCES (DISPLAY) */}
-        {activeTab === 'preferences' && (
-          <>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
-                <Globe size={16} className="text-[#2e7d32]" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-800">Display Preferences</h3>
-                <p className="text-xs text-gray-400">Settings are saved per user account</p>
-              </div>
-            </div>
-            {profileMsg && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-2.5 font-medium">{profileMsg}</div>}
-            {profileErr && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-2.5">{profileErr}</div>}
-
-            <div className="space-y-6">
-              {/* Age Format Toggle */}
-              <div className="pt-2">
-                <div className="flex items-center justify-between">
-                  <div className="max-w-md">
-                    <h4 className="text-sm font-bold text-gray-800 mb-1">Age Display Format</h4>
-                    <p className="text-xs text-gray-500">
-                      When enabled, child ages include exact days (e.g. &ldquo;3 months and 4 days&rdquo;). Default shows months only (e.g. &ldquo;3 months&rdquo;).
-                    </p>
-                  </div>
-                  <Toggle
-                    checked={Boolean(profile?.age_format_days)}
-                    onChange={() => handleFieldSave('age_format_days', !profile?.age_format_days)}
-                  />
-                </div>
-                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-600">
-                  <span className="font-semibold text-gray-700">Preview:</span>
-                  <span>{Boolean(profile?.age_format_days) ? '3 months and 4 days' : '3 months'}</span>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
 
         {/* CHANGE PASSWORD */}
         {activeTab === 'password' && (
