@@ -22,6 +22,10 @@ import {
   Plus,
   Utensils,
   FileSpreadsheet,
+  CheckSquare,
+  Square,
+  RefreshCw,
+  Pill,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,6 +46,174 @@ const severityColors = {
   low: 'bg-emerald-100 text-emerald-800',
   medium: 'bg-amber-100 text-amber-800',
   high: 'bg-red-100 text-red-800',
+};
+
+const CHILD_INTERVENTIONS = [
+  {
+    id: 'vit_a',
+    name: 'Vitamin A Supplementation',
+    category: 'Supplement',
+    defaultDosage: '100,000 / 200,000 IU',
+    badge: 'Supplement',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    desc: 'High-dose capsule given semiannually',
+  },
+  {
+    id: 'deworming',
+    name: 'Deworming (Albendazole)',
+    category: 'Supplement',
+    defaultDosage: '400mg chewable tablet',
+    badge: 'Supplement',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    desc: 'Chewable tablet every 6 months',
+  },
+  {
+    id: 'feeding',
+    name: 'Supplementary Feeding Ration',
+    category: 'Health Intervention',
+    defaultDosage: 'Daily food ration',
+    badge: 'Feeding',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    desc: 'Nutritious hot meals / food pack',
+  },
+  {
+    id: 'iron_mnp',
+    name: 'Micronutrient Powder / Iron Drops',
+    category: 'Supplement',
+    defaultDosage: '1 sachet / dose daily',
+    badge: 'Supplement',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    desc: 'Prevents micronutrient deficiency & anemia',
+  },
+  {
+    id: 'checkup',
+    name: 'Pediatric Health Checkup',
+    category: 'Health Intervention',
+    defaultDosage: 'Vital signs & physical exam',
+    badge: 'Checkup',
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
+    desc: 'Physical assessment & growth check',
+  },
+  {
+    id: 'counseling',
+    name: 'IYCF & Nutrition Counseling',
+    category: 'Health Intervention',
+    defaultDosage: 'Maternal feeding guidance',
+    badge: 'Counseling',
+    badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+    desc: 'Dietary guidance and feeding practice',
+  },
+  {
+    id: 'medication',
+    name: 'Prescribed Medicine / Antibiotics',
+    category: 'Medication',
+    defaultDosage: '',
+    badge: 'Medication',
+    badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
+    desc: 'Doctor-prescribed medication / treatment',
+    isCustom: true,
+  },
+  {
+    id: 'other',
+    name: 'Other Health Service',
+    category: 'Health Intervention',
+    defaultDosage: '',
+    badge: 'Other',
+    badgeColor: 'bg-gray-100 text-gray-700 border-gray-200',
+    desc: 'Specify any other service or intervention',
+    isCustom: true,
+  },
+];
+
+const MOTHER_INTERVENTIONS = [
+  {
+    id: 'iron_folic',
+    name: 'Iron with Folic Acid (IFA) Tablets',
+    category: 'Supplement',
+    defaultDosage: '1 tablet daily (60mg Fe + 400mcg FA)',
+    badge: 'Supplement',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    desc: 'Daily iron & folate for maternal recovery',
+  },
+  {
+    id: 'calcium',
+    name: 'Calcium Carbonate Supplementation',
+    category: 'Supplement',
+    defaultDosage: '500mg daily',
+    badge: 'Supplement',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    desc: 'Bone health & calcium replenishment',
+  },
+  {
+    id: 'deworming_mom',
+    name: 'Deworming Tablet (Albendazole)',
+    category: 'Supplement',
+    defaultDosage: '400mg single dose',
+    badge: 'Supplement',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    desc: 'Single-dose deworming treatment',
+  },
+  {
+    id: 'bf_guidance',
+    name: 'Exclusive Breastfeeding & Latching Guidance',
+    category: 'Health Intervention',
+    defaultDosage: 'Lactation counseling',
+    badge: 'Counseling',
+    badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+    desc: 'Guidance on proper latch & breast care',
+  },
+  {
+    id: 'nutri_counseling',
+    name: 'Maternal Nutrition & Diet Counseling',
+    category: 'Health Intervention',
+    defaultDosage: 'Postnatal dietary counseling',
+    badge: 'Counseling',
+    badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+    desc: 'Balanced meal plan & hydration advice',
+  },
+  {
+    id: 'postnatal_checkup',
+    name: 'Postnatal Health Checkup',
+    category: 'Health Intervention',
+    defaultDosage: 'BP, vitals & recovery check',
+    badge: 'Checkup',
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
+    desc: 'General maternal health & recovery check',
+  },
+  {
+    id: 'medication',
+    name: 'Prescribed Medicine / Treatment',
+    category: 'Medication',
+    defaultDosage: '',
+    badge: 'Medication',
+    badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
+    desc: 'Doctor-prescribed medication / treatment',
+    isCustom: true,
+  },
+  {
+    id: 'other',
+    name: 'Other Maternal Service',
+    category: 'Health Intervention',
+    defaultDosage: '',
+    badge: 'Other',
+    badgeColor: 'bg-gray-100 text-gray-700 border-gray-200',
+    desc: 'Specify any other service or intervention',
+    isCustom: true,
+  },
+];
+
+const getActionBadge = (action = '') => {
+  const act = String(action).toUpperCase();
+  if (act.includes('CREATE') || act.includes('RECORD') || act.includes('ADD')) {
+    return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+  }
+  if (act.includes('UPDATE') || act.includes('EDIT') || act.includes('STATUS')) {
+    return 'bg-blue-50 text-blue-700 border border-blue-200';
+  }
+  if (act.includes('DELETE') || act.includes('CANCEL') || act.includes('REMOVE') || act.includes('ARCHIVE')) {
+    return 'bg-amber-50 text-amber-700 border border-amber-200';
+  }
+  return 'bg-slate-50 text-slate-700 border border-slate-200';
 };
 
 function MedicalRecords() {
@@ -109,8 +281,11 @@ function MedicalRecords() {
   // ── Add Intervention Modal State ──
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalBeneficiaryType, setModalBeneficiaryType] = useState('child');
-  const [interventionCategory, setInterventionCategory] = useState('Medication');
-  const [serviceName, setServiceName] = useState('');
+  const [selectedInterventions, setSelectedInterventions] = useState([]);
+  const [customMedicineName, setCustomMedicineName] = useState('');
+  const [customMedicineDosage, setCustomMedicineDosage] = useState('');
+  const [customOtherName, setCustomOtherName] = useState('');
+  const [customOtherCategory, setCustomOtherCategory] = useState('Health Intervention');
   const [dosage, setDosage] = useState('');
   const [serviceDate, setServiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [nextSchedule, setNextSchedule] = useState('');
@@ -294,8 +469,11 @@ function MedicalRecords() {
 
   const openAddInterventionModal = (type) => {
     setModalBeneficiaryType(type);
-    setInterventionCategory('Medication');
-    setServiceName('');
+    setSelectedInterventions([]);
+    setCustomMedicineName('');
+    setCustomMedicineDosage('');
+    setCustomOtherName('');
+    setCustomOtherCategory('Health Intervention');
     setDosage('');
     setServiceDate(new Date().toISOString().slice(0, 10));
     setNextSchedule('');
@@ -305,13 +483,32 @@ function MedicalRecords() {
     setShowAddModal(true);
   };
 
+  const toggleIntervention = (id) => {
+    setSelectedInterventions((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+    if (interventionErrors.selected) {
+      setInterventionErrors((prev) => ({ ...prev, selected: '' }));
+    }
+  };
+
   const submitIntervention = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setModalError('');
 
     const errs = {};
-    if (!serviceName.trim()) errs.serviceName = 'This field is required';
-    if (!serviceDate) errs.serviceDate = 'This field is required';
+    if (selectedInterventions.length === 0) {
+      errs.selected = 'Pumili ng kahit isang intervention o serbisyo.';
+    }
+    if (selectedInterventions.includes('medication') && !customMedicineName.trim()) {
+      errs.customMedicineName = 'Kinakailangan ang pangalan ng gamot (Medication name required).';
+    }
+    if (selectedInterventions.includes('other') && !customOtherName.trim()) {
+      errs.customOtherName = 'Kinakailangan ang pangalan ng serbisyo (Service name required).';
+    }
+    if (!serviceDate) {
+      errs.serviceDate = 'Date administered is required.';
+    }
 
     if (Object.keys(errs).length > 0) {
       setInterventionErrors(errs);
@@ -321,33 +518,69 @@ function MedicalRecords() {
     setInterventionErrors({});
     setModalSubmitting(true);
 
+    const presets = modalBeneficiaryType === 'child' ? CHILD_INTERVENTIONS : MOTHER_INTERVENTIONS;
+
+    const itemsToSubmit = selectedInterventions.map((id) => {
+      if (id === 'medication') {
+        return {
+          service_type: 'Medication',
+          service_name: customMedicineName.trim(),
+          dosage: customMedicineDosage.trim() || dosage.trim() || null,
+        };
+      }
+      if (id === 'other') {
+        return {
+          service_type: customOtherCategory || 'Health Intervention',
+          service_name: customOtherName.trim(),
+          dosage: dosage.trim() || null,
+        };
+      }
+      const preset = presets.find((p) => p.id === id);
+      return {
+        service_type: preset?.category || 'Health Intervention',
+        service_name: preset?.name || id,
+        dosage: dosage.trim() || preset?.defaultDosage || null,
+      };
+    });
+
     try {
       if (modalBeneficiaryType === 'child') {
-        await axiosClient.post('/bhw/medical-records/child-services', {
-          child_id: selectedChild.child_id,
-          service_type: interventionCategory,
-          service_name: serviceName.trim(),
-          dosage: dosage.trim() || null,
-          service_date: serviceDate,
-          next_schedule: nextSchedule || null,
-          notes: interventionNotes.trim() || null,
-        });
+        await Promise.all(
+          itemsToSubmit.map((item) =>
+            axiosClient.post('/bhw/medical-records/child-services', {
+              child_id: selectedChild.child_id,
+              service_type: item.service_type,
+              service_name: item.service_name,
+              dosage: item.dosage,
+              service_date: serviceDate,
+              next_schedule: nextSchedule || null,
+              notes: interventionNotes.trim() || null,
+            })
+          )
+        );
         await openChild(selectedChild);
       } else {
-        await axiosClient.post('/bhw/medical-records/mother-services', {
-          mother_id: selectedMother.mother_id,
-          service_type: interventionCategory,
-          service_name: serviceName.trim(),
-          dosage: dosage.trim() || null,
-          service_date: serviceDate,
-          next_schedule: nextSchedule || null,
-          notes: interventionNotes.trim() || null,
-        });
+        await Promise.all(
+          itemsToSubmit.map((item) =>
+            axiosClient.post('/bhw/medical-records/mother-services', {
+              mother_id: selectedMother.mother_id,
+              service_type: item.service_type,
+              service_name: item.service_name,
+              dosage: item.dosage,
+              service_date: serviceDate,
+              next_schedule: nextSchedule || null,
+              notes: interventionNotes.trim() || null,
+            })
+          )
+        );
         await openMother(selectedMother);
+      }
+      if (typeof _refetchAudit === 'function') {
+        _refetchAudit();
       }
       setShowAddModal(false);
     } catch (err) {
-      setModalError(err.response?.data?.message || 'Failed to save medical intervention.');
+      setModalError(err.response?.data?.message || 'Failed to save medical intervention(s).');
     } finally {
       setModalSubmitting(false);
     }
@@ -1200,7 +1433,7 @@ function MedicalRecords() {
       {/* Module 4 Requirement: "The system shall maintain an audit trail to track all modifications made to medical records, including the user and timestamp." */}
       {recordType === 'audit' && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gray-50/50">
             <div>
               <h3 className="font-bold text-base text-gray-900 flex items-center gap-2">
                 <ShieldCheck className="text-[#2e7d32]" size={20} /> Medical Records Audit Trail
@@ -1212,9 +1445,9 @@ function MedicalRecords() {
             <button
               type="button"
               onClick={() => _refetchAudit()}
-              className="text-xs font-bold text-[#1b5e20] hover:text-[#154a1a] border border-gray-200 bg-white px-3 py-1.5 rounded-xl shadow-xs"
+              className="text-xs font-bold text-[#1b5e20] hover:text-[#154a1a] border border-gray-200 bg-white px-3.5 py-2 rounded-xl shadow-xs flex items-center gap-1.5 transition cursor-pointer self-start sm:self-auto"
             >
-              Refresh Logs
+              <RefreshCw size={13} className={auditLoading ? 'animate-spin' : ''} /> Refresh Logs
             </button>
           </div>
 
@@ -1230,45 +1463,58 @@ function MedicalRecords() {
             ) : auditLogs.length === 0 ? (
               <div className="p-12 text-center text-gray-400 text-xs">No medical modifications recorded in the audit trail yet.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-left font-semibold text-gray-400 border-b border-gray-100 pb-2">
-                      <th className="py-2.5">Timestamp</th>
-                      <th className="py-2.5">User</th>
-                      <th className="py-2.5">Beneficiary</th>
-                      <th className="py-2.5">Action</th>
-                      <th className="py-2.5">Details</th>
+              <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-2xs">
+                <table className="w-full text-xs min-w-[850px] border-collapse bg-white">
+                  <thead className="bg-gray-50/80 border-b border-gray-200 text-gray-500 uppercase tracking-wider text-[11px] font-bold">
+                    <tr>
+                      <th className="px-4 py-3.5 text-left w-[190px]">Timestamp</th>
+                      <th className="px-4 py-3.5 text-left w-[150px]">User / Staff</th>
+                      <th className="px-4 py-3.5 text-left w-[180px]">Beneficiary</th>
+                      <th className="px-4 py-3.5 text-left w-[160px]">Action</th>
+                      <th className="px-4 py-3.5 text-left">Details</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-gray-100">
                     {auditLogs.map((log) => (
-                      <tr key={log.audit_id} className="hover:bg-gray-50/60">
-                        <td className="py-3 font-semibold text-gray-800 whitespace-nowrap">
-                          {new Date(log.timestamp).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}
+                      <tr key={log.audit_id} className="hover:bg-emerald-50/20 transition-colors">
+                        <td className="px-4 py-3.5 font-medium text-gray-700 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={13} className="text-gray-400 shrink-0" />
+                            <span>
+                              {new Date(log.timestamp).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
                         </td>
-                        <td className="py-3 font-medium text-gray-700">
-                          {log.modifier_name || `User #${log.modified_by}`}
+                        <td className="px-4 py-3.5">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100/90 text-gray-800 font-semibold text-xs whitespace-nowrap border border-gray-200/60">
+                            <User size={12} className="text-gray-500 shrink-0" />
+                            <span className="truncate max-w-[120px]">{log.modifier_name || `User #${log.modified_by}`}</span>
+                          </span>
                         </td>
-                        <td className="py-3 font-semibold text-gray-800">
-                          <span className="capitalize">{log.beneficiary_name || `${log.beneficiary_type} #${log.beneficiary_id}`}</span>
-                          <span className="text-[10px] text-gray-400 block uppercase">{log.beneficiary_type}</span>
-                        </td>
-                        <td className="py-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            log.action === 'CREATE' ? 'bg-emerald-100 text-emerald-800' :
-                            log.action === 'UPDATE' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
+                        <td className="px-4 py-3.5">
+                          <p className="font-bold text-gray-900 capitalize leading-snug">
+                            {log.beneficiary_name || `${log.beneficiary_type} #${log.beneficiary_id}`}
+                          </p>
+                          <span className={`inline-block mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            log.beneficiary_type?.toLowerCase() === 'mother'
+                              ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           }`}>
+                            {log.beneficiary_type?.toUpperCase() || 'BENEFICIARY'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getActionBadge(log.action)}`}>
                             {log.action}
                           </span>
                         </td>
-                        <td className="py-3 text-gray-600 max-w-md wrap-break-word">
+                        <td className="px-4 py-3.5 text-gray-700 leading-relaxed font-normal">
                           {log.action_details || 'Medical record logged'}
                         </td>
                       </tr>
@@ -1283,91 +1529,206 @@ function MedicalRecords() {
 
       {/* ── Add Medication / Supplement / Intervention Modal ── */}
       {showAddModal && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden" onClick={() => setShowAddModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden" onClick={() => setShowAddModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
               <div>
-                <h3 className="font-bold text-base">Record Medical Intervention</h3>
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <PlusCircle size={18} /> Record Medical Interventions
+                </h3>
                 <p className="text-xs text-white/80 mt-0.5">
-                  Beneficiary: {modalBeneficiaryType === 'child'
-                    ? `${selectedChild?.first_name} ${selectedChild?.last_name} (Child)`
-                    : `${selectedMother?.first_name} ${selectedMother?.last_name} (Lactating Mother)`}
+                  Beneficiary:{' '}
+                  <span className="font-semibold text-white">
+                    {modalBeneficiaryType === 'child'
+                      ? `${selectedChild?.first_name} ${selectedChild?.last_name} (Child)`
+                      : `${selectedMother?.first_name} ${selectedMother?.last_name} (Lactating Mother)`}
+                  </span>
                 </p>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white">
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
+              >
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={submitIntervention} noValidate className="p-6 space-y-3.5 overflow-y-auto flex-1">
-              {modalError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{modalError}</div>}
-              <FormRequiredNote />
-
-              <div>
-                <FormLabel label="Intervention Category" required />
-                <select
-                  value={interventionCategory}
-                  onChange={(e) => setInterventionCategory(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
-                >
-                  <option value="Medication">Medication</option>
-                  <option value="Supplement">Supplement (Vitamin A, Iron Folic Acid, Calcium, Deworming)</option>
-                  <option value="Health Intervention">Health Intervention (Counseling, Checkup)</option>
-                </select>
+            <form onSubmit={submitIntervention} noValidate className="p-6 space-y-4 overflow-y-auto flex-1">
+              {modalError && (
+                <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">
+                  {modalError}
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <FormRequiredNote />
+                <span className="text-xs text-gray-500 font-medium">
+                  {selectedInterventions.length} selected
+                </span>
               </div>
 
               <div>
-                <FormLabel
-                  label={interventionCategory === 'Medication' ? 'Medication Name' : interventionCategory === 'Supplement' ? 'Supplement Name' : 'Intervention Name'}
-                  required
-                />
-                <input
-                  name="serviceName"
-                  type="text"
-                  placeholder={
-                    interventionCategory === 'Medication' ? 'e.g., Amoxicillin, Paracetamol' :
-                    interventionCategory === 'Supplement' ? 'e.g., Vitamin A 100,000 IU, Iron Folic Acid' :
-                    'e.g., Exclusive Breastfeeding Counseling, Nutrition Advice'
-                  }
-                  value={serviceName}
-                  onChange={(e) => {
-                    setServiceName(e.target.value);
-                    if (interventionErrors.serviceName) setInterventionErrors((prev) => ({ ...prev, serviceName: '' }));
-                  }}
-                  className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none transition ${
-                    interventionErrors.serviceName ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
-                  }`}
-                />
-                {interventionErrors.serviceName && <p className="text-xs text-[#D32F2F] mt-1">{interventionErrors.serviceName}</p>}
+                <div className="flex items-center justify-between mb-1.5">
+                  <FormLabel label="Select Interventions & Services" required />
+                  <span className="text-[11px] text-gray-500 italic">Pumili ng isa o higit pa (Multi-select)</span>
+                </div>
+                
+                {interventionErrors.selected && (
+                  <p className="text-xs text-[#D32F2F] mb-2 font-medium">{interventionErrors.selected}</p>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {(modalBeneficiaryType === 'child' ? CHILD_INTERVENTIONS : MOTHER_INTERVENTIONS).map((item) => {
+                    const isSelected = selectedInterventions.includes(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => toggleIntervention(item.id)}
+                        className={`p-3 rounded-xl border text-left cursor-pointer transition flex items-start gap-2.5 select-none ${
+                          isSelected
+                            ? 'border-[#2e7d32] bg-emerald-50/50 shadow-2xs ring-1 ring-[#2e7d32]'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/60 bg-white'
+                        }`}
+                      >
+                        <div className="pt-0.5 shrink-0">
+                          {isSelected ? (
+                            <CheckSquare className="text-[#2e7d32]" size={18} />
+                          ) : (
+                            <Square className="text-gray-400" size={18} />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <span className="text-xs font-bold text-gray-800 leading-snug">
+                              {item.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${item.badgeColor}`}>
+                              {item.badge}
+                            </span>
+                            <span className="text-[11px] text-gray-500 truncate">
+                              {item.desc || item.defaultDosage}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div>
-                <FormLabel label="Dosage / Frequency" />
-                <input
-                  type="text"
-                  placeholder="e.g., 1 capsule once daily, 5ml every 8 hours"
-                  value={dosage}
-                  onChange={(e) => setDosage(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
-                />
-              </div>
+              {/* Conditional Medication Inputs */}
+              {selectedInterventions.includes('medication') && (
+                <div className="p-3.5 rounded-xl border border-rose-200 bg-rose-50/30 space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <Pill size={16} className="text-rose-600" />
+                    <span className="text-xs font-bold text-rose-900 uppercase tracking-wide">
+                      Prescribed Medication Details
+                    </span>
+                  </div>
+                  <div>
+                    <FormLabel label="Medication / Antibiotic Name" required />
+                    <input
+                      type="text"
+                      placeholder="e.g., Amoxicillin 250mg, Paracetamol 100mg drops, Cotrimoxazole"
+                      value={customMedicineName}
+                      onChange={(e) => {
+                        setCustomMedicineName(e.target.value);
+                        if (interventionErrors.customMedicineName) {
+                          setInterventionErrors((prev) => ({ ...prev, customMedicineName: '' }));
+                        }
+                      }}
+                      className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none bg-white transition ${
+                        interventionErrors.customMedicineName
+                          ? 'border-[#D32F2F] ring-1 ring-[#D32F2F]'
+                          : 'border-gray-200 focus:border-[#2e7d32]'
+                      }`}
+                    />
+                    {interventionErrors.customMedicineName && (
+                      <p className="text-xs text-[#D32F2F] mt-1">{interventionErrors.customMedicineName}</p>
+                    )}
+                  </div>
+                  <div>
+                    <FormLabel label="Medication Dosage / Frequency" />
+                    <input
+                      type="text"
+                      placeholder="e.g., 5ml every 8 hours for 7 days"
+                      value={customMedicineDosage}
+                      onChange={(e) => setCustomMedicineDosage(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#2e7d32] bg-white"
+                    />
+                  </div>
+                </div>
+              )}
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Conditional Other Inputs */}
+              {selectedInterventions.includes('other') && (
+                <div className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2.5">
+                  <span className="text-xs font-bold text-gray-800 uppercase tracking-wide">
+                    Other Service Details
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <FormLabel label="Service Name" required />
+                      <input
+                        type="text"
+                        placeholder="e.g., Dental Checkup, Deworming follow-up"
+                        value={customOtherName}
+                        onChange={(e) => {
+                          setCustomOtherName(e.target.value);
+                          if (interventionErrors.customOtherName) {
+                            setInterventionErrors((prev) => ({ ...prev, customOtherName: '' }));
+                          }
+                        }}
+                        className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none bg-white transition ${
+                          interventionErrors.customOtherName
+                            ? 'border-[#D32F2F] ring-1 ring-[#D32F2F]'
+                            : 'border-gray-200 focus:border-[#2e7d32]'
+                        }`}
+                      />
+                      {interventionErrors.customOtherName && (
+                        <p className="text-xs text-[#D32F2F] mt-1">{interventionErrors.customOtherName}</p>
+                      )}
+                    </div>
+                    <div>
+                      <FormLabel label="Category" required />
+                      <select
+                        value={customOtherCategory}
+                        onChange={(e) => setCustomOtherCategory(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#2e7d32] bg-white"
+                      >
+                        <option value="Health Intervention">Health Intervention</option>
+                        <option value="Supplement">Supplement</option>
+                        <option value="Medication">Medication</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Shared Date & Follow-up */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
                   <FormLabel label="Date Administered" required />
                   <input
-                    name="serviceDate"
                     type="date"
                     value={serviceDate}
                     onChange={(e) => {
                       setServiceDate(e.target.value);
-                      if (interventionErrors.serviceDate) setInterventionErrors((prev) => ({ ...prev, serviceDate: '' }));
+                      if (interventionErrors.serviceDate) {
+                        setInterventionErrors((prev) => ({ ...prev, serviceDate: '' }));
+                      }
                     }}
-                    className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none transition ${
-                      interventionErrors.serviceDate ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32]'
+                    className={`w-full border rounded-xl px-3 py-2.5 text-xs focus:outline-none transition bg-white ${
+                      interventionErrors.serviceDate
+                        ? 'border-[#D32F2F] ring-1 ring-[#D32F2F]'
+                        : 'border-gray-200 focus:border-[#2e7d32]'
                     }`}
                   />
-                  {interventionErrors.serviceDate && <p className="text-xs text-[#D32F2F] mt-1">{interventionErrors.serviceDate}</p>}
+                  {interventionErrors.serviceDate && (
+                    <p className="text-xs text-[#D32F2F] mt-1">{interventionErrors.serviceDate}</p>
+                  )}
                 </div>
                 <div>
                   <FormLabel label="Next Follow-up" />
@@ -1375,38 +1736,42 @@ function MedicalRecords() {
                     type="date"
                     value={nextSchedule}
                     onChange={(e) => setNextSchedule(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-[#2e7d32] bg-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Clinical Notes & Observations</label>
+                <FormLabel label="General Notes / Observations" />
                 <textarea
                   rows={2}
-                  placeholder="Additional instructions, patient response, counseling notes…"
+                  placeholder="Patient response, tolerance, counseling points, or instructions given to guardian…"
                   value={interventionNotes}
                   onChange={(e) => setInterventionNotes(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] resize-none"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#2e7d32] resize-none bg-white"
                 />
               </div>
-
             </form>
-            <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-2 sticky bottom-0">
+
+            <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-3 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50"
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={modalSubmitting || !serviceName.trim()}
+                disabled={modalSubmitting || selectedInterventions.length === 0}
                 onClick={submitIntervention}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-60"
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition cursor-pointer"
               >
-                {modalSubmitting ? 'Saving…' : 'Record Entry'}
+                {modalSubmitting
+                  ? 'Saving…'
+                  : selectedInterventions.length > 1
+                  ? `Record ${selectedInterventions.length} Interventions`
+                  : 'Record Intervention'}
               </button>
             </div>
           </div>
