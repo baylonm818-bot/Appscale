@@ -5,6 +5,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../data/local/measurement_repository.dart';
 import '../../../data/local/referral_repository.dart';
 import '../../../data/models/child.dart';
+import '../../masterlist/utils/child_status_meta.dart';
 import '../../masterlist/widgets/status_badge.dart';
 import '../../../shared/utils/app_date_format.dart';
 
@@ -186,38 +187,10 @@ class ChildProfileHeader extends StatelessWidget {
                   // ONE overall status chip (worst indicator)
                   Builder(
                     builder: (context) {
-                      String overallLabel = 'Normal';
-                      Color overallColor = AppColors.primaryGreen;
-
-                      if (effectiveWfl == 'SAM') {
-                        overallLabel = 'Severely Wasted (SAM)';
-                        overallColor = AppColors.statRed;
-                      } else if (effectiveHfa == 'Severely Stunted') {
-                        overallLabel = 'Severely Stunted';
-                        overallColor = AppColors.statRed;
-                      } else if (effectiveWfa == 'Severely Underweight') {
-                        overallLabel = 'Severely Underweight';
-                        overallColor = AppColors.statRed;
-                      } else if (effectiveWfl == 'MAM') {
-                        overallLabel = 'Moderately Wasted (MAM)';
-                        overallColor = AppColors.statOrange;
-                      } else if (effectiveHfa == 'Stunted') {
-                        overallLabel = 'Stunted';
-                        overallColor = AppColors.statOrange;
-                      } else if (effectiveWfa == 'Underweight') {
-                        overallLabel = 'Underweight';
-                        overallColor = AppColors.statOrange;
-                      } else if (effectiveWfl == 'Obese') {
-                        overallLabel = 'Obese';
-                        overallColor = AppColors.statPurple;
-                      } else if (effectiveWfl == 'Overweight' || effectiveWfa == 'Overweight') {
-                        overallLabel = 'Overweight';
-                        overallColor = AppColors.statBlue;
-                      }
-
+                      final overall = ChildOverallStatus.fromChild(child, latestValidMeasurement);
                       return StatusBadge(
-                        label: overallLabel,
-                        color: overallColor,
+                        label: overall.specificLabel,
+                        color: overall.color,
                         onDark: true,
                       );
                     },

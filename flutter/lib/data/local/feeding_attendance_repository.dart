@@ -193,28 +193,15 @@ class FeedingAttendanceRepository {
   List<DateTime> getLoggedDates(String barangay) {
     final prefix = '$barangay|';
     final dates = <DateTime>[];
+    final datePattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
     for (final k in _box.keys) {
       final s = k.toString();
-      if (!s.startsWith(prefix) ||
-          s.contains('|remarks') ||
-          s.contains('|food') ||
-          s.contains('|child_food')) {
-        continue;
-      }
+      if (!s.startsWith(prefix)) continue;
       final dateStr = s.substring(prefix.length);
+      if (!datePattern.hasMatch(dateStr)) continue;
       final parsed = DateTime.tryParse(dateStr);
       if (parsed != null) {
         dates.add(DateTime(parsed.year, parsed.month, parsed.day));
-      } else {
-        final parts = dateStr.split('-');
-        if (parts.length >= 3) {
-          final y = int.tryParse(parts[0]);
-          final m = int.tryParse(parts[1]);
-          final d = int.tryParse(parts[2]);
-          if (y != null && m != null && d != null) {
-            dates.add(DateTime(y, m, d));
-          }
-        }
       }
     }
     return dates.toSet().toList();

@@ -388,7 +388,11 @@ export default function PurokManagement() {
       {createPortal(
         <AnimatePresence>
           {showAddModal && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style={{ zIndex: 9999 }}>
+            <div
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md"
+              style={{ zIndex: 9999 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}
+            >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -458,7 +462,11 @@ export default function PurokManagement() {
       {createPortal(
         <AnimatePresence>
           {confirmTogglePurok && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style={{ zIndex: 9999 }}>
+            <div
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md"
+              style={{ zIndex: 9999 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}
+            >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}

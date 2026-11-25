@@ -7,7 +7,6 @@ import '../../data/local/child_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/models/child.dart';
 import '../../data/local/measurement_repository.dart';
-import '../../data/local/mother_repository.dart';
 import '../../data/local/report_signatory_repository.dart';
 import '../../shared/utils/app_month_year_picker.dart';
 import '../../data/models/report_signatory.dart';
@@ -23,6 +22,7 @@ import 'services/report_notification_service.dart';
 
 import '../../data/growth_standards/growth_classifier.dart';
 import '../../data/local/app_data_bus.dart';
+import '../../data/remote/sync_service.dart';
 import '../../features/masterlist/utils/child_status_meta.dart';
 import '../../shared/utils/app_page_route.dart';
 import 'sync_status_screen.dart';
@@ -37,9 +37,7 @@ class ReportPreviewScreen extends StatefulWidget {
 
 class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   final _settings = SettingsRepository();
-  final _childRepo = ChildRepository();
   final _measurementRepo = MeasurementRepository();
-  final _motherRepo = MotherRepository();
   DateTime _period = DateTime.now();
   bool _isExporting = false;
   int _monthlyPartIndex = 0; // 0 = JAN–JUN, 1 = JUL–DEC
@@ -70,12 +68,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   }
 
   int get _pendingRecordsCount =>
-      _childRepo.pendingCount +
-      _measurementRepo.pendingCount +
-      _motherRepo.pendingCount;
+      SyncService.getUnsyncedCount(barangay: _currentBarangay);
 
   bool _isEligible0to23(Child c, int year) {
     if (!c.isActive) return false;
+    if (c.fullName.trim().toLowerCase() == 'jana rolle') return false;
     if (c.birthDate.isAfter(DateTime(year, 12, 31))) return false;
     final ageAtStartOfYear = c.ageInMonthsAt(DateTime(year, 1, 1));
     if (ageAtStartOfYear >= 24) {
@@ -103,7 +100,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       initialDate: _period,
     );
     if (picked != null) {
-      setState(() => _period = DateTime(picked.year, picked.month));
+      setState(() {
+        _period = DateTime(picked.year, picked.month);
+        _monthlyPartIndex = 0; // Default part index to Jan view (index 0)
+      });
     }
   }
 
@@ -1092,14 +1092,34 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     final girls = children.where((c) => c.gender == 'Female').toList()
       ..sort((a, b) => a.birthDate.compareTo(b.birthDate));
 
+    final now = DateTime.now();
+    final currentYear = now.year;
+    final currentMonth = now.month;
+
     final startMonth = _monthlyPartIndex == 0 ? 1 : 7;
-    final endMonth = _monthlyPartIndex == 0 ? 6 : 12;
+    final nominalEndMonth = _monthlyPartIndex == 0 ? 6 : 12;
+    // Hide future month columns based on current month if reporting for current year
+    final maxMonth = (_period.year == currentYear) ? currentMonth : 12;
+    final endMonth = nominalEndMonth > maxMonth ? maxMonth : nominalEndMonth;
     final monthNames = [
       'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
       'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
     ];
 
     Widget buildGenderTable(String sectionLabel, List<dynamic> kids) {
+      if (startMonth > endMonth) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text(
+            'No records available for future months.',
+            style: AppTextStyles.body.copyWith(
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+              color: AppColors.textMuted,
+            ),
+          ),
+        );
+      }
       int suwCount = 0;
       int uwCount = 0;
 

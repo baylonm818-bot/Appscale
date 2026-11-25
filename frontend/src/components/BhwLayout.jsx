@@ -515,8 +515,9 @@ function BHWLayout() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-hidden"
+              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md p-4 overflow-hidden"
               style={{ zIndex: 9999 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setShowLogoutConfirm(false); }}
             >
               <motion.div
                 variants={modalVariants}

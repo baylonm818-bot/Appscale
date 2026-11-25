@@ -134,11 +134,18 @@ class SafeParser {
     return v.toString().split('T').first.split(' ').first;
   }
 
-  /// Formats network error messages cleanly for the UI while keeping details for logs.
-  static String friendlyNetworkError(dynamic rawError) {
-    if (rawError == null) return 'No internet connection or server not reachable. Will retry automatically.';
-    final text = rawError.toString();
+  /// Formats raw error messages for UI display: extracts a user-friendly message
+  /// and separates technical database/server details.
+  static ({String friendly, String? technical}) parseSyncError(dynamic rawError) {
+    if (rawError == null) {
+      return (
+        friendly: 'No internet connection or server not reachable. Will retry automatically.',
+        technical: null,
+      );
+    }
+    final text = rawError.toString().trim();
     final lower = text.toLowerCase();
+
     if (lower.contains('socketfailed') ||
         lower.contains('no address associated with hostname') ||
         lower.contains('failed host lookup') ||
@@ -150,8 +157,42 @@ class SafeParser {
         lower.contains('socketexception') ||
         lower.contains('handshake') ||
         lower.contains('errno = 7')) {
-      return 'No internet connection or server not reachable. Will retry automatically.';
+      return (
+        friendly: 'No internet connection or server unreachable.',
+        technical: text,
+      );
     }
-    return text;
+
+    if (lower.contains('data truncated') || lower.contains('%s') || lower.contains('%d')) {
+      final cleaned = text.replaceAll("'%s'", 'column').replaceAll('%s', 'column').replaceAll('%d', '1');
+      return (
+        friendly: 'Data format mismatch on server. Tap retry or check record details.',
+        technical: cleaned,
+      );
+    }
+
+    if (lower.contains('server error saving child service')) {
+      return (
+        friendly: 'Service record could not be saved to server.',
+        technical: text,
+      );
+    }
+
+    if (lower.contains('foreign key constraint') || lower.contains('foreign key')) {
+      return (
+        friendly: 'Associated parent record not found on server.',
+        technical: text,
+      );
+    }
+
+    return (
+      friendly: text,
+      technical: null,
+    );
+  }
+
+  /// Formats network error messages cleanly for the UI while keeping details for logs.
+  static String friendlyNetworkError(dynamic rawError) {
+    return parseSyncError(rawError).friendly;
   }
 }

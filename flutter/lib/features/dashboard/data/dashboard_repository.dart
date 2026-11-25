@@ -22,14 +22,8 @@ class DashboardRepository {
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';
 
   List<StatCardData> getStatCards() {
-    final activeChildren = _childRepo
-        .getByBarangay(_currentBarangay)
-        .where((c) => c.isActive)
-        .toList();
-    final activeMothers = _motherRepo
-        .getAll()
-        .where((m) => m.barangay == _currentBarangay && m.isActive)
-        .toList();
+    final activeChildren = _childRepo.getActive(_currentBarangay);
+    final activeMothers = _motherRepo.getActive(_currentBarangay);
 
     final childrenThisMonth = activeChildren
         .where((c) => _isThisMonth(c.createdAt))
@@ -109,8 +103,8 @@ class DashboardRepository {
   }
 
   /// Single shared source of truth for nutrition counts across the dashboard.
-  /// Evaluates each active child's latest plausible measurement.
-  /// Children without measurements are strictly counted as "Not weighed".
+  /// Uses ChildOverallStatus.fromChild to guarantee 100% consistency with Masterlist chips,
+  /// profile badges, and feeding enrollment.
   NutritionCounts computeNutritionCounts(
     List<Child> activeChildren, [
     MeasurementRepository? repo,
@@ -126,53 +120,30 @@ class DashboardRepository {
 
     for (final c in activeChildren) {
       final m = measRepo.getLatestPlausible(c.id);
-      if (m == null) {
-        // Child with no plausible measurement
-        notWeighedCount++;
-        continue;
+      final overall = ChildOverallStatus.fromChild(c, m);
+      switch (overall.category) {
+        case ChildOverallCategory.severe:
+          severeCount++;
+          if (overall.isSam) samCases++;
+          break;
+        case ChildOverallCategory.atRisk:
+          atRiskCount++;
+          break;
+        case ChildOverallCategory.obese:
+          obeseCount++;
+          break;
+        case ChildOverallCategory.overweight:
+          overweightCount++;
+          break;
+        case ChildOverallCategory.normal:
+          normalCount++;
+          break;
+        case ChildOverallCategory.notWeighed:
+          notWeighedCount++;
+          break;
+        case ChildOverallCategory.all:
+          break;
       }
-
-      final isSam = m.effectiveWastingStatus == 'SAM';
-      if (isSam) {
-        samCases++;
-      }
-
-      final isSevere = isSam ||
-          m.heightForAgeStatus == 'Severely Stunted' ||
-          m.weightForAgeStatus == 'Severely Underweight';
-
-      if (isSevere) {
-        severeCount++;
-        continue;
-      }
-
-      final isAtRisk = m.effectiveWastingStatus == 'MAM' ||
-          m.heightForAgeStatus == 'Stunted' ||
-          m.weightForAgeStatus == 'Underweight';
-
-      if (isAtRisk) {
-        atRiskCount++;
-        continue;
-      }
-
-      final isObese = m.effectiveWastingStatus == 'Obese' ||
-          m.customBmiStatus == 'Obese';
-
-      if (isObese) {
-        obeseCount++;
-        continue;
-      }
-
-      final isOverweight = m.effectiveWastingStatus == 'Overweight' ||
-          m.weightForAgeStatus == 'Overweight' ||
-          m.customBmiStatus == 'Overweight';
-
-      if (isOverweight) {
-        overweightCount++;
-        continue;
-      }
-
-      normalCount++;
     }
 
     return NutritionCounts(
@@ -188,12 +159,8 @@ class DashboardRepository {
   }
 
   /// Primary distribution across weighed children using the shared source of truth.
-  /// Label 'Severe (any indicator)' matches the severe count in the SAM Cases card subtitle.
   List<NutritionStatusItem> getNutritionBreakdown() {
-    final allChildren = _childRepo
-        .getByBarangay(_currentBarangay)
-        .where((c) => c.isActive)
-        .toList();
+    final allChildren = _childRepo.getActive(_currentBarangay);
 
     final counts = computeNutritionCounts(allChildren);
 

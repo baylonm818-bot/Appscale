@@ -648,14 +648,10 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       AppDataBus.notifyChanged();
 
       if (!mounted) return;
-      final remaining = _children.pendingCount +
-          _mothers.pendingCount +
-          _measurements.pendingCount +
-          _referrals.pendingCount +
-          _vitaminA.pendingCount +
-          (_settings.pendingProfilePicturePath != null ? 1 : 0) +
-          (_settings.pendingProfileUpdate != null ? 1 : 0) +
-          (_settings.pendingPasswordChange != null ? 1 : 0);
+      final syncStats = SyncService.getSyncStats(barangay: _currentBarangay);
+      final remaining = syncStats.totalUnsynced;
+      final remFailed = syncStats.failed;
+      final remPending = syncStats.pending;
 
       setState(() {
         _isSyncing = false;
@@ -663,9 +659,11 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         _syncErrors = errors;
         _message = remaining == 0 && errors.isEmpty
             ? '✓ All records successfully synced with central database.'
-            : (remaining > 0
-                ? '$remaining record(s) remaining in queue.'
-                : 'Sync finished with warnings.');
+            : (remFailed > 0
+                ? '$remFailed failed, $remPending pending in queue.'
+                : (remPending > 0
+                    ? '$remPending record(s) remaining in queue.'
+                    : 'Sync finished with warnings.'));
       });
 
       ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
@@ -678,13 +676,17 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
             duration: Duration(seconds: 3),
           ),
         );
-      } else if (errors.isNotEmpty) {
+      } else if (remFailed > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Sync finished with ${errors.length} issue(s). Check details below.'),
+            content: Text(
+              remPending > 0
+                  ? 'Sync completed: $remFailed failed, $remPending pending.'
+                  : 'Sync finished with $remFailed issue${remFailed == 1 ? "" : "s"}. Check details below.',
+            ),
             backgroundColor: AppColors.statRed,
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 4),
+            duration: const Duration(seconds: 4),
           ),
         );
       } else {
@@ -693,7 +695,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
             content: Text('$remaining item(s) remaining in sync queue.'),
             backgroundColor: AppColors.statAmber,
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -713,13 +715,18 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           duration: const Duration(seconds: 4),
         ),
       );
+    } finally {
+      if (mounted && _isSyncing) {
+        setState(() => _isSyncing = false);
+      }
     }
   }
 
   Future<void> _retryItem(SyncItem item) async {
     setState(() => _isSyncing = true);
     try {
-      if (item.type == 'child') {
+      await Future(() async {
+        if (item.type == 'child') {
         final raw = Hive.box(HiveBoxes.children).get(item.id);
         if (raw is Map) {
           final child = Child.fromMap(Map<String, dynamic>.from(raw));
@@ -839,6 +846,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           }
         }
       }
+      }).timeout(const Duration(seconds: 15));
       final nowIso = DateTime.now().toIso8601String();
       await Hive.box(HiveBoxes.settings).put('last_synced_at', nowIso);
       setState(() => _lastSyncedAt = nowIso);
@@ -847,7 +855,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       if (mounted) {
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           SnackBar(
-            content: Text('Retry failed: $e'),
+            content: Text(e is TimeoutException ? 'Retry timed out. Please try again.' : 'Retry failed: $e'),
             backgroundColor: AppColors.statRed,
           ),
         );
@@ -1051,15 +1059,36 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      item.error != null
-                          ? SafeParser.friendlyNetworkError(item.error!)
-                          : (item.status == 'failed' ? 'Upload failed.' : 'Pending retry.'),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: item.status == 'failed' ? const Color(0xFF991B1B) : const Color(0xFF92400E),
-                      ),
-                    ),
+                    child: Builder(builder: (context) {
+                      final parsed = SafeParser.parseSyncError(item.error);
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.error != null
+                                ? parsed.friendly
+                                : (item.status == 'failed' ? 'Upload failed.' : 'Pending retry.'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: item.status == 'failed' ? const Color(0xFF991B1B) : const Color(0xFF92400E),
+                            ),
+                          ),
+                          if (parsed.technical != null && parsed.technical != parsed.friendly) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              parsed.technical!,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontFamily: 'monospace',
+                                color: (item.status == 'failed' ? const Color(0xFF991B1B) : const Color(0xFF92400E))
+                                    .withValues(alpha: 0.85),
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    }),
                   ),
                   const SizedBox(width: 8),
                   if (item.status == 'failed' && (item.type == 'child' || item.type == 'mother' || item.type == 'measurement')) ...[
@@ -1301,7 +1330,9 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                                 children: [
                                   Text(
                                     failedCount > 0
-                                        ? (failedCount == 1 ? '1 record needs attention' : '$failedCount records need attention')
+                                        ? (pendingCount > 0
+                                            ? '$failedCount failed, $pendingCount pending'
+                                            : (failedCount == 1 ? '1 record needs attention' : '$failedCount records need attention'))
                                         : (pendingCount == 0
                                             ? 'All local device records are in sync'
                                             : (pendingCount == 1 ? '1 record pending' : '$pendingCount records pending')),

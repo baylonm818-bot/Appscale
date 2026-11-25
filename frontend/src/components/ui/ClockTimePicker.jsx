@@ -127,7 +127,11 @@ export default function ClockTimePicker({
 
       {isOpen &&
         createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md p-4 animate-in fade-in duration-150"
+            style={{ zIndex: 9999 }}
+            onClick={(e) => { if (e.target === e.currentTarget) setIsOpen(false); }}
+          >
             <div
               className="bg-white rounded-3xl shadow-2xl w-full max-w-xs overflow-hidden border border-gray-100 flex flex-col"
               onClick={(e) => e.stopPropagation()}

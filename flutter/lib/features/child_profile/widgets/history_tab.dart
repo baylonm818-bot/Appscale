@@ -73,8 +73,10 @@ class _HistoryTabState extends State<HistoryTab> {
         recordDate: m.date,
       );
       if (context.mounted) {
+        FocusScope.of(context).unfocus();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
+            behavior: SnackBarBehavior.floating,
             content: Text('Measurement deleted and status recomputed.'),
             backgroundColor: AppColors.primaryGreen,
           ),

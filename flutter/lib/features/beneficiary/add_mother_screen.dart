@@ -191,7 +191,7 @@ class _AddMotherScreenState extends State<AddMotherScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Keep Editing', style: TextStyle(color: AppColors.textMuted)),
+            child: const Text('Keep Editing', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(

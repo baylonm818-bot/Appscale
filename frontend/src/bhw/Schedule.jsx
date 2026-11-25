@@ -14,8 +14,12 @@ const statusLabels = { pending: 'Scheduled', done: 'Completed', cancelled: 'Canc
 function toDateKey(dateVal) {
   if (!dateVal) return '';
   const str = String(dateVal).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-    return str;
+  const match = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) {
+    const y = match[1];
+    const m = match[2].padStart(2, '0');
+    const d = match[3].padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
   const d = new Date(str);
   if (!isNaN(d.getTime())) {
@@ -875,7 +879,7 @@ function Schedule() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-9999 p-4 overflow-hidden"
               style={{ zIndex: 9999 }}
               onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
             >
@@ -1067,7 +1071,7 @@ function Schedule() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-9999 p-4 overflow-hidden"
               style={{ zIndex: 9999 }}
               onClick={(e) => { if (e.target === e.currentTarget) setAuditActivity(null); }}
             >

@@ -883,7 +883,7 @@ function Masterlist() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-9999 p-4 overflow-hidden"
               onClick={(e) => { if (e.target === e.currentTarget) setSelectedPerson(null); }}
             >
               <motion.div
@@ -1067,7 +1067,7 @@ function Masterlist() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-10000 p-4 overflow-hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-10000 p-4 overflow-hidden"
               onClick={(e) => { if (e.target === e.currentTarget) setFeedingHistoryChild(null); }}
             >
               <motion.div
@@ -1190,7 +1190,7 @@ function Masterlist() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-10000 p-4 overflow-hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-10000 p-4 overflow-hidden"
               onClick={(e) => { if (e.target === e.currentTarget) setAbsenceChild(null); }}
             >
               <motion.div

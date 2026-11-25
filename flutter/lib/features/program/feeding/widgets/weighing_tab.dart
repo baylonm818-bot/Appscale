@@ -11,6 +11,7 @@ import '../../../../shared/widgets/empty_state.dart';
 import '../../../child_profile/add_measurement_screen.dart';
 import '../../../masterlist/utils/child_status_meta.dart';
 import '../../../masterlist/widgets/status_badge.dart';
+import '../../../../shared/utils/app_date_format.dart';
 
 import '../../../../data/local/app_data_bus.dart';
 
@@ -178,16 +179,41 @@ class _ChildWeighRow extends StatelessWidget {
                     ],
                   ],
                 ),
-                Text(
-                  latest == null
-                      ? 'Not yet weighed · Last: —'
-                      : '${latest.weightKg} kg · Last: ${latest.date.month}/${latest.date.day}',
-                  style: AppTextStyles.body.copyWith(fontSize: 11),
+                Row(
+                  children: [
+                    Text(
+                      latest == null
+                          ? 'Not yet weighed · Last: —'
+                          : '${latest.weightKg} kg · Last: ${AppDateFormat.format(latest.date)}',
+                      style: AppTextStyles.body.copyWith(fontSize: 11),
+                    ),
+                    if (latest == null || DateTime.now().difference(latest.date).inDays > 30) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.statRed.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'Overdue',
+                          style: TextStyle(
+                            color: AppColors.statRed,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 4),
                 StatusBadge(
-                  label: child.nutritionStatus,
-                  color: ChildStatusMeta.colorFor(child.nutritionStatus),
+                  label: ChildOverallStatus.fromChild(child, latest).label,
+                  color: ChildOverallStatus.fromChild(child, latest).color,
                 ),
               ],
             ),

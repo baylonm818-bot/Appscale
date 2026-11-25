@@ -180,21 +180,21 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Kumpirmahin ang Paglipat'),
+            title: const Text('Confirm Transfer'),
             content: Text(
-              'Ilipat si ${current.fullName} sa Barangay $targetBarangay? Mawawala siya sa listahan ng barangay ninyo.',
+              'Transfer ${current.fullName} to Barangay $targetBarangay? This mother will be moved out of your barangay list.',
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Kanselahin'),
+                child: const Text('Cancel'),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,
                 ),
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Kumpirmahin'),
+                child: const Text('Confirm'),
               ),
             ],
           ),
@@ -214,7 +214,7 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Nailipat na si ${current.fullName} sa Barangay $targetBarangay.',
+                '${current.fullName} has been transferred to Barangay $targetBarangay.',
               ),
             ),
           );
@@ -232,7 +232,7 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Inilipat si ${current.fullName} sa Inactive list (${result.reason}).',
+                '${current.fullName} has been moved to Inactive (${result.reason}).',
               ),
             ),
           );
@@ -249,7 +249,7 @@ class _MotherProfileScreenState extends State<MotherProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ibinalik si ${current.fullName} sa Active list.'),
+            content: Text('${current.fullName} has been restored to Active list.'),
           ),
         );
       }

@@ -22,11 +22,13 @@ import 'widgets/program_tile.dart';
 class ProgramScreen extends StatefulWidget {
   final String barangay;
   final VoidCallback? onNavigateToHome;
+  final bool initialShowSchedule;
 
   const ProgramScreen({
     super.key,
     this.barangay = 'Tiguion',
     this.onNavigateToHome,
+    this.initialShowSchedule = false,
   });
 
   @override
@@ -34,7 +36,7 @@ class ProgramScreen extends StatefulWidget {
 }
 
 class _ProgramScreenState extends State<ProgramScreen> {
-  bool _showingPrograms = true;
+  late bool _showingPrograms;
   DateTime _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime? _selectedCalendarDay;
   String _selectedFilter = 'All';
@@ -45,11 +47,17 @@ class _ProgramScreenState extends State<ProgramScreen> {
       _settings.authUser?['barangay']?.toString() ?? widget.barangay;
 
   @override
+  void initState() {
+    super.initState();
+    _showingPrograms = !widget.initialShowSchedule;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, version, childWidget) {
-        return Column(
+        final content = Column(
           children: [
             Container(
               width: double.infinity,
@@ -64,10 +72,10 @@ class _ProgramScreenState extends State<ProgramScreen> {
                     children: [
                       InkWell(
                         onTap: () {
-                          if (widget.onNavigateToHome != null) {
-                            widget.onNavigateToHome!();
-                          } else if (Navigator.canPop(context)) {
+                          if (Navigator.canPop(context)) {
                             Navigator.pop(context);
+                          } else if (widget.onNavigateToHome != null) {
+                            widget.onNavigateToHome!();
                           }
                         },
                         child: const Icon(Icons.arrow_back, color: Colors.white),
@@ -111,6 +119,14 @@ class _ProgramScreenState extends State<ProgramScreen> {
             ),
           ],
         );
+
+        if (Scaffold.maybeOf(context) == null) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: SafeArea(child: content),
+          );
+        }
+        return content;
       },
     );
   }

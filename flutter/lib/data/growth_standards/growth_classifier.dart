@@ -221,7 +221,7 @@ class GrowthClassifier {
     if (isBiv) {
       return GrowthAssessment(
         isInvalid: true,
-        invalidReason: 'Flagged invalid per WHO z-score plausibility cutoffs (HFA z: ${hfaZ.toStringAsFixed(2)}, WFA z: ${wfaZ.toStringAsFixed(2)}, WFL z: ${wflZ.toStringAsFixed(2)}). Needs re-measurement.',
+        invalidReason: 'Invalid per WHO z-score plausibility cutoffs (HFA z: ${hfaZ.toStringAsFixed(2)}, WFA z: ${wfaZ.toStringAsFixed(2)}, WFL z: ${wflZ.toStringAsFixed(2)}). Needs re-measurement.',
         wfaZScore: wfaZ,
         hfaZScore: hfaZ,
         wflZScore: wflZ,

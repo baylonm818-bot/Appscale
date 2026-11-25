@@ -61,7 +61,7 @@ exports.getAdminStats = async (req, res) => {
 
     // Upcoming pending activities (excluding test entries)
     const [upcomingActivities] = await pool.query(
-      `SELECT schedule_id, title, schedule_type, schedule_date, schedule_time, venue, barangay, target_role, facilitator
+      `SELECT schedule_id, title, schedule_type, DATE_FORMAT(schedule_date, '%Y-%m-%d') AS schedule_date, schedule_time, venue, barangay, target_role, facilitator
        FROM schedules
        WHERE status = 'pending'
          AND schedule_date >= CURDATE()

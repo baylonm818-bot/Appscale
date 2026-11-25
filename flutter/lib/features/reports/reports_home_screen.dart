@@ -11,9 +11,6 @@ import 'report_types.dart';
 import 'sync_status_screen.dart';
 
 import '../../data/local/app_data_bus.dart';
-import '../../data/local/child_repository.dart';
-import '../../data/local/measurement_repository.dart';
-import '../../data/local/mother_repository.dart';
 import '../../data/local/hive_boxes.dart';
 import '../../data/remote/sync_service.dart';
 
@@ -25,9 +22,6 @@ class ReportsHomeScreen extends StatefulWidget {
 }
 
 class _ReportsHomeScreenState extends State<ReportsHomeScreen> {
-  final _childRepo = ChildRepository();
-  final _measurementRepo = MeasurementRepository();
-  final _motherRepo = MotherRepository();
   final _settings = SettingsRepository();
 
   String _selectedCategory = 'Consolidation reports';
@@ -40,9 +34,7 @@ class _ReportsHomeScreenState extends State<ReportsHomeScreen> {
   }
 
   int get _pendingRecordsCount =>
-      _childRepo.pendingCount +
-      _measurementRepo.pendingCount +
-      _motherRepo.pendingCount;
+      SyncService.getUnsyncedCount(barangay: _currentBarangay);
 
   String get _currentBarangay =>
       _settings.authUser?['barangay']?.toString() ?? 'Tiguion';

@@ -55,6 +55,28 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
   bool _isSaving = false;
   String? _motherSignature;
 
+  @override
+  void initState() {
+    super.initState();
+    final currentStatus = widget.mother.breastfeedingPractice.trim();
+    const options = [
+      'Exclusive breastfeeding',
+      'Mixed feeding',
+      'Complementary feeding',
+      'Bottle feeding',
+      'Stopped breastfeeding',
+    ];
+    if (currentStatus.isNotEmpty) {
+      final match = options.firstWhere(
+        (o) => o.toLowerCase() == currentStatus.toLowerCase(),
+        orElse: () => '',
+      );
+      _breastfeedingPractice = match.isNotEmpty ? match : currentStatus;
+    } else {
+      _breastfeedingPractice = options.first;
+    }
+  }
+
   bool get _isFormValid {
     if (!_present) return true;
     if (_breastfeedingPractice == null || _breastfeedingPractice!.isEmpty) return false;
@@ -114,7 +136,21 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
           )
           .timeout(const Duration(seconds: 5));
 
+      // Update mother's current breastfeeding practice from this visit
+      if (_present && _breastfeedingPractice != null) {
+        final currentMother = _motherRepo.getById(widget.mother.id);
+        if (currentMother != null) {
+          await _motherRepo.update(
+            currentMother.copyWith(
+              breastfeedingPractice: _breastfeedingPractice!,
+            ),
+          );
+        }
+      }
+
       if (!mounted) return;
+      // Finish save first: dismiss spinner before presenting any confirmation dialogs
+      setState(() => _isSaving = false);
 
       final hasExistingReferral = ReferralRepository()
           .getForBeneficiary(widget.mother.id)
@@ -155,7 +191,6 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
       }
 
       if (!mounted) return;
-      setState(() => _isSaving = false);
       Navigator.pop(context);
     } catch (e) {
       debugPrint('Counseling save error: $e');
@@ -209,7 +244,9 @@ class _AddCounselingVisitScreenState extends State<AddCounselingVisitScreen> {
         await _motherRepo.update(
           mother.copyWith(
             isActive: false,
+            breastfeedingPractice: 'Stopped breastfeeding',
             inactiveReason: 'Stopped breastfeeding',
+            inactiveDate: DateTime.now(),
           ),
         );
       }

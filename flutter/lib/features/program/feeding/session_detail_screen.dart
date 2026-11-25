@@ -286,6 +286,20 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                               .where((s) => s.isNotEmpty)
                               .toList();
 
+                          if (selectedStatus == 'Completed') {
+                            final att = _attendanceRepo.getForDate(_currentBarangay, _currentSession.date);
+                            final presentCount = att.values.where((st) => st == 'Present').length;
+                            if (presentCount == 0) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Cannot mark session as Completed when attendance is 0.'),
+                                  backgroundColor: AppColors.statRed,
+                                ),
+                              );
+                              return;
+                            }
+                          }
+
                           await _sessionRepo.updateFeedback(
                             barangay: _currentBarangay,
                             date: _currentSession.date,

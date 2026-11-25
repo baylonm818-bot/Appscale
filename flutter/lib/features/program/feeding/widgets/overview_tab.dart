@@ -120,14 +120,36 @@ class OverviewTab extends StatelessWidget {
                         feedingSchedule.location,
                         style: AppTextStyles.body.copyWith(fontSize: 12),
                       ),
-                      Text(
-                        feedingSchedule.endDate == null
-                            ? 'Ongoing'
-                            : 'Until ${feedingSchedule.endDate!.year}-${feedingSchedule.endDate!.month.toString().padLeft(2, '0')}-${feedingSchedule.endDate!.day.toString().padLeft(2, '0')}',
-                        style: AppTextStyles.body.copyWith(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            feedingSchedule.endDate == null
+                                ? 'Ongoing'
+                                : 'Until ${feedingSchedule.endDate!.year}-${feedingSchedule.endDate!.month.toString().padLeft(2, '0')}-${feedingSchedule.endDate!.day.toString().padLeft(2, '0')}',
+                            style: AppTextStyles.body.copyWith(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          if (feedingSchedule.endDate != null && feedingSchedule.endDate!.isBefore(DateTime.now())) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.statRed.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Text(
+                                'Overdue',
+                                style: TextStyle(
+                                  color: AppColors.statRed,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   )
@@ -144,12 +166,34 @@ class OverviewTab extends StatelessWidget {
                             fallbackProgramSchedule.location,
                             style: AppTextStyles.body.copyWith(fontSize: 12),
                           ),
-                          Text(
-                            'Scheduled for ${fallbackProgramSchedule.date.year}-${fallbackProgramSchedule.date.month.toString().padLeft(2, '0')}-${fallbackProgramSchedule.date.day.toString().padLeft(2, '0')}',
-                            style: AppTextStyles.body.copyWith(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                'Scheduled for ${fallbackProgramSchedule.date.year}-${fallbackProgramSchedule.date.month.toString().padLeft(2, '0')}-${fallbackProgramSchedule.date.day.toString().padLeft(2, '0')}',
+                                style: AppTextStyles.body.copyWith(
+                                  fontSize: 11,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                              if (fallbackProgramSchedule.date.isBefore(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day))) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.statRed.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Text(
+                                    'Overdue',
+                                    style: TextStyle(
+                                      color: AppColors.statRed,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ],
                       )
@@ -182,7 +226,7 @@ class OverviewTab extends StatelessWidget {
                 child: _StatBox(
                   icon: Icons.event_note_outlined,
                   iconColor: AppColors.statOrange,
-                  value: '$loggedDays',
+                  value: '$loggedDays / 120',
                   label: 'Days Logged',
                 ),
               ),

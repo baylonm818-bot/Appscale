@@ -274,7 +274,7 @@ class MeasurementValidator {
 
     if (previousHeightCm != null && previousHeightCm > 0 && height < previousHeightCm) {
       final diff = previousHeightCm - height;
-      if (diff > 3.0) {
+      if (diff > 1.0) {
         return ValidationResult(
           severity: ValidationSeverity.error,
           message: 'Height $valStr cm cannot decrease from previous recorded height ($previousHeightCm cm).',

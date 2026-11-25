@@ -625,6 +625,81 @@ class SyncService {
     if (val is String) return double.tryParse(val);
     return null;
   }
+
+  /// Single source of truth for unsynced count across all data entities.
+  static int getUnsyncedCount({String? barangay}) {
+    final stats = getSyncStats(barangay: barangay);
+    return stats.totalUnsynced;
+  }
+
+  /// Detailed counts of pending, failed, and total unsynced items.
+  static ({int pending, int failed, int totalUnsynced}) getSyncStats({String? barangay}) {
+    int pending = 0;
+    int failed = 0;
+
+    void tally(dynamic raw, [String? itemBarangay]) {
+      if (raw is! Map) return;
+      if (barangay != null && barangay.isNotEmpty && itemBarangay != null && itemBarangay.isNotEmpty) {
+        if (itemBarangay.trim().toLowerCase() != barangay.trim().toLowerCase()) return;
+      }
+      final status = raw['_syncStatus']?.toString();
+      final isTransfer = raw['isTransferPending'] == true || raw['_transferPending'] == true;
+      if (status == 'failed') {
+        failed++;
+      } else if (status == 'pending' || isTransfer || (status != 'synced' && status != null)) {
+        pending++;
+      }
+    }
+
+    // Children
+    if (Hive.isBoxOpen(HiveBoxes.children)) {
+      for (final r in Hive.box(HiveBoxes.children).values) {
+        tally(r, (r is Map) ? r['barangay']?.toString() : null);
+      }
+    }
+
+    // Mothers
+    if (Hive.isBoxOpen(HiveBoxes.mothers)) {
+      for (final r in Hive.box(HiveBoxes.mothers).values) {
+        tally(r, (r is Map) ? r['barangay']?.toString() : null);
+      }
+    }
+
+    // Measurements
+    if (Hive.isBoxOpen(HiveBoxes.measurements)) {
+      final childBox = Hive.isBoxOpen(HiveBoxes.children) ? Hive.box(HiveBoxes.children) : null;
+      for (final key in Hive.box(HiveBoxes.measurements).keys) {
+        final childRaw = childBox?.get(key);
+        final b = (childRaw is Map) ? childRaw['barangay']?.toString() : null;
+        final list = Hive.box(HiveBoxes.measurements).get(key);
+        if (list is List) {
+          for (final m in list) {
+            tally(m, b);
+          }
+        }
+      }
+    }
+
+    // Referrals
+    if (Hive.isBoxOpen(HiveBoxes.referrals)) {
+      for (final r in Hive.box(HiveBoxes.referrals).values) {
+        tally(r, (r is Map) ? r['barangay']?.toString() : null);
+      }
+    }
+
+    // Vitamin A
+    if (Hive.isBoxOpen(HiveBoxes.vitaminA)) {
+      for (final r in Hive.box(HiveBoxes.vitaminA).values) {
+        tally(r, (r is Map) ? r['barangay']?.toString() : null);
+      }
+    }
+
+    return (
+      pending: pending,
+      failed: failed,
+      totalUnsynced: pending + failed,
+    );
+  }
 }
 
 class SyncResult {

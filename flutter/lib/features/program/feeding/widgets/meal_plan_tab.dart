@@ -49,7 +49,7 @@ class _MealPlanTabState extends State<MealPlanTab> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Weekly Cycle Menu',
+                    'Active Meal Plan & Menu',
                     style: AppTextStyles.h2.copyWith(fontSize: 16),
                   ),
                   InkWell(

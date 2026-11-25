@@ -63,6 +63,8 @@ class BeneficiaryApi {
       'mother_id': resolvedMotherServerId,
       'mother_external_id': child.guardian.linkedMotherId,
       'status': child.isActive ? 'active' : 'inactive',
+      'inactive_reason': child.inactiveReason?.isNotEmpty == true ? child.inactiveReason : null,
+      'inactive_date': child.inactiveDate != null ? _date(child.inactiveDate!) : null,
       'is_enrolled': isEnrolled,
       'encoded_by': settings.authUser?['user_id'],
     }, token);
@@ -353,10 +355,21 @@ class BeneficiaryApi {
         message: 'Session expired. Please log in again.',
       );
     }
+    final mappedChildId = SyncIdMapper.instance.getChildServerId(childExternalId);
+    int? resolvedIntChildId;
+    if (mappedChildId is int && mappedChildId > 0 && mappedChildId < 2147483647) {
+      resolvedIntChildId = mappedChildId;
+    } else if (int.tryParse(childExternalId) != null) {
+      final parsed = int.tryParse(childExternalId)!;
+      if (parsed > 0 && parsed < 2147483647) {
+        resolvedIntChildId = parsed;
+      }
+    }
+
     return _post('/mobile/child-services', {
       'external_id': externalId,
       'child_external_id': childExternalId,
-      if (int.tryParse(childExternalId) != null) 'child_id': int.tryParse(childExternalId),
+      if (resolvedIntChildId != null) ...{'child_id': resolvedIntChildId},
       if (childName != null && childName.isNotEmpty) 'child_name': childName,
       'service_type': serviceType,
       'service_name': serviceName,

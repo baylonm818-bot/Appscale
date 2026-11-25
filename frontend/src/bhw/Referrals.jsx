@@ -644,7 +644,7 @@ function Referrals() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-[9999] p-4 overflow-hidden"
               style={{ zIndex: 9999 }}
               onClick={() => setActionTarget(null)}
             >
@@ -753,7 +753,7 @@ function Referrals() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4"
+              className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-[9999] p-4"
               style={{ zIndex: 9999 }}
               onClick={() => setArchiveConfirm(null)}
             >
@@ -815,7 +815,7 @@ function Referrals() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-[9999] p-4 overflow-hidden"
               style={{ zIndex: 9999 }}
               onClick={(e) => { if (e.target === e.currentTarget) setShowReferMotherModal(false); }}
             >

@@ -113,9 +113,7 @@ class _DeactivateBeneficiarySheetState
       if (mounted) {
         setState(() {
           _barangays = filtered;
-          if (_barangays.isNotEmpty) {
-            _targetBarangay = _barangays.first;
-          }
+          _targetBarangay = null; // Start empty & required
           _loadingBarangays = false;
         });
       }
@@ -128,9 +126,7 @@ class _DeactivateBeneficiarySheetState
       if (mounted) {
         setState(() {
           _barangays = fallback;
-          if (_barangays.isNotEmpty) {
-            _targetBarangay = _barangays.first;
-          }
+          _targetBarangay = null; // Start empty & required
           _loadingBarangays = false;
         });
       }
@@ -199,16 +195,12 @@ class _DeactivateBeneficiarySheetState
               ),
             ),
             Text(
-              _reason == 'Transferred'
-                  ? 'transfer_name'.trArgs({'name': widget.beneficiaryName})
-                  : 'deactivate_name'.trArgs({'name': widget.beneficiaryName}),
+              'deactivate_name'.trArgs({'name': widget.beneficiaryName}),
               style: AppTextStyles.h2.copyWith(fontSize: 16),
             ),
             const SizedBox(height: 4),
             Text(
-              _reason == 'Transferred'
-                  ? 'transfer_record_desc'.tr
-                  : 'deactivate_record_desc'.tr,
+              'deactivate_record_desc'.tr,
               style: AppTextStyles.body.copyWith(
                 fontSize: 12,
                 color: AppColors.textMuted,
@@ -269,10 +261,12 @@ class _DeactivateBeneficiarySheetState
               else
                 AppDropdownField(
                   label: 'transfer_to_which_barangay'.tr,
-                  value: _targetBarangay ?? _barangays.first,
+                  hint: 'Select destination barangay',
+                  isRequired: true,
+                  value: _targetBarangay,
                   options: _barangays,
                   onChanged: (v) {
-                    if (v != null) setState(() => _targetBarangay = v);
+                    setState(() => _targetBarangay = v);
                   },
                 ),
               if (widget.hasLinkedBeneficiary) ...[

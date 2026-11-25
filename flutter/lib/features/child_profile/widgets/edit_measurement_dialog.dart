@@ -149,17 +149,11 @@ class _EditMeasurementDialogState extends State<EditMeasurementDialog> {
         gender: widget.child.gender,
       );
 
-      final hMeters = rawH / 100;
-      if (hMeters > 0) {
-        bmiVal = double.parse((rawW / (hMeters * hMeters)).toStringAsFixed(2));
-        if (bmiVal < 18.5) {
-          bmiStatus = 'Underweight';
-        } else if (bmiVal < 25.0) {
-          bmiStatus = 'Normal';
-        } else if (bmiVal < 30.0) {
-          bmiStatus = 'Overweight';
-        } else {
-          bmiStatus = 'Obese';
+      if (_assessmentAgeMonths >= 24) {
+        final hMeters = rawH / 100;
+        if (hMeters > 0) {
+          bmiVal = double.parse((rawW / (hMeters * hMeters)).toStringAsFixed(2));
+          bmiStatus = wastingStatus; // Use WHO child classification, not adult BMI cutoffs
         }
       }
     }

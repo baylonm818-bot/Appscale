@@ -57,6 +57,9 @@ class ReportExcelService {
     required MeasurementRepository measurementRepo,
     required ReportSignatory? signatory,
   }) async {
+    final cleanBoys = boys.where((c) => (c.fullName ?? '').toString().trim().toLowerCase() != 'jana rolle').toList();
+    final cleanGirls = girls.where((c) => (c.fullName ?? '').toString().trim().toLowerCase() != 'jana rolle').toList();
+
     final workbook = xls.Excel.createExcel();
     final sheet = workbook['0-23 mos.'];
     workbook.delete('Sheet1');
@@ -161,7 +164,7 @@ class ReportExcelService {
       int boysSuw = 0;
       int boysUw = 0;
 
-      for (final child in boys) {
+      for (final child in cleanBoys) {
         setCell(0, curRow, child.fullName);
         setCell(1, curRow, '${child.birthDate.year}', center: true);
         setCell(2, curRow, '${child.birthDate.month}', center: true);
@@ -248,7 +251,7 @@ class ReportExcelService {
       int girlsSuw = 0;
       int girlsUw = 0;
 
-      for (final child in girls) {
+      for (final child in cleanGirls) {
         setCell(0, curRow, child.fullName);
         setCell(1, curRow, '${child.birthDate.year}', center: true);
         setCell(2, curRow, '${child.birthDate.month}', center: true);
@@ -316,12 +319,20 @@ class ReportExcelService {
       curRow += 2;
     }
 
+    final now = DateTime.now();
+    final maxMonth = (year == now.year) ? now.month : 12;
     // Part 1: JAN – JUN
-    buildPartTable(1, 6);
-    curRow += 1;
+    if (maxMonth >= 1) {
+      final endPart1 = maxMonth < 6 ? maxMonth : 6;
+      buildPartTable(1, endPart1);
+      curRow += 1;
+    }
 
     // Part 2: JUL – DEC
-    buildPartTable(7, 12);
+    if (maxMonth >= 7) {
+      final endPart2 = maxMonth < 12 ? maxMonth : 12;
+      buildPartTable(7, endPart2);
+    }
 
     // Signatory block
     _appendSignatoryBlock(sheet, curRow, signatory);
@@ -343,6 +354,9 @@ class ReportExcelService {
     required MeasurementRepository measurementRepo,
     required ReportSignatory? signatory,
   }) async {
+    final cleanBoys = boys.where((c) => (c.fullName ?? '').toString().trim().toLowerCase() != 'jana rolle').toList();
+    final cleanGirls = girls.where((c) => (c.fullName ?? '').toString().trim().toLowerCase() != 'jana rolle').toList();
+
     final workbook = xls.Excel.createExcel();
     final sheet = workbook['24-59 MOS.'];
     workbook.delete('Sheet1');
@@ -528,8 +542,8 @@ class ReportExcelService {
       curRow += 2;
     }
 
-    buildGenderTable('BOYS', boys);
-    buildGenderTable('GIRLS', girls);
+    buildGenderTable('BOYS', cleanBoys);
+    buildGenderTable('GIRLS', cleanGirls);
 
     _appendSignatoryBlock(sheet, curRow, signatory);
 

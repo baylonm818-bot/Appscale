@@ -132,9 +132,13 @@ class Mother {
       riskStatus: strVal('riskStatus', 'risk_status').isNotEmpty
           ? strVal('riskStatus', 'risk_status')
           : 'Not visited',
-      isActive: map['isActive'] != null
-          ? SafeParser.asNonNullBool(map['isActive'], true)
-          : (SafeParser.asString(map['status']) ?? 'active').toLowerCase() == 'active',
+      isActive: (map['inactiveReason'] != null &&
+              map['inactiveReason'].toString().trim().isNotEmpty &&
+              map['inactiveReason'].toString().toLowerCase() != 'none')
+          ? false
+          : (map['isActive'] != null
+              ? SafeParser.asNonNullBool(map['isActive'], true)
+              : (SafeParser.asString(map['status']) ?? 'active').toLowerCase() == 'active'),
       inactiveReason: SafeParser.asString(map['inactiveReason'] ?? map['inactive_reason']),
       inactiveDate: SafeParser.asDate(rawInactiveDate),
       isTransferPending:

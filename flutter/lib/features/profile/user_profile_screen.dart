@@ -346,8 +346,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
                 Text(
                   label,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted, height: 1.2),
+                  maxLines: 2,
+                  softWrap: true,
                 ),
               ],
             ),
@@ -422,23 +423,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 : '$resolvedBarangay Barangay ${AppStrings.t('health_station')}')
             : AppStrings.t('rural_health_unit'));
 
-    // Counts from user record or local repository
-    final dynamic serverChildren = settings.authUser?['active_children_count'];
-    final dynamic serverMothers = settings.authUser?['active_mothers_count'];
-
-    final int totalChildren = serverChildren is int
-        ? serverChildren
-        : (serverChildren != null ? int.tryParse('$serverChildren') : null) ??
-            (resolvedBarangay.isNotEmpty
-                ? ChildRepository().getByBarangay(resolvedBarangay).where((c) => c.isActive).length
-                : ChildRepository().getAll().where((c) => c.isActive).length);
-
-    final int totalMothers = serverMothers is int
-        ? serverMothers
-        : (serverMothers != null ? int.tryParse('$serverMothers') : null) ??
-            (resolvedBarangay.isNotEmpty
-                ? MotherRepository().getAll().where((m) => m.barangay.trim().toLowerCase() == resolvedBarangay.trim().toLowerCase() && m.isActive).length
-                : MotherRepository().getAll().where((m) => m.isActive).length);
+    // Single shared query (active only) matching Dashboard and Masterlist
+    final int totalChildren = ChildRepository().countActive(resolvedBarangay);
+    final int totalMothers = MotherRepository().countActive(resolvedBarangay);
 
     final contactNumber = settings.authUser?['contact_number'] != null &&
             settings.authUser!['contact_number'].toString().trim().isNotEmpty

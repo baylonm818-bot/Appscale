@@ -120,21 +120,21 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.16';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 49);
+    const version = process.env.APP_VERSION || '3.3.17';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 50);
     const notesEn = [
-        "Sync & Offline: Full Vitamin A real-time synchronization, automatic retry, and immediate queue refresh",
-        "Feeding Program: Strict pre-enrollment weighing check, meal card improvements, and cleaner session layouts",
-        "Beneficiary Profiles: Mother visit signature previews, accurate visit status derivation, and guardian birth date validation",
-        "Security & Authentication: Secure session remembering and seamless token renewal",
-        "Reports: Streamlined PDF masterlist exports across all programs"
+        "Data Consistency: Unified overall status computation, synchronized child/mother counts, and accurate inactive reasons",
+        "Measurements: Accurate measurement dates, unified height/weight plausibility rules, single re-measurement flag, and infant BMI cleanup",
+        "Sync & Offline: Enhanced error formatting, robust schema handling, and reliable retry timeouts",
+        "Feeding Program & Schedules: Accurate progress tracking, schedule overdue indicators, and calendar quick-navigation from notifications",
+        "Forms & Reports: Alphanumeric purok input, high-contrast dialogs, improved sequence numbering, and clean PDF exports"
     ];
     const notesTl = [
-        "Sync at Offline: Buong real-time sync para sa Vitamin A, awtomatikong retry, at agarang queue counter refresh",
-        "Feeding Program: Kinakailangang timbang bago mag-enroll, maayos na meal card, at malinis na session history",
-        "Profile ng Benepisyaryo: Preview ng pirma sa visit ng ina, tamang visit status, at birth date validation para sa guardian",
-        "Seguridad at Login: Ligtas na Remember Me at maayos na auto-login gamit ang tokens",
-        "Mga Ulat: Malinis na PDF masterlist exports para sa lahat ng programa"
+        "Konsistensya ng Datos: Pinag-isang status computation, tugmang bilang ng bata at ina, at totoong dahilan ng pagka-inactive",
+        "Pagsukat: Tamang petsa ng pagsukat, pinag-isang plausibility rules, at pag-aalis ng BMI sa mga sanggol",
+        "Sync at Offline: Mas malinaw na mensahe ng error at maaasahang retry functionality",
+        "Feeding Program at Iskedyul: Tamang progress tracking, overdue badges, at mabilisang pagbukas ng schedule mula sa notifications",
+        "Form at Ulat: Malawak na purok input, pinahusay na contrast ng dialog, at maayos na PDF exports"
     ];
     const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 

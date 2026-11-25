@@ -158,7 +158,7 @@ class VisitTile extends StatelessWidget {
             const Icon(Icons.edit_off_outlined, size: 13, color: AppColors.textMuted),
             const SizedBox(width: 4),
             Text(
-              'No signature',
+              'No signature (before signature feature)',
               style: TextStyle(
                 fontSize: 11,
                 color: AppColors.textMuted,

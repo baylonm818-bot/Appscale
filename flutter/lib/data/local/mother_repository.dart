@@ -98,6 +98,8 @@ class MotherRepository {
     map['_transferPending'] = true;
     map['pendingTargetBarangay'] = targetBarangay;
     map['_pendingTargetBarangay'] = targetBarangay;
+    map['isActive'] = false;
+    map['status'] = 'inactive';
     map['inactiveReason'] = reason;
     map['inactiveDate'] = transferDate.toIso8601String();
     map['alsoTransferLinked'] = alsoTransferLinked;
@@ -115,6 +117,8 @@ class MotherRepository {
           cMap['_transferPending'] = true;
           cMap['pendingTargetBarangay'] = targetBarangay;
           cMap['_pendingTargetBarangay'] = targetBarangay;
+          cMap['isActive'] = false;
+          cMap['status'] = 'inactive';
           cMap['inactiveReason'] = 'Transferred with mother';
           cMap['inactiveDate'] = transferDate.toIso8601String();
           cMap['_syncStatus'] = 'pending';
@@ -256,8 +260,10 @@ class MotherRepository {
     }).toList();
   }
 
-  int countActive(String barangay) =>
-      getAll().where((m) => m.barangay == barangay && m.isActive).length;
+  List<Mother> getActive(String barangay) =>
+      getAll().where((m) => m.barangay.toLowerCase() == barangay.toLowerCase() && m.isActive).toList();
+
+  int countActive(String barangay) => getActive(barangay).length;
   int countInactive(String barangay) =>
-      getAll().where((m) => m.barangay == barangay && !m.isActive).length;
+      getAll().where((m) => m.barangay.toLowerCase() == barangay.toLowerCase() && !m.isActive).length;
 }

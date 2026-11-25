@@ -14,10 +14,19 @@ class MotherListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final formattedStatus = MotherStatusMeta.formatStatus(mother.riskStatus);
+    final inactiveLabel = (mother.inactiveReason != null &&
+            mother.inactiveReason!.isNotEmpty &&
+            mother.inactiveReason!.toLowerCase() != 'none')
+        ? mother.inactiveReason!
+        : 'Inactive';
     final color = mother.isActive
         ? MotherStatusMeta.colorFor(formattedStatus)
-        : AppColors.textMuted;
-    final label = mother.isActive ? formattedStatus : 'Inactive';
+        : (mother.inactiveReason?.toLowerCase().contains('deceased') == true)
+            ? AppColors.statRed
+            : (mother.inactiveReason?.toLowerCase().contains('transfer') == true)
+                ? Colors.orange
+                : AppColors.textMuted;
+    final label = mother.isActive ? formattedStatus : inactiveLabel;
 
     final initials = mother.fullName.trim().split(RegExp(r'\s+')).length >= 2
         ? (mother.fullName.trim().split(RegExp(r'\s+'))[0][0] +
@@ -103,12 +112,16 @@ class MotherListTile extends StatelessWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 2),
-                                  // Line 2: Age · Address
+                                  // Line 2: Age · Address or Inactive Reason
                                   Text(
-                                    '${mother.ageLabel} · ${mother.formattedAddress}',
+                                    !mother.isActive
+                                        ? '${mother.ageLabel} · Reason: $inactiveLabel'
+                                        : '${mother.ageLabel} · ${mother.formattedAddress}',
                                     style: AppTextStyles.caption.copyWith(
                                       fontSize: 11.5,
-                                      color: AppColors.textMuted,
+                                      color: (!mother.isActive && mother.inactiveReason?.toLowerCase().contains('deceased') == true)
+                                          ? AppColors.statRed
+                                          : AppColors.textMuted,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,

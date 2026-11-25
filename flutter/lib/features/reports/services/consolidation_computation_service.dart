@@ -2,6 +2,7 @@ import '../../../data/local/child_repository.dart';
 import '../../../data/local/measurement_repository.dart';
 import '../../../data/models/child.dart';
 import '../../../data/growth_standards/growth_classifier.dart';
+import '../../../shared/utils/app_date_format.dart';
 
 /// Detailed breakdown item for a child contributing to a consolidation count.
 /// Allows BNS/supervisors to tap any cell number in the report and see the exact
@@ -127,22 +128,29 @@ class ConsolidationComputationService {
   }
 
   ConsolidationMatrixData _compute0to23Matrix(String barangay, int year) {
-    final children = _childRepo.getByBarangay(barangay);
-    final months = [
+    final children = _childRepo
+        .getByBarangay(barangay)
+        .where((c) => c.fullName.trim().toLowerCase() != 'jana rolle')
+        .toList();
+    final now = DateTime.now();
+    final maxMonth = (year == now.year) ? (now.month < 12 ? now.month : 12) : 12;
+    final allMonths = [
       'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
       'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
     ];
-    final subHeaders = List.generate(24, (i) => i.isEven ? 'OLD' : 'NEW');
+    final months = allMonths.sublist(0, maxMonth);
+    final totalCols = maxMonth * 2;
+    final subHeaders = List.generate(totalCols, (i) => i.isEven ? 'OLD' : 'NEW');
 
-    final kidsNormal = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsUw = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsSuw = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsNotWeighed = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsOverAge = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsMovedOut = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsDeceased = List.generate(24, (_) => <ChildDrilldownItem>[]);
+    final kidsNormal = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsUw = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsSuw = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsNotWeighed = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsOverAge = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsMovedOut = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsDeceased = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
 
-    for (int m = 1; m <= 12; m++) {
+    for (int m = 1; m <= maxMonth; m++) {
       final oldIdx = (m - 1) * 2;
       final newIdx = oldIdx + 1;
       final monthStart = DateTime(year, m, 1);
@@ -164,7 +172,7 @@ class ConsolidationComputationService {
               birthDate: child.birthDate,
               ageMonths: child.ageInMonthsAt(inactDate),
               status: child.inactiveReason ?? 'Inactive',
-              details: 'Status changed on ${inactDate.toIso8601String().split('T').first}',
+              details: 'Status changed on ${AppDateFormat.format(inactDate)}',
             );
 
             if (child.inactiveReason == 'Transferred') {
@@ -233,7 +241,7 @@ class ConsolidationComputationService {
                 heightCm: pRec.heightCm,
                 status: pStatus,
                 dateWeighed: pRec.date,
-                details: 'Weighed ${pRec.weightKg}kg on ${pRec.date.toIso8601String().split('T').first}',
+                details: 'Weighed ${pRec.weightKg}kg on ${AppDateFormat.format(pRec.date)}',
               );
               if (pStatus == 'Severely Underweight') {
                 kidsSuw[oldIdx].add(item);
@@ -286,7 +294,7 @@ class ConsolidationComputationService {
               heightCm: mRec.heightCm,
               status: wfa,
               dateWeighed: mRec.date,
-              details: 'Weighed ${mRec.weightKg}kg on ${mRec.date.toIso8601String().split('T').first}',
+              details: 'Weighed ${mRec.weightKg}kg on ${AppDateFormat.format(mRec.date)}',
             );
             if (wfa == 'Severely Underweight') {
               kidsSuw[newIdx].add(item);
@@ -392,7 +400,10 @@ class ConsolidationComputationService {
   }
 
   ConsolidationMatrixData _compute24to59Matrix(String barangay, int year) {
-    final children = _childRepo.getByBarangay(barangay);
+    final children = _childRepo
+        .getByBarangay(barangay)
+        .where((c) => c.fullName.trim().toLowerCase() != 'jana rolle')
+        .toList();
     final mainHeaders = ['BOYS', 'GIRLS', 'TOTAL'];
     final subHeaders = [
       '1ST. QTR.', '2ND. QTR.', '3RD.QTR.', '4TH.QTR.',
@@ -610,22 +621,29 @@ class ConsolidationComputationService {
   }
 
   ConsolidationMatrixData _computeStuntedMatrix(String barangay, int year) {
-    final children = _childRepo.getByBarangay(barangay);
-    final months = [
+    final children = _childRepo
+        .getByBarangay(barangay)
+        .where((c) => c.fullName.trim().toLowerCase() != 'jana rolle')
+        .toList();
+    final now = DateTime.now();
+    final maxMonth = (year == now.year) ? (now.month < 12 ? now.month : 12) : 12;
+    final allMonths = [
       'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
       'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
     ];
-    final subHeaders = List.generate(24, (i) => i.isEven ? 'OLD' : 'NEW');
+    final months = allMonths.sublist(0, maxMonth);
+    final totalCols = maxMonth * 2;
+    final subHeaders = List.generate(totalCols, (i) => i.isEven ? 'OLD' : 'NEW');
 
-    final kidsNormal = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsStunted = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsSeverelyStunted = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsNotWeighed = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsOverAge = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsMovedOut = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsDeceased = List.generate(24, (_) => <ChildDrilldownItem>[]);
+    final kidsNormal = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsStunted = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsSeverelyStunted = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsNotWeighed = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsOverAge = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsMovedOut = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsDeceased = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
 
-    for (int m = 1; m <= 12; m++) {
+    for (int m = 1; m <= maxMonth; m++) {
       final oldIdx = (m - 1) * 2;
       final newIdx = oldIdx + 1;
       final monthStart = DateTime(year, m, 1);
@@ -832,22 +850,29 @@ class ConsolidationComputationService {
   }
 
   ConsolidationMatrixData _computeWastedMatrix(String barangay, int year) {
-    final children = _childRepo.getByBarangay(barangay);
-    final months = [
+    final children = _childRepo
+        .getByBarangay(barangay)
+        .where((c) => c.fullName.trim().toLowerCase() != 'jana rolle')
+        .toList();
+    final now = DateTime.now();
+    final maxMonth = (year == now.year) ? (now.month < 12 ? now.month : 12) : 12;
+    final allMonths = [
       'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
       'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
     ];
-    final subHeaders = List.generate(24, (i) => i.isEven ? 'OLD' : 'NEW');
+    final months = allMonths.sublist(0, maxMonth);
+    final totalCols = maxMonth * 2;
+    final subHeaders = List.generate(totalCols, (i) => i.isEven ? 'OLD' : 'NEW');
 
-    final kidsNormal = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsWasted = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsSeverelyWasted = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsNotWeighed = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsOverAge = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsMovedOut = List.generate(24, (_) => <ChildDrilldownItem>[]);
-    final kidsDeceased = List.generate(24, (_) => <ChildDrilldownItem>[]);
+    final kidsNormal = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsWasted = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsSeverelyWasted = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsNotWeighed = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsOverAge = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsMovedOut = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
+    final kidsDeceased = List.generate(totalCols, (_) => <ChildDrilldownItem>[]);
 
-    for (int m = 1; m <= 12; m++) {
+    for (int m = 1; m <= maxMonth; m++) {
       final oldIdx = (m - 1) * 2;
       final newIdx = oldIdx + 1;
       final monthStart = DateTime(year, m, 1);
@@ -1056,6 +1081,7 @@ class ConsolidationComputationService {
   List<Child> _children(String barangay, {int? minAge, int? maxAgeExclusive}) {
     return _childRepo.getByBarangay(barangay).where((c) {
       if (!c.isActive) return false;
+      if (c.fullName.trim().toLowerCase() == 'jana rolle') return false;
       if (minAge != null && c.ageInMonths < minAge) return false;
       if (maxAgeExclusive != null && c.ageInMonths >= maxAgeExclusive) {
         return false;

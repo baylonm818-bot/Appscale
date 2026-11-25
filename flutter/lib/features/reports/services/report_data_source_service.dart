@@ -84,7 +84,7 @@ class ReportDataSourceService {
   ExcelTableData buildChildrenMasterlistData(String barangay, int year) {
     final children = _childRepo
         .getByBarangay(barangay)
-        .where((c) => c.isActive)
+        .where((c) => c.isActive && c.fullName.trim().toLowerCase() != 'jana rolle')
         .toList()
       ..sort((a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
 
@@ -158,7 +158,7 @@ class ReportDataSourceService {
   ExcelTableData buildOptPlusData(String barangay, int year) {
     final children = _childRepo
         .getByBarangay(barangay)
-        .where((c) => c.isActive)
+        .where((c) => c.isActive && c.fullName.trim().toLowerCase() != 'jana rolle')
         .toList()
       ..sort((a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
 
@@ -270,7 +270,10 @@ class ReportDataSourceService {
       return issues;
     }
 
-    final children = _childRepo.getByBarangay(barangay).where((c) => c.isActive).toList();
+    final children = _childRepo
+        .getByBarangay(barangay)
+        .where((c) => c.isActive && c.fullName.trim().toLowerCase() != 'jana rolle')
+        .toList();
 
     for (final c in children) {
       if (c.address.trim().isEmpty) {

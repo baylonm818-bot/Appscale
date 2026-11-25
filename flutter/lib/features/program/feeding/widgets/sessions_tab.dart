@@ -238,6 +238,20 @@ class _SessionsTabState extends State<SessionsTab> {
                           final messenger = ScaffoldMessenger.of(context);
                           final nav = Navigator.of(ctx);
 
+                          if (selectedStatus == 'Completed') {
+                            final att = _attendanceRepo.getForDate(_currentBarangay, selectedDate);
+                            final presentCount = att.values.where((st) => st == 'Present').length;
+                            if (presentCount == 0) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Cannot mark session as Completed when attendance is 0.'),
+                                  backgroundColor: AppColors.statRed,
+                                ),
+                              );
+                              return;
+                            }
+                          }
+
                           final items = menuController.text
                               .split(RegExp(r'[,•\n]+'))
                               .map((s) => s.trim())
@@ -629,12 +643,20 @@ class _SessionsTabState extends State<SessionsTab> {
                         }
                       }
 
-                      // Improvement stats across enrolled children up to session date
+                      // Improvement stats across children actually weighed on this session date
                       int improved = 0;
                       int noChange = 0;
                       int declined = 0;
                       for (final child in enrolled) {
                         final list = _measurementRepo.getForChild(child.id);
+                        final weighedOnDate = list.any(
+                          (m) =>
+                              m.date.year == session.date.year &&
+                              m.date.month == session.date.month &&
+                              m.date.day == session.date.day,
+                        );
+                        if (!weighedOnDate) continue;
+
                         final p = FeedingChildProgress.evaluate(child, list, sessionDate: session.date);
                         if (p.status == 'Improved') {
                           improved++;
@@ -705,6 +727,13 @@ class _FeedingSessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final isOverdue = session.status.toLowerCase() == 'scheduled' &&
+        session.date.isBefore(today);
+    final displayStatus = isOverdue ? 'Overdue' : session.status;
+    final displayColor = isOverdue ? AppColors.statRed : statusColor;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -759,8 +788,8 @@ class _FeedingSessionCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 StatusBadge(
-                  label: session.status,
-                  color: statusColor,
+                  label: displayStatus,
+                  color: displayColor,
                 ),
               ],
             ),

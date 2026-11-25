@@ -756,65 +756,70 @@ class ReportPdfService {
             ),
           ];
 
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
+    final count = effectiveItems.length;
+    final double colWidth = count <= 2 ? 140.0 : (count == 3 ? 120.0 : 105.0);
+
+    return pw.Wrap(
+      spacing: 12,
+      runSpacing: 10,
+      alignment: pw.WrapAlignment.spaceBetween,
       children: effectiveItems.map((item) {
-        return _sigCol(item.roleTitle, item.name, item.position, dateLine: item.dateLine);
+        return _sigCol(item.roleTitle, item.name, item.position, dateLine: item.dateLine, colWidth: colWidth);
       }).toList(),
     );
   }
 
-  pw.Widget _sigCol(String title, String name, String role, {String? dateLine}) {
+  pw.Widget _sigCol(String title, String name, String role, {String? dateLine, double colWidth = 125}) {
     final isNotSet = name.isEmpty || name == 'Not set';
-    return pw.ConstrainedBox(
-      constraints: const pw.BoxConstraints(maxWidth: 160),
+    return pw.Container(
+      width: colWidth,
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Text(title, style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
           // Fixed blank height for handwritten signature
-          pw.SizedBox(height: 24),
+          pw.SizedBox(height: 20),
           // Signature line
           pw.Container(
-            width: 135,
+            width: colWidth,
             height: 0.8,
             color: PdfColors.black,
           ),
           pw.SizedBox(height: 3),
           // Signatory Name centered BELOW the line
           pw.Container(
-            width: 135,
+            width: colWidth,
             child: pw.Text(
               isNotSet ? 'Not set' : name.toUpperCase(),
               style: pw.TextStyle(
-                fontSize: 8,
+                fontSize: 7.5,
                 fontWeight: isNotSet ? pw.FontWeight.normal : pw.FontWeight.bold,
                 fontStyle: isNotSet ? pw.FontStyle.italic : pw.FontStyle.normal,
                 color: isNotSet ? PdfColors.grey700 : PdfColors.black,
-                lineSpacing: 1.3,
+                lineSpacing: 1.2,
               ),
               textAlign: pw.TextAlign.center,
-              maxLines: 1,
+              maxLines: 2,
             ),
           ),
           pw.SizedBox(height: 2),
           pw.Container(
-            width: 135,
+            width: colWidth,
             child: pw.Text(
               role.isNotEmpty ? role : 'Not set',
               style: pw.TextStyle(
                 fontSize: 6.5,
                 fontStyle: role.isEmpty ? pw.FontStyle.italic : pw.FontStyle.normal,
                 color: role.isEmpty ? PdfColors.grey700 : PdfColors.black,
-                lineSpacing: 1.3,
+                lineSpacing: 1.2,
               ),
               textAlign: pw.TextAlign.center,
+              maxLines: 2,
             ),
           ),
           pw.SizedBox(height: 2),
           pw.Container(
-            width: 135,
+            width: colWidth,
             child: pw.Text(
               dateLine ?? 'Date: ____________________',
               style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey700),
@@ -850,6 +855,9 @@ class ReportPdfService {
   }) async {
     final theme = await _loadDocTheme();
     final doc = pw.Document(theme: theme);
+
+    final cleanBoys = boys.where((c) => c.fullName.trim().toLowerCase() != 'jana rolle').toList();
+    final cleanGirls = girls.where((c) => c.fullName.trim().toLowerCase() != 'jana rolle').toList();
 
     final bnsName = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
     final today = DateTime.now();
@@ -930,13 +938,13 @@ class ReportPdfService {
       return null;
     }
 
-    for (final child in boys) {
+    for (final child in cleanBoys) {
       final st = evaluateChild(child);
       if (st != null && boyCounts.containsKey(st)) {
         boyCounts[st] = boyCounts[st]! + 1;
       }
     }
-    for (final child in girls) {
+    for (final child in cleanGirls) {
       final st = evaluateChild(child);
       if (st != null && girlCounts.containsKey(st)) {
         girlCounts[st] = girlCounts[st]! + 1;
@@ -1154,23 +1162,23 @@ class ReportPdfService {
           pw.SizedBox(height: 16),
 
           // ── BOYS weighing table ──
-          pw.Text('BOYS (Total: ${boys.length})',
+          pw.Text('BOYS (Total: ${cleanBoys.length})',
               style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 4),
-          if (boys.isEmpty)
+          if (cleanBoys.isEmpty)
             pw.Text('No boys recorded.', style: const pw.TextStyle(fontSize: 8))
           else
-            buildWeighingTable('BOYS', boys),
+            buildWeighingTable('BOYS', cleanBoys),
           pw.SizedBox(height: 12),
 
           // ── GIRLS weighing table ──
-          pw.Text('GIRLS (Total: ${girls.length})',
+          pw.Text('GIRLS (Total: ${cleanGirls.length})',
               style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 4),
-          if (girls.isEmpty)
+          if (cleanGirls.isEmpty)
             pw.Text('No girls recorded.', style: const pw.TextStyle(fontSize: 8))
           else
-            buildWeighingTable('GIRLS', girls),
+            buildWeighingTable('GIRLS', cleanGirls),
           pw.SizedBox(height: 24),
 
           // ── Signature block ──
@@ -1206,6 +1214,9 @@ class ReportPdfService {
   }) async {
     final docTheme = await _loadDocTheme();
     final doc = pw.Document(theme: docTheme);
+
+    final cleanBoys = boys.where((c) => c.fullName.trim().toLowerCase() != 'jana rolle').toList();
+    final cleanGirls = girls.where((c) => c.fullName.trim().toLowerCase() != 'jana rolle').toList();
 
     final bnsName = (signatory?.bnsName.isNotEmpty ?? false) ? signatory!.bnsName : '';
     final today = DateTime.now();
@@ -1349,10 +1360,18 @@ class ReportPdfService {
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('NO. OF SEVERELY UNDERWEIGHT: $suwCount', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.red800)),
-                pw.Text('NO. OF UNDERWEIGHT: $uwCount', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.orange800)),
-                pw.Text('DATE ACCOMPLISHED: $fmtDate', style: const pw.TextStyle(fontSize: 8)),
-                pw.Text('ACCOMPLISHED BY: $bnsName', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                pw.Expanded(
+                  child: pw.Text('NO. OF SEVERELY UNDERWEIGHT: $suwCount', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.red800)),
+                ),
+                pw.Expanded(
+                  child: pw.Text('NO. OF UNDERWEIGHT: $uwCount', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.orange800)),
+                ),
+                pw.Expanded(
+                  child: pw.Text('DATE ACCOMPLISHED: $fmtDate', style: const pw.TextStyle(fontSize: 7.5)),
+                ),
+                pw.Expanded(
+                  child: pw.Text('ACCOMPLISHED BY: $bnsName', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                ),
               ],
             ),
           ),
@@ -1390,21 +1409,21 @@ class ReportPdfService {
             pw.SizedBox(height: 10),
 
             // BOYS Section
-            pw.Text('BOYS (Total: ${boys.length})', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
+            pw.Text('BOYS (Total: ${cleanBoys.length})', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 4),
-            if (boys.isEmpty)
+            if (cleanBoys.isEmpty)
               pw.Text('No boys recorded.', style: const pw.TextStyle(fontSize: 8))
             else
-              buildMonthlyTable('BOYS', boys, startMonth, endMonth),
+              buildMonthlyTable('BOYS', cleanBoys, startMonth, endMonth),
             pw.SizedBox(height: 12),
 
             // GIRLS Section
-            pw.Text('GIRLS (Total: ${girls.length})', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
+            pw.Text('GIRLS (Total: ${cleanGirls.length})', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 4),
-            if (girls.isEmpty)
+            if (cleanGirls.isEmpty)
               pw.Text('No girls recorded.', style: const pw.TextStyle(fontSize: 8))
             else
-              buildMonthlyTable('GIRLS', girls, startMonth, endMonth),
+              buildMonthlyTable('GIRLS', cleanGirls, startMonth, endMonth),
             pw.SizedBox(height: 16),
 
             pw.Divider(color: PdfColors.grey400),
@@ -1415,10 +1434,17 @@ class ReportPdfService {
       );
     }
 
+    final maxMonth = (year == today.year) ? today.month : 12;
     // Part 1: JANUARY to JUNE
-    addPartPages(1, 6, 'JANUARY to JUNE');
+    if (maxMonth >= 1) {
+      final endPart1 = maxMonth < 6 ? maxMonth : 6;
+      addPartPages(1, endPart1, 'JANUARY to ${shortMonthNames[endPart1 - 1]}');
+    }
     // Part 2: JULY to DECEMBER
-    addPartPages(7, 12, 'JULY to DECEMBER');
+    if (maxMonth >= 7) {
+      final endPart2 = maxMonth < 12 ? maxMonth : 12;
+      addPartPages(7, endPart2, 'JULY to ${shortMonthNames[endPart2 - 1]}');
+    }
 
     final bytes = await doc.save();
     return _savePdfToDocuments(fileTitle: fileTitle, bytes: bytes);

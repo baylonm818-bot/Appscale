@@ -7,8 +7,10 @@ import '../../data/local/app_data_bus.dart';
 import '../../data/local/notification_repository.dart';
 import '../../data/local/referral_repository.dart';
 import '../../data/models/app_notification.dart';
+import '../../shared/utils/app_page_route.dart';
 import '../../shared/utils/time_ago.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../program/program_screen.dart';
 import '../referrals/widgets/referral_detail_sheet.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -133,6 +135,19 @@ class NotificationsScreen extends StatelessWidget {
                             }
                           }
 
+                          final isSchedule = item.type == 'schedule' ||
+                              item.title.toLowerCase().contains('schedule') ||
+                              item.message.toLowerCase().contains('schedule') ||
+                              item.message.toLowerCase().contains('scheduled');
+
+                          if (isSchedule) {
+                            Navigator.push(
+                              context,
+                              appPageRoute(const ProgramScreen(initialShowSchedule: true)),
+                            );
+                            return;
+                          }
+
                           showDialog(
                             context: context,
                             builder: (ctx) => AlertDialog(
@@ -145,7 +160,7 @@ class NotificationsScreen extends StatelessWidget {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      item.title,
+                                      _NotificationTile.cleanNotificationText(item.title),
                                       style: AppTextStyles.h2.copyWith(fontSize: 16),
                                     ),
                                   ),
@@ -161,12 +176,28 @@ class NotificationsScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
-                                    item.message,
+                                    _NotificationTile.cleanNotificationText(item.message),
                                     style: AppTextStyles.body.copyWith(fontSize: 14, height: 1.4),
                                   ),
                                 ],
                               ),
                               actions: [
+                                if (isSchedule)
+                                  FilledButton.icon(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.primaryGreen,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      Navigator.push(
+                                        context,
+                                        appPageRoute(const ProgramScreen(initialShowSchedule: true)),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.calendar_month, size: 16),
+                                    label: const Text('View schedule'),
+                                  ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx),
                                   child: const Text('Close'),
@@ -195,7 +226,24 @@ class _NotificationTile extends StatelessWidget {
 
   const _NotificationTile({required this.notification, required this.onTap});
 
+  static String cleanNotificationText(String text) {
+    var s = text;
+    s = s.replaceAll(RegExp(r'\bper\s+brgy\.?\s*hall\b', caseSensitive: false), 'at Brgy. Hall');
+    s = s.replaceAll(RegExp(r'\bper\s+barangay\s*hall\b', caseSensitive: false), 'at Barangay Hall');
+    s = s.replaceAll(RegExp(r'\bat\s+at\b', caseSensitive: false), 'at');
+    return s;
+  }
+
+  bool get _isSchedule =>
+      notification.type == 'schedule' ||
+      notification.title.toLowerCase().contains('schedule') ||
+      notification.message.toLowerCase().contains('schedule') ||
+      notification.message.toLowerCase().contains('scheduled');
+
   IconData get _icon {
+    if (_isSchedule) {
+      return Icons.calendar_month_outlined;
+    }
     switch (notification.type) {
       case 'referral_completed':
         return Icons.check_circle_outline;
@@ -213,6 +261,9 @@ class _NotificationTile extends StatelessWidget {
   }
 
   Color get _accentColor {
+    if (_isSchedule) {
+      return AppColors.statBlue;
+    }
     switch (notification.type) {
       case 'referral_completed':
         return AppColors.primaryGreen;
@@ -229,8 +280,10 @@ class _NotificationTile extends StatelessWidget {
     }
   }
 
+  String get _displayTitle => cleanNotificationText(notification.title);
+
   String get _displayMessage {
-    var msg = notification.message;
+    var msg = cleanNotificationText(notification.message);
     if (msg.contains(' ay Completed') || msg.contains('Referral ni ')) {
       msg = msg.replaceFirst(RegExp(r'Referral ni (.*?) ay Completed\.'), 'Referral completed for \$1.');
       msg = msg.replaceFirst(RegExp(r'Referral ni (.*?) ay (.*?)\.'), 'Referral for \$1 is now \$2.');
@@ -290,7 +343,7 @@ class _NotificationTile extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              notification.title,
+                              _displayTitle,
                               style: AppTextStyles.label.copyWith(
                                 fontSize: 13,
                                 fontWeight: notification.isRead
@@ -323,6 +376,26 @@ class _NotificationTile extends StatelessWidget {
                           children: [
                             Text(
                               'Tap to view referral details',
+                              style: AppTextStyles.body.copyWith(
+                                fontSize: 11,
+                                color: AppColors.darkGreen,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: 13,
+                              color: AppColors.darkGreen,
+                            ),
+                          ],
+                        ),
+                      ] else if (_isSchedule) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Text(
+                              'View schedule',
                               style: AppTextStyles.body.copyWith(
                                 fontSize: 11,
                                 color: AppColors.darkGreen,

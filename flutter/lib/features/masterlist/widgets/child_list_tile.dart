@@ -155,18 +155,34 @@ class ChildListTile extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 6),
                                       StatusBadge(
-                                        label: overall.label,
-                                        color: overall.color,
+                                        label: !child.isActive
+                                            ? ((child.inactiveReason != null && child.inactiveReason!.isNotEmpty && child.inactiveReason!.toLowerCase() != 'none')
+                                                ? child.inactiveReason!
+                                                : 'Inactive')
+                                            : overall.label,
+                                        color: !child.isActive
+                                            ? ((child.inactiveReason?.toLowerCase().contains('deceased') == true)
+                                                ? AppColors.statRed
+                                                : (child.inactiveReason?.toLowerCase().contains('transfer') == true)
+                                                    ? Colors.orange
+                                                    : (child.inactiveReason?.toLowerCase().contains('graduated') == true)
+                                                        ? Colors.blue
+                                                        : AppColors.textMuted)
+                                            : overall.color,
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 2),
-                                  // Line 2: Age · Address (Barangay + Purok)
+                                  // Line 2: Age · Address (Barangay + Purok) or Inactive Reason
                                   Text(
-                                    '${child.ageDisplay} · ${child.addressWithBarangay}',
+                                    !child.isActive
+                                        ? '${child.ageDisplay} · Reason: ${child.inactiveReason ?? "Inactive"}'
+                                        : '${child.ageDisplay} · ${child.addressWithBarangay}',
                                     style: AppTextStyles.caption.copyWith(
                                       fontSize: 11.5,
-                                      color: AppColors.textMuted,
+                                      color: (!child.isActive && child.inactiveReason?.toLowerCase().contains('deceased') == true)
+                                          ? AppColors.statRed
+                                          : AppColors.textMuted,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,

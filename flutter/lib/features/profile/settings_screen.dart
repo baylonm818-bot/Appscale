@@ -52,21 +52,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _updateStatusText = 'update_no_internet'.tr;
             _updateStatusColor = AppColors.statRed;
           });
-          AppNotificationUI.showError(context, 'update_no_internet'.tr);
+          AppNotificationUI.showError(context, 'update_no_internet'.tr, bottomMargin: 90);
           break;
         case AppUpdateStatus.serverUnreachable:
           setState(() {
             _updateStatusText = 'update_server_unreachable'.tr;
             _updateStatusColor = AppColors.statAmber;
           });
-          AppNotificationUI.showWarning(context, 'update_server_unreachable'.tr);
+          AppNotificationUI.showWarning(context, 'update_server_unreachable'.tr, bottomMargin: 90);
           break;
         case AppUpdateStatus.alreadyLatest:
           setState(() {
             _updateStatusText = 'update_already_latest'.tr;
             _updateStatusColor = AppColors.primaryGreen;
           });
-          AppNotificationUI.showSuccess(context, 'update_already_latest'.tr, bottomMargin: 80);
+          AppNotificationUI.showSuccess(context, 'update_already_latest'.tr, bottomMargin: 90);
           break;
         case AppUpdateStatus.updateAvailable:
           setState(() {

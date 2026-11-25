@@ -54,16 +54,22 @@ class FeedingChildProgress {
 
     final diff = latest.weightKg - baseline.weightKg;
 
-    // Numerical rank for status comparison: SAM (0) < MAM (1) < Underweight (2) < Normal (3)
-    int rank(String? s) {
-      if (s == null) return 2;
+    // Distance from Normal (0 = Normal, 1 = Mild/At-risk, 2 = Moderate, 3 = Severe)
+    int distanceToNormal(String? s) {
+      if (s == null) return 1;
       final lower = s.toLowerCase();
-      if (lower.contains('sam') || lower.contains('severely wasted')) return 0;
-      if (lower.contains('mam') || lower.contains('moderately wasted')) return 1;
-      if (lower.contains('severely underweight') || lower.contains('severely stunted')) return 1;
-      if (lower.contains('underweight') || lower.contains('stunted')) return 2;
-      if (lower.contains('normal')) return 3;
-      return 2;
+      if (lower.contains('sam') || lower.contains('severely wasted')) return 3;
+      if (lower.contains('severely underweight') || lower.contains('severely stunted') || lower.contains('obese')) return 2;
+      if (lower.contains('mam') || lower.contains('moderately wasted')) return 2;
+      if (lower.contains('underweight') || lower.contains('stunted') || lower.contains('overweight')) return 1;
+      if (lower.contains('normal')) return 0;
+      return 1;
+    }
+
+    bool isHighWeight(String? s) {
+      if (s == null) return false;
+      final lower = s.toLowerCase();
+      return lower.contains('overweight') || lower.contains('obese');
     }
 
     final baseStatus = baseline.effectiveWastingStatus.isNotEmpty
@@ -73,16 +79,36 @@ class FeedingChildProgress {
         ? latest.effectiveWastingStatus
         : latest.weightForAgeStatus;
 
-    final baseRank = rank(baseStatus);
-    final latestRank = rank(latestStatus);
+    final baseDist = distanceToNormal(baseStatus);
+    final latestDist = distanceToNormal(latestStatus);
 
     String status = 'No change';
-    if (latestRank > baseRank || diff >= 0.1) {
+    if (latestDist < baseDist) {
+      // Moved closer to Normal status
       status = 'Improved';
-    } else if (latestRank < baseRank || diff <= -0.1) {
+    } else if (latestDist > baseDist) {
+      // Moved further away from Normal status
       status = 'Declined';
     } else {
-      status = 'No change';
+      // Same categorical tier: check weight direction relative to target
+      final isHigh = isHighWeight(baseStatus) || isHighWeight(latestStatus);
+      if (isHigh) {
+        if (diff <= -0.1) {
+          status = 'Improved';
+        } else if (diff >= 0.1) {
+          status = 'Declined';
+        } else {
+          status = 'No change';
+        }
+      } else {
+        if (diff >= 0.1) {
+          status = 'Improved';
+        } else if (diff <= -0.1) {
+          status = 'Declined';
+        } else {
+          status = 'No change';
+        }
+      }
     }
 
     return FeedingChildProgress(

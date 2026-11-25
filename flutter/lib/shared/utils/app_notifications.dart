@@ -11,6 +11,7 @@ class AppNotificationUI {
     BuildContext context,
     String message, {
     String title = 'Error',
+    double? bottomMargin,
   }) {
     _showSnackBar(
       context,
@@ -19,6 +20,7 @@ class AppNotificationUI {
       backgroundColor: const Color(0xFFB91C1C), // Deep crimson red
       borderColor: const Color(0xFFFCA5A5),
       icon: Icons.error_outline_rounded,
+      bottomMargin: bottomMargin,
     );
   }
 

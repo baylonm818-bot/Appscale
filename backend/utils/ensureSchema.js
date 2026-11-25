@@ -405,6 +405,37 @@ async function ensureAppSchema(pool) {
       console.warn('[Schema] active_role_key check warning:', e.message);
     }
 
+    // 14. Ensure children & mothers status columns allow flexible status values ('inactive', 'deceased', etc.) and inactive tracking
+    try {
+      await pool.query(`ALTER TABLE \`children\` MODIFY COLUMN \`status\` VARCHAR(50) NOT NULL DEFAULT 'active'`);
+      await pool.query(`ALTER TABLE \`mothers\` MODIFY COLUMN \`status\` VARCHAR(50) NOT NULL DEFAULT 'active'`);
+      await pool.query(`ALTER TABLE \`children\` MODIFY COLUMN \`purok\` VARCHAR(150) NULL`);
+      
+      const [childCols] = await pool.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'children'`
+      );
+      const childColSet = new Set(childCols.map(c => c.COLUMN_NAME));
+      if (!childColSet.has('inactive_reason')) {
+        await pool.query(`ALTER TABLE \`children\` ADD COLUMN \`inactive_reason\` VARCHAR(150) NULL AFTER \`status\``);
+      }
+      if (!childColSet.has('inactive_date')) {
+        await pool.query(`ALTER TABLE \`children\` ADD COLUMN \`inactive_date\` DATE NULL AFTER \`inactive_reason\``);
+      }
+
+      const [motherCols] = await pool.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mothers'`
+      );
+      const motherColSet = new Set(motherCols.map(c => c.COLUMN_NAME));
+      if (!motherColSet.has('inactive_reason')) {
+        await pool.query(`ALTER TABLE \`mothers\` ADD COLUMN \`inactive_reason\` VARCHAR(150) NULL AFTER \`status\``);
+      }
+      if (!motherColSet.has('inactive_date')) {
+        await pool.query(`ALTER TABLE \`mothers\` ADD COLUMN \`inactive_date\` DATE NULL AFTER \`inactive_reason\``);
+      }
+    } catch (e) {
+      console.warn('[Schema] children/mothers status & inactive columns warning:', e.message);
+    }
+
     console.log('[Schema] All database schema migrations verified successfully.');
   } catch (err) {
     console.warn('[Schema] ensureAppSchema warning:', err.message);

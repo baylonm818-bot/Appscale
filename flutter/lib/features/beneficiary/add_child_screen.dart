@@ -61,9 +61,12 @@ class _AddChildScreenState extends State<AddChildScreen> {
       AppUserIdentity.resolveBarangay(_settings.authUser).isNotEmpty
           ? AppUserIdentity.resolveBarangay(_settings.authUser)
           : 'Tiguion';
-  late final String _currentBarangayCode = _currentBarangay.isNotEmpty
-      ? _currentBarangay.substring(0, 3).toUpperCase()
-      : 'TIG';
+  late final String _currentBarangayCode = () {
+    final cleaned = _currentBarangay.replaceAll(RegExp(r'[^a-zA-Z]'), '').toUpperCase();
+    if (cleaned.length >= 3) return cleaned.substring(0, 3);
+    if (cleaned.isNotEmpty) return cleaned.padRight(3, 'X');
+    return 'TIG';
+  }();
 
   late final _fullNameController = TextEditingController(
     text: widget.existingChild?.fullName ?? '',
@@ -137,7 +140,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
   late String _sequenceNo =
       widget.existingChild?.sequenceNo ??
-      _childRepo.generateSequenceNo(barangayCode: _currentBarangayCode);
+      _childRepo.generateSequenceNo(
+        barangayCode: _currentBarangayCode,
+        barangay: _currentBarangay,
+      );
 
   String get _effectiveDisability {
     if (!_hasDisability) return '';
@@ -262,7 +268,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Keep Editing', style: TextStyle(color: AppColors.textMuted)),
+            child: const Text('Keep Editing', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -613,7 +619,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
     setState(() => _isSaving = false);
 
     // Refresh sequence number for subsequent saves
-    _sequenceNo = _childRepo.generateSequenceNo(barangayCode: _currentBarangayCode);
+    _sequenceNo = _childRepo.generateSequenceNo(
+      barangayCode: _currentBarangayCode,
+      barangay: _currentBarangay,
+    );
 
     // Prompt user: View profile or add sibling
     final savedMother = targetMother;

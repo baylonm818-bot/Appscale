@@ -199,8 +199,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
     if (_heightValidation.isError) fields.add('Height');
     if (_muacValidation.isError) fields.add('MUAC');
     if (_plausibilityError != null) return _plausibilityError!;
-    if (fields.isNotEmpty) return 'Ayusin ang error sa ${fields.join(" at ")} bago i-save.';
-    return 'Ayusin ang mga invalid value bago i-save.';
+    if (fields.isNotEmpty) return 'Please correct the error in ${fields.join(", ")} before saving.';
+    return 'Please correct invalid values before saving.';
   }
 
   Widget _buildChildContextInfoRow() {
@@ -597,11 +597,11 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
                 Text('Weight-for-age: ${_liveAssessment!.weightForAgeStatus}'),
                 Text('Height-for-age: ${_liveAssessment!.heightForAgeStatus}'),
                 Text('Weight-for-length/height: ${_liveAssessment!.weightForLengthStatus}'),
-                if (_liveAssessment!.bmi != null)
+                if (_liveAssessment!.bmi != null && _assessmentAgeMonths >= 24)
                   Text('BMI: ${_liveAssessment!.bmi} kg/m²'),
               ] else if (_liveAssessment != null && _liveAssessment!.isInvalid) ...[
                 Text(
-                  'Flagged: ${_liveAssessment!.invalidReason ?? "Needs re-measurement"}',
+                  'Flagged: ${_liveAssessment!.invalidReason?.replaceFirst(RegExp(r"^Flagged\s+"), "") ?? "Needs re-measurement"}',
                   style: const TextStyle(color: AppColors.statRed, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -662,8 +662,8 @@ class _AddMeasurementScreenState extends State<AddMeasurementScreen> {
       weightForAgeStatus: isPlausible ? assessment.weightForAgeStatus : 'Needs re-measurement',
       heightForAgeStatus: isPlausible ? assessment.heightForAgeStatus : 'Needs re-measurement',
       weightForLengthStatus: isPlausible ? assessment.weightForLengthStatus : 'Needs re-measurement',
-      customBmi: isPlausible ? assessment.bmi : null,
-      customBmiStatus: isPlausible ? assessment.weightForLengthStatus : 'Needs re-measurement',
+      customBmi: (isPlausible && _assessmentAgeMonths >= 24) ? assessment.bmi : null,
+      customBmiStatus: (isPlausible && _assessmentAgeMonths >= 24) ? assessment.weightForLengthStatus : null,
       ageInDays: assessmentDays,
       ageInMonths: _assessmentAgeMonths,
     );
@@ -1191,7 +1191,7 @@ class _MonthYearField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Month / Year *', style: AppTextStyles.label),
+        Text('Measurement Date *', style: AppTextStyles.label),
         const SizedBox(height: 6),
         InkWell(
           onTap: () async {
@@ -1201,7 +1201,7 @@ class _MonthYearField extends StatelessWidget {
               firstDate: DateTime(2020),
               lastDate: DateTime.now(),
             );
-            if (picked != null) onChanged(DateTime(picked.year, picked.month));
+            if (picked != null) onChanged(picked);
           },
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
@@ -1214,7 +1214,7 @@ class _MonthYearField extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${_months[value.month - 1]} ${value.year}',
+                  '${_months[value.month - 1]} ${value.day}, ${value.year}',
                   style: AppTextStyles.body.copyWith(
                     color: AppColors.textPrimary,
                   ),

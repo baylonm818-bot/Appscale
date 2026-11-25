@@ -1191,7 +1191,7 @@ exports.getMobileSchedules = async (req, res) => {
     params.push(role);
 
     const [schedules] = await pool.query(
-      `SELECT schedule_id, title, schedule_type, schedule_date, schedule_time, venue, barangay, facilitator, notes, target_role, status
+      `SELECT schedule_id, title, schedule_type, DATE_FORMAT(schedule_date, '%Y-%m-%d') AS schedule_date, schedule_time, venue, barangay, facilitator, notes, target_role, status
        FROM schedules
        WHERE ${where}
        ORDER BY schedule_date ASC`,
@@ -1985,14 +1985,27 @@ exports.getMobileFeedingSchedule = async (req, res) => {
 exports.recordChildService = async (req, res) => {
   const { external_id, child_external_id, child_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes } = req.body;
   try {
-    let resolvedChildId = child_id || null;
+    let resolvedChildId = (child_id && Number.isInteger(Number(child_id)) && Number(child_id) > 0 && Number(child_id) < 2147483647) ? Number(child_id) : null;
     if (!resolvedChildId && child_external_id) {
-      const [[c]] = await pool.query('SELECT child_id FROM children WHERE external_id = ? OR child_id = ? LIMIT 1', [child_external_id, child_external_id]);
-      if (c) resolvedChildId = c.child_id;
+      const isNumeric = /^[0-9]+$/.test(String(child_external_id).trim()) && Number(child_external_id) < 2147483647;
+      if (isNumeric) {
+        const [[c]] = await pool.query('SELECT child_id FROM children WHERE external_id = ? OR child_id = ? LIMIT 1', [child_external_id, child_external_id]);
+        if (c) resolvedChildId = c.child_id;
+      } else {
+        const [[c]] = await pool.query('SELECT child_id FROM children WHERE external_id = ? LIMIT 1', [child_external_id]);
+        if (c) resolvedChildId = c.child_id;
+      }
     }
     if (!resolvedChildId && (req.body.child_name || req.body.name)) {
       const name = (req.body.child_name || req.body.name).trim();
-      const [[c]] = await pool.query('SELECT child_id FROM children WHERE LOWER(full_name) = LOWER(?) OR LOWER(full_name) LIKE LOWER(?) LIMIT 1', [name, `%${name}%`]);
+      const [[c]] = await pool.query(
+        `SELECT child_id FROM children 
+         WHERE LOWER(CONCAT(first_name, ' ', last_name)) = LOWER(?) 
+            OR LOWER(CONCAT(first_name, ' ', COALESCE(middle_initial, ''), ' ', last_name)) = LOWER(?)
+            OR LOWER(CONCAT(first_name, ' ', last_name)) LIKE LOWER(?)
+         LIMIT 1`,
+        [name, name, `%${name}%`]
+      );
       if (c) resolvedChildId = c.child_id;
     }
     if (!resolvedChildId) {
@@ -2036,7 +2049,11 @@ exports.recordChildService = async (req, res) => {
     return res.status(201).json({ message: 'Child service recorded successfully.', service_id: result.insertId });
   } catch (error) {
     console.error('Record child service error:', error);
-    return res.status(500).json({ message: 'Server error saving child service.' });
+    return res.status(500).json({ 
+      message: 'Server error saving child service.',
+      error: error.message,
+      detail: error.sqlMessage || error.message
+    });
   }
 };
 

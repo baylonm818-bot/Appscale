@@ -16,7 +16,11 @@ class MotherVisitRepository {
     final list = raw
         .map((e) => MotherVisit.fromMap(Map<String, dynamic>.from(e as Map)))
         .toList();
-    list.sort((a, b) => b.date.compareTo(a.date));
+    list.sort((a, b) {
+      final dateComp = b.date.compareTo(a.date);
+      if (dateComp != 0) return dateComp;
+      return b.effectiveCreatedAt.compareTo(a.effectiveCreatedAt);
+    });
     return list;
   }
 

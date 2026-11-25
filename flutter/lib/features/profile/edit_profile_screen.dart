@@ -6,11 +6,7 @@ import '../../core/localization/app_strings.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../data/local/app_data_bus.dart';
-import '../../data/local/child_repository.dart';
 import '../../data/local/hive_boxes.dart';
-import '../../data/local/mother_repository.dart';
-import '../../data/local/purok_repository.dart';
-import '../../data/models/child.dart';
 import '../../data/remote/auth_api.dart';
 import '../../shared/utils/app_notifications.dart';
 import '../../shared/utils/app_user_identity.dart';
@@ -32,9 +28,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _lastNameCtrl;
   late final TextEditingController _contactCtrl;
   late final TextEditingController _emailCtrl;
+  late final TextEditingController _purokCtrl;
 
-  late String _selectedPurok;
-  late List<String> _purokOptions;
   late String _healthStation;
   late String _accreditation;
 
@@ -50,11 +45,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _lastNameCtrl = TextEditingController(text: _initialUser['last_name']?.toString() ?? '');
     _contactCtrl = TextEditingController(text: _initialUser['contact_number']?.toString() ?? '');
     _emailCtrl = TextEditingController(text: _initialUser['email']?.toString() ?? '');
+    _purokCtrl = TextEditingController(text: _initialUser['purok']?.toString() ?? '');
 
     _firstNameCtrl.addListener(_checkForChanges);
     _lastNameCtrl.addListener(_checkForChanges);
     _contactCtrl.addListener(_checkForChanges);
     _emailCtrl.addListener(_checkForChanges);
+    _purokCtrl.addListener(_checkForChanges);
 
     final rawBarangay = AppUserIdentity.resolveBarangay(_initialUser);
     _healthStation = _initialUser['health_station']?.toString().trim().isNotEmpty == true
@@ -63,84 +60,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _accreditation = _initialUser['accreditation']?.toString().trim().isNotEmpty == true
         ? _initialUser['accreditation'].toString().trim()
         : AppStrings.t('accreditation_val');
-
-    _initPurokOptions(rawBarangay);
-  }
-
-  String _normalizePurokEntry(String raw, String barangay) {
-    var cleaned = raw.trim();
-    if (cleaned.isEmpty) return '';
-
-    // Strip out the barangay name if it was appended (e.g. "Purok 1, Tuguion" -> "Purok 1")
-    if (barangay.isNotEmpty) {
-      final bgyRegex = RegExp('[,\\-–/]?\\s*${RegExp.escape(barangay)}', caseSensitive: false);
-      cleaned = cleaned.replaceAll(bgyRegex, '').trim();
-    }
-    if (cleaned.isEmpty || cleaned.toLowerCase() == 'barangay') {
-      return '';
-    }
-
-    return Child.normalizePurok(cleaned);
-  }
-
-  void _initPurokOptions(String barangay) {
-    final currentPurokRaw = _initialUser['purok']?.toString().trim() ?? '';
-    final canonicalMap = <String, String>{};
-
-    void addCandidate(String? s) {
-      if (s == null) return;
-      final norm = _normalizePurokEntry(s, barangay);
-      if (norm.isNotEmpty) {
-        canonicalMap.putIfAbsent(norm.toLowerCase(), () => norm);
-      }
-    }
-
-    try {
-      final repoPuroks = PurokRepository().getByBarangay(barangay).map((p) => p.name);
-      for (final p in repoPuroks) {
-        addCandidate(p);
-      }
-
-      final childPuroks = ChildRepository().getByBarangay(barangay).map((c) => c.address);
-      for (final a in childPuroks) {
-        addCandidate(a);
-      }
-
-      final motherPuroks = MotherRepository().getByBarangay(barangay).map((m) => m.address);
-      for (final a in motherPuroks) {
-        addCandidate(a);
-      }
-    } catch (_) {}
-
-    if (canonicalMap.isEmpty) {
-      for (int i = 1; i <= 7; i++) {
-        addCandidate('Purok $i');
-      }
-    }
-
-    if (currentPurokRaw.isNotEmpty) {
-      addCandidate(currentPurokRaw);
-    }
-
-    final list = canonicalMap.values.toList();
-    list.sort((a, b) {
-      final numA = int.tryParse(a.replaceAll(RegExp(r'\D'), ''));
-      final numB = int.tryParse(b.replaceAll(RegExp(r'\D'), ''));
-      if (numA != null && numB != null) return numA.compareTo(numB);
-      return a.toLowerCase().compareTo(b.toLowerCase());
-    });
-
-    _purokOptions = list;
-
-    final normCurrent = _normalizePurokEntry(currentPurokRaw, barangay);
-    if (normCurrent.isNotEmpty && canonicalMap.containsKey(normCurrent.toLowerCase())) {
-      _selectedPurok = canonicalMap[normCurrent.toLowerCase()]!;
-    } else if (_purokOptions.isNotEmpty) {
-      _selectedPurok = _purokOptions.first;
-    } else {
-      _selectedPurok = 'Purok 1';
-      _purokOptions = [_selectedPurok];
-    }
   }
 
   void _checkForChanges() {
@@ -148,15 +67,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final origLast = (_initialUser['last_name']?.toString() ?? '').trim();
     final origContact = (_initialUser['contact_number']?.toString() ?? '').trim();
     final origEmail = (_initialUser['email']?.toString() ?? '').trim();
-    final rawBarangay = AppUserIdentity.resolveBarangay(_initialUser);
-    final origPurokRaw = (_initialUser['purok']?.toString() ?? '').trim();
-    final origPurokNorm = _normalizePurokEntry(origPurokRaw, rawBarangay);
+    final origPurok = (_initialUser['purok']?.toString() ?? '').trim();
 
     final changed = _firstNameCtrl.text.trim() != origFirst ||
         _lastNameCtrl.text.trim() != origLast ||
         _contactCtrl.text.trim() != origContact ||
         _emailCtrl.text.trim() != origEmail ||
-        _selectedPurok.trim().toLowerCase() != origPurokNorm.toLowerCase();
+        _purokCtrl.text.trim() != origPurok;
 
     if (changed != _hasChanges) {
       setState(() => _hasChanges = changed);
@@ -169,6 +86,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _lastNameCtrl.dispose();
     _contactCtrl.dispose();
     _emailCtrl.dispose();
+    _purokCtrl.dispose();
     super.dispose();
   }
 
@@ -189,7 +107,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final lastName = _lastNameCtrl.text.trim();
     final contact = AppUserIdentity.sanitizeMobileNumber(_contactCtrl.text.trim());
     final email = _emailCtrl.text.trim();
-    final purok = _selectedPurok.trim();
+    final purok = _purokCtrl.text.trim();
     final userId = _initialUser['user_id']?.toString() ?? '';
     final token = _settings.authToken ?? '';
 
@@ -454,15 +372,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 },
               ),
 
-              // Purok / Address Dropdown
+              // Purok / Address Text Field
               Padding(
                 padding: const EdgeInsets.only(bottom: 20),
-                child: DropdownButtonFormField<String>(
-                  key: ValueKey('purok_$_selectedPurok'),
-                  initialValue: _purokOptions.contains(_selectedPurok) ? _selectedPurok : _purokOptions.first,
+                child: TextFormField(
+                  controller: _purokCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  maxLength: 50,
                   decoration: InputDecoration(
                     labelText: '${AppStrings.t('purok')} *',
-                    helperText: 'Select your assigned purok / area',
+                    hintText: 'e.g. Purok 1 or Area Name',
+                    helperText: 'Type your assigned purok / area (required, max 50 characters)',
                     helperStyle: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                     prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.primaryGreen, size: 20),
                     filled: true,
@@ -480,18 +400,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.6),
                     ),
+                    counterText: '',
                   ),
-                  items: _purokOptions
-                      .map((p) => DropdownMenuItem(
-                            value: p,
-                            child: Text(p, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
-                          ))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() => _selectedPurok = val);
-                      _checkForChanges();
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'Purok is required';
                     }
+                    if (val.trim().length > 50) {
+                      return 'Purok must not exceed 50 characters';
+                    }
+                    return null;
                   },
                 ),
               ),

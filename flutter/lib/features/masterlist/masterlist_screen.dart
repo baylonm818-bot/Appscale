@@ -226,11 +226,8 @@ class MasterlistScreenState extends State<MasterlistScreen> {
     return ValueListenableBuilder<int>(
       valueListenable: AppDataBus.version,
       builder: (context, value, childWidget) {
-        final childrenCount = _childRepo.getByBarangay(_currentBarangay).length;
-        final mothersCount = _motherRepo
-            .getAll()
-            .where((m) => m.barangay == _currentBarangay)
-            .length;
+        final childrenCount = _childRepo.countActive(_currentBarangay);
+        final mothersCount = _motherRepo.countActive(_currentBarangay);
 
         return Column(
           children: [

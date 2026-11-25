@@ -35,6 +35,11 @@ class MeasurementTile extends StatelessWidget {
       muacCm: measurement.muacCm,
     );
 
+    final isNeedsReMeasurement = !isPlausible ||
+        measurement.weightForAgeStatus == 'Needs re-measurement' ||
+        measurement.heightForAgeStatus == 'Needs re-measurement' ||
+        wastingLabel == 'Needs re-measurement';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -159,7 +164,7 @@ class MeasurementTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    if (!isPlausible) ...[
+                    if (isNeedsReMeasurement) ...[
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
@@ -198,34 +203,36 @@ class MeasurementTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                     ] else ...[
-                      // Three badges — weight-for-age, height-for-age, wasting
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          StatusBadge(
-                            label: measurement.weightForAgeStatus,
-                            color: ChildStatusMeta.colorFor(
-                              measurement.weightForAgeStatus,
+                      // Deduplicated badges
+                      Builder(builder: (context) {
+                        final badges = <String>[];
+                        for (final b in [
+                          measurement.weightForAgeStatus,
+                          measurement.heightForAgeStatus,
+                          wastingLabel,
+                        ]) {
+                          if (b.isNotEmpty && !badges.contains(b)) {
+                            badges.add(b);
+                          }
+                        }
+                        return Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            ...badges.map(
+                              (b) => StatusBadge(
+                                label: b,
+                                color: ChildStatusMeta.colorFor(b),
+                              ),
                             ),
-                          ),
-                          StatusBadge(
-                            label: measurement.heightForAgeStatus,
-                            color: ChildStatusMeta.colorFor(
-                              measurement.heightForAgeStatus,
-                            ),
-                          ),
-                          StatusBadge(
-                            label: wastingLabel,
-                            color: ChildStatusMeta.colorFor(wastingLabel),
-                          ),
-                          if (measurement.bilateralPittingEdema)
-                            const StatusBadge(
-                              label: 'Edema',
-                              color: AppColors.statRed,
-                            ),
-                        ],
-                      ),
+                            if (measurement.bilateralPittingEdema)
+                              const StatusBadge(
+                                label: 'Edema',
+                                color: AppColors.statRed,
+                              ),
+                          ],
+                        );
+                      }),
                     ],
                     const SizedBox(height: 10),
                     const Divider(height: 1, color: AppColors.border),
@@ -244,12 +251,13 @@ class MeasurementTile extends StatelessWidget {
                           label: 'Height',
                           value: '${measurement.heightCm} cm',
                         ),
-                        _MetricItem(
-                          icon: Icons.calculate_outlined,
-                          iconColor: AppColors.primaryGreen,
-                          label: 'BMI',
-                          value: isPlausible ? '${measurement.bmi}' : '—',
-                        ),
+                        if ((measurement.ageInMonths ?? 0) >= 24)
+                          _MetricItem(
+                            icon: Icons.calculate_outlined,
+                            iconColor: AppColors.primaryGreen,
+                            label: 'BMI',
+                            value: isPlausible ? '${measurement.bmi}' : '—',
+                          ),
                         _MetricItem(
                           icon: Icons.favorite_outline,
                           iconColor: const Color(0xFFCC2E6D),

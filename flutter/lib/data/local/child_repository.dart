@@ -102,6 +102,8 @@ class ChildRepository {
     map['_transferPending'] = true;
     map['pendingTargetBarangay'] = targetBarangay;
     map['_pendingTargetBarangay'] = targetBarangay;
+    map['isActive'] = false;
+    map['status'] = 'inactive';
     map['inactiveReason'] = reason;
     map['inactiveDate'] = transferDate.toIso8601String();
     map['alsoTransferLinked'] = alsoTransferLinked;
@@ -118,6 +120,8 @@ class ChildRepository {
         mMap['_transferPending'] = true;
         mMap['pendingTargetBarangay'] = targetBarangay;
         mMap['_pendingTargetBarangay'] = targetBarangay;
+        mMap['isActive'] = false;
+        mMap['status'] = 'inactive';
         mMap['inactiveReason'] = 'Transferred with child';
         mMap['inactiveDate'] = transferDate.toIso8601String();
         mMap['_syncStatus'] = 'pending';
@@ -244,25 +248,45 @@ class ChildRepository {
   /// {barangay code}-{year}-{running count, zero-padded}
   /// Generates the next number from the highest existing one for this barangay
   /// and year, including pending Hive records.
-  String generateSequenceNo({required String barangayCode}) {
+  String generateSequenceNo({required String barangayCode, String? barangay}) {
     final year = DateTime.now().year;
-    final prefix = '${barangayCode.toUpperCase()}-$year-';
+    final bCode = barangayCode.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toUpperCase();
+    final cleanCode = bCode.length >= 3 ? bCode.substring(0, 3) : (bCode.isNotEmpty ? bCode : 'GAS');
+    final prefix = '$cleanCode-$year-';
     int highestNum = 0;
 
     for (final raw in _box.values) {
       if (raw is! Map) continue;
-      final seq = (raw['sequenceNo'] ?? '').toString().trim();
-      if (seq.toUpperCase().startsWith(prefix)) {
+      final seq = (raw['sequenceNo'] ?? raw['sequence_no'] ?? '').toString().trim().toUpperCase();
+      if (seq.startsWith(prefix)) {
         final suffix = seq.substring(prefix.length).trim();
         final numPart = int.tryParse(suffix);
         if (numPart != null && numPart > highestNum) {
           highestNum = numPart;
         }
+      } else if (barangay != null && barangay.isNotEmpty) {
+        final childBgy = (raw['barangay'] ?? '').toString().trim().toLowerCase();
+        if (childBgy == barangay.trim().toLowerCase()) {
+          final match = RegExp(r'(\d+)$').firstMatch(seq);
+          if (match != null) {
+            final numPart = int.tryParse(match.group(1)!);
+            if (numPart != null && numPart > highestNum && numPart < 10000) {
+              highestNum = numPart;
+            }
+          }
+        }
+      }
+    }
+
+    if (barangay != null && barangay.isNotEmpty) {
+      final existingCount = getByBarangay(barangay).length;
+      if (existingCount > highestNum) {
+        highestNum = existingCount;
       }
     }
 
     final nextNumber = (highestNum + 1).toString().padLeft(3, '0');
-    return '$barangayCode-$year-$nextNumber';
+    return '$cleanCode-$year-$nextNumber';
   }
 
   static String generateId() => const Uuid().v4();
@@ -304,8 +328,10 @@ class ChildRepository {
     }).toList();
   }
 
-  int countActive(String barangay) =>
-      getByBarangay(barangay).where((c) => c.isActive).length;
+  List<Child> getActive(String barangay) =>
+      getByBarangay(barangay).where((c) => c.isActive).toList();
+
+  int countActive(String barangay) => getActive(barangay).length;
   int countInactive(String barangay) =>
       getByBarangay(barangay).where((c) => !c.isActive).length;
 

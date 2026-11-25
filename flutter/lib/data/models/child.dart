@@ -309,9 +309,13 @@ class Child {
           ? strVal('stuntingStatus', 'height_status')
           : 'Not weighed',
       lastWeighedAt: SafeParser.asDate(map['lastWeighedAt'] ?? map['last_visit']),
-      isActive: map['isActive'] != null
-          ? SafeParser.asNonNullBool(map['isActive'], true)
-          : (SafeParser.asString(map['status']) ?? 'active').toLowerCase() == 'active',
+      isActive: (map['inactiveReason'] != null &&
+              map['inactiveReason'].toString().trim().isNotEmpty &&
+              map['inactiveReason'].toString().toLowerCase() != 'none')
+          ? false
+          : (map['isActive'] != null
+              ? SafeParser.asNonNullBool(map['isActive'], true)
+              : (SafeParser.asString(map['status']) ?? 'active').toLowerCase() == 'active'),
       inactiveReason: SafeParser.asString(map['inactiveReason'] ?? map['inactive_reason']),
       inactiveDate: SafeParser.asDate(rawInactiveDate),
       isTransferPending:
