@@ -319,6 +319,17 @@ function Profile() {
   const [passwordErrors, setPasswordErrors] = useState({});
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
+  // Lock body scroll while password modal is open so background page stays fixed / hindi gumagalaw
+  useEffect(() => {
+    if (showPasswordModal) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [showPasswordModal]);
+
   const closePasswordModal = () => {
     setShowPasswordModal(false);
     setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
@@ -610,87 +621,84 @@ function Profile() {
       {/* ── Change Password Modal Popup ── */}
       {showPasswordModal && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-y-auto"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
           onClick={(e) => {
             if (e.target === e.currentTarget && !savingPassword) {
               closePasswordModal();
             }
           }}
         >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-linear-to-r from-green-50/50 to-emerald-50/30">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-800">
-                  <Lock size={15} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-gray-900">Change Password</h3>
-                  <p className="text-xs text-gray-500">Update your account credentials</p>
-                </div>
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Modal Header matching Schedule/UserManagement */}
+            <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-base font-bold text-white">Change Password</h2>
+                <p className="text-white/70 text-xs mt-0.5">Fill in your password details below</p>
               </div>
               <button
                 type="button"
                 onClick={closePasswordModal}
                 disabled={savingPassword}
-                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={submitPassword} noValidate className="p-6 space-y-4">
-              <FormRequiredNote />
+            <div className="overflow-y-auto flex-1 px-6 py-5">
+              <form onSubmit={submitPassword} noValidate className="space-y-4">
+                <FormRequiredNote />
 
-              {passwordMsg && (
-                <div className="bg-green-50 border border-green-200 text-green-700 text-xs rounded-xl px-3.5 py-2.5 font-medium">
-                  {passwordMsg}
-                </div>
-              )}
-              {passwordErr && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3.5 py-2.5">
-                  {passwordErr}
-                </div>
-              )}
+                {passwordMsg && (
+                  <div className="bg-green-50 border border-green-200 text-green-700 text-xs rounded-xl px-3.5 py-2.5 font-medium">
+                    {passwordMsg}
+                  </div>
+                )}
+                {passwordErr && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3.5 py-2.5">
+                    {passwordErr}
+                  </div>
+                )}
 
-              {[
-                { name: 'current_password', label: 'Current Password', placeholder: 'Enter your current password' },
-                { name: 'new_password',     label: 'New Password',     placeholder: 'Minimum 8 characters' },
-                { name: 'confirm_password', label: 'Confirm New Password', placeholder: 'Re-enter new password' },
-              ].map(({ name, label, placeholder }) => (
-                <div key={name}>
-                  <FormLabel label={label} required />
-                  <input
-                    name={name}
-                    type="password"
-                    placeholder={placeholder}
-                    value={passwordForm[name]}
-                    onChange={handlePasswordChange}
-                    className={`${inputCls} ${passwordErrors[name] ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
-                  />
-                  {passwordErrors[name] && <p className="text-xs text-[#D32F2F] mt-1">{passwordErrors[name]}</p>}
-                </div>
-              ))}
+                {[
+                  { name: 'current_password', label: 'Current Password', placeholder: 'Enter your current password' },
+                  { name: 'new_password',     label: 'New Password',     placeholder: 'Minimum 8 characters' },
+                  { name: 'confirm_password', label: 'Confirm New Password', placeholder: 'Re-enter new password' },
+                ].map(({ name, label, placeholder }) => (
+                  <div key={name}>
+                    <FormLabel label={label} required />
+                    <input
+                      name={name}
+                      type="password"
+                      placeholder={placeholder}
+                      value={passwordForm[name]}
+                      onChange={handlePasswordChange}
+                      className={`${inputCls} ${passwordErrors[name] ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+                    />
+                    {passwordErrors[name] && <p className="text-xs text-[#D32F2F] mt-1">{passwordErrors[name]}</p>}
+                  </div>
+                ))}
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 mt-5">
-                <button
-                  type="button"
-                  onClick={closePasswordModal}
-                  disabled={savingPassword}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingPassword}
-                  className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition disabled:opacity-60 shadow-sm cursor-pointer"
-                >
-                  {savingPassword ? 'Saving…' : 'Change Password'}
-                </button>
-              </div>
-            </form>
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 mt-5">
+                  <button
+                    type="button"
+                    onClick={closePasswordModal}
+                    disabled={savingPassword}
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingPassword}
+                    className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition disabled:opacity-60 shadow-sm cursor-pointer"
+                  >
+                    {savingPassword ? 'Saving…' : 'Change Password'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
