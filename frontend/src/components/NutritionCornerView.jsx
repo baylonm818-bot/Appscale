@@ -69,7 +69,7 @@ const MONTH_NAMES = [
 
 export default function NutritionCornerView({ role = 'admin', userBarangay = null }) {
   const isAdmin = role === 'admin';
-  const [activeTab, setActiveTab] = useState('consolidation'); // 'consolidation', 'monitoring', 'programs', 'laws'
+  const [activeTab, setActiveTab] = useState(() => (role === 'admin' ? 'consolidation' : 'monitoring')); // 'consolidation', 'monitoring', 'programs', 'laws'
 
   // Tab A State
   const [consolidationYear, setConsolidationYear] = useState(() => new Date().getFullYear());
@@ -201,11 +201,14 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
 
   // Trigger data load on tab changes
   useEffect(() => {
-    if (activeTab === 'consolidation') fetchConsolidation();
+    if (activeTab === 'consolidation') {
+      if (isAdmin) fetchConsolidation();
+      else setActiveTab('monitoring');
+    }
     else if (activeTab === 'monitoring') fetchMonitoring();
     else if (activeTab === 'programs') fetchPrograms();
     else if (activeTab === 'laws') fetchLaws();
-  }, [activeTab, fetchConsolidation, fetchMonitoring, fetchPrograms, fetchLaws]);
+  }, [activeTab, isAdmin, fetchConsolidation, fetchMonitoring, fetchPrograms, fetchLaws]);
 
   // ─────────────────────────────────────────────────────────────
   // Tab A: Chart Formatter Data
@@ -819,17 +822,19 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
 
       {/* Tabs Navigation */}
       <div className="flex border-b border-slate-200 overflow-x-auto gap-2 text-sm font-medium">
-        <button
-          onClick={() => setActiveTab('consolidation')}
-          className={`pb-3 px-4 flex items-center gap-2 border-b-2 transition whitespace-nowrap ${
-            activeTab === 'consolidation'
-              ? 'border-emerald-700 text-emerald-800 font-bold'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <Activity size={18} />
-          <span>Tab A: Consolidation of Nutritional Status</span>
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setActiveTab('consolidation')}
+            className={`pb-3 px-4 flex items-center gap-2 border-b-2 transition whitespace-nowrap ${
+              activeTab === 'consolidation'
+                ? 'border-emerald-700 text-emerald-800 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Activity size={18} />
+            <span>Tab A: Consolidation of Nutritional Status</span>
+          </button>
+        )}
 
         <button
           onClick={() => setActiveTab('monitoring')}
@@ -840,7 +845,7 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
           }`}
         >
           <Calendar size={18} />
-          <span>Tab B: BNS Monthly Weight Monitoring Chart</span>
+          <span>{isAdmin ? 'Tab B: BNS Monthly Weight Monitoring Chart' : 'BNS Monthly Weight Monitoring Chart'}</span>
         </button>
 
         <button
@@ -852,7 +857,7 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
           }`}
         >
           <Award size={18} />
-          <span>Tab C: Nutrition Programs</span>
+          <span>{isAdmin ? 'Tab C: Nutrition Programs' : 'Nutrition Programs'}</span>
         </button>
 
         <button
@@ -864,14 +869,14 @@ export default function NutritionCornerView({ role = 'admin', userBarangay = nul
           }`}
         >
           <BookOpen size={18} />
-          <span>Tab D: Laws & References</span>
+          <span>{isAdmin ? 'Tab D: Laws & References' : 'Laws & References'}</span>
         </button>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
           TAB A: CONSOLIDATION OF NUTRITIONAL STATUS
       ───────────────────────────────────────────────────────────── */}
-      {activeTab === 'consolidation' && (
+      {isAdmin && activeTab === 'consolidation' && (
         <div className="space-y-6">
           {/* Controls Bar */}
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
