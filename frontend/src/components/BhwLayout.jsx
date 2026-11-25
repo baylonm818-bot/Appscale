@@ -17,7 +17,6 @@ import {
   LogOut,
   Menu,
   X,
-  HeartPulse,
 } from 'lucide-react';
 
 const menuItems = [
@@ -25,7 +24,6 @@ const menuItems = [
   { name: 'Need Attention', path: '/bhw/need-attention', icon: AlertCircle },
   { name: 'Referrals', path: '/bhw/referrals', icon: AlertCircle },
   { name: 'Medical Records', path: '/bhw/medical-records', icon: FileText },
-  { name: 'Nutrition Corner', path: '/bhw/nutrition-corner', icon: HeartPulse },
   { name: 'Schedule', path: '/bhw/schedule', icon: Calendar },
   { name: 'My Profile', path: '/bhw/profile', icon: UserCircle },
 ];
@@ -221,12 +219,6 @@ function BHWLayout() {
       <div className="mb-1 px-4">
         <h2 className="text-xl font-bold text-gray-800">My Profile & Settings</h2>
         <p className="text-xs text-gray-400">Manage account information and security</p>
-      </div>
-    ),
-    '/bhw/nutrition-corner': (
-      <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Nutrition Corner</h2>
-        <p className="text-xs text-gray-400">Monthly weight monitoring, programs & statutory references</p>
       </div>
     ),
   };

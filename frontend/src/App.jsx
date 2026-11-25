@@ -17,9 +17,7 @@ import Signatories from './admin/Signatories';
 // Step 9: Admin-only system logs
 import SystemLogs from './admin/SystemLogs';
 import PurokManagement from './admin/PurokManagement';
-import NutritionCorner from './admin/NutritionCorner';
 
-import BHWNutritionCorner from './bhw/NutritionCorner';
 import BHWSchedule from './bhw/Schedule';
 import BHWProfile from './bhw/Profile';
 import NotFound from './pages/NotFound';
@@ -120,7 +118,6 @@ function App() {
             <Route path="dashboard"     element={<Dashboard />} />
             <Route path="users"         element={<UserManagement />} />
             <Route path="masterlist"    element={<Masterlist />} />
-            <Route path="nutrition-corner" element={<NutritionCorner />} />
             <Route path="schedule"      element={<Schedule />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="profile"       element={<Profile />} />
@@ -144,7 +141,6 @@ function App() {
             <Route path="need-attention" element={<BHWNeedAttention />} />
             <Route path="referrals" element={<BHWReferrals />} />
             <Route path="medical-records" element={<BHWMedicalRecords />} />
-            <Route path="nutrition-corner" element={<BHWNutritionCorner />} />
             <Route path="schedule" element={<BHWSchedule />} />
             <Route path="notifications" element={<BHWNotifications />} />
             <Route path="profile" element={<BHWProfile />} />

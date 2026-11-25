@@ -18,14 +18,12 @@ import {
   X,
   Shield,
   PenLine,
-  HeartPulse,
 } from 'lucide-react';
 
 const menuItems = [
   { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'User Management', path: '/admin/users', icon: Users },
   { name: 'Master List', path: '/admin/masterlist', icon: ClipboardList },
-  { name: 'Nutrition Corner', path: '/admin/nutrition-corner', icon: HeartPulse },
   { name: 'Schedule', path: '/admin/schedule', icon: Calendar },
   { name: 'System Logs', path: '/admin/system-logs', icon: Shield },
   { name: 'Signatories', path: '/admin/signatories', icon: PenLine },
@@ -190,12 +188,6 @@ function AdminLayout() {
       <div className="mb-1 px-4">
         <h2 className="text-xl font-bold text-gray-800">Report Signatories</h2>
         <p className="text-xs text-gray-400">Configure who signs official municipality reports</p>
-      </div>
-    ),
-    '/admin/nutrition-corner': (
-      <div className="mb-1 px-4">
-        <h2 className="text-xl font-bold text-gray-800">Nutrition Corner</h2>
-        <p className="text-xs text-gray-400">Nutritional status consolidation, monthly weight monitoring, programs & statutory references</p>
       </div>
     ),
   };
