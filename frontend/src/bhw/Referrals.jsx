@@ -409,7 +409,7 @@ function Referrals() {
       )}
 
       {/* ── Summary Stat Cards (1 single line on desktop/laptop) ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-6 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-5 gap-2.5 sm:gap-3">
         <SummaryCard
           icon={Layers}
           label="All Referrals"
@@ -425,14 +425,6 @@ function Referrals() {
           sublabel="Awaiting action"
           isActive={statusFilter === 'Pending'}
           onClick={() => handleSelectStatusFilter('Pending')}
-        />
-        <SummaryCard
-          icon={CheckCircle}
-          label="Received"
-          value={receivedCount}
-          sublabel="Acknowledged"
-          isActive={statusFilter === 'Received'}
-          onClick={() => handleSelectStatusFilter('Received')}
         />
         <SummaryCard
           icon={RotateCcw}
@@ -694,7 +686,7 @@ function Referrals() {
                   </select>
                 </div>
 
-                {(newStatus === 'Ongoing' || newStatus === 'Completed') && (
+                {newStatus === 'Completed' && (
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
