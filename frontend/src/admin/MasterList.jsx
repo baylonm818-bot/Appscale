@@ -692,18 +692,6 @@ function Masterlist() {
 
             {/* Filter Dropdowns */}
             <div className="flex flex-wrap items-center gap-2.5">
-              {/* Type Filter */}
-              <CustomSelect
-                value={typeFilter}
-                onChange={setTypeFilter}
-                options={[
-                  { value: 'child', label: 'Children Only' },
-                  { value: 'mother', label: 'Mothers Only' },
-                  { value: 'all', label: 'All Beneficiaries' },
-                ]}
-                placeholder="Beneficiary Type"
-              />
-
               {/* Barangay Filter */}
               <CustomSelect
                 value={barangayFilter}
