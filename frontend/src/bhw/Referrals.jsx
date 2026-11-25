@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
 import { Search, X, CheckCircle2, CheckCircle, Clock, AlertCircle, Plus, Heart, Layers, RotateCcw, Archive } from 'lucide-react';
@@ -89,6 +88,17 @@ function Referrals() {
     const timer = setTimeout(() => setToastMessage(null), 3500);
     return () => clearTimeout(timer);
   }, [toastMessage]);
+
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (actionTarget || archiveConfirm || showReferMotherModal) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [actionTarget, archiveConfirm, showReferMotherModal]);
 
   // update status modal
   const [actionTarget, setActionTarget] = useState(null);
@@ -643,13 +653,13 @@ function Referrals() {
       </div>
 
       <AnimatePresence>
-        {actionTarget && createPortal(
+        {actionTarget && (
           <motion.div
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
             onClick={() => setActionTarget(null)}
           >
             <motion.div
@@ -744,19 +754,19 @@ function Referrals() {
                 <button type="button" disabled={actionSubmitting} onClick={submitStatusUpdate} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-60">{actionSubmitting ? 'Saving…' : 'Save'}</button>
               </div>
             </motion.div>
-          </motion.div>, document.body
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* Confirmation Modal for Archiving / Unarchiving */}
       <AnimatePresence>
-        {archiveConfirm && createPortal(
+        {archiveConfirm && (
           <motion.div
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4"
             onClick={() => setArchiveConfirm(null)}
           >
             <motion.div
@@ -802,19 +812,19 @@ function Referrals() {
                 </button>
               </div>
             </motion.div>
-          </motion.div>, document.body
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* ── Refer Mother Modal ── */}
       <AnimatePresence>
-        {showReferMotherModal && createPortal(
+        {showReferMotherModal && (
           <motion.div
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
             onClick={(e) => { if (e.target === e.currentTarget) setShowReferMotherModal(false); }}
           >
             <motion.div
@@ -940,20 +950,19 @@ function Referrals() {
                 </div>
               </form>
             </motion.div>
-          </motion.div>,
-          document.body
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* Styled feedback toast notification */}
-      {toastMessage && createPortal(
-        <div className="fixed bottom-5 right-5 z-9999 flex items-center gap-2.5 bg-gray-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-gray-800 text-xs font-medium animate-in slide-in-from-bottom-2 duration-200">
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-[9999] flex items-center gap-2.5 bg-gray-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-gray-800 text-xs font-medium animate-in slide-in-from-bottom-2 duration-200">
           <span className={`w-2 h-2 rounded-full ${toastMessage.type === 'error' ? 'bg-red-400' : 'bg-green-400'}`} />
           <span>{toastMessage.text}</span>
-          <button onClick={() => setToastMessage(null)} className="ml-2 text-gray-400 hover:text-white">
+          <button onClick={() => setToastMessage(null)} className="ml-2 text-gray-400 hover:text-white cursor-pointer">
             <X size={14} />
           </button>
-        </div>, document.body
+        </div>
       )}
     </main>
   );
