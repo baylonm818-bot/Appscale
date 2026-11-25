@@ -483,54 +483,25 @@ function Profile() {
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePictureChange} className="hidden" />
             </div>
 
-            {/* Current Role badge on the right */}
-            <div className="text-right">
-              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">Current role</span>
-              <span className="bg-emerald-50 text-emerald-800 text-xs font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider border border-emerald-200 shadow-xs">
-                {profile?.role || user?.role || 'Admin'}
-              </span>
-            </div>
+            {/* Role badge */}
+            <span className="bg-green-100 text-green-800 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide shadow-xs">
+              {profile?.role || user?.role || 'Admin'}
+            </span>
           </div>
 
           {/* User Name, Title & Location Row */}
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                {(profile?.first_name || profile?.last_name)
-                  ? `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
-                  : (user?.full_name || user?.name || user?.username || 'Camille Cadag')}
-              </h2>
-              <p className="text-xs sm:text-sm font-semibold text-[#1b5e20] mt-0.5">
-                {profile?.role === 'Admin' ? 'Municipal Nutrition Action Officer (MNAO)' : (profile?.role || 'Health Worker')}
-              </p>
-              <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-gray-500">
-                <span className="flex items-center gap-1 font-medium text-gray-700">
-                  <MapPin size={12} className="text-emerald-700" />
-                  {profile?.barangay || user?.barangay || 'Dawis'}, {profile?.municipality || user?.municipality || 'Gasan'}, Marinduque
-                </span>
-                <span className="text-gray-300">•</span>
-                <span className="flex items-center gap-1">
-                  <Mail size={12} className="text-gray-400" />
-                  {profile?.email || user?.email || 'coders319@gmail.com'}
-                </span>
-              </div>
-            </div>
-
-            {/* Scope Badges on right */}
-            <div className="flex flex-wrap items-center sm:justify-end gap-1.5">
-              <span className="bg-gray-100 text-gray-700 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-gray-200">
-                {profile?.barangay || user?.barangay || 'Dawis'}
-              </span>
-              <span className="bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-emerald-200">
-                Gasan RHU
-              </span>
-              <span className="bg-teal-50 text-teal-800 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-teal-200">
-                Nutrition Office
-              </span>
-              <span className="bg-green-50 text-green-800 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-green-200">
-                Full Privileges
-              </span>
-            </div>
+          <div>
+            <h2 className="text-xl font-black text-gray-900">
+              {(profile?.first_name || profile?.last_name)
+                ? `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
+                : (user?.full_name || user?.name || user?.username || 'Camille Cadag')}
+            </h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {profile?.email || user?.email || 'coders319@gmail.com'}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {profile?.barangay || user?.barangay || 'Dawis'}{profile?.municipality || user?.municipality ? `, ${profile?.municipality || user?.municipality}` : ', Gasan'}
+            </p>
           </div>
 
           {picError && <p className="text-xs text-red-600 mt-3">{picError}</p>}
