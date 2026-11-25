@@ -1,5 +1,15 @@
 const pool = require('../config/db');
 
+// Official 25 barangays of the Municipality of Gasan
+const GASAN_BARANGAYS = [
+  'Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang',
+  'Banot', 'Banuyo', 'Bognuyan', 'Cabugao', 'Dawis', 'Dili', 'Libtangin',
+  'Mahunig', 'Mangiliol', 'Masiga', 'Mat. Gasan', 'Pangi', 'Pinggan',
+  'Tabionan', 'Tiguion', 'Brgy. Uno', 'Brgy. Dos', 'Brgy. Tres', 'Tapuyan',
+];
+
+const gasanBarangaysSqlList = GASAN_BARANGAYS.map((b) => `'${b}'`).join(', ');
+
 exports.getAdminStats = async (req, res) => {
   try {
     const range = req.query.range || '3Months';
@@ -18,10 +28,10 @@ exports.getAdminStats = async (req, res) => {
       return Number(cnt) > 0;
     };
 
-    // Filters to exclude test data
-    const notTestBarangay = "c.barangay IS NOT NULL AND TRIM(c.barangay) <> '' AND LOWER(c.barangay) NOT LIKE '%test%'";
-    const notTestChild = "c.status = 'active' AND (c.barangay IS NULL OR LOWER(c.barangay) NOT LIKE '%test%') AND LOWER(c.first_name) NOT LIKE '%test%' AND LOWER(c.last_name) NOT LIKE '%test%'";
-    const notTestMother = "status = 'active' AND (barangay IS NULL OR LOWER(barangay) NOT LIKE '%test%') AND LOWER(first_name) NOT LIKE '%test%' AND LOWER(last_name) NOT LIKE '%test%'";
+    // Filters to exclude test data and non-Gasan municipalities
+    const notTestBarangay = `c.barangay IS NOT NULL AND c.barangay IN (${gasanBarangaysSqlList})`;
+    const notTestChild = `c.status = 'active' AND (c.barangay IS NULL OR c.barangay IN (${gasanBarangaysSqlList})) AND LOWER(c.first_name) NOT LIKE '%test%' AND LOWER(c.last_name) NOT LIKE '%test%'`;
+    const notTestMother = `status = 'active' AND (barangay IS NULL OR barangay IN (${gasanBarangaysSqlList})) AND LOWER(first_name) NOT LIKE '%test%' AND LOWER(last_name) NOT LIKE '%test%'`;
 
     const [[{ totalChildren }]] = await pool.query(
       `SELECT COUNT(*) AS totalChildren FROM children c WHERE ${notTestChild}`
@@ -102,7 +112,9 @@ exports.getAdminStats = async (req, res) => {
     );
     const barangayCasesMap = {};
     allBarangaysRows.forEach((b) => {
-      if (b.barangay) barangayCasesMap[b.barangay] = 0;
+      if (b.barangay && GASAN_BARANGAYS.includes(b.barangay)) {
+        barangayCasesMap[b.barangay] = 0;
+      }
     });
 
     // Classify each child into a single primary nutrition status so the sum exactly matches total active children
@@ -112,7 +124,7 @@ exports.getAdminStats = async (req, res) => {
 
       // Malnutrition case if not normal and not no_assessment
       const isMalnutrition = category !== 'normal' && category !== 'no_assessment';
-      if (isMalnutrition && row.barangay && barangayCasesMap[row.barangay] !== undefined) {
+      if (isMalnutrition && row.barangay && GASAN_BARANGAYS.includes(row.barangay) && barangayCasesMap[row.barangay] !== undefined) {
         barangayCasesMap[row.barangay]++;
       }
     });

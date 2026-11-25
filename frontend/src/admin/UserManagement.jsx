@@ -460,10 +460,16 @@ function UserManagement() {
         </div>
 
         {/* User Count bar */}
-        <div className="px-6 py-3 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-6 py-3 bg-gray-50/60 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
             {filteredUsers.length} {showArchive ? 'archived' : 'active'} {activeTab === 'all' ? 'accounts' : activeTab.toUpperCase() + ' accounts'}
           </p>
+          {showArchive && (
+            <p className="text-[11px] text-amber-800 bg-amber-50/90 border border-amber-200/80 px-3 py-1 rounded-full font-medium flex items-center gap-1.5 shadow-2xs">
+              <span>🕒</span>
+              <span><strong>3-Year Data Retention:</strong> Archived accounts are preserved for 3 years before automated permanent deletion.</span>
+            </p>
+          )}
         </div>
 
         {/* Table */}
