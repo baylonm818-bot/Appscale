@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../components/AuthContext';
-import { Calendar, Clock, CheckCircle2, Archive, Search, X, ChevronLeft, ChevronRight, Plus, Sparkles, ArrowRight, FileText, Download, Printer } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, Archive, Search, X, ChevronLeft, ChevronRight, Plus, Sparkles, ArrowRight, FileText, Download, Printer, Users } from 'lucide-react';
 import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
 import ClockTimePicker from '../components/ui/ClockTimePicker';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -180,9 +180,19 @@ function ActivityRow({ activity, isNext, onComplete, onArchive, onAudit }) {
   );
 }
 
+const ACTIVITY_TYPE_LABELS = {
+  feeding: 'Feeding Program',
+  weighing: 'Operation Timbang / Weighing',
+  home_visit: 'Home Visit',
+  immunization: 'Immunization / Checkup',
+  checkup: 'General Health Consultation',
+  other: 'Other Activity',
+};
+
 const emptyForm = {
   title: '',
   schedule_type: 'feeding',
+  custom_title: '',
   schedule_date: '',
   schedule_time: '',
   venue: '',
@@ -281,14 +291,6 @@ function Schedule() {
     }
   };
 
-  const handleParticipantToggle = (id) => {
-    setForm((prev) => {
-      const current = prev.participant_ids || [];
-      const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
-      return { ...prev, participant_ids: next };
-    });
-  };
-
   useEffect(() => {
     fetchActivities();
   }, []);
@@ -316,8 +318,15 @@ function Schedule() {
     e.preventDefault();
     setFormError('');
 
+    const resolvedTitle =
+      form.schedule_type === 'other'
+        ? (form.custom_title || '').trim()
+        : ACTIVITY_TYPE_LABELS[form.schedule_type] || 'Barangay Activity';
+
     const errs = {};
-    if (!form.title?.trim()) errs.title = 'This field is required';
+    if (form.schedule_type === 'other' && !resolvedTitle) {
+      errs.custom_title = 'Ilagay kung anong schedule o aktibidad.';
+    }
     if (!form.schedule_date) errs.schedule_date = 'This field is required';
     if (!form.venue?.trim()) errs.venue = 'Venue is required';
 
@@ -336,9 +345,17 @@ function Schedule() {
 
     setSchedErrors({});
     setSaving(true);
+
+    // Automatic participants: include all active workers in user's barangay
+    const autoParticipantIds = users
+      .filter((u) => !user.barangay || u.barangay === user.barangay)
+      .map((u) => String(u.user_id));
+
     try {
       await axiosClient.post('/bhw/schedule', {
         ...form,
+        title: resolvedTitle,
+        participant_ids: autoParticipantIds,
         barangay: user.barangay,
       });
       setShowModal(false);
@@ -882,28 +899,18 @@ function Schedule() {
                       <FormRequiredNote />
 
                       <div>
-                        <FormLabel label="Activity Title" required />
-                        <input
-                          name="title"
-                          type="text"
-                          placeholder="e.g. Supplemental Feeding Session"
-                          value={form.title}
-                          onChange={(e) => {
-                            setForm({ ...form, title: capitalizeWords(e.target.value) });
-                            if (schedErrors.title) setSchedErrors((prev) => ({ ...prev, title: '' }));
-                          }}
-                          className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
-                            schedErrors.title ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : 'border-gray-200 focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100'
-                          }`}
-                        />
-                        {schedErrors.title && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.title}</p>}
-                      </div>
-
-                      <div>
-                        <FormLabel label="Activity Type" />
+                        <FormLabel label="Activity Type" required />
                         <select
                           value={form.schedule_type}
-                          onChange={(e) => setForm({ ...form, schedule_type: e.target.value })}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setForm({
+                              ...form,
+                              schedule_type: val,
+                              title: val === 'other' ? (form.custom_title || '') : ACTIVITY_TYPE_LABELS[val] || val,
+                            });
+                            if (schedErrors.custom_title) setSchedErrors((prev) => ({ ...prev, custom_title: '' }));
+                          }}
                           className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
                         >
                           <option value="feeding">Feeding Program</option>
@@ -911,8 +918,33 @@ function Schedule() {
                           <option value="home_visit">Home Visit</option>
                           <option value="immunization">Immunization / Checkup</option>
                           <option value="checkup">General Health Consultation</option>
+                          <option value="other">Other Activity</option>
                         </select>
                       </div>
+
+                      {/* If Other is selected, show input to type what the schedule is */}
+                      {form.schedule_type === 'other' && (
+                        <div>
+                          <FormLabel label="Specify Activity / Schedule Name" required />
+                          <input
+                            name="custom_title"
+                            type="text"
+                            placeholder="e.g. Health Education & Family Planning Session"
+                            value={form.custom_title || ''}
+                            onChange={(e) => {
+                              const val = capitalizeWords(e.target.value);
+                              setForm({ ...form, custom_title: val, title: val });
+                              if (schedErrors.custom_title) setSchedErrors((prev) => ({ ...prev, custom_title: '' }));
+                            }}
+                            className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition ${
+                              schedErrors.custom_title
+                                ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]'
+                                : 'border-gray-200 focus:border-[#2e7d32] focus:ring-2 focus:ring-green-100'
+                            }`}
+                          />
+                          {schedErrors.custom_title && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.custom_title}</p>}
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -972,36 +1004,19 @@ function Schedule() {
                         />
                       </div>
 
-                      {/* Multi-participant selection */}
-                      {users.length > 0 && (
-                        <div>
-                          <FormLabel label="Participants / Co-workers (Optional)" />
-                          <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100 bg-gray-50">
-                            {users.map((u) => {
-                              const uid = String(u.user_id);
-                              const checked = (form.participant_ids || []).includes(uid);
-                              return (
-                                <label key={uid} className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-green-50 transition ${checked ? 'bg-emerald-50' : ''}`}>
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => handleParticipantToggle(uid)}
-                                    className="accent-emerald-700 w-4 h-4 shrink-0 cursor-pointer"
-                                  />
-                                  <span className="text-xs font-medium text-gray-700 truncate">
-                                    {u.first_name} {u.last_name} <span className="text-gray-400 uppercase">({u.role})</span> — {u.barangay}
-                                  </span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                          {(form.participant_ids || []).length > 0 && (
-                            <p className="text-xs text-emerald-700 font-semibold mt-1">
-                              {form.participant_ids.length} participant(s) selected
+                      {/* Automatic Participants Card */}
+                      <div>
+                        <FormLabel label="Participants / Visibility" />
+                        <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-start gap-2.5 text-xs text-emerald-900">
+                          <Users size={16} className="text-[#2e7d32] shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold">Awtomatikong Lahat ng Ka-barangay</p>
+                            <p className="text-[11px] text-emerald-700 mt-0.5 leading-relaxed">
+                              Awtomatikong makikita at makakasama sa iskedyul ang lahat ng health workers at residente sa <strong>Barangay {user?.barangay || 'Antipolo'}</strong>.
                             </p>
-                          )}
+                          </div>
                         </div>
-                      )}
+                      </div>
 
                       <div>
                         <FormLabel label="Notes" />
