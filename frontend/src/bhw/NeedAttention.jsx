@@ -144,9 +144,13 @@ function NeedAttention() {
         const db = daysSince(b.last_visit) ?? -1;
         return db - da;
       });
-    } else if (sortBy === 'name') {
+    } else if (sortBy === 'name' || sortBy === 'child_asc') {
       list.sort((a, b) =>
         `${a.first_name || ''} ${a.last_name || ''}`.localeCompare(`${b.first_name || ''} ${b.last_name || ''}`)
+      );
+    } else if (sortBy === 'guardian_asc' || sortBy === 'mother' || sortBy === 'mother_asc') {
+      list.sort((a, b) =>
+        (a.guardian_name || '').localeCompare(b.guardian_name || '')
       );
     }
 
@@ -336,7 +340,8 @@ function NeedAttention() {
             >
               <option value="priority">Sort: Severity Priority</option>
               <option value="overdue">Sort: Most Overdue</option>
-              <option value="name">Sort: Name (A–Z)</option>
+              <option value="child_asc">Sort: Bata (A–Z)</option>
+              <option value="guardian_asc">Sort: Nanay / Guardian (A–Z)</option>
             </select>
           </div>
         </div>
@@ -391,9 +396,13 @@ function NeedAttention() {
                           <div className="shrink-0 w-9 h-9 rounded-full bg-linear-to-br from-amber-400 to-red-500 flex items-center justify-center text-white text-xs font-bold shadow-xs">
                             {(c.first_name ?? '?').charAt(0).toUpperCase()}
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-gray-900 truncate">{c.first_name} {c.last_name}</p>
-                            <p className="text-xs text-gray-400 truncate">Guardian: {c.guardian_name || '—'}</p>
+                          <div className="min-w-0 max-w-[210px]">
+                            <p className="font-bold text-gray-900 truncate" title={`${c.first_name} ${c.last_name}`}>
+                              {c.first_name} {c.last_name}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate" title={c.guardian_name || 'Walang nakatalang guardian'}>
+                              <span className="text-gray-400 font-medium">Nanay:</span> {c.guardian_name || '—'}
+                            </p>
                           </div>
                         </div>
                       </td>
