@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../components/AuthContext';
-import { Calendar, Clock, CheckCircle2, Archive, Search, X, ChevronLeft, ChevronRight, Plus, Sparkles, ArrowRight, FileText, Download, Printer, Users } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, Archive, Search, X, ChevronLeft, ChevronRight, Plus, Sparkles, ArrowRight, FileText, Download, Printer } from 'lucide-react';
 import FormLabel, { FormRequiredNote } from '../components/ui/FormLabel';
 import ClockTimePicker from '../components/ui/ClockTimePicker';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1002,20 +1002,6 @@ function Schedule() {
                           onChange={(e) => setForm({ ...form, facilitator: e.target.value })}
                           className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32]"
                         />
-                      </div>
-
-                      {/* Automatic Participants Card */}
-                      <div>
-                        <FormLabel label="Participants / Visibility" />
-                        <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-start gap-2.5 text-xs text-emerald-900">
-                          <Users size={16} className="text-[#2e7d32] shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-bold">Awtomatikong Lahat ng Ka-barangay</p>
-                            <p className="text-[11px] text-emerald-700 mt-0.5 leading-relaxed">
-                              Awtomatikong makikita at makakasama sa iskedyul ang lahat ng health workers at residente sa <strong>Barangay {user?.barangay || 'Antipolo'}</strong>.
-                            </p>
-                          </div>
-                        </div>
                       </div>
 
                       <div>
