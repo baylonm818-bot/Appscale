@@ -41,6 +41,13 @@ const serviceOptions = [
   { value: 'checkup', label: 'General Health Checkup' },
 ];
 
+const motherServiceOptions = [
+  { value: 'counseling', label: 'Maternal Nutrition & Infant Care Counseling' },
+  { value: 'supplement', label: 'Iron & Folic Acid / Micronutrient Supplement' },
+  { value: 'medication', label: 'Prescribed Medication / Treatment' },
+  { value: 'checkup', label: 'Postnatal / Maternal Health Checkup' },
+];
+
 function daysSince(dateStr) {
   if (!dateStr) return null;
   const diffMs = new Date() - new Date(dateStr);
@@ -52,6 +59,7 @@ function NeedAttention() {
 
   // filters
   const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'child' | 'mother'
   const [statusFilter, setStatusFilter] = useState('all');
   const [ageFilter, setAgeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('priority');
@@ -106,16 +114,23 @@ function NeedAttention() {
 
   const children = useMemo(() => (Array.isArray(data) ? data : []), [data]);
   const loading = isLoading && !data;
-  const error = queryError ? (queryError.response?.data?.message || 'Failed to load children list.') : '';
+  const error = queryError ? (queryError.response?.data?.message || 'Failed to load list.') : '';
 
   const filteredChildren = useMemo(() => {
     let list = [...children];
+
+    if (typeFilter === 'child') {
+      list = list.filter((c) => (c.beneficiary_type || 'child') === 'child');
+    } else if (typeFilter === 'mother') {
+      list = list.filter((c) => c.beneficiary_type === 'mother');
+    }
 
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter((c) =>
         `${c.first_name || ''} ${c.last_name || ''}`.toLowerCase().includes(q) ||
         (c.guardian_name || '').toLowerCase().includes(q) ||
+        (c.guardian_contact || '').toLowerCase().includes(q) ||
         (c.barangay || '').toLowerCase().includes(q)
       );
     }
@@ -126,6 +141,7 @@ function NeedAttention() {
 
     if (ageFilter !== 'all') {
       list = list.filter((c) => {
+        if (c.beneficiary_type === 'mother') return true;
         if (ageFilter === '0-23') return c.age_in_months >= 0 && c.age_in_months <= 23;
         if (ageFilter === '24-59') return c.age_in_months >= 24 && c.age_in_months <= 59;
         return true;
@@ -144,28 +160,24 @@ function NeedAttention() {
         const db = daysSince(b.last_visit) ?? -1;
         return db - da;
       });
-    } else if (sortBy === 'name' || sortBy === 'child_asc') {
+    } else if (sortBy === 'name') {
       list.sort((a, b) =>
         `${a.first_name || ''} ${a.last_name || ''}`.localeCompare(`${b.first_name || ''} ${b.last_name || ''}`)
-      );
-    } else if (sortBy === 'guardian_asc' || sortBy === 'mother' || sortBy === 'mother_asc') {
-      list.sort((a, b) =>
-        (a.guardian_name || '').localeCompare(b.guardian_name || '')
       );
     }
 
     return list;
-  }, [children, search, statusFilter, ageFilter, sortBy]);
+  }, [children, typeFilter, search, statusFilter, ageFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredChildren.length / pageSize));
   const pagedChildren = filteredChildren.slice((page - 1) * pageSize, page * pageSize);
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, ageFilter, sortBy]);
+  }, [search, typeFilter, statusFilter, ageFilter, sortBy]);
 
-  const openVisitModal = (child) => {
-    setVisitTarget(child);
+  const openVisitModal = (target) => {
+    setVisitTarget(target);
     setVisitDate(new Date().toISOString().slice(0, 10));
     setSelectedServices([]);
     setVisitNotes('');
@@ -183,27 +195,49 @@ function NeedAttention() {
         setVisitSubmitting(false);
         return;
       }
-      const age = visitTarget.age_in_months ?? 0;
-      // Vitamin A not for <6 months
-      if (selectedServices.includes('vitamin_a') && age < 6) {
-        setVisitError('Vitamin A supplementation is not indicated for infants under 6 months.');
-        setVisitSubmitting(false);
-        return;
+
+      if (visitTarget.beneficiary_type === 'mother') {
+        const motherConfig = {
+          counseling: { type: 'Maternal Counseling', name: 'Proper Infant Care & Nutrition' },
+          supplement: { type: 'Supplement', name: 'Iron & Folic Acid Supplementation' },
+          medication: { type: 'Medication', name: 'Prescribed Health Medication' },
+          checkup: { type: 'General Checkup', name: 'Postnatal / Maternal Health Checkup' },
+        };
+
+        for (const s of selectedServices) {
+          const cfg = motherConfig[s] || { type: 'Maternal Counseling', name: 'Maternal Health Service' };
+          await axiosClient.post('/bhw/medical-records/mother-services', {
+            mother_id: visitTarget.mother_id,
+            service_type: cfg.type,
+            service_name: cfg.name,
+            service_date: visitDate,
+            notes: visitNotes || null,
+          });
+        }
+      } else {
+        const age = visitTarget.age_in_months ?? 0;
+        // Vitamin A not for <6 months
+        if (selectedServices.includes('vitamin_a') && age < 6) {
+          setVisitError('Vitamin A supplementation is not indicated for infants under 6 months.');
+          setVisitSubmitting(false);
+          return;
+        }
+        // Deworming not for <12 months
+        if (selectedServices.includes('deworming') && age < 12) {
+          setVisitError('Deworming tablets are not indicated for infants under 12 months.');
+          setVisitSubmitting(false);
+          return;
+        }
+        await axiosClient.post('/bhw/need-attention/child-services', {
+          child_id: visitTarget.child_id,
+          service_date: visitDate,
+          service_types: selectedServices,
+          service_type: selectedServices[0],
+          provided_by: user.user_id,
+          notes: visitNotes,
+        });
       }
-      // Deworming not for <12 months
-      if (selectedServices.includes('deworming') && age < 12) {
-        setVisitError('Deworming tablets are not indicated for infants under 12 months.');
-        setVisitSubmitting(false);
-        return;
-      }
-      await axiosClient.post('/bhw/need-attention/child-services', {
-        child_id: visitTarget.child_id,
-        service_date: visitDate,
-        service_types: selectedServices,
-        service_type: selectedServices[0],
-        provided_by: user.user_id,
-        notes: visitNotes,
-      });
+
       await refetch();
       setVisitTarget(null);
       alert('Health visit recorded successfully. Medical records and audit trail updated.');
@@ -236,9 +270,15 @@ function NeedAttention() {
 
   if (error) return <p className="text-red-600 p-6">{error}</p>;
 
-  const samCount = children.filter((c) => c.overall_status === 'SAM' || c.weight_status === 'severely_underweight').length;
-  const mamCount = children.filter((c) => c.overall_status === 'MAM' || c.weight_status === 'underweight').length;
-  const overdueCount = children.filter((c) => (daysSince(c.last_visit) ?? 999) > 30).length;
+  const currentBeneficiaries = useMemo(() => {
+    if (typeFilter === 'child') return children.filter((c) => (c.beneficiary_type || 'child') === 'child');
+    if (typeFilter === 'mother') return children.filter((c) => c.beneficiary_type === 'mother');
+    return children;
+  }, [children, typeFilter]);
+
+  const samCount = currentBeneficiaries.filter((c) => c.overall_status === 'SAM' || c.weight_status === 'severely_underweight').length;
+  const mamCount = currentBeneficiaries.filter((c) => c.overall_status === 'MAM' || c.weight_status === 'underweight').length;
+  const overdueCount = currentBeneficiaries.filter((c) => (daysSince(c.last_visit) ?? 999) > 30).length;
 
   return (
     <main role="main" aria-label="Need Attention" className="space-y-6 bg-gray-50 min-h-screen p-6">
@@ -251,9 +291,11 @@ function NeedAttention() {
         >
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total At-Risk</p>
           <p className="text-3xl font-black text-gray-800 mt-2">
-            <CountUp value={children.length} />
+            <CountUp value={currentBeneficiaries.length} />
           </p>
-          <p className="text-xs text-gray-400 mt-1">Children in {user.barangay}</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {typeFilter === 'child' ? 'Children' : typeFilter === 'mother' ? 'Mothers' : 'Beneficiaries'} in {user.barangay}
+          </p>
         </motion.div>
         <motion.div
           whileHover={{ y: -3, transition: { duration: 0.2 } }}
@@ -296,8 +338,8 @@ function NeedAttention() {
             <Search size={16} className="text-gray-400 shrink-0" />
             <input
               type="text"
-              placeholder="Search child by name or guardian…"
-              aria-label="Search child by name or guardian"
+              placeholder="Search by name, guardian, or barangay…"
+              aria-label="Search by name, guardian, or barangay"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="outline-none text-xs sm:text-sm w-full bg-transparent text-gray-700 placeholder-gray-400"
@@ -310,6 +352,17 @@ function NeedAttention() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              aria-label="Filter by beneficiary type"
+              className="border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-emerald-600 cursor-pointer shadow-2xs"
+            >
+              <option value="all">Lahat (Bata & Nanay)</option>
+              <option value="child">Bata (Children)</option>
+              <option value="mother">Nanay (Mothers)</option>
+            </select>
+
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -340,8 +393,7 @@ function NeedAttention() {
             >
               <option value="priority">Sort: Severity Priority</option>
               <option value="overdue">Sort: Most Overdue</option>
-              <option value="child_asc">Sort: Bata (A–Z)</option>
-              <option value="guardian_asc">Sort: Nanay / Guardian (A–Z)</option>
+              <option value="name">Sort: Name (A–Z)</option>
             </select>
           </div>
         </div>
@@ -349,7 +401,7 @@ function NeedAttention() {
         {/* Count bar */}
         <div className="px-6 py-3 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            {filteredChildren.length} children need monitoring
+            {filteredChildren.length} {typeFilter === 'child' ? 'children' : typeFilter === 'mother' ? 'mothers' : 'beneficiaries (bata at nanay)'} need monitoring
           </p>
         </div>
 
@@ -366,7 +418,7 @@ function NeedAttention() {
             </colgroup>
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-50/80 border-b border-gray-100">
-                <th scope="col" className="px-6 py-3.5">Child & Guardian</th>
+                <th scope="col" className="px-6 py-3.5">Beneficiary & Guardian</th>
                 <th scope="col" className="px-4 py-3.5">Age</th>
                 <th scope="col" className="px-4 py-3.5">Weight / Height</th>
                 <th scope="col" className="px-4 py-3.5 text-center">Nutrition Status</th>
@@ -378,48 +430,82 @@ function NeedAttention() {
               {pagedChildren.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-16 text-center text-gray-400 text-sm">
-                    No children matching your filters.
+                    No beneficiaries matching your filters.
                   </td>
                 </tr>
               ) : (
                 pagedChildren.map((c) => {
                   const days = daysSince(c.last_visit);
                   const isOverdue = days == null || days > 30;
+                  const isMother = c.beneficiary_type === 'mother';
 
                   return (
                     <tr
-                      key={c.child_id}
+                      key={`${c.beneficiary_type || 'child'}-${c.child_id || c.mother_id}`}
                       className="hover:bg-green-50/40 transition-colors"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="shrink-0 w-9 h-9 rounded-full bg-linear-to-br from-amber-400 to-red-500 flex items-center justify-center text-white text-xs font-bold shadow-xs">
+                          <div className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-xs ${
+                            isMother
+                              ? 'bg-linear-to-br from-pink-500 to-rose-600'
+                              : 'bg-linear-to-br from-amber-400 to-red-500'
+                          }`}>
                             {(c.first_name ?? '?').charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0 max-w-[210px]">
-                            <p className="font-bold text-gray-900 truncate" title={`${c.first_name} ${c.last_name}`}>
-                              {c.first_name} {c.last_name}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate" title={c.guardian_name || 'Walang nakatalang guardian'}>
-                              <span className="text-gray-400 font-medium">Nanay:</span> {c.guardian_name || '—'}
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-bold text-gray-900 truncate" title={`${c.first_name} ${c.last_name}`}>
+                                {c.first_name} {c.last_name}
+                              </p>
+                              {isMother && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-pink-50 text-pink-700 border border-pink-200 shrink-0">
+                                  Nanay
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-400 truncate" title={isMother ? (c.guardian_contact ? `Contact: ${c.guardian_contact}` : 'Lactating Mother') : (c.guardian_name || '—')}>
+                              {isMother
+                                ? (c.guardian_contact ? `Contact: ${c.guardian_contact}` : 'Lactating Mother')
+                                : `Guardian: ${c.guardian_name || '—'}`
+                              }
                             </p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-4 text-gray-700 font-medium">
-                        {c.age_in_months != null ? `${c.age_in_months} mos` : '—'}
+                        {c.age_display || (c.age_in_months != null ? `${c.age_in_months} mos` : '—')}
                       </td>
                       <td className="px-4 py-4 text-gray-700 font-medium text-xs">
                         <p>{c.weight_kg ? `${c.weight_kg} kg` : '—'}</p>
                         <p className="text-gray-400">{c.height_cm ? `${c.height_cm} cm` : '—'}</p>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <span
-                          style={{ overflowWrap: 'normal', wordBreak: 'keep-all', whiteSpace: 'nowrap' }}
-                          className={`px-3 py-1 rounded-full text-xs font-bold uppercase whitespace-nowrap inline-block shrink-0 ${statusColors[c.overall_status] || 'bg-gray-100 text-gray-700'}`}
-                        >
-                          {c.overall_status || 'At Risk'}
-                        </span>
+                        {isMother ? (
+                          <span
+                            style={{ overflowWrap: 'normal', wordBreak: 'keep-all', whiteSpace: 'nowrap' }}
+                            className={`px-3 py-1 rounded-full text-xs font-bold uppercase whitespace-nowrap inline-block shrink-0 ${
+                              c.overall_status === 'underweight'
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : c.overall_status === 'overdue'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : 'bg-purple-50 text-purple-700 border border-purple-200'
+                            }`}
+                          >
+                            {c.overall_status === 'underweight'
+                              ? 'Low Weight (<45kg)'
+                              : c.overall_status === 'overdue'
+                              ? 'Overdue Visit'
+                              : 'At-Risk Mother'}
+                          </span>
+                        ) : (
+                          <span
+                            style={{ overflowWrap: 'normal', wordBreak: 'keep-all', whiteSpace: 'nowrap' }}
+                            className={`px-3 py-1 rounded-full text-xs font-bold uppercase whitespace-nowrap inline-block shrink-0 ${statusColors[c.overall_status] || 'bg-gray-100 text-gray-700'}`}
+                          >
+                            {c.overall_status || 'At Risk'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-4 text-xs">
                         <p className="font-semibold text-gray-800">
@@ -502,8 +588,12 @@ function NeedAttention() {
             >
               <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
                 <div>
-                  <h3 className="font-bold text-base">Record Health Visit / Service</h3>
-                  <p className="text-xs text-white/70 mt-0.5">{visitTarget.first_name} {visitTarget.last_name}</p>
+                  <h3 className="font-bold text-base">
+                    {visitTarget.beneficiary_type === 'mother' ? 'Record Maternal Health Visit / Service' : 'Record Health Visit / Service'}
+                  </h3>
+                  <p className="text-xs text-white/70 mt-0.5">
+                    {visitTarget.first_name} {visitTarget.last_name} {visitTarget.beneficiary_type === 'mother' ? '(Nanay)' : ''}
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -530,10 +620,11 @@ function NeedAttention() {
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {serviceOptions.map((opt) => {
+                    {(visitTarget?.beneficiary_type === 'mother' ? motherServiceOptions : serviceOptions).map((opt) => {
+                      const isMother = visitTarget?.beneficiary_type === 'mother';
                       const age = visitTarget?.age_in_months ?? 0;
-                      const isVitADisabled = opt.value === 'vitamin_a' && age < 6;
-                      const isDewormDisabled = opt.value === 'deworming' && age < 12;
+                      const isVitADisabled = !isMother && opt.value === 'vitamin_a' && age < 6;
+                      const isDewormDisabled = !isMother && opt.value === 'deworming' && age < 12;
                       const isDisabled = isVitADisabled || isDewormDisabled;
                       const isChecked = selectedServices.includes(opt.value);
 
@@ -590,7 +681,11 @@ function NeedAttention() {
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Observation / Notes</label>
                   <textarea
                     rows={2}
-                    placeholder="Optional notes regarding child response, health condition…"
+                    placeholder={
+                      visitTarget?.beneficiary_type === 'mother'
+                        ? 'Optional notes regarding maternal condition, health advice…'
+                        : 'Optional notes regarding child response, health condition…'
+                    }
                     value={visitNotes}
                     onChange={(e) => setVisitNotes(e.target.value)}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] resize-none"

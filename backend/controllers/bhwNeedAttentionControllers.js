@@ -396,12 +396,114 @@ exports.getNeedAttention = async (req, res) => {
 
       return {
         ...c,
+        beneficiary_type: 'child',
+        age_display: `${c.age_in_months ?? 0} mos`,
         overall_status: overall,
         destination_facility: destination || 'BHS / RHU / Hospital',
         referrer_by_label: referrerByLabel,
       };
     });
-    return res.status(200).json(mappedChildren);
+
+    // ── At-Risk & Overdue Lactating Mothers ──────────────────────────────────
+    let mappedMothers = [];
+    try {
+      const motherBarangayCondition = barangay ? 'm.barangay = ?' : '1=1';
+      const motherQueryParams = barangay ? [barangay] : [];
+
+      const [mothers] = await pool.query(
+        `SELECT
+           m.mother_id, m.first_name, m.last_name, m.middle_initial, 'F' AS sex,
+           m.birth_date, m.purok, m.barangay, m.contact_number AS guardian_contact,
+           m.weight_kg, m.height_cm, m.bmi, m.bmi_status, m.muac_cm, m.muac_status,
+           latest_ms.latest_service_date AS last_visit,
+           CASE WHEN active_ref.referral_id IS NOT NULL THEN 1 ELSE 0 END AS is_referred,
+           active_ref.referral_id AS active_referral_id,
+           active_ref.referral_status,
+           active_ref.referral_date,
+           active_ref.referral_notes,
+           active_ref.referrer_role,
+           active_ref.referrer_name
+         FROM mothers m
+         LEFT JOIN (
+           SELECT mother_id, MAX(service_date) AS latest_service_date
+           FROM mother_services
+           GROUP BY mother_id
+         ) latest_ms ON latest_ms.mother_id = m.mother_id
+         LEFT JOIN (
+           SELECT r.mother_id, r.referral_id, r.status AS referral_status, r.created_at AS referral_date, r.notes AS referral_notes,
+                  UPPER(COALESCE(u.role, 'BHW')) AS referrer_role,
+                  CONCAT_WS(' ', u.first_name, u.last_name) AS referrer_name
+           FROM referrals r
+           INNER JOIN (
+             SELECT mother_id, MAX(referral_id) AS max_ref_id
+             FROM referrals
+             WHERE LOWER(status) IN ('pending', 'received', 'ongoing', 'responded', 'in progress')
+               AND mother_id IS NOT NULL
+               AND archived_at IS NULL
+             GROUP BY mother_id
+           ) latest_r ON r.referral_id = latest_r.max_ref_id
+           LEFT JOIN users u ON u.user_id = r.referred_by
+         ) active_ref ON active_ref.mother_id = m.mother_id
+         WHERE ${motherBarangayCondition}
+           AND m.status = 'active'
+           AND (
+             (m.weight_kg IS NOT NULL AND m.weight_kg < 45)
+             OR (m.bmi_status IS NOT NULL AND LOWER(m.bmi_status) IN ('underweight', 'severely_underweight'))
+             OR (latest_ms.latest_service_date IS NULL OR latest_ms.latest_service_date < DATE_SUB(CURDATE(), INTERVAL 30 DAY))
+             OR active_ref.referral_id IS NOT NULL
+           )
+         ORDER BY last_visit ASC`,
+        motherQueryParams
+      );
+
+      mappedMothers = mothers.map((m) => {
+        let overall = 'At-Risk';
+        const weight = Number(m.weight_kg);
+        const bmiStat = String(m.bmi_status || '').toLowerCase();
+        if (weight > 0 && weight < 45) {
+          overall = 'underweight';
+        } else if (bmiStat.includes('underweight')) {
+          overall = 'underweight';
+        } else if (!m.last_visit || (Date.now() - new Date(m.last_visit)) / (1000 * 60 * 60 * 24) > 30) {
+          overall = 'overdue';
+        }
+
+        let ageInMonths = null;
+        let ageDisplay = 'Adult';
+        if (m.birth_date) {
+          const diffYears = Math.floor((new Date() - new Date(m.birth_date)) / (1000 * 60 * 60 * 24 * 365.25));
+          if (diffYears > 0 && diffYears < 120) {
+            ageDisplay = `${diffYears} yrs`;
+            ageInMonths = diffYears * 12;
+          }
+        }
+
+        let destination = '';
+        if (m.referral_notes) {
+          const match = m.referral_notes.match(/Facility:\s*([^\n\r]+)/i);
+          if (match) destination = match[1].trim();
+        }
+        const roleUpper = String(m.referrer_role || 'BHW').toUpperCase();
+        const referrerByLabel = roleUpper === 'BNS' ? 'Referred by BNS' : 'Referred by BHW';
+
+        return {
+          ...m,
+          beneficiary_type: 'mother',
+          child_id: null,
+          guardian_name: null,
+          age_in_months: ageInMonths,
+          age_display: ageDisplay,
+          overall_status: overall,
+          destination_facility: destination || 'BHS / RHU / Hospital',
+          referrer_by_label: referrerByLabel,
+        };
+      });
+    } catch (mErr) {
+      console.warn('Get mothers in need-attention warning (non-fatal):', mErr.message);
+    }
+
+    const combined = [...mappedChildren, ...mappedMothers];
+    return res.status(200).json(combined);
   } catch (error) {
     console.error('Get need attention error:', error);
     return res.status(500).json({ message: 'Server error. Please try again later.' });
