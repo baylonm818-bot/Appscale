@@ -11,15 +11,30 @@ import { capitalizeWords } from '../utils/i18n';
 
 const statusLabels = { pending: 'Scheduled', done: 'Completed', cancelled: 'Cancelled', archived: 'Archived', missed: 'Missed' };
 
+function toDateKey(dateVal) {
+  if (!dateVal) return '';
+  const str = String(dateVal).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
+  }
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  return str.slice(0, 10);
+}
+
 const safeParseDate = (dateVal) => {
   if (!dateVal) return null;
-  const str = String(dateVal).trim();
-  const dateOnly = str.slice(0, 10);
-  const parts = dateOnly.split('-').map(Number);
+  const key = toDateKey(dateVal);
+  const parts = key.split('-').map(Number);
   if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
     return new Date(parts[0], parts[1] - 1, parts[2]);
   }
-  const d = new Date(str);
+  const d = new Date(dateVal);
   return isNaN(d.getTime()) ? null : d;
 };
 
@@ -436,7 +451,7 @@ function Schedule() {
     const activitiesByDate = {};
     filteredActivities.forEach((act) => {
       if (!act.schedule_date) return;
-      const key = String(act.schedule_date).slice(0, 10);
+      const key = toDateKey(act.schedule_date);
       if (!activitiesByDate[key]) activitiesByDate[key] = [];
       activitiesByDate[key].push(act);
     });
@@ -492,7 +507,7 @@ function Schedule() {
   const selectedDateActivities = useMemo(() => {
     return filteredActivities.filter((a) => {
       if (!a.schedule_date) return false;
-      return String(a.schedule_date).slice(0, 10) === selectedDateKey;
+      return toDateKey(a.schedule_date) === selectedDateKey;
     });
   }, [filteredActivities, selectedDateKey]);
 

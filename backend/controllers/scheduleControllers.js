@@ -113,7 +113,9 @@ exports.getScheduleStats = async (req, res) => {
 exports.getSchedules = async (req, res) => {
   try {
     const [schedules] = await pool.query(
-      `SELECT s.schedule_id, s.title, s.schedule_type, s.schedule_date, s.schedule_time,
+      `SELECT s.schedule_id, s.title, s.schedule_type,
+              DATE_FORMAT(s.schedule_date, '%Y-%m-%d') AS schedule_date,
+              s.schedule_time,
               s.venue, s.barangay, s.assigned_to, s.target_role, s.facilitator, s.notes, s.status,
               s.audit_completion_notes, s.audit_completed_at, s.audit_completed_by,
               CONCAT(u.first_name, ' ', u.last_name) AS assigned_name

@@ -42,7 +42,9 @@ exports.getBhwSchedules = async (req, res) => {
 
   try {
     const [schedules] = await pool.query(
-      `SELECT schedule_id, title, schedule_type, schedule_date, schedule_time,
+      `SELECT schedule_id, title, schedule_type,
+              DATE_FORMAT(schedule_date, '%Y-%m-%d') AS schedule_date,
+              schedule_time,
               venue, barangay, assigned_to, target_role, facilitator, notes, status,
               created_by, audit_completion_notes, audit_completed_at, audit_completed_by
        FROM schedules

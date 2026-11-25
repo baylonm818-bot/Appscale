@@ -29,6 +29,7 @@ const config = {
     waitForConnections: true,
     connectionLimit: 50,
     timezone: '+08:00', // Force Philippine Time
+    dateStrings: true,  // Return DATE and DATETIME as string without UTC conversion
     ...(shouldUseSsl ? { ssl: { rejectUnauthorized: false } } : {}),
 };
 
