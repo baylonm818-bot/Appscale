@@ -748,16 +748,6 @@ function Masterlist() {
                   Clear Filters
                 </button>
               )}
-
-              {/* Action Button: Print PDF */}
-              <button
-                type="button"
-                onClick={() => setIsReportModalOpen(true)}
-                className="px-3.5 py-2 bg-[#1b5e20] hover:bg-[#154a1a] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer shrink-0"
-              >
-                <Printer size={15} />
-                <span>Print PDF / View</span>
-              </button>
             </div>
           </div>
 
