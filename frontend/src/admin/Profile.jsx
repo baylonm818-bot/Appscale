@@ -436,123 +436,104 @@ function Profile() {
         </div>
       )}
 
-      {/* ── Profile Hero Card (Modern Card with Green Gradient) ── */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100">
-        {/* Cover banner with Green Gradient */}
-        <div className="relative h-36 sm:h-44 w-full bg-linear-to-r from-[#14471e] via-[#1b5e20] to-[#2e7d32] rounded-t-3xl overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-500/25 via-teal-600/20 to-transparent" />
-          <div className="absolute -top-10 -left-10 w-48 h-48 bg-emerald-400/20 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-8 right-10 w-56 h-56 bg-teal-300/20 rounded-full blur-2xl pointer-events-none" />
-
-          {/* Top right quick edit button */}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingPic}
-            title="Change Profile Photo"
-            className="absolute top-4 right-4 bg-white/90 hover:bg-white text-emerald-900 px-3 py-1.5 rounded-xl shadow-md backdrop-blur-md transition-all hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold z-20 border border-white/60"
-          >
-            <Pencil size={13} className="text-emerald-800" />
-            <span className="hidden sm:inline">Change Photo</span>
-          </button>
-        </div>
+      {/* ── Profile Hero Card ── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Cover banner with Green Gradient (No change photo button) */}
+        <div className="h-28 sm:h-32 bg-linear-to-r from-[#14471e] via-[#1b5e20] to-[#2e7d32]" />
 
         <div className="px-6 sm:px-8 pb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 -mt-12 sm:-mt-14 mb-2">
-            
-            {/* Left: Avatar + Details */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 text-center sm:text-left">
-              {/* Avatar Frame */}
-              <div className="relative shrink-0">
-                <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl overflow-hidden bg-emerald-50 ring-2 ring-emerald-900/10">
-                  {profileImageSrc || profile?.profile_picture ? (
-                    <img
-                      src={profileImageSrc || getProfileImageUrl(profile?.profile_picture)}
-                      alt="Profile"
-                      className="w-full h-full object-cover rounded-full"
-                      onError={(ev) => {
-                        ev.currentTarget.style.display = 'none';
-                        const fb = document.createElement('div');
-                        fb.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black rounded-full';
-                        fb.textContent = getUserInitials(profile);
-                        ev.currentTarget.parentElement?.appendChild(fb);
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black rounded-full">
-                      {getUserInitials(profile)}
-                    </div>
-                  )}
-                  {uploadingPic && (
-                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white text-xs font-semibold z-10 backdrop-blur-xs">
-                      Uploading…
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingPic}
-                  title="Upload profile picture"
-                  className="absolute bottom-0 right-0 bg-[#1b5e20] hover:bg-[#14471e] text-white p-2 rounded-full shadow-lg border-2 border-white transition-transform hover:scale-110 z-20 cursor-pointer"
-                >
-                  <Camera size={13} />
-                </button>
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePictureChange} className="hidden" />
+          {/* Avatar row overlapping the banner bottom */}
+          <div className="flex items-end justify-between -mt-12 sm:-mt-14 mb-4">
+            {/* Avatar Frame + Camera Button */}
+            <div className="relative">
+              <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-md overflow-hidden bg-emerald-50 ring-1 ring-black/5">
+                {profileImageSrc || profile?.profile_picture ? (
+                  <img
+                    src={profileImageSrc || getProfileImageUrl(profile?.profile_picture)}
+                    alt="Profile"
+                    className="w-full h-full object-cover rounded-full"
+                    onError={(ev) => {
+                      ev.currentTarget.style.display = 'none';
+                      const fb = document.createElement('div');
+                      fb.className = 'w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black rounded-full';
+                      fb.textContent = getUserInitials(profile);
+                      ev.currentTarget.parentElement?.appendChild(fb);
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1b5e20] to-[#2e7d32] text-white text-2xl font-black rounded-full">
+                    {getUserInitials(profile)}
+                  </div>
+                )}
+                {uploadingPic && (
+                  <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white text-xs font-semibold z-10 backdrop-blur-xs">
+                    Uploading…
+                  </div>
+                )}
               </div>
-
-              {/* Name, Role & Location */}
-              <div className="pt-2 sm:pt-4">
-                <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                  {(profile?.first_name || profile?.last_name)
-                    ? `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
-                    : (user?.full_name || user?.name || user?.username || 'Camille Cadag')}
-                </h2>
-                <p className="text-xs sm:text-sm font-semibold text-[#1b5e20] mt-0.5">
-                  {profile?.role === 'Admin' ? 'Municipal Nutrition Action Officer (MNAO)' : (profile?.role || 'Health Worker')}
-                </p>
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 mt-1 text-xs text-gray-500">
-                  <span className="flex items-center gap-1 font-medium text-gray-700">
-                    <MapPin size={12} className="text-emerald-700" />
-                    {profile?.barangay || user?.barangay || 'Dawis'}, {profile?.municipality || user?.municipality || 'Gasan'}, Marinduque
-                  </span>
-                  <span className="text-gray-300 hidden sm:inline">•</span>
-                  <span className="flex items-center gap-1">
-                    <Mail size={12} className="text-gray-400" />
-                    {profile?.email || user?.email || 'coders319@gmail.com'}
-                  </span>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPic}
+                title="Upload profile picture"
+                className="absolute bottom-0 right-0 bg-[#1b5e20] hover:bg-[#14471e] text-white p-2 rounded-full shadow-md border-2 border-white transition-transform hover:scale-110 z-20 cursor-pointer"
+              >
+                <Camera size={13} />
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePictureChange} className="hidden" />
             </div>
 
-            {/* Right: Current Role + Badges */}
-            <div className="flex flex-col items-center md:items-end justify-center text-center md:text-right shrink-0 mt-3 md:mt-0">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-semibold text-gray-400">Current role:</span>
-                <span className="bg-emerald-100 text-emerald-900 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-200">
-                  {profile?.role || user?.role || 'Admin'}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5">
-                <span className="bg-gray-100 text-gray-700 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-gray-200">
-                  {profile?.barangay || user?.barangay || 'Dawis'}
-                </span>
-                <span className="bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  Gasan RHU
-                </span>
-                <span className="bg-teal-50 text-teal-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-teal-200">
-                  Nutrition Office
-                </span>
-                <span className="bg-green-50 text-green-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-green-200">
-                  Full Privileges
-                </span>
-              </div>
+            {/* Current Role badge on the right */}
+            <div className="text-right">
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">Current role</span>
+              <span className="bg-emerald-50 text-emerald-800 text-xs font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider border border-emerald-200 shadow-xs">
+                {profile?.role || user?.role || 'Admin'}
+              </span>
             </div>
-
           </div>
 
-          {picError && <p className="text-xs text-red-600 mt-2">{picError}</p>}
+          {/* User Name, Title & Location Row */}
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                {(profile?.first_name || profile?.last_name)
+                  ? `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
+                  : (user?.full_name || user?.name || user?.username || 'Camille Cadag')}
+              </h2>
+              <p className="text-xs sm:text-sm font-semibold text-[#1b5e20] mt-0.5">
+                {profile?.role === 'Admin' ? 'Municipal Nutrition Action Officer (MNAO)' : (profile?.role || 'Health Worker')}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-gray-500">
+                <span className="flex items-center gap-1 font-medium text-gray-700">
+                  <MapPin size={12} className="text-emerald-700" />
+                  {profile?.barangay || user?.barangay || 'Dawis'}, {profile?.municipality || user?.municipality || 'Gasan'}, Marinduque
+                </span>
+                <span className="text-gray-300">•</span>
+                <span className="flex items-center gap-1">
+                  <Mail size={12} className="text-gray-400" />
+                  {profile?.email || user?.email || 'coders319@gmail.com'}
+                </span>
+              </div>
+            </div>
+
+            {/* Scope Badges on right */}
+            <div className="flex flex-wrap items-center sm:justify-end gap-1.5">
+              <span className="bg-gray-100 text-gray-700 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-gray-200">
+                {profile?.barangay || user?.barangay || 'Dawis'}
+              </span>
+              <span className="bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-emerald-200">
+                Gasan RHU
+              </span>
+              <span className="bg-teal-50 text-teal-800 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-teal-200">
+                Nutrition Office
+              </span>
+              <span className="bg-green-50 text-green-800 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-green-200">
+                Full Privileges
+              </span>
+            </div>
+          </div>
+
+          {picError && <p className="text-xs text-red-600 mt-3">{picError}</p>}
         </div>
       </div>
 
