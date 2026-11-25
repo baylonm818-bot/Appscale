@@ -342,7 +342,11 @@ function Referrals() {
   const openActionModal = (r) => {
     setActionTarget(r);
     const curr = normalizeStatus(r.status);
-    setNewStatus(curr === 'Pending' ? 'Ongoing' : curr);
+    if (curr === 'Completed' || curr === 'Cancelled') {
+      setNewStatus(curr);
+    } else {
+      setNewStatus('Ongoing');
+    }
     setResponseNotes(r.response_notes || '');
     setSelectedServices([]);
     setServiceDate(new Date().toISOString().slice(0, 10));
@@ -683,16 +687,14 @@ function Referrals() {
 
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Referral Status *</label>
-                  <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] font-semibold">
-                    <option value="Pending">Pending</option>
-                    <option value="Received">Received (Confirmed Receipt)</option>
+                  <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] font-semibold bg-white cursor-pointer">
                     <option value="Ongoing">Ongoing (In Progress)</option>
                     <option value="Completed">Completed</option>
                     <option value="Cancelled">Cancelled</option>
                   </select>
                 </div>
 
-                {newStatus === 'Ongoing' && (
+                {(newStatus === 'Ongoing' || newStatus === 'Completed') && (
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
