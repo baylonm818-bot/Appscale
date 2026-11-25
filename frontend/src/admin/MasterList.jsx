@@ -749,23 +749,14 @@ function Masterlist() {
                 </button>
               )}
 
-              {/* Action Buttons: Print PDF & Export Excel */}
+              {/* Action Button: Print PDF */}
               <button
                 type="button"
                 onClick={() => setIsReportModalOpen(true)}
-                className="px-3.5 py-2 bg-[#1b5e20] hover:bg-[#154a1a] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                className="px-3.5 py-2 bg-[#1b5e20] hover:bg-[#154a1a] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer shrink-0"
               >
                 <Printer size={15} />
                 <span>Print PDF / View</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleExportMasterlistExcel}
-                className="px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-              >
-                <FileSpreadsheet size={15} className="text-emerald-600" />
-                <span>Export Excel</span>
               </button>
             </div>
           </div>
