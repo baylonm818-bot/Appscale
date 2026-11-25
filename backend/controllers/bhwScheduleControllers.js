@@ -54,9 +54,11 @@ exports.getBhwSchedules = async (req, res) => {
            OR LOWER(TRIM(barangay)) = 'all barangays'
            OR barangay IS NULL
            OR barangay = ''
+           OR assigned_to = ?
+           OR schedule_id IN (SELECT schedule_id FROM schedule_participants WHERE user_id = ?)
          )
        ORDER BY schedule_date ASC`,
-      [barangay, barangay, barangay]
+      [barangay, barangay, barangay, user?.user_id || 0, user?.user_id || 0]
     );
 
     const allowedSchedules = schedules.filter((schedule) => canAccessSchedule(user, schedule));

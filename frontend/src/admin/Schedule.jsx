@@ -202,7 +202,8 @@ const fieldCls = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm f
 
 const emptyForm = {
   title: '', schedule_type: 'feeding', schedule_date: '', schedule_time: '',
-  venue: '', barangay: 'All Barangays', selected_barangays: [], assigned_to: '', target_role: '',
+  venue: '', barangay: 'All Barangays', selected_barangays: [],
+  assigned_to: '', selected_users: [], target_role: '',
   recipient_type: 'all', facilitator: '', notes: '',
   participant_ids: [],
 };
@@ -220,6 +221,7 @@ function Schedule() {
   const [saving, setSaving]             = useState(false);
   const [users, setUsers]               = useState([]);
   const [participantSearch, setParticipantSearch] = useState('');
+  const [userSearch, setUserSearch]               = useState('');
 
   const filteredBarangayUsers = useMemo(() => {
     if (form.recipient_type !== 'barangay') return [];
@@ -235,6 +237,16 @@ function Schedule() {
       return matchesBarangay && matchesSearch;
     });
   }, [users, form.recipient_type, form.selected_barangays, participantSearch]);
+
+  const filteredAssignableUsers = useMemo(() => {
+    if (form.recipient_type !== 'user') return [];
+    const q = userSearch.trim().toLowerCase();
+    return users.filter((u) => {
+      if (!q) return true;
+      const fullName = `${u.first_name} ${u.last_name}`.toLowerCase();
+      return fullName.includes(q) || u.role?.toLowerCase().includes(q) || u.barangay?.toLowerCase().includes(q);
+    });
+  }, [users, form.recipient_type, userSearch]);
 
   const handleAddBarangay = (bgy) => {
     if (!bgy) return;
@@ -281,6 +293,52 @@ function Schedule() {
       ...prev,
       selected_barangays: [],
       barangay: '',
+      participant_ids: [],
+    }));
+  };
+
+  const handleAddUser = (userId) => {
+    if (!userId) return;
+    const uidStr = String(userId);
+    setForm((prev) => {
+      const current = prev.selected_users || [];
+      if (current.includes(uidStr)) return prev;
+      const updated = [...current, uidStr];
+      const selectedUserObjs = users.filter((u) => updated.includes(String(u.user_id)));
+      const bgyList = [...new Set(selectedUserObjs.map((u) => u.barangay).filter(Boolean))];
+      return {
+        ...prev,
+        selected_users: updated,
+        assigned_to: updated[0] || '',
+        participant_ids: updated,
+        barangay: bgyList.join(', '),
+      };
+    });
+    setSchedErrors((prev) => ({ ...prev, assigned_to: '' }));
+  };
+
+  const handleRemoveUser = (userId) => {
+    const uidStr = String(userId);
+    setForm((prev) => {
+      const current = prev.selected_users || [];
+      const updated = current.filter((id) => id !== uidStr);
+      const selectedUserObjs = users.filter((u) => updated.includes(String(u.user_id)));
+      const bgyList = [...new Set(selectedUserObjs.map((u) => u.barangay).filter(Boolean))];
+      return {
+        ...prev,
+        selected_users: updated,
+        assigned_to: updated[0] || '',
+        participant_ids: updated,
+        barangay: bgyList.join(', '),
+      };
+    });
+  };
+
+  const handleClearUsers = () => {
+    setForm((prev) => ({
+      ...prev,
+      selected_users: [],
+      assigned_to: '',
       participant_ids: [],
     }));
   };
@@ -350,11 +408,13 @@ function Schedule() {
       barangay: val === 'all' ? 'All Barangays' : '',
       selected_barangays: [],
       assigned_to: '',
+      selected_users: [],
       target_role: '',
       participant_ids: [],
     });
     setSchedErrors((prev) => ({ ...prev, barangay: '', target_role: '', assigned_to: '' }));
     setParticipantSearch('');
+    setUserSearch('');
   };
 
   const handleOpenAddForDate = (dateKey) => {
@@ -365,6 +425,7 @@ function Schedule() {
     setSchedErrors({});
     setFormError('');
     setParticipantSearch('');
+    setUserSearch('');
     setShowModal(true);
   };
 
@@ -380,7 +441,9 @@ function Schedule() {
       errs.barangay = 'Please select at least one barangay';
     }
     if (form.recipient_type === 'role' && !form.target_role) errs.target_role = 'This field is required';
-    if (form.recipient_type === 'user' && !form.assigned_to) errs.assigned_to = 'This field is required';
+    if (form.recipient_type === 'user' && (!form.selected_users || form.selected_users.length === 0) && !form.assigned_to) {
+      errs.assigned_to = 'Please select at least one user';
+    }
 
     if (Object.keys(errs).length > 0) {
       setSchedErrors(errs);
@@ -398,7 +461,7 @@ function Schedule() {
     setSchedErrors({});
     setSaving(true);
     try {
-      const { recipient_type, selected_barangays, ...schedule } = form;
+      const { recipient_type, selected_barangays, selected_users, ...schedule } = form;
       if (recipient_type === 'all') {
         schedule.barangay = 'All Barangays';
         schedule.assigned_to = null;
@@ -415,6 +478,14 @@ function Schedule() {
       }
       if (recipient_type === 'user') {
         schedule.target_role = null;
+        const uids = selected_users && selected_users.length > 0 ? selected_users.map(Number) : (form.assigned_to ? [Number(form.assigned_to)] : []);
+        schedule.assigned_to = uids[0] || null;
+        schedule.participant_ids = uids;
+        const matchedUsers = users.filter((u) => uids.includes(Number(u.user_id)));
+        const bgys = [...new Set(matchedUsers.map((u) => u.barangay).filter(Boolean))];
+        if (bgys.length > 0) {
+          schedule.barangay = bgys.join(', ');
+        }
       }
       await axiosClient.post('/schedule', schedule);
       setShowModal(false);
@@ -1146,25 +1217,106 @@ function Schedule() {
                 )}
 
                 {form.recipient_type === 'user' && (
-                  <div>
-                    <FormLabel label="Assigned User" required />
-                    <select
-                      name="assigned_to"
-                      value={form.assigned_to}
-                      onChange={(e) => {
-                        const u = users.find((x) => String(x.user_id) === e.target.value);
-                        setForm({ ...form, assigned_to: e.target.value, barangay: u?.barangay || '' });
-                      }}
-                      className={`${fieldCls} ${schedErrors.assigned_to ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
-                    >
-                      <option value="">Select user…</option>
-                      {users.map((u) => (
-                        <option key={u.user_id} value={u.user_id}>
-                          {u.first_name} {u.last_name} ({u.role.toUpperCase()}) — {u.barangay}
-                        </option>
-                      ))}
-                    </select>
-                    {schedErrors.assigned_to && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.assigned_to}</p>}
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <FormLabel label="Assigned Users" required />
+                        {(form.selected_users || []).length > 0 && (
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                              {form.selected_users.length} selected
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleClearUsers}
+                              className="text-gray-500 hover:text-red-600 cursor-pointer font-medium"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Selected Users Chips */}
+                      {(form.selected_users || []).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-emerald-50/60 border border-emerald-100 rounded-xl max-h-28 overflow-y-auto">
+                          {form.selected_users.map((uid) => {
+                            const u = users.find((x) => String(x.user_id) === String(uid));
+                            if (!u) return null;
+                            return (
+                              <span
+                                key={uid}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-700 text-white shadow-2xs"
+                              >
+                                {u.first_name} {u.last_name} ({u.role?.toUpperCase()}) — {u.barangay}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveUser(uid)}
+                                  className="hover:bg-white/20 rounded-full p-0.5 text-white/90 hover:text-white transition cursor-pointer"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Search Bar for Users */}
+                      <div className="relative mb-2">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={userSearch}
+                          onChange={(e) => setUserSearch(e.target.value)}
+                          placeholder="Search user by name, role, or barangay…"
+                          className="w-full pl-8 pr-7 py-2 text-xs border border-gray-200 rounded-xl bg-white focus:outline-emerald-600 focus:border-emerald-600 transition"
+                        />
+                        {userSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setUserSearch('')}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Searchable Users List with quick add */}
+                      <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100 bg-gray-50">
+                        {filteredAssignableUsers.length === 0 ? (
+                          <div className="p-3 text-center text-xs text-gray-400">
+                            {userSearch ? 'No matching users found.' : 'No active users available.'}
+                          </div>
+                        ) : (
+                          filteredAssignableUsers.map((u) => {
+                            const uid = String(u.user_id);
+                            const isSelected = (form.selected_users || []).includes(uid);
+                            return (
+                              <button
+                                key={uid}
+                                type="button"
+                                onClick={() => isSelected ? handleRemoveUser(uid) : handleAddUser(uid)}
+                                className={`w-full text-left flex items-center justify-between px-3 py-2 text-xs transition cursor-pointer ${
+                                  isSelected ? 'bg-emerald-50 text-emerald-900 font-semibold' : 'hover:bg-green-50/60 text-gray-700'
+                                }`}
+                              >
+                                <span className="truncate">
+                                  {u.first_name} {u.last_name} <span className="text-gray-400 uppercase font-normal">({u.role})</span> — {u.barangay}
+                                </span>
+                                <span className={`text-[11px] px-2 py-0.5 rounded-md shrink-0 ml-2 font-medium ${
+                                  isSelected ? 'bg-emerald-600 text-white' : 'border border-gray-200 bg-white text-gray-600'
+                                }`}>
+                                  {isSelected ? '✓ Added' : '+ Add'}
+                                </span>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                      {schedErrors.assigned_to && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.assigned_to}</p>}
+                    </div>
                   </div>
                 )}
 
