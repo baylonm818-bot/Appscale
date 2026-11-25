@@ -427,6 +427,13 @@ exports.forgotPassword = async (req, res) => {
         console.error('Send SMS OTP error:', smsError && smsError.message);
         // Fall back to email if SMS provider encountered an error
         await sendOtpEmail(canonicalEmail, otp);
+        return res.status(200).json({
+          message: `Paalala: Hindi pa na-approve ng Semaphore ang account o kulang sa credits. Ipinadala ang 6-digit OTP sa inyong email (${maskEmail(canonicalEmail)}).`,
+          channel: 'email',
+          masked_recipient: maskEmail(canonicalEmail),
+          sms_fallback: true,
+          email: canonicalEmail,
+        });
       }
     } else if (isSms && !smsConfigured) {
       // SMS gateway is not configured with an API key.

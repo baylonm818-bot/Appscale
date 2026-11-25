@@ -44,20 +44,31 @@ async function sendVerificationSms({ phone, otp, customMessage }) {
   // 1. Semaphore Provider
   if (provider === 'semaphore' && semaphoreApiKey) {
     try {
+      const payload = {
+        apikey: semaphoreApiKey,
+        number: normalized,
+        message: message,
+      };
+      if (process.env.SEMAPHORE_SENDER_NAME && process.env.SEMAPHORE_SENDER_NAME.trim()) {
+        payload.sendername = process.env.SEMAPHORE_SENDER_NAME.trim();
+      }
+
       const response = await fetch('https://api.semaphore.co/api/v4/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          apikey: semaphoreApiKey,
-          number: normalized,
-          message: message,
-          sendername: process.env.SEMAPHORE_SENDER_NAME || 'AppScale',
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const rawText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (_) {
+        data = { message: rawText };
+      }
+
       if (!response.ok) {
-        throw new Error(data.message || (Array.isArray(data) && data[0]?.message) || 'Semaphore delivery failed');
+        throw new Error(data.message || (Array.isArray(data) && data[0]?.message) || rawText || 'Semaphore delivery failed');
       }
 
       console.log(`[SMS Service] Dispatched SMS to ${maskedPhone} via Semaphore`);
