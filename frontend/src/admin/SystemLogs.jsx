@@ -3,6 +3,7 @@
  * Route: /admin/system-logs
  */
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShimmerSkeleton } from '../components/ui/motion';
@@ -421,13 +422,15 @@ export default function SystemLogs() {
       </div>
 
       {/* Clean Human-Readable Detail Modal (Zero JSON!) */}
-      <AnimatePresence>
-        {selectedLog && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4"
-            onClick={(e) => { if (e.target === e.currentTarget) setSelectedLog(null); }}
-          >
+      {createPortal(
+        <AnimatePresence>
+          {selectedLog && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4"
+              style={{ zIndex: 9999 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setSelectedLog(null); }}
+            >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
@@ -570,7 +573,9 @@ export default function SystemLogs() {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
     </div>
   );
 }

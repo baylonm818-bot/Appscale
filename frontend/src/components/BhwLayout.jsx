@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import logo from '../assets/logo.png';
@@ -506,54 +507,58 @@ function BHWLayout() {
       </div>
 
       {/* ── Logout Confirmation Modal ── */}
-      <AnimatePresence>
-        {showLogoutConfirm && (
-          <motion.div
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-hidden"
-          >
+      {createPortal(
+        <AnimatePresence>
+          {showLogoutConfirm && (
             <motion.div
-              variants={modalVariants}
+              variants={backdropVariants}
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="bg-white rounded-2xl shadow-2xl shadow-black/20 w-full max-w-sm mx-auto my-auto p-6 max-h-[90vh] flex flex-col overflow-y-auto"
+              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-hidden"
+              style={{ zIndex: 9999 }}
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                  <LogOut size={18} className="text-red-600" />
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-white rounded-2xl shadow-2xl shadow-black/20 w-full max-w-sm mx-auto my-auto p-6 max-h-[90vh] flex flex-col overflow-y-auto"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                    <LogOut size={18} className="text-red-600" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900 text-base">Log Out</p>
+                    <p className="text-xs text-gray-400">BHW Portal</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-gray-900 text-base">Log Out</p>
-                  <p className="text-xs text-gray-400">BHW Portal</p>
+                <p className="text-sm text-gray-600 mb-5">
+                  Are you sure you want to log out? You will need to sign in again to access the portal.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowLogoutConfirm(false)}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={doLogout}
+                    className="px-5 py-2 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition"
+                  >
+                    Log Out
+                  </button>
                 </div>
-              </div>
-              <p className="text-sm text-gray-600 mb-5">
-                Are you sure you want to log out? You will need to sign in again to access the portal.
-              </p>
-              <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={doLogout}
-                  className="px-5 py-2 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition"
-                >
-                  Log Out
-                </button>
-              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

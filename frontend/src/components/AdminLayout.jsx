@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import logo from '../assets/logo.png';
 import { useAuth } from '../components/AuthContext';
@@ -456,8 +457,8 @@ function AdminLayout() {
       </div>
 
       {/* ── Logout Confirmation Modal ── */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-hidden">
+      {showLogoutConfirm && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-hidden" style={{ zIndex: 9999 }}>
           <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 w-full max-w-sm mx-auto my-auto p-6 max-h-[90vh] flex flex-col overflow-y-auto">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
@@ -488,7 +489,8 @@ function AdminLayout() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

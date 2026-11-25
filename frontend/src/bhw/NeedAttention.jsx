@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -564,14 +565,16 @@ function NeedAttention() {
       </div>
 
       {/* ── Log Visit Modal ── */}
-      <AnimatePresence>
-        {visitTarget && (
-          <motion.div
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
+      {createPortal(
+        <AnimatePresence>
+          {visitTarget && (
+            <motion.div
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
+              style={{ zIndex: 9999 }}
             onClick={(e) => {
               if (e.target === e.currentTarget && !visitSubmitting) {
                 setVisitTarget(null);
@@ -714,7 +717,9 @@ function NeedAttention() {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
 
       {/* ── Toast Notification Banner ── */}
       {toastMessage && (

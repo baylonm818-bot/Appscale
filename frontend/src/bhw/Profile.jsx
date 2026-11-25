@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { API_ORIGIN, getProfileImageUrl, getUserInitials } from '../api/config';
 import { useAuth } from '../components/AuthContext';
@@ -574,9 +575,10 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
       </div>
 
       {/* ── Change Password Modal Popup ── */}
-      {showPasswordModal && (
+      {showPasswordModal && createPortal(
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4 overflow-hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
+          style={{ zIndex: 9999 }}
           onClick={(e) => {
             if (e.target === e.currentTarget && !savingPassword) {
               closePasswordModal();
@@ -655,7 +657,8 @@ const resizeImageFile = (file, maxDimension = 512, quality = 0.82) => {
               </form>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

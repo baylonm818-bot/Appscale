@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useQuery } from '@tanstack/react-query';
@@ -635,16 +636,18 @@ function Referrals() {
         )}
       </div>
 
-      <AnimatePresence>
-        {actionTarget && (
-          <motion.div
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
-            onClick={() => setActionTarget(null)}
-          >
+      {createPortal(
+        <AnimatePresence>
+          {actionTarget && (
+            <motion.div
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
+              style={{ zIndex: 9999 }}
+              onClick={() => setActionTarget(null)}
+            >
             <motion.div
               variants={modalVariants}
               initial="hidden"
@@ -737,77 +740,85 @@ function Referrals() {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
 
       {/* Confirmation Modal for Archiving / Unarchiving */}
-      <AnimatePresence>
-        {archiveConfirm && (
-          <motion.div
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4"
-            onClick={() => setArchiveConfirm(null)}
-          >
+      {createPortal(
+        <AnimatePresence>
+          {archiveConfirm && (
             <motion.div
-              variants={modalVariants}
+              variants={backdropVariants}
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4"
+              style={{ zIndex: 9999 }}
+              onClick={() => setArchiveConfirm(null)}
             >
-              <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="font-bold text-base text-gray-900">
-                  {archiveConfirm.isUnarchive ? 'Unarchive Referral' : 'Archive Referral'}
-                </h3>
-                <button onClick={() => setArchiveConfirm(null)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="p-5 text-sm text-gray-600">
-                <p>
-                  Are you sure you want to {archiveConfirm.isUnarchive ? 'unarchive' : 'archive'} {archiveConfirm.type === 'batch' ? archiveConfirm.name : `referral for ${archiveConfirm.name}`}?
-                </p>
-                {!archiveConfirm.isUnarchive && (
-                  <p className="text-xs text-gray-400 mt-2">
-                    Archived referrals can be reviewed anytime under the Archived tab.
+              <motion.div
+                variants={modalVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="font-bold text-base text-gray-900">
+                    {archiveConfirm.isUnarchive ? 'Unarchive Referral' : 'Archive Referral'}
+                  </h3>
+                  <button onClick={() => setArchiveConfirm(null)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="p-5 text-sm text-gray-600">
+                  <p>
+                    Are you sure you want to {archiveConfirm.isUnarchive ? 'unarchive' : 'archive'} {archiveConfirm.type === 'batch' ? archiveConfirm.name : `referral for ${archiveConfirm.name}`}?
                   </p>
-                )}
-              </div>
-              <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex gap-2.5 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setArchiveConfirm(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmArchiveExecution}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-xs"
-                >
-                  Confirm
-                </button>
-              </div>
+                  {!archiveConfirm.isUnarchive && (
+                    <p className="text-xs text-gray-400 mt-2">
+                      Archived referrals can be reviewed anytime under the Archived tab.
+                    </p>
+                  )}
+                </div>
+                <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex gap-2.5 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setArchiveConfirm(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmArchiveExecution}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-linear-to-r from-[#1b5e20] to-[#2e7d32] hover:from-[#154a1a] hover:to-[#256427] transition shadow-xs"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* ── Refer Mother Modal ── */}
-      <AnimatePresence>
-        {showReferMotherModal && (
-          <motion.div
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowReferMotherModal(false); }}
-          >
+      {createPortal(
+        <AnimatePresence>
+          {showReferMotherModal && (
+            <motion.div
+              variants={backdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden"
+              style={{ zIndex: 9999 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setShowReferMotherModal(false); }}
+            >
             <motion.div
               variants={modalVariants}
               initial="hidden"
@@ -933,7 +944,9 @@ function Referrals() {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
 
       {/* Styled feedback toast notification */}
       {toastMessage && (

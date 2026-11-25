@@ -3,6 +3,7 @@
  * Route: /admin/puroks
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import axiosClient from '../api/axiosClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShimmerSkeleton } from '../components/ui/motion';
@@ -384,119 +385,125 @@ export default function PurokManagement() {
       </div>
 
       {/* ── Add Purok Modal ── */}
-      <AnimatePresence>
-        {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 space-y-4"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                    <Plus size={18} />
+      {createPortal(
+        <AnimatePresence>
+          {showAddModal && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style={{ zIndex: 9999 }}>
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 space-y-4"
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                      <Plus size={18} />
+                    </div>
+                    <h3 className="font-bold text-gray-900 text-sm">Add Purok — {selectedBarangay}</h3>
                   </div>
-                  <h3 className="font-bold text-gray-900 text-sm">Add Purok — {selectedBarangay}</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <form onSubmit={handleAddPurok} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Purok Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder='e.g. Purok 2, Pag-asa, Riverside'
-                    value={newPurokName}
-                    onChange={(e) => setNewPurokName(capitalizeWords(e.target.value))}
-                    required
-                    autoFocus
-                    className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:border-[#2e7d32] focus:ring-1 focus:ring-[#2e7d32]"
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    Names are free text and automatically capitalized.
-                  </p>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}
-                    className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddPurok} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Purok Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder='e.g. Purok 2, Pag-asa, Riverside'
+                      value={newPurokName}
+                      onChange={(e) => setNewPurokName(capitalizeWords(e.target.value))}
+                      required
+                      autoFocus
+                      className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:border-[#2e7d32] focus:ring-1 focus:ring-[#2e7d32]"
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Names are free text and automatically capitalized.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddModal(false)}
+                      className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={adding}
+                      className="px-4 py-2 text-xs font-bold text-white bg-[#2e7d32] hover:bg-[#1b5e20] rounded-xl transition disabled:opacity-50"
+                    >
+                      {adding ? 'Adding…' : 'Add Purok'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* ── Toggle Status Confirm Modal ── */}
+      {createPortal(
+        <AnimatePresence>
+          {confirmTogglePurok && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style={{ zIndex: 9999 }}>
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-gray-100 space-y-4"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto">
+                  <Power size={22} />
+                </div>
+                <div className="text-center">
+                  <h3 className="font-bold text-gray-900 text-sm">
+                    {confirmTogglePurok.is_active ? 'Deactivate Purok?' : 'Activate Purok?'}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {confirmTogglePurok.is_active
+                      ? `Deactivating "${confirmTogglePurok.name}" will hide it from new registrations in ${selectedBarangay}. Historical records will remain intact.`
+                      : `Activating "${confirmTogglePurok.name}" will make it available for selection in ${selectedBarangay}.`}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmTogglePurok(null)}
+                    className="w-1/2 py-2 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition"
                   >
                     Cancel
                   </button>
                   <button
-                    type="submit"
-                    disabled={adding}
-                    className="px-4 py-2 text-xs font-bold text-white bg-[#2e7d32] hover:bg-[#1b5e20] rounded-xl transition disabled:opacity-50"
+                    type="button"
+                    onClick={() => handleToggleStatus(confirmTogglePurok)}
+                    className={`w-1/2 py-2 text-xs font-bold text-white rounded-xl transition ${
+                      confirmTogglePurok.is_active
+                        ? 'bg-amber-600 hover:bg-amber-700'
+                        : 'bg-emerald-600 hover:bg-emerald-700'
+                    }`}
                   >
-                    {adding ? 'Adding…' : 'Add Purok'}
+                    {confirmTogglePurok.is_active ? 'Deactivate' : 'Activate'}
                   </button>
                 </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Toggle Status Confirm Modal ── */}
-      <AnimatePresence>
-        {confirmTogglePurok && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-gray-100 space-y-4"
-            >
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto">
-                <Power size={22} />
-              </div>
-              <div className="text-center">
-                <h3 className="font-bold text-gray-900 text-sm">
-                  {confirmTogglePurok.is_active ? 'Deactivate Purok?' : 'Activate Purok?'}
-                </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  {confirmTogglePurok.is_active
-                    ? `Deactivating "${confirmTogglePurok.name}" will hide it from new registrations in ${selectedBarangay}. Historical records will remain intact.`
-                    : `Activating "${confirmTogglePurok.name}" will make it available for selection in ${selectedBarangay}.`}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmTogglePurok(null)}
-                  className="w-1/2 py-2 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleToggleStatus(confirmTogglePurok)}
-                  className={`w-1/2 py-2 text-xs font-bold text-white rounded-xl transition ${
-                    confirmTogglePurok.is_active
-                      ? 'bg-amber-600 hover:bg-amber-700'
-                      : 'bg-emerald-600 hover:bg-emerald-700'
-                  }`}
-                >
-                  {confirmTogglePurok.is_active ? 'Deactivate' : 'Activate'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
