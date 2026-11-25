@@ -72,12 +72,18 @@ function NeedAttention() {
   // log visit / service modal
   const [visitTarget, setVisitTarget] = useState(null);
   const [visitDate, setVisitDate] = useState(new Date().toISOString().slice(0, 10));
-  const [serviceType, setServiceType] = useState('vitamin_a');
+  const [selectedServices, setSelectedServices] = useState([]);
   const [visitWeight, setVisitWeight] = useState('');
   const [visitHeight, setVisitHeight] = useState('');
   const [visitNotes, setVisitNotes] = useState('');
   const [visitSubmitting, setVisitSubmitting] = useState(false);
   const [visitError, setVisitError] = useState('');
+
+  const toggleService = (value) => {
+    setSelectedServices((prev) =>
+      prev.includes(value) ? prev.filter((s) => s !== value) : [...prev, value]
+    );
+  };
 
   // Lock body scroll when visit modal is open
   useEffect(() => {
@@ -159,7 +165,7 @@ function NeedAttention() {
   const openVisitModal = (child) => {
     setVisitTarget(child);
     setVisitDate(new Date().toISOString().slice(0, 10));
-    setServiceType('');
+    setSelectedServices([]);
     setVisitWeight(child.weight_kg || '');
     setVisitHeight(child.height_cm || '');
     setVisitNotes('');
@@ -172,20 +178,20 @@ function NeedAttention() {
     setVisitError('');
     try {
       // Validate service selection
-      if (!serviceType) {
-        setVisitError('Please select a service before saving.');
+      if (!selectedServices || selectedServices.length === 0) {
+        setVisitError('Pumili ng kahit isang serbisyo (Please select at least one service).');
         setVisitSubmitting(false);
         return;
       }
       const age = visitTarget.age_in_months ?? 0;
       // Vitamin A not for <6 months
-      if (serviceType === 'vitamin_a' && age < 6) {
+      if (selectedServices.includes('vitamin_a') && age < 6) {
         setVisitError('Vitamin A supplementation is not indicated for infants under 6 months.');
         setVisitSubmitting(false);
         return;
       }
       // Deworming not for <12 months
-      if (serviceType === 'deworming' && age < 12) {
+      if (selectedServices.includes('deworming') && age < 12) {
         setVisitError('Deworming tablets are not indicated for infants under 12 months.');
         setVisitSubmitting(false);
         return;
@@ -193,7 +199,8 @@ function NeedAttention() {
       await axiosClient.post('/bhw/need-attention/child-services', {
         child_id: visitTarget.child_id,
         service_date: visitDate,
-        service_type: serviceType,
+        service_types: selectedServices,
+        service_type: selectedServices[0],
         provided_by: user.user_id,
         weight_kg: visitWeight || null,
         height_cm: visitHeight || null,
@@ -487,7 +494,7 @@ function NeedAttention() {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="bg-linear-to-r from-[#1b5e20] to-[#2e7d32] px-6 py-5 flex items-center justify-between text-white shrink-0">
@@ -505,37 +512,65 @@ function NeedAttention() {
                 </button>
               </div>
 
-              <div className="p-6 space-y-3.5 overflow-y-auto flex-1">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
                 {visitError && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200 font-medium">{visitError}</div>}
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Service Provided *</label>
-                  <select
-                    value={serviceType}
-                    onChange={(e) => setServiceType(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#2e7d32] cursor-pointer"
-                  >
-                    <option value="">Select service</option>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                      Services Provided *
+                    </label>
+                    <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      {selectedServices.length === 0
+                        ? 'Select all that apply'
+                        : `${selectedServices.length} selected`}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {serviceOptions.map((opt) => {
                       const age = visitTarget?.age_in_months ?? 0;
                       const isVitADisabled = opt.value === 'vitamin_a' && age < 6;
                       const isDewormDisabled = opt.value === 'deworming' && age < 12;
                       const isDisabled = isVitADisabled || isDewormDisabled;
-
-                      let label = opt.label;
-                      if (isVitADisabled) {
-                        label += ' (6+ buwan lamang)';
-                      } else if (isDewormDisabled) {
-                        label += ' (12+ buwan lamang)';
-                      }
+                      const isChecked = selectedServices.includes(opt.value);
 
                       return (
-                        <option key={opt.value} value={opt.value} disabled={isDisabled} className={isDisabled ? 'text-gray-400' : ''}>
-                          {label}
-                        </option>
+                        <label
+                          key={opt.value}
+                          className={`flex items-start gap-2.5 p-3 rounded-xl border transition cursor-pointer select-none ${
+                            isDisabled
+                              ? 'opacity-40 bg-gray-50 border-gray-200 cursor-not-allowed'
+                              : isChecked
+                              ? 'border-emerald-600 bg-emerald-50/90 ring-1 ring-emerald-500 shadow-2xs'
+                              : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            value={opt.value}
+                            disabled={isDisabled}
+                            checked={isChecked}
+                            onChange={() => !isDisabled && toggleService(opt.value)}
+                            className="mt-0.5 rounded-md text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer accent-emerald-600"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <span
+                              className={`text-xs block ${
+                                isChecked ? 'text-emerald-950 font-bold' : 'text-gray-800 font-semibold'
+                              }`}
+                            >
+                              {opt.label}
+                            </span>
+                            {isDisabled && (
+                              <span className="text-[10px] text-amber-700 font-semibold block mt-0.5">
+                                {isVitADisabled ? '6+ buwan lamang' : '12+ buwan lamang'}
+                              </span>
+                            )}
+                          </div>
+                        </label>
                       );
                     })}
-                  </select>
+                  </div>
                 </div>
 
                 <div>

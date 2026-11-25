@@ -64,7 +64,7 @@ function computeNutritionStatus(weightKg, heightCm, ageMonths, sex) {
 }
 
 exports.createChildService = async (req, res) => {
-  const { child_id, service_date, service_type, provided_by, weight_kg, height_cm, notes } = req.body;
+  const { child_id, service_date, service_type, service_types, provided_by, weight_kg, height_cm, notes } = req.body;
   const serviceConfigs = {
     vitamin_a: { type: 'Vitamin A', name: 'Vitamin A Supplementation' },
     deworming: { type: 'Deworming', name: 'Deworming Tablet', defaultDosage: 'Albendazole 400mg' },
@@ -72,9 +72,16 @@ exports.createChildService = async (req, res) => {
     checkup: { type: 'Checkup', name: 'General Health Checkup' },
   };
 
-  const selectedConfig = serviceConfigs[service_type];
-  if (!child_id || !service_date || !selectedConfig) {
-    return res.status(400).json({ message: 'Child, date, and valid service type are required.' });
+  // Support multiple services (array) or single service (string)
+  let typesToRecord = [];
+  if (Array.isArray(service_types) && service_types.length > 0) {
+    typesToRecord = service_types.filter((t) => serviceConfigs[t]);
+  } else if (service_type && serviceConfigs[service_type]) {
+    typesToRecord = [service_type];
+  }
+
+  if (!child_id || !service_date || typesToRecord.length === 0) {
+    return res.status(400).json({ message: 'Child, date, and at least one valid service type are required.' });
   }
 
   const providerId = req.user?.user_id || provided_by || null;
@@ -87,25 +94,44 @@ exports.createChildService = async (req, res) => {
     );
     if (!child) return res.status(404).json({ message: 'Child not found.' });
 
-    // Determine dosage for supplementation if applicable
-    let dosage = selectedConfig.defaultDosage || null;
-    if (service_type === 'vitamin_a') {
-      dosage = (child.age_in_months || 0) < 12 ? '100,000 IU' : '200,000 IU';
+    const childAge = child.age_in_months || 0;
+
+    // Validate age restrictions
+    for (const t of typesToRecord) {
+      if (t === 'vitamin_a' && childAge < 6) {
+        return res.status(400).json({ message: 'Vitamin A supplementation is not indicated for infants under 6 months.' });
+      }
+      if (t === 'deworming' && childAge < 12) {
+        return res.status(400).json({ message: 'Deworming tablets are not indicated for infants under 12 months.' });
+      }
     }
 
-    const [result] = await pool.query(
-      `INSERT INTO child_services (child_id, service_type, service_name, dosage, service_date, provided_by, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        child_id,
-        selectedConfig.type,
-        selectedConfig.name,
-        dosage,
-        service_date,
-        providerId,
-        notes || null,
-      ]
-    );
+    const insertedServiceNames = [];
+    let firstInsertId = null;
+
+    for (const t of typesToRecord) {
+      const config = serviceConfigs[t];
+      let dosage = config.defaultDosage || null;
+      if (t === 'vitamin_a') {
+        dosage = childAge < 12 ? '100,000 IU' : '200,000 IU';
+      }
+
+      const [result] = await pool.query(
+        `INSERT INTO child_services (child_id, service_type, service_name, dosage, service_date, provided_by, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          child_id,
+          config.type,
+          config.name,
+          dosage,
+          service_date,
+          providerId,
+          notes || null,
+        ]
+      );
+      if (!firstInsertId) firstInsertId = result.insertId;
+      insertedServiceNames.push(config.name);
+    }
 
     const hasMeasurement = (weight_kg !== undefined && weight_kg !== null && weight_kg !== '')
       || (height_cm !== undefined && height_cm !== null && height_cm !== '');
@@ -175,14 +201,15 @@ exports.createChildService = async (req, res) => {
 
     // ── Audit Trail (Module 4 Clinical Requirement) ─────────────────────────
     try {
-      const auditDetails = `Health visit recorded: ${selectedConfig.name} on ${service_date}${hasMeasurement ? ` (Weight: ${safeWeight}kg, Height: ${safeHeight}cm)` : ''}${notes ? `. Notes: ${notes}` : ''}`;
+      const servicesLabel = insertedServiceNames.join(', ');
+      const auditDetails = `Health visit recorded: ${servicesLabel} on ${service_date}${hasMeasurement ? ` (Weight: ${safeWeight}kg, Height: ${safeHeight}cm)` : ''}${notes ? `. Notes: ${notes}` : ''}`;
       await pool.query(
         `INSERT INTO medical_records_audit_trail (
            record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name,
            action, action_details, modified_by, modifier_name, timestamp
          ) VALUES ('child_services', ?, 'child', ?, ?, 'CREATE', ?, ?, ?, NOW())`,
         [
-          result.insertId,
+          firstInsertId,
           child_id,
           `${child.first_name} ${child.last_name}`,
           auditDetails,
@@ -191,10 +218,10 @@ exports.createChildService = async (req, res) => {
         ]
       );
 
-      await logAction(pool, req, 'PROVIDE_CHILD_SERVICE', 'child_services', result.insertId, {
+      await logAction(pool, req, 'PROVIDE_CHILD_SERVICE', 'child_services', firstInsertId, {
         summary: auditDetails,
         child_name: `${child.first_name} ${child.last_name}`,
-        service_type: selectedConfig.type,
+        service_type: servicesLabel,
         barangay: child.barangay || req.user?.barangay
       }, child.barangay || req.user?.barangay);
     } catch (auditErr) {
@@ -203,13 +230,14 @@ exports.createChildService = async (req, res) => {
 
     // ── Partner Notification (BHW / BNS in barangay) ─────────────────────────
     try {
+      const servicesLabel = insertedServiceNames.join(', ');
       await pool.query(
         `INSERT INTO notifications (title, message, type, is_read, related_id, created_by, recipient_role, barangay, created_at)
          VALUES (?, ?, 'visit', FALSE, ?, ?, 'bhw', ?, NOW())`,
         [
           `Health Visit: ${child.first_name} ${child.last_name}`,
-          `Health visit recorded (${selectedConfig.name}) for ${child.first_name} ${child.last_name} in Barangay ${child.barangay}.`,
-          result.insertId,
+          `Health visit recorded (${servicesLabel}) for ${child.first_name} ${child.last_name} in Barangay ${child.barangay}.`,
+          firstInsertId,
           providerId,
           child.barangay,
         ]
@@ -219,8 +247,9 @@ exports.createChildService = async (req, res) => {
     }
 
     return res.status(201).json({
-      message: 'Child health service recorded successfully.',
-      service_id: result.insertId,
+      message: `${insertedServiceNames.length > 1 ? 'Services' : 'Service'} recorded successfully.`,
+      service_id: firstInsertId,
+      services_recorded: insertedServiceNames,
       last_visit: service_date,
     });
   } catch (error) {
