@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { isUserActiveForLogin } = require('../utils/roleAccess');
-const { maskPhoneNumber, sendVerificationSms } = require('../services/smsService');
+const { maskPhoneNumber, sendVerificationSms, isSmsConfigured } = require('../services/smsService');
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
@@ -265,17 +265,26 @@ async function sendPasswordChangedEmail(email) {
 
 // Check if account exists and can receive password reset
 exports.checkAccount = async (req, res) => {
-  const email = (req.query.email || req.body.email || '').trim();
+  const input = (req.query.identifier || req.query.email || req.body.identifier || req.body.email || '').trim();
   const platform = ((req.query.platform || req.body.platform || '').trim()).toLowerCase();
 
-  if (!email) {
-    return res.status(400).json({ message: 'Email is required.', exists: false });
+  if (!input) {
+    return res.status(400).json({ message: 'Email or phone number is required.', exists: false });
   }
+
+  const cleanDigits = input.replace(/\D/g, '');
 
   try {
     const [rows] = await pool.query(
-      'SELECT user_id, role, first_name, last_name, email, contact_number FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND deleted_at IS NULL LIMIT 1',
-      [email]
+      `SELECT user_id, role, first_name, last_name, email, contact_number, username
+       FROM users
+       WHERE (
+         LOWER(TRIM(email)) = LOWER(TRIM(?))
+         OR LOWER(TRIM(username)) = LOWER(TRIM(?))
+         OR (LENGTH(?) >= 10 AND REPLACE(REPLACE(contact_number, ' ', ''), '-', '') LIKE CONCAT('%', ?))
+       )
+       AND deleted_at IS NULL LIMIT 1`,
+      [input, input, cleanDigits, cleanDigits.slice(-10)]
     );
 
     if (rows.length === 0) {
@@ -283,6 +292,7 @@ exports.checkAccount = async (req, res) => {
         exists: false,
         canReset: false,
         has_sms: false,
+        sms_configured: false,
         masked_phone: null,
         message: 'If this account exists, you can proceed.',
       });
@@ -293,13 +303,14 @@ exports.checkAccount = async (req, res) => {
 
     // Platform-specific isolation:
     if (platform === 'web' && userRole === 'bns') {
-      return res.status(200).json({ exists: false, canReset: false, has_sms: false, message: 'If this account exists, you can proceed.' });
+      return res.status(200).json({ exists: false, canReset: false, has_sms: false, sms_configured: false, message: 'If this account exists, you can proceed.' });
     }
     if (platform === 'mobile' && userRole === 'admin') {
-      return res.status(200).json({ exists: false, canReset: false, has_sms: false, message: 'If this account exists, you can proceed.' });
+      return res.status(200).json({ exists: false, canReset: false, has_sms: false, sms_configured: false, message: 'If this account exists, you can proceed.' });
     }
 
     const canReset = ['admin', 'bhw', 'bns'].includes(userRole);
+    const smsConfigured = isSmsConfigured();
     const hasSms = Boolean(user.contact_number && user.contact_number.trim().length >= 10);
     const maskedPhone = hasSms ? maskPhoneNumber(user.contact_number) : null;
 
@@ -307,7 +318,12 @@ exports.checkAccount = async (req, res) => {
       exists: canReset,
       canReset,
       has_sms: hasSms,
+      sms_configured: smsConfigured,
       masked_phone: maskedPhone,
+      email: user.email,
+      masked_email: maskEmail(user.email),
+      contact_number: user.contact_number,
+      full_name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
       message: canReset ? 'Account verified.' : 'If this account exists, you can proceed.',
     });
   } catch (error) {
@@ -318,41 +334,27 @@ exports.checkAccount = async (req, res) => {
 
 // Generic response for password reset requests to prevent user enumeration
 exports.forgotPassword = async (req, res) => {
-  const { email, platform, channel = 'email' } = req.body;
-  const normalizedEmail = (email || '').trim();
+  const { email, identifier, platform, channel = 'email' } = req.body;
+  const input = (identifier || email || '').trim();
   const normalizedPlatform = (platform || '').trim().toLowerCase();
   const clientIp = req.ip || (req.headers && req.headers['x-forwarded-for']) || (req.socket && req.socket.remoteAddress) || 'unknown';
 
-  if (!normalizedEmail) {
-    return res.status(400).json({ message: 'Email is required.' });
+  if (!input) {
+    return res.status(400).json({ message: 'Email or mobile number is required.' });
   }
 
-  const key = normalizedEmail.toLowerCase();
-  const now = Date.now();
-
-  // 1. Cooldown rate limit: 60 seconds between requests for the same account
-  const existingRecord = passwordResetTokens.get(key);
-  if (existingRecord && existingRecord.cooldownUntil && now < existingRecord.cooldownUntil) {
-    const remaining = Math.ceil((existingRecord.cooldownUntil - now) / 1000);
-    return res.status(429).json({ message: `Please wait ${remaining} seconds before requesting a new code.` });
-  }
-
-  // 2. Account rate limit: max 3 requests per account per hour
-  const accountHistory = (accountOtpHistory.get(key) || []).filter(ts => now - ts < 60 * 60 * 1000);
-  if (accountHistory.length >= 3) {
-    return res.status(429).json({ message: 'Too many OTP requests for this account. Please try again in 1 hour.' });
-  }
-
-  // 3. IP rate limit: max 10 requests per IP per day
-  const ipHistory = (ipOtpHistory.get(clientIp) || []).filter(ts => now - ts < 24 * 60 * 60 * 1000);
-  if (ipHistory.length >= 10) {
-    return res.status(429).json({ message: 'Too many OTP requests from this network. Please try again tomorrow.' });
-  }
+  const cleanDigits = input.replace(/\D/g, '');
 
   try {
     const [rows] = await pool.query(
-      'SELECT * FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND deleted_at IS NULL LIMIT 1',
-      [normalizedEmail]
+      `SELECT * FROM users
+       WHERE (
+         LOWER(TRIM(email)) = LOWER(TRIM(?))
+         OR LOWER(TRIM(username)) = LOWER(TRIM(?))
+         OR (LENGTH(?) >= 10 AND REPLACE(REPLACE(contact_number, ' ', ''), '-', '') LIKE CONCAT('%', ?))
+       )
+       AND deleted_at IS NULL LIMIT 1`,
+      [input, input, cleanDigits, cleanDigits.slice(-10)]
     );
 
     // If account not found or platform isolated, return generic response without leaking info
@@ -362,11 +364,33 @@ exports.forgotPassword = async (req, res) => {
 
     const user = rows[0];
     const userRole = (user.role || '').toLowerCase();
+    const canonicalEmail = (user.email || '').trim();
+    const key = canonicalEmail.toLowerCase();
+    const now = Date.now();
 
     if ((normalizedPlatform === 'web' && userRole === 'bns') ||
         (normalizedPlatform === 'mobile' && userRole === 'admin') ||
         !['admin', 'bhw', 'bns'].includes(userRole)) {
       return res.status(200).json({ message: 'If this account exists, a code has been sent.' });
+    }
+
+    // 1. Cooldown rate limit: 60 seconds between requests for the same account
+    const existingRecord = passwordResetTokens.get(key);
+    if (existingRecord && existingRecord.cooldownUntil && now < existingRecord.cooldownUntil) {
+      const remaining = Math.ceil((existingRecord.cooldownUntil - now) / 1000);
+      return res.status(429).json({ message: `Please wait ${remaining} seconds before requesting a new code.` });
+    }
+
+    // 2. Account rate limit: max 3 requests per account per hour
+    const accountHistory = (accountOtpHistory.get(key) || []).filter(ts => now - ts < 60 * 60 * 1000);
+    if (accountHistory.length >= 3) {
+      return res.status(429).json({ message: 'Too many OTP requests for this account. Please try again in 1 hour.' });
+    }
+
+    // 3. IP rate limit: max 10 requests per IP per day
+    const ipHistory = (ipOtpHistory.get(clientIp) || []).filter(ts => now - ts < 24 * 60 * 60 * 1000);
+    if (ipHistory.length >= 10) {
+      return res.status(429).json({ message: 'Too many OTP requests from this network. Please try again tomorrow.' });
     }
 
     // Update rate limit trackers
@@ -388,25 +412,38 @@ exports.forgotPassword = async (req, res) => {
       cooldownUntil,
       channel,
       contactNumber: user.contact_number,
-      email: normalizedEmail,
+      email: canonicalEmail,
       verified: false,
     });
 
+    const smsConfigured = isSmsConfigured();
     const isSms = channel === 'sms' && Boolean(user.contact_number && user.contact_number.trim().length >= 10);
 
-    if (isSms) {
+    if (isSms && smsConfigured) {
       try {
         await sendVerificationSms({ phone: user.contact_number, otp });
-        console.log(`[Audit] Verification OTP sent via SMS to ${maskPhoneNumber(user.contact_number)} for account ${maskEmail(normalizedEmail)}`);
+        console.log(`[Audit] Verification OTP sent via SMS to ${maskPhoneNumber(user.contact_number)} for account ${maskEmail(canonicalEmail)}`);
       } catch (smsError) {
         console.error('Send SMS OTP error:', smsError && smsError.message);
         // Fall back to email if SMS provider encountered an error
-        await sendOtpEmail(normalizedEmail, otp);
+        await sendOtpEmail(canonicalEmail, otp);
       }
+    } else if (isSms && !smsConfigured) {
+      // SMS gateway is not configured with an API key.
+      // Automatically send OTP to registered email so user is NEVER left without a code!
+      await sendOtpEmail(canonicalEmail, otp);
+      console.log(`[Audit] SMS Gateway unconfigured. Dispatched OTP to registered email ${maskEmail(canonicalEmail)} as safe fallback.`);
+      return res.status(200).json({
+        message: `Paalala: Walang aktibong SMS Gateway ang server. Ang 6-digit OTP ay ligtas na ipinadala sa inyong registered email (${maskEmail(canonicalEmail)}).`,
+        channel: 'email',
+        masked_recipient: maskEmail(canonicalEmail),
+        sms_fallback: true,
+        email: canonicalEmail,
+      });
     } else {
       try {
-        await sendOtpEmail(normalizedEmail, otp);
-        console.log(`[Audit] Verification OTP sent via email to ${maskEmail(normalizedEmail)}`);
+        await sendOtpEmail(canonicalEmail, otp);
+        console.log(`[Audit] Verification OTP sent via email to ${maskEmail(canonicalEmail)}`);
       } catch (emailError) {
         console.error('Send reset email error:', emailError && emailError.message);
         passwordResetTokens.delete(key);
@@ -419,7 +456,8 @@ exports.forgotPassword = async (req, res) => {
     return res.status(200).json({
       message: 'If this account exists, a code has been sent.',
       channel: isSms ? 'sms' : 'email',
-      masked_recipient: isSms ? maskPhoneNumber(user.contact_number) : maskEmail(normalizedEmail),
+      masked_recipient: isSms ? maskPhoneNumber(user.contact_number) : maskEmail(canonicalEmail),
+      email: canonicalEmail,
     });
   } catch (error) {
     console.error('Forgot password error:', error);

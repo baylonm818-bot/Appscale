@@ -104,8 +104,16 @@ async function sendVerificationSms({ phone, otp, customMessage }) {
   return { success: true, provider: 'sandbox', recipient: maskedPhone };
 }
 
+function isSmsConfigured() {
+  const provider = (process.env.SMS_PROVIDER || 'semaphore').toLowerCase().trim();
+  const semaphoreApiKey = (process.env.SEMAPHORE_API_KEY || '').trim();
+  const philSmsApiKey = (process.env.PHILSMS_API_KEY || '').trim();
+  return Boolean((provider === 'semaphore' && semaphoreApiKey) || (provider === 'philsms' && philSmsApiKey));
+}
+
 module.exports = {
   normalizePhilippinePhone,
   maskPhoneNumber,
   sendVerificationSms,
+  isSmsConfigured,
 };
