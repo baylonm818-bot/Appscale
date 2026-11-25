@@ -52,6 +52,14 @@ const STATUS_STYLE = {
   missed:    'bg-amber-100   text-amber-700   ring-1 ring-amber-200',
 };
 
+const GASAN_BARANGAYS = [
+  'Antipolo', 'Bachao Ibaba', 'Bachao Ilaya', 'Bacong-Bacong', 'Bahi',
+  'Bangbang', 'Banot', 'Banuyo', 'Bognuyan', 'Cabugao',
+  'Dawis', 'Dili', 'Libtangin', 'Mahunig', 'Mangiliol',
+  'Masiga', 'Matandag', 'Pangi', 'Pingan', 'Poblacion',
+  'Tabionan', 'Tapuyan', 'Tiguion', 'Victoria', 'Yook',
+];
+
 function StatusBadge({ status }) {
   return (
     <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${STATUS_STYLE[status] || 'bg-gray-100 text-gray-600'}`}>
@@ -214,6 +222,19 @@ function Schedule() {
   const [schedErrors, setSchedErrors]   = useState({});
   const [saving, setSaving]             = useState(false);
   const [users, setUsers]               = useState([]);
+  const [participantSearch, setParticipantSearch] = useState('');
+
+  const filteredBarangayUsers = useMemo(() => {
+    if (form.recipient_type !== 'barangay') return [];
+    const q = participantSearch.trim().toLowerCase();
+    return users.filter((u) => {
+      const matchesBarangay = !form.barangay || u.barangay?.toLowerCase() === form.barangay?.toLowerCase();
+      if (!q) return matchesBarangay;
+      const fullName = `${u.first_name} ${u.last_name}`.toLowerCase();
+      const matchesSearch = fullName.includes(q) || u.role?.toLowerCase().includes(q) || u.barangay?.toLowerCase().includes(q);
+      return matchesBarangay && matchesSearch;
+    });
+  }, [users, form.recipient_type, form.barangay, participantSearch]);
 
   // Calendar State
   const [calendarDate, setCalendarDate] = useState(() => new Date());
@@ -413,6 +434,7 @@ function Schedule() {
       barangay: e.target.value === 'all' ? 'All Barangays' : '',
       assigned_to: '', target_role: '', participant_ids: [] });
     setSchedErrors((prev) => ({ ...prev, barangay: '', target_role: '', assigned_to: '' }));
+    setParticipantSearch('');
   };
 
   const handleOpenAddForDate = (dateKey) => {
@@ -422,6 +444,7 @@ function Schedule() {
     });
     setSchedErrors({});
     setFormError('');
+    setParticipantSearch('');
     setShowModal(true);
   };
 
@@ -1038,20 +1061,87 @@ function Schedule() {
                 </div>
 
                 {form.recipient_type === 'barangay' && (
-                  <div>
-                    <FormLabel label="Barangay" required />
-                    <select
-                      name="barangay"
-                      value={form.barangay}
-                      onChange={handleChange}
-                      className={`${fieldCls} ${schedErrors.barangay ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
-                    >
-                      <option value="">Select barangay…</option>
-                      {[...new Set(users.map((u) => u.barangay).filter(Boolean))].sort().map((b) => (
-                        <option key={b} value={b}>{b}</option>
-                      ))}
-                    </select>
-                    {schedErrors.barangay && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.barangay}</p>}
+                  <div className="space-y-3">
+                    <div>
+                      <FormLabel label="Barangay" required />
+                      <select
+                        name="barangay"
+                        value={form.barangay}
+                        onChange={(e) => {
+                          handleChange(e);
+                          setForm((prev) => ({ ...prev, barangay: e.target.value, participant_ids: [] }));
+                          setParticipantSearch('');
+                        }}
+                        className={`${fieldCls} ${schedErrors.barangay ? 'border-[#D32F2F] ring-1 ring-[#D32F2F] focus:border-[#D32F2F]' : ''}`}
+                      >
+                        <option value="">Select barangay…</option>
+                        {GASAN_BARANGAYS.map((b) => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                      {schedErrors.barangay && <p className="text-xs text-[#D32F2F] mt-1">{schedErrors.barangay}</p>}
+                    </div>
+
+                    {/* Optional participants for specific barangay */}
+                    {form.barangay && (
+                      <div className="pt-1">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <FormLabel label="Specific Assigned Workers (Optional)" />
+                          {(form.participant_ids || []).length > 0 && (
+                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                              {form.participant_ids.length} selected
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Search Bar */}
+                        <div className="relative mb-2">
+                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="text"
+                            value={participantSearch}
+                            onChange={(e) => setParticipantSearch(e.target.value)}
+                            placeholder={`Search worker in ${form.barangay}…`}
+                            className="w-full pl-8 pr-7 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-emerald-600 focus:border-emerald-600 transition"
+                          />
+                          {participantSearch && (
+                            <button
+                              type="button"
+                              onClick={() => setParticipantSearch('')}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100 bg-gray-50">
+                          {filteredBarangayUsers.length === 0 ? (
+                            <div className="p-3 text-center text-xs text-gray-400">
+                              {participantSearch ? 'No matching workers found.' : `No workers assigned to Brgy. ${form.barangay} yet.`}
+                            </div>
+                          ) : (
+                            filteredBarangayUsers.map((u) => {
+                              const uid = String(u.user_id);
+                              const checked = (form.participant_ids || []).includes(uid);
+                              return (
+                                <label key={uid} className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-green-50 transition ${checked ? 'bg-emerald-50' : ''}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => handleParticipantToggle(uid)}
+                                    className="accent-emerald-700 w-4 h-4 shrink-0"
+                                  />
+                                  <span className="text-xs font-medium text-gray-700 truncate">
+                                    {u.first_name} {u.last_name} <span className="text-gray-400 uppercase">({u.role})</span> — {u.barangay}
+                                  </span>
+                                </label>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1105,35 +1195,6 @@ function Schedule() {
                   <FormLabel label="Facilitator" />
                   <input name="facilitator" placeholder="e.g. Dr. Santos" value={form.facilitator} onChange={handleChange} className={fieldCls} />
                 </div>
-
-                {/* Multi-participant checkboxes (optional additional assignees) */}
-                {users.length > 0 && (
-                  <div>
-                    <FormLabel label="Additional Participants (optional)" />
-                    <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100 bg-gray-50">
-                      {users.map((u) => {
-                        const uid = String(u.user_id);
-                        const checked = (form.participant_ids || []).includes(uid);
-                        return (
-                          <label key={uid} className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-green-50 transition ${checked ? 'bg-emerald-50' : ''}`}>
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => handleParticipantToggle(uid)}
-                              className="accent-emerald-700 w-4 h-4 shrink-0"
-                            />
-                            <span className="text-xs font-medium text-gray-700 truncate">
-                              {u.first_name} {u.last_name} <span className="text-gray-400 uppercase">({u.role})</span> — {u.barangay}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    {(form.participant_ids || []).length > 0 && (
-                      <p className="text-xs text-emerald-700 font-semibold mt-1">{form.participant_ids.length} participant(s) selected</p>
-                    )}
-                  </div>
-                )}
 
                 <div>
                   <FormLabel label="Notes" />
@@ -1212,7 +1273,7 @@ function Schedule() {
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-600 bg-white"
             >
               <option value="All Barangays">All Barangays (Municipal-wide)</option>
-              {['Antipolo', 'B. Ibaba', 'B. Ilaya', 'Bacong-Bacong', 'Bahi', 'Bangbang', 'Banot', 'Banuyo', 'Bognuyan', 'Cabugao', 'Dawis', 'Dili', 'Libtangin', 'Mahunig', 'Mangiliol', 'Masiga', 'Mat. Gasan', 'Pangi', 'Pinggan', 'Tabionan', 'Tiguion', 'Brgy. Uno', 'Brgy. Dos', 'Brgy. Tres', 'Tapuyan'].map((b) => (
+              {GASAN_BARANGAYS.map((b) => (
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>
