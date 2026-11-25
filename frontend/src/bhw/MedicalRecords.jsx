@@ -292,6 +292,13 @@ function MedicalRecords() {
   const [interventionNotes, setInterventionNotes] = useState('');
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
+  const [toastMessage, setToastMessage] = useState(null); // { text, type: 'success' | 'error' }
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => setToastMessage(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
 
   const {
     data: childrenData,
@@ -579,6 +586,10 @@ function MedicalRecords() {
         _refetchAudit();
       }
       setShowAddModal(false);
+      setToastMessage({
+        text: `${itemsToSubmit.length} intervention${itemsToSubmit.length > 1 ? 's' : ''} recorded successfully. Medical records updated.`,
+        type: 'success',
+      });
     } catch (err) {
       setModalError(err.response?.data?.message || 'Failed to save medical intervention(s).');
     } finally {
@@ -2162,6 +2173,26 @@ function MedicalRecords() {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* ── Toast Notification Banner ── */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-[9999] animate-in fade-in slide-in-from-bottom-5 duration-200">
+          <div
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium ${
+              toastMessage.type === 'success'
+                ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-900/20'
+                : 'bg-red-600 text-white border-red-500 shadow-red-900/20'
+            }`}
+          >
+            {toastMessage.type === 'success' ? (
+              <CheckCircle2 size={18} className="shrink-0 text-white" />
+            ) : (
+              <X size={18} className="shrink-0 text-white cursor-pointer" onClick={() => setToastMessage(null)} />
+            )}
+            <span>{toastMessage.text}</span>
+          </div>
+        </div>
       )}
 
     </main>

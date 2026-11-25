@@ -239,9 +239,12 @@ function NeedAttention() {
         });
       }
 
-      await refetch();
       setVisitTarget(null);
-      alert('Health visit recorded successfully. Medical records and audit trail updated.');
+      setToastMessage({
+        text: 'Health visit recorded successfully. Medical records and audit trail updated.',
+        type: 'success',
+      });
+      await refetch();
     } catch (err) {
       setVisitError(err.response?.data?.message || 'Failed to log service visit. Please try again.');
     } finally {

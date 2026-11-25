@@ -194,8 +194,11 @@ exports.getChildMedicalHistory = async (req, res) => {
 
     const [servicesHistory] = await pool.query(
       `SELECT cs.service_id, cs.service_date, cs.service_type, cs.service_name, cs.dosage,
-              cs.next_schedule, cs.provided_by, cs.notes
+              cs.next_schedule,
+              COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), cs.provided_by, 'BHW') AS provided_by,
+              cs.notes
        FROM child_services cs
+       LEFT JOIN users u ON u.user_id = cs.provided_by
        WHERE cs.child_id = ?
        ORDER BY cs.service_date DESC, cs.service_id DESC`,
       [childId]
@@ -285,11 +288,14 @@ exports.getMotherMedicalHistory = async (req, res) => {
     }
 
     const [servicesHistory] = await pool.query(
-      `SELECT service_id, service_date, service_type, service_name, dosage,
-              next_schedule, provided_by, notes, created_at
-       FROM mother_services
-       WHERE mother_id = ?
-       ORDER BY service_date DESC, service_id DESC`,
+      `SELECT ms.service_id, ms.service_date, ms.service_type, ms.service_name, ms.dosage,
+              ms.next_schedule,
+              COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ms.provided_by, 'BHW') AS provided_by,
+              ms.notes, ms.created_at
+       FROM mother_services ms
+       LEFT JOIN users u ON u.user_id = ms.provided_by
+       WHERE ms.mother_id = ?
+       ORDER BY ms.service_date DESC, ms.service_id DESC`,
       [motherId]
     );
 
@@ -337,6 +343,12 @@ exports.createChildMedicalRecord = async (req, res) => {
 
     const [columns] = await pool.query('SHOW COLUMNS FROM child_services');
     const availableColumns = columns.map((column) => column.Field);
+    const providedByCol = columns.find((c) => c.Field === 'provided_by');
+    const isProvidedByInt = providedByCol && providedByCol.Type && providedByCol.Type.toLowerCase().startsWith('int');
+    const effectiveProvidedBy = isProvidedByInt
+      ? (userId ? Number(userId) : null)
+      : (userName || String(userId || 'BHW User'));
+
     const insertConfig = buildChildServiceInsert({
       child_id,
       service_type,
@@ -344,7 +356,7 @@ exports.createChildMedicalRecord = async (req, res) => {
       dosage: dosage || null,
       service_date,
       next_schedule: next_schedule || null,
-      provided_by: userName,
+      provided_by: effectiveProvidedBy,
       notes: notes || null,
     }, availableColumns);
 
@@ -355,7 +367,7 @@ exports.createChildMedicalRecord = async (req, res) => {
     await pool.query(
       `INSERT INTO medical_records_audit_trail (record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name, action, action_details, modified_by, modifier_name, timestamp)
        VALUES ('child_services', ?, 'child', ?, ?, 'CREATE', ?, ?, ?, NOW())`,
-      [result.insertId, child_id, `${child.first_name} ${child.last_name}`, actionDetails, userId, userName]
+      [result.insertId, child_id, `${child.first_name} ${child.last_name}`, actionDetails, userId ? Number(userId) : null, userName]
     );
 
     await logAction(pool, req, 'RECORD_MEDICAL_INTERVENTION', 'child_services', result.insertId, {
@@ -368,7 +380,7 @@ exports.createChildMedicalRecord = async (req, res) => {
     return res.status(201).json({ message: 'Medical intervention recorded successfully.', service_id: result.insertId });
   } catch (error) {
     console.error('Create child medical record error:', error);
-    return res.status(500).json({ message: 'Server error. Please try again later.' });
+    return res.status(500).json({ message: error.sqlMessage || error.message || 'Server error. Please try again later.' });
   }
 };
 
@@ -392,6 +404,12 @@ exports.createMotherMedicalRecord = async (req, res) => {
 
     const [columns] = await pool.query('SHOW COLUMNS FROM mother_services');
     const availableColumns = columns.map((column) => column.Field);
+    const providedByCol = columns.find((c) => c.Field === 'provided_by');
+    const isProvidedByInt = providedByCol && providedByCol.Type && providedByCol.Type.toLowerCase().startsWith('int');
+    const effectiveProvidedBy = isProvidedByInt
+      ? (userId ? Number(userId) : null)
+      : (userName || String(userId || 'BHW User'));
+
     const insertConfig = buildMotherServiceInsert({
       mother_id,
       service_type,
@@ -399,7 +417,7 @@ exports.createMotherMedicalRecord = async (req, res) => {
       dosage: dosage || null,
       service_date,
       next_schedule: next_schedule || null,
-      provided_by: userName,
+      provided_by: effectiveProvidedBy,
       notes: notes || null,
     }, availableColumns);
 
@@ -410,7 +428,7 @@ exports.createMotherMedicalRecord = async (req, res) => {
     await pool.query(
       `INSERT INTO medical_records_audit_trail (record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name, action, action_details, modified_by, modifier_name, timestamp)
        VALUES ('mother_services', ?, 'mother', ?, ?, 'CREATE', ?, ?, ?, NOW())`,
-      [result.insertId, mother_id, `${mother.first_name} ${mother.last_name}`, actionDetails, userId, userName]
+      [result.insertId, mother_id, `${mother.first_name} ${mother.last_name}`, actionDetails, userId ? Number(userId) : null, userName]
     );
 
     await logAction(pool, req, 'RECORD_MEDICAL_INTERVENTION', 'mother_services', result.insertId, {
@@ -423,7 +441,7 @@ exports.createMotherMedicalRecord = async (req, res) => {
     return res.status(201).json({ message: 'Medical intervention recorded successfully.', service_id: result.insertId });
   } catch (error) {
     console.error('Create mother medical record error:', error);
-    return res.status(500).json({ message: 'Server error. Please try again later.' });
+    return res.status(500).json({ message: error.sqlMessage || error.message || 'Server error. Please try again later.' });
   }
 };
 
