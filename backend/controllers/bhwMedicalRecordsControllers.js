@@ -362,20 +362,24 @@ exports.createChildMedicalRecord = async (req, res) => {
 
     const [result] = await pool.query(insertConfig.sql, insertConfig.values);
 
-    // Audit trail logging
-    const actionDetails = `Recorded ${service_type}${service_name ? ': ' + service_name : ''} (Dosage: ${dosage || 'N/A'}, Date: ${service_date})`;
-    await pool.query(
-      `INSERT INTO medical_records_audit_trail (record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name, action, action_details, modified_by, modifier_name, timestamp)
-       VALUES ('child_services', ?, 'child', ?, ?, 'CREATE', ?, ?, ?, NOW())`,
-      [result.insertId, child_id, `${child.first_name} ${child.last_name}`, actionDetails, userId ? Number(userId) : null, userName]
-    );
+    // Audit trail logging (non-fatal)
+    try {
+      const actionDetails = `Recorded ${service_type}${service_name ? ': ' + service_name : ''} (Dosage: ${dosage || 'N/A'}, Date: ${service_date})`;
+      await pool.query(
+        `INSERT INTO medical_records_audit_trail (record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name, action, action_details, modified_by, modifier_name, timestamp)
+         VALUES ('child_services', ?, 'child', ?, ?, 'CREATE', ?, ?, ?, NOW())`,
+        [result.insertId, child_id, `${child.first_name} ${child.last_name}`, actionDetails, userId ? Number(userId) : null, userName]
+      );
 
-    await logAction(pool, req, 'RECORD_MEDICAL_INTERVENTION', 'child_services', result.insertId, {
-      summary: `${actionDetails} for ${child.first_name} ${child.last_name}`,
-      beneficiary: `${child.first_name} ${child.last_name}`,
-      beneficiary_type: 'child',
-      barangay: child.barangay || req.user?.barangay
-    }, child.barangay || req.user?.barangay);
+      await logAction(pool, req, 'RECORD_MEDICAL_INTERVENTION', 'child_services', result.insertId, {
+        summary: `${actionDetails} for ${child.first_name} ${child.last_name}`,
+        beneficiary: `${child.first_name} ${child.last_name}`,
+        beneficiary_type: 'child',
+        barangay: child.barangay || req.user?.barangay
+      }, child.barangay || req.user?.barangay);
+    } catch (auditErr) {
+      console.warn('Child medical records audit trail warning (non-fatal):', auditErr.message);
+    }
 
     return res.status(201).json({ message: 'Medical intervention recorded successfully.', service_id: result.insertId });
   } catch (error) {
@@ -423,20 +427,24 @@ exports.createMotherMedicalRecord = async (req, res) => {
 
     const [result] = await pool.query(insertConfig.sql, insertConfig.values);
 
-    // Audit trail logging
-    const actionDetails = `Recorded ${service_type}${service_name ? ': ' + service_name : ''} (Dosage: ${dosage || 'N/A'}, Date: ${service_date})`;
-    await pool.query(
-      `INSERT INTO medical_records_audit_trail (record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name, action, action_details, modified_by, modifier_name, timestamp)
-       VALUES ('mother_services', ?, 'mother', ?, ?, 'CREATE', ?, ?, ?, NOW())`,
-      [result.insertId, mother_id, `${mother.first_name} ${mother.last_name}`, actionDetails, userId ? Number(userId) : null, userName]
-    );
+    // Audit trail logging (non-fatal)
+    try {
+      const actionDetails = `Recorded ${service_type}${service_name ? ': ' + service_name : ''} (Dosage: ${dosage || 'N/A'}, Date: ${service_date})`;
+      await pool.query(
+        `INSERT INTO medical_records_audit_trail (record_type, record_id, beneficiary_type, beneficiary_id, beneficiary_name, action, action_details, modified_by, modifier_name, timestamp)
+         VALUES ('mother_services', ?, 'mother', ?, ?, 'CREATE', ?, ?, ?, NOW())`,
+        [result.insertId, mother_id, `${mother.first_name} ${mother.last_name}`, actionDetails, userId ? Number(userId) : null, userName]
+      );
 
-    await logAction(pool, req, 'RECORD_MEDICAL_INTERVENTION', 'mother_services', result.insertId, {
-      summary: `${actionDetails} for ${mother.first_name} ${mother.last_name}`,
-      beneficiary: `${mother.first_name} ${mother.last_name}`,
-      beneficiary_type: 'mother',
-      barangay: mother.barangay || req.user?.barangay
-    }, mother.barangay || req.user?.barangay);
+      await logAction(pool, req, 'RECORD_MEDICAL_INTERVENTION', 'mother_services', result.insertId, {
+        summary: `${actionDetails} for ${mother.first_name} ${mother.last_name}`,
+        beneficiary: `${mother.first_name} ${mother.last_name}`,
+        beneficiary_type: 'mother',
+        barangay: mother.barangay || req.user?.barangay
+      }, mother.barangay || req.user?.barangay);
+    } catch (auditErr) {
+      console.warn('Mother medical records audit trail warning (non-fatal):', auditErr.message);
+    }
 
     return res.status(201).json({ message: 'Medical intervention recorded successfully.', service_id: result.insertId });
   } catch (error) {

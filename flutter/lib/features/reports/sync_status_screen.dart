@@ -66,6 +66,13 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
   String? _message;
   String _currentBarangay = '';
   String? _lastSyncedAt;
+  ScaffoldMessengerState? _messenger;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _messenger = ScaffoldMessenger.maybeOf(context);
+  }
 
   @override
   void initState() {
@@ -80,9 +87,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       final syncedItems = items.where((it) => it.status == 'synced').toList();
       if (syncedItems.isNotEmpty) {
         syncedItems.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-        final latestIso = syncedItems.first.timestamp.toIso8601String();
-        _lastSyncedAt = latestIso;
-        Hive.box(HiveBoxes.settings).put('last_synced_at', latestIso);
+        _lastSyncedAt = syncedItems.first.timestamp.toIso8601String();
       }
     }
     AppDataBus.version.addListener(_onDataChanged);
@@ -98,6 +103,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
   @override
   void dispose() {
     AppDataBus.version.removeListener(_onDataChanged);
+    _messenger?.clearSnackBars();
     super.dispose();
   }
 
@@ -424,7 +430,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         _isSyncing = false;
         _message = 'No internet connection';
       });
-      ScaffoldMessenger.of(context).showSnackBar(
+      _showSyncSnackBar(
         const SnackBar(
           content: Text('No internet connection'),
           backgroundColor: AppColors.statRed,
@@ -666,9 +672,8 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                     : 'Sync finished with warnings.'));
       });
 
-      ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
       if (errors.isEmpty && remaining == 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        _showSyncSnackBar(
           const SnackBar(
             content: Text('✓ All records successfully synced with server.'),
             backgroundColor: AppColors.primaryGreen,
@@ -677,7 +682,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           ),
         );
       } else if (remFailed > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        _showSyncSnackBar(
           SnackBar(
             content: Text(
               remPending > 0
@@ -690,7 +695,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        _showSyncSnackBar(
           SnackBar(
             content: Text('$remaining item(s) remaining in sync queue.'),
             backgroundColor: AppColors.statAmber,
@@ -706,8 +711,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
         _syncErrors = [...errors, 'Unexpected error: $e'];
         _message = 'Sync interrupted.';
       });
-      ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
+      _showSyncSnackBar(
         SnackBar(
           content: Text('Sync failed: $e'),
           backgroundColor: AppColors.statRed,
@@ -722,6 +726,13 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     }
   }
 
+  void _showSyncSnackBar(SnackBar snackBar) {
+    if (!mounted) return;
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+    _messenger?.clearSnackBars();
+    _messenger?.showSnackBar(snackBar);
+  }
+
   Future<void> _retryItem(SyncItem item) async {
     setState(() => _isSyncing = true);
     try {
@@ -732,7 +743,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           final child = Child.fromMap(Map<String, dynamic>.from(raw));
           final res = await _children.trySync(child);
           if (mounted && res != null && !res.success) {
-            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+            _showSyncSnackBar(
               SnackBar(
                 content: Text('Retry failed: ${res.message}'),
                 backgroundColor: AppColors.statRed,
@@ -746,7 +757,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           final mother = Mother.fromMap(Map<String, dynamic>.from(raw));
           final res = await _mothers.trySync(mother);
           if (mounted && res != null && !res.success) {
-            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+            _showSyncSnackBar(
               SnackBar(
                 content: Text('Retry failed: ${res.message}'),
                 backgroundColor: AppColors.statRed,
@@ -761,14 +772,14 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           final res = await _referrals.trySync(referral);
           if (mounted) {
             if (res != null && !res.success) {
-              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              _showSyncSnackBar(
                 SnackBar(
                   content: Text('Retry failed for ${referral.resolvedBeneficiaryName}: ${res.message}'),
                   backgroundColor: AppColors.statRed,
                 ),
               );
             } else {
-              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              _showSyncSnackBar(
                 SnackBar(
                   content: Text('Referral synced for ${referral.resolvedBeneficiaryName}'),
                   backgroundColor: AppColors.primaryGreen,
@@ -812,14 +823,14 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
           final res = await _vitaminA.trySync(record);
           if (mounted) {
             if (res != null && !res.success) {
-              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              _showSyncSnackBar(
                 SnackBar(
                   content: Text('Retry failed for ${record.childName}: ${res.message}'),
                   backgroundColor: AppColors.statRed,
                 ),
               );
             } else {
-              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              _showSyncSnackBar(
                 SnackBar(
                   content: Text('Vitamin A record synced for ${record.childName}'),
                   backgroundColor: AppColors.primaryGreen,
@@ -849,11 +860,13 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
       }).timeout(const Duration(seconds: 15));
       final nowIso = DateTime.now().toIso8601String();
       await Hive.box(HiveBoxes.settings).put('last_synced_at', nowIso);
-      setState(() => _lastSyncedAt = nowIso);
+      if (mounted) {
+        setState(() => _lastSyncedAt = nowIso);
+      }
       AppDataBus.notifyChanged();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        _showSyncSnackBar(
           SnackBar(
             content: Text(e is TimeoutException ? 'Retry timed out. Please try again.' : 'Retry failed: $e'),
             backgroundColor: AppColors.statRed,
@@ -1250,25 +1263,33 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
             _showAllRecent ? syncItems : syncItems.take(20).toList();
         final hasMore = !_showAllRecent && syncItems.length > 20;
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: Column(
-              children: [
-                // Top AppBar
-                Container(
-                  width: double.infinity,
-                  color: AppColors.darkGreen,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.lg,
-                  ),
-                  child: Row(
-                    children: [
-                      InkWell(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(Icons.arrow_back, color: Colors.white),
-                      ),
+        return PopScope(
+          canPop: true,
+          onPopInvokedWithResult: (didPop, result) {
+            _messenger?.clearSnackBars();
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  // Top AppBar
+                  Container(
+                    width: double.infinity,
+                    color: AppColors.darkGreen,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.lg,
+                    ),
+                    child: Row(
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            _messenger?.clearSnackBars();
+                            Navigator.pop(context);
+                          },
+                          child: const Icon(Icons.arrow_back, color: Colors.white),
+                        ),
                       const SizedBox(width: AppSpacing.sm),
                       Text(
                         'Sync Status',
@@ -1592,6 +1613,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                 ),
               ],
             ),
+          ),
           ),
         );
       },

@@ -120,21 +120,19 @@ app.get('/api/app-version', (req, res) => {
         } catch (e) {}
     }
 
-    const version = process.env.APP_VERSION || '3.3.17';
-    const versionCode = Number(process.env.APP_VERSION_CODE || 50);
+    const version = process.env.APP_VERSION || '3.3.18';
+    const versionCode = Number(process.env.APP_VERSION_CODE || 51);
     const notesEn = [
-        "Data Consistency: Unified overall status computation, synchronized child/mother counts, and accurate inactive reasons",
-        "Measurements: Accurate measurement dates, unified height/weight plausibility rules, single re-measurement flag, and infant BMI cleanup",
-        "Sync & Offline: Enhanced error formatting, robust schema handling, and reliable retry timeouts",
-        "Feeding Program & Schedules: Accurate progress tracking, schedule overdue indicators, and calendar quick-navigation from notifications",
-        "Forms & Reports: Alphanumeric purok input, high-contrast dialogs, improved sequence numbering, and clean PDF exports"
+        "Reports Stability: Fixed white-screen and RangeError crashes on Consolidation, Monthly, Quarterly, and Masterlist previews across all months",
+        "Reports Layout & Performance: Bounded zoomable table constraints, RenderFlex overflow fix, background isolate computation, and error retry fallback",
+        "Sync & Navigation: Cleared stale Sync Status Retry snackbars across routes and guarded against deactivated-context errors",
+        "Medical Interventions & Visits: Memoized schema checks, sequential multi-intervention recording, and unified INT/VARCHAR provided_by handling"
     ];
     const notesTl = [
-        "Konsistensya ng Datos: Pinag-isang status computation, tugmang bilang ng bata at ina, at totoong dahilan ng pagka-inactive",
-        "Pagsukat: Tamang petsa ng pagsukat, pinag-isang plausibility rules, at pag-aalis ng BMI sa mga sanggol",
-        "Sync at Offline: Mas malinaw na mensahe ng error at maaasahang retry functionality",
-        "Feeding Program at Iskedyul: Tamang progress tracking, overdue badges, at mabilisang pagbukas ng schedule mula sa notifications",
-        "Form at Ulat: Malawak na purok input, pinahusay na contrast ng dialog, at maayos na PDF exports"
+        "Katatagan ng Reports: Naayos ang white-screen at RangeError crashes sa Consolidation, Monthly, Quarterly, at Masterlist previews sa lahat ng buwan",
+        "Layout at Bilis ng Reports: Bounded zoomable tables, naayos ang RenderFlex overflow, background isolate computation, at retry error recovery",
+        "Sync at Nabigasyon: Inaalis ang lumang Retry snackbars pagbalik ng screen at iwas-error sa route transitions",
+        "Medical Interventions at Visits: Ligtas na schema checks, sequential saving ng maraming interventions, at pinag-isang paghawak sa provided_by"
     ];
     const releaseNotes = process.env.APP_RELEASE_NOTES || notesEn.map(n => `• ${n}`).join('\n');
 

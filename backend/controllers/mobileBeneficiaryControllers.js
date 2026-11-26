@@ -2023,12 +2023,19 @@ exports.recordChildService = async (req, res) => {
 
     const sig = req.body.signature || req.body.mother_signature || null;
 
+    const [columns] = await pool.query('SHOW COLUMNS FROM child_services');
+    const providedByCol = columns.find((c) => c.Field === 'provided_by');
+    const isProvidedByInt = providedByCol && providedByCol.Type && providedByCol.Type.toLowerCase().startsWith('int');
+    const effectiveProvidedBy = isProvidedByInt
+      ? (provided_by && !isNaN(Number(provided_by)) ? Number(provided_by) : (req.user?.user_id ? Number(req.user.user_id) : null))
+      : (provided_by || (req.user?.first_name ? `${req.user.first_name} ${req.user.last_name || ''}`.trim() : 'BNS'));
+
     if (existing.length > 0) {
       await pool.query(
         `UPDATE child_services
          SET dosage = COALESCE(?, dosage), service_name = COALESCE(?, service_name), notes = COALESCE(?, notes), provided_by = COALESCE(?, provided_by), signature = COALESCE(?, signature)
          WHERE service_id = ?`,
-        [dosage || null, service_name || null, notes || null, provided_by || null, sig, existing[0].service_id]
+        [dosage || null, service_name || null, notes || null, effectiveProvidedBy || null, sig, existing[0].service_id]
       );
       return res.status(200).json({ message: 'Child service updated successfully.', service_id: existing[0].service_id });
     }
@@ -2037,7 +2044,7 @@ exports.recordChildService = async (req, res) => {
       `INSERT INTO child_services
        (external_id, child_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes, signature)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [external_id || null, resolvedChildId, service_type, service_name || service_type, dosage || null, sDate, next_schedule || null, provided_by || 'BNS', notes || null, sig]
+      [external_id || null, resolvedChildId, service_type, service_name || service_type, dosage || null, sDate, next_schedule || null, effectiveProvidedBy, notes || null, sig]
     );
 
     await logAction(pool, req, 'RECORD_CHILD_SERVICE', 'child_services', result.insertId, {
@@ -2100,12 +2107,19 @@ exports.recordMotherService = async (req, res) => {
 
     const sig = req.body.signature || req.body.mother_signature || null;
 
+    const [columns] = await pool.query('SHOW COLUMNS FROM mother_services');
+    const providedByCol = columns.find((c) => c.Field === 'provided_by');
+    const isProvidedByInt = providedByCol && providedByCol.Type && providedByCol.Type.toLowerCase().startsWith('int');
+    const effectiveProvidedBy = isProvidedByInt
+      ? (provided_by && !isNaN(Number(provided_by)) ? Number(provided_by) : (req.user?.user_id ? Number(req.user.user_id) : null))
+      : (provided_by || (req.user?.first_name ? `${req.user.first_name} ${req.user.last_name || ''}`.trim() : 'BNS'));
+
     if (existing.length > 0) {
       await pool.query(
         `UPDATE mother_services
          SET dosage = COALESCE(?, dosage), service_name = COALESCE(?, service_name), notes = COALESCE(?, notes), provided_by = COALESCE(?, provided_by), signature = COALESCE(?, signature)
          WHERE service_id = ?`,
-        [dosage || null, service_name || null, notes || null, provided_by || null, sig, existing[0].service_id]
+        [dosage || null, service_name || null, notes || null, effectiveProvidedBy || null, sig, existing[0].service_id]
       );
       return res.status(200).json({ message: 'Mother service updated successfully.', service_id: existing[0].service_id });
     }
@@ -2114,7 +2128,7 @@ exports.recordMotherService = async (req, res) => {
       `INSERT INTO mother_services
        (external_id, mother_id, service_type, service_name, dosage, service_date, next_schedule, provided_by, notes, signature)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [external_id || null, resolvedMotherId, service_type || 'Maternal Counseling', service_name || service_type || 'Maternal Counseling', dosage || null, sDate, next_schedule || null, provided_by || 'BNS', notes || null, sig]
+      [external_id || null, resolvedMotherId, service_type || 'Maternal Counseling', service_name || service_type || 'Maternal Counseling', dosage || null, sDate, next_schedule || null, effectiveProvidedBy, notes || null, sig]
     );
 
     await logAction(pool, req, 'RECORD_MOTHER_SERVICE', 'mother_services', result.insertId, {

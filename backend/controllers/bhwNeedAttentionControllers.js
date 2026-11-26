@@ -84,7 +84,7 @@ exports.createChildService = async (req, res) => {
     return res.status(400).json({ message: 'Child, date, and at least one valid service type are required.' });
   }
 
-  const providerId = req.user?.user_id || provided_by || null;
+  const rawProvider = req.user?.user_id || provided_by || null;
   const modifierName = `${req.user?.first_name || ''} ${req.user?.last_name || ''}`.trim() || 'BHW';
 
   try {
@@ -93,6 +93,13 @@ exports.createChildService = async (req, res) => {
       [child_id]
     );
     if (!child) return res.status(404).json({ message: 'Child not found.' });
+
+    const [columns] = await pool.query('SHOW COLUMNS FROM child_services');
+    const providedByCol = columns.find((c) => c.Field === 'provided_by');
+    const isProvidedByInt = providedByCol && providedByCol.Type && providedByCol.Type.toLowerCase().startsWith('int');
+    const providerId = isProvidedByInt
+      ? (rawProvider && !isNaN(Number(rawProvider)) ? Number(rawProvider) : null)
+      : (rawProvider || modifierName || 'BHW');
 
     const childAge = child.age_in_months || 0;
 

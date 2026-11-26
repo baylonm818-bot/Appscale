@@ -328,11 +328,11 @@ class ConsolidationComputationService {
     }
 
     final kidsSubTotal = List.generate(
-      24,
+      totalCols,
       (i) => [...kidsNormal[i], ...kidsUw[i], ...kidsSuw[i]],
     );
     final kidsGrandTotal = List.generate(
-      24,
+      totalCols,
       (i) => [
         ...kidsSubTotal[i],
         ...kidsNotWeighed[i],
@@ -778,11 +778,11 @@ class ConsolidationComputationService {
     }
 
     final kidsSubTotal = List.generate(
-      24,
+      totalCols,
       (i) => [...kidsNormal[i], ...kidsStunted[i], ...kidsSeverelyStunted[i]],
     );
     final kidsGrandTotal = List.generate(
-      24,
+      totalCols,
       (i) => [
         ...kidsSubTotal[i],
         ...kidsNotWeighed[i],
@@ -1007,11 +1007,11 @@ class ConsolidationComputationService {
     }
 
     final kidsSubTotal = List.generate(
-      24,
+      totalCols,
       (i) => [...kidsNormal[i], ...kidsWasted[i], ...kidsSeverelyWasted[i]],
     );
     final kidsGrandTotal = List.generate(
-      24,
+      totalCols,
       (i) => [
         ...kidsSubTotal[i],
         ...kidsNotWeighed[i],

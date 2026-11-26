@@ -550,36 +550,35 @@ function MedicalRecords() {
       };
     });
 
+    let savedCount = 0;
     try {
       if (modalBeneficiaryType === 'child') {
-        await Promise.all(
-          itemsToSubmit.map((item) =>
-            axiosClient.post('/bhw/medical-records/child-services', {
-              child_id: selectedChild.child_id,
-              service_type: item.service_type,
-              service_name: item.service_name,
-              dosage: item.dosage,
-              service_date: serviceDate,
-              next_schedule: nextSchedule || null,
-              notes: interventionNotes.trim() || null,
-            })
-          )
-        );
+        for (const item of itemsToSubmit) {
+          await axiosClient.post('/bhw/medical-records/child-services', {
+            child_id: selectedChild.child_id,
+            service_type: item.service_type,
+            service_name: item.service_name,
+            dosage: item.dosage,
+            service_date: serviceDate,
+            next_schedule: nextSchedule || null,
+            notes: interventionNotes.trim() || null,
+          });
+          savedCount += 1;
+        }
         await openChild(selectedChild);
       } else {
-        await Promise.all(
-          itemsToSubmit.map((item) =>
-            axiosClient.post('/bhw/medical-records/mother-services', {
-              mother_id: selectedMother.mother_id,
-              service_type: item.service_type,
-              service_name: item.service_name,
-              dosage: item.dosage,
-              service_date: serviceDate,
-              next_schedule: nextSchedule || null,
-              notes: interventionNotes.trim() || null,
-            })
-          )
-        );
+        for (const item of itemsToSubmit) {
+          await axiosClient.post('/bhw/medical-records/mother-services', {
+            mother_id: selectedMother.mother_id,
+            service_type: item.service_type,
+            service_name: item.service_name,
+            dosage: item.dosage,
+            service_date: serviceDate,
+            next_schedule: nextSchedule || null,
+            notes: interventionNotes.trim() || null,
+          });
+          savedCount += 1;
+        }
         await openMother(selectedMother);
       }
       if (typeof _refetchAudit === 'function') {
@@ -591,7 +590,26 @@ function MedicalRecords() {
         type: 'success',
       });
     } catch (err) {
-      setModalError(err.response?.data?.message || 'Failed to save medical intervention(s).');
+      if (savedCount > 0) {
+        try {
+          if (modalBeneficiaryType === 'child' && selectedChild) {
+            await openChild(selectedChild);
+          } else if (selectedMother) {
+            await openMother(selectedMother);
+          }
+          if (typeof _refetchAudit === 'function') {
+            _refetchAudit();
+          }
+        } catch (refreshErr) {
+          console.warn('Partial intervention refresh warning:', refreshErr);
+        }
+      }
+      const baseMsg = err.response?.data?.message || 'Failed to save medical intervention(s).';
+      setModalError(
+        savedCount > 0
+          ? `${savedCount} of ${itemsToSubmit.length} interventions saved, but the next item failed: ${baseMsg}`
+          : baseMsg
+      );
     } finally {
       setModalSubmitting(false);
     }
@@ -1558,8 +1576,9 @@ function MedicalRecords() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition cursor-pointer"
+                disabled={modalSubmitting}
+                onClick={() => !modalSubmitting && setShowAddModal(false)}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-50 flex items-center justify-center text-white transition cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -1725,6 +1744,7 @@ function MedicalRecords() {
                   <input
                     type="date"
                     value={serviceDate}
+                    max={new Date().toISOString().slice(0, 10)}
                     onChange={(e) => {
                       setServiceDate(e.target.value);
                       if (interventionErrors.serviceDate) {
@@ -1746,6 +1766,7 @@ function MedicalRecords() {
                   <input
                     type="date"
                     value={nextSchedule}
+                    min={serviceDate || undefined}
                     onChange={(e) => setNextSchedule(e.target.value)}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-[#2e7d32] bg-white"
                   />
@@ -1767,8 +1788,9 @@ function MedicalRecords() {
             <div className="p-4 border-t border-gray-100 bg-white flex gap-3 pt-3 shrink-0">
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition cursor-pointer"
+                disabled={modalSubmitting}
+                onClick={() => !modalSubmitting && setShowAddModal(false)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -2176,23 +2198,32 @@ function MedicalRecords() {
       )}
 
       {/* ── Toast Notification Banner ── */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-[9999] animate-in fade-in slide-in-from-bottom-5 duration-200">
+      {toastMessage && createPortal(
+        <div className="fixed bottom-6 right-6 z-[10000]">
           <div
+            role="status"
+            aria-live="polite"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium ${
               toastMessage.type === 'success'
                 ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-900/20'
                 : 'bg-red-600 text-white border-red-500 shadow-red-900/20'
             }`}
           >
-            {toastMessage.type === 'success' ? (
+            {toastMessage.type === 'success' && (
               <CheckCircle2 size={18} className="shrink-0 text-white" />
-            ) : (
-              <X size={18} className="shrink-0 text-white cursor-pointer" onClick={() => setToastMessage(null)} />
             )}
             <span>{toastMessage.text}</span>
+            <button
+              type="button"
+              onClick={() => setToastMessage(null)}
+              aria-label="Dismiss notification"
+              className="ml-1 rounded-full p-0.5 text-white/80 hover:text-white hover:bg-white/15 transition cursor-pointer"
+            >
+              <X size={16} />
+            </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </main>
